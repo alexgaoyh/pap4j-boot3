@@ -111,15 +111,16 @@ public class ExcelUtil {
     }
 
     public static Map<String, List<Map<String, Object>>> groupByField(List<Map<String, Object>> sourceRowList, List<String> sourceFieldList) {
-        return sourceRowList.stream()
+        return sourceRowList.parallelStream()
                 .collect(Collectors.groupingBy(
                         row -> concatenateFieldValues(row, sourceFieldList),
+                        LinkedHashMap::new,
                         Collectors.toList()
                 ));
     }
 
     private static String concatenateFieldValues(Map<String, Object> row, List<String> sourceFieldList) {
-        return sourceFieldList.stream()
+        return sourceFieldList.parallelStream()
                 .map(field -> String.valueOf(row.get(field)))
                 .collect(Collectors.joining("~~~"));
     }
