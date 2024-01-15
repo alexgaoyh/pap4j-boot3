@@ -19,7 +19,7 @@
 
     <modules>
         <module>pap4j-boot3-starters</module>
-        <module>pap4j-boot3-starters/pap4j-boot3-starter-statemachine</module>
+        <module>pap4j-common</module>
     </modules>
 
     <properties>
@@ -36,6 +36,14 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
+
+            <!-- https://mvnrepository.com/artifact/com.alibaba/easyexcel -->
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>easyexcel</artifactId>
+                <version>3.3.3</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
