@@ -9,10 +9,14 @@
     </parent>
 
     <artifactId>pap4j-boot3-starters</artifactId>
-    <packaging>jar</packaging>
+    <packaging>pom</packaging>
 
     <name>pap4j-boot3-starters</name>
     <url>http://maven.apache.org</url>
+
+    <modules>
+        <module>pap4j-boot3-starter-statemachine</module>
+    </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
