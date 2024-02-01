@@ -24,6 +24,9 @@ public class Roaring64NavigableMapTest {
             assertTrue(longIterator.next() == currentTimeMillis);
             break;
         }
+        // 是否包含
+        boolean containsBool = r64nMap.contains(currentTimeMillis);
+        assertTrue(containsBool);
 
         // 序列化
         String serialize = Roaring64NavigableMapUtil.serialize(r64nMap);
