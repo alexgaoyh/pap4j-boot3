@@ -16,6 +16,7 @@
 
     <modules>
         <module>pap4j-common-excel</module>
+        <module>pap4j-common-bitmap</module>
     </modules>
 
     <properties>
