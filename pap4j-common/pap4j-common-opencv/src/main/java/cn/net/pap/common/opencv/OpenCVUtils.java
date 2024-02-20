@@ -20,13 +20,13 @@ public class OpenCVUtils {
      * 大图找小图
      *
      * @param sourceImg  原始大图   image abs path test image(https://sm.ms/image/S4wj2dLm5N1pM8c)
-     * @param smallImg   模板小图   image abs path test image(https://sm.ms/image/9RV7wI6QfYJlxhn)
-     * @param targetPath 匹配出来的结果   image abs path test image(https://sm.ms/image/QZPycMl3FSgihJ1)
+     * @param templateImg   模板小图   image abs path test image(https://sm.ms/image/9RV7wI6QfYJlxhn)
+     * @param targetImg 匹配出来的结果   image abs path test image(https://sm.ms/image/QZPycMl3FSgihJ1)
      */
-    public static void templateMatching(String sourceImg, String smallImg, String targetPath) {
+    public static void templateMatching(String sourceImg, String templateImg, String targetImg) {
 
         Mat src = Imgcodecs.imread(sourceImg);
-        Mat template = Imgcodecs.imread(smallImg);
+        Mat template = Imgcodecs.imread(templateImg);
 
         Mat outputImage = new Mat(src.rows(), src.cols(), src.type());
         Imgproc.matchTemplate(src, template, outputImage, Imgproc.TM_CCOEFF_NORMED);
@@ -40,7 +40,7 @@ public class OpenCVUtils {
         Imgproc.rectangle(src, new Point(x, y), new Point(x + template.cols(), y + template.rows()),
                 new Scalar(0, 0, 255), 2, Imgproc.LINE_AA);
 
-        Imgcodecs.imwrite(targetPath, src);
+        Imgcodecs.imwrite(targetImg, src);
     }
 
 }
