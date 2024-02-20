@@ -1,13 +1,12 @@
 package cn.net.pap.common.opencv;
 
-import org.opencv.core.Core;
-import org.opencv.core.Mat;
-import org.opencv.core.Point;
-import org.opencv.core.Scalar;
+import org.opencv.core.*;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 public class OpenCVUtils {
 
@@ -41,6 +40,43 @@ public class OpenCVUtils {
                 new Scalar(0, 0, 255), 2, Imgproc.LINE_AA);
 
         Imgcodecs.imwrite(targetImg, src);
+    }
+
+    /**
+     * 图像相似度
+     * @param image1Path    图像1路径
+     * @param image2Path    图像2路径
+     * @param type  相似度算法： Histogram
+     * @return
+     */
+    public static double similarityImage(String image1Path, String image2Path, String type) {
+        Mat image1 = Imgcodecs.imread(image1Path);
+        Mat image2 = Imgcodecs.imread(image2Path);
+        if(type.equals("Histogram")) {
+            return similarityHistogram(image1, image2);
+        }
+        return 0;
+    }
+
+    // 计算均方差（Histogram）
+    private static double similarityHistogram(Mat image1, Mat image2) {
+        Mat hist1 = calculateHistogram(image1);
+        Mat hist2 = calculateHistogram(image2);
+        final double similarity = Imgproc.compareHist(hist1, hist2, Imgproc.CV_COMP_CORREL);
+        return similarity;
+    }
+
+    private static Mat calculateHistogram(Mat image) {
+        Mat hist = new Mat();
+
+        MatOfInt histSize = new MatOfInt(256);
+        MatOfFloat ranges = new MatOfFloat(0, 256);
+        MatOfInt channels = new MatOfInt(0);
+        List<Mat> images = new ArrayList<>();
+        images.add(image);
+        Imgproc.calcHist(images, channels, new Mat(), hist, histSize, ranges);
+
+        return hist;
     }
 
 }
