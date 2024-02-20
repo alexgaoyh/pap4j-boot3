@@ -18,6 +18,7 @@
         <module>pap4j-common-excel</module>
         <module>pap4j-common-bitmap</module>
         <module>pap4j-common-deeplearning4j</module>
+        <module>pap4j-common-opencv</module>
     </modules>
 
     <properties>
