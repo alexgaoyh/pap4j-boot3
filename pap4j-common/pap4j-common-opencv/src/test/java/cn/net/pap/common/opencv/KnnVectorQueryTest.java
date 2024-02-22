@@ -1,0 +1,69 @@
+package cn.net.pap.common.opencv;
+
+import java.io.IOException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.KnnVectorField;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.index.DirectoryReader;
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.IndexWriter;
+import org.apache.lucene.index.IndexWriterConfig;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.KnnVectorQuery;
+import org.apache.lucene.search.ScoreDoc;
+import org.apache.lucene.search.TopDocs;
+import org.apache.lucene.store.MMapDirectory;
+import org.junit.jupiter.api.Test;
+
+/**
+ * 将图像的特征向量放入 lucene 中，后续通过 KNN 进行相似度查询，类似以图搜图的功能实现。
+ */
+public class KnnVectorQueryTest {
+
+    public static final Path indexPath = Paths.get("target/index");
+
+    // @Test
+    public void testQuery() throws IOException {
+
+        float[] firstVector = null;
+
+        try (MMapDirectory dir = new MMapDirectory(indexPath)) {
+            try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
+                List<String> imageAbsPathList = new ArrayList<>();
+                imageAbsPathList.add("C:\\Users\\86181\\Desktop\\1.jpg");
+                imageAbsPathList.add("C:\\Users\\86181\\Desktop\\2.jpg");
+                imageAbsPathList.add("C:\\Users\\86181\\Desktop\\3.jpg");
+                for(String imageAbsPath : imageAbsPathList) {
+                    byte[] bytes = OpenCVUtils.matOfKeyPointImage(imageAbsPath);
+                    // TODO 这里不合适，后续需要再次调整，由于lucene的限制，这里限制了特征向量的长度。
+                    float[] floats = OpenCVUtils.normalize(OpenCVUtils.convertArray(OpenCVUtils.byteArrayToFloatList(bytes), 1024));
+                    if(firstVector == null) {
+                        firstVector = floats;
+                    }
+                    Document doc = new Document();
+                    doc.add(new StoredField("id", imageAbsPath));
+                    doc.add(new KnnVectorField("field", floats));
+                    writer.addDocument(doc);
+                }
+            }
+            System.out.println();
+            try (IndexReader reader = DirectoryReader.open(dir)) {
+                IndexSearcher searcher = new IndexSearcher(reader);
+
+                TopDocs results = searcher.search(new KnnVectorQuery("field", firstVector, 3), 10);
+                System.out.println("Hits: " + results.totalHits);
+                for (ScoreDoc sdoc : results.scoreDocs) {
+                    Document doc = reader.document(sdoc.doc);
+                    StoredField idField = (StoredField) doc.getField("id");
+                    System.out.println("Found: " + idField.toString() + " = " + String.format("%.1f", sdoc.score));
+                }
+            }
+        }
+
+    }
+}

@@ -95,6 +95,87 @@ public class OpenCVUtils {
         return descriptorsData;
     }
 
+    /**
+     * 将byte类型的arr转换成float
+     *
+     * @return
+     */
+    public static List<Float> byteArrayToFloatList(byte[] bytes) {
+        List<Float> d = new ArrayList<>(bytes.length / 8);
+        byte[] doubleBuffer = new byte[4];
+        for (int j = 0; j < bytes.length; j += 4) {
+            System.arraycopy(bytes, j, doubleBuffer, 0, doubleBuffer.length);
+            d.add(bytes2Float(doubleBuffer));
+        }
+        return d;
+    }
+
+    /**
+     * 将byte数组数据转换成float
+     *
+     * @param arr
+     * @return
+     */
+    public static float bytes2Float(byte[] arr) {
+        int accum = 0;
+        accum = accum | (arr[0] & 0xff) << 0;
+        accum = accum | (arr[1] & 0xff) << 8;
+        accum = accum | (arr[2] & 0xff) << 16;
+        accum = accum | (arr[3] & 0xff) << 24;
+        return Float.intBitsToFloat(accum);
+    }
+
+    public static float[] convertArray(List<Float> floatList, Integer maxLength) {
+        Integer arrayLength = floatList.size() > maxLength ? maxLength : floatList.size();
+        float[] array = new float[arrayLength];
+        for (int i = 0; i < arrayLength; i++) {
+            if(floatList.get(i).isNaN()) {
+                array[i] = 0.0f;
+            } else {
+                array[i] = floatList.get(i);
+            }
+        }
+        return array;
+    }
+
+    /**
+     * 最大最小  归一化
+     * @param data
+     * @return
+     */
+    public static float[] normalize(float[] data) {
+        if (data == null || data.length == 0) {
+            throw new IllegalArgumentException("Data array cannot be null or empty");
+        }
+
+        float min = Float.MAX_VALUE;
+        float max = Float.MIN_VALUE;
+
+        for (float value : data) {
+            if (value < min) {
+                min = value;
+            }
+            if (value > max) {
+                max = value;
+            }
+        }
+
+        if (min == max) {
+            throw new IllegalArgumentException("Data array cannot contain all the same values for normalization");
+        }
+
+        float[] normalizedData = new float[data.length];
+        for (int i = 0; i < data.length; i++) {
+            float v = (data[i] - min) / (max - min);
+            if(Float.isNaN(v)) {
+                normalizedData[i] = 0.0f;
+            } else {
+                normalizedData[i] = (data[i] - min) / (max - min);
+            }
+        }
+        return normalizedData;
+    }
+
     // 计算均方差（Histogram）
     private static double similarityHistogram(Mat image1, Mat image2) {
         Mat hist1 = calculateHistogram(image1);
