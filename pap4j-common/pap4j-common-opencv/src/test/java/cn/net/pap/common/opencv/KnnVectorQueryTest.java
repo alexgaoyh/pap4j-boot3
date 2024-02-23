@@ -27,7 +27,7 @@ public class KnnVectorQueryTest {
 
     public static final Path indexPath = Paths.get("target/index");
 
-    // @Test
+    @Test
     public void testQuery() throws IOException {
 
         float[] firstVector = null;
@@ -40,8 +40,8 @@ public class KnnVectorQueryTest {
                 imageAbsPathList.add("C:\\Users\\86181\\Desktop\\3.jpg");
                 for(String imageAbsPath : imageAbsPathList) {
                     byte[] bytes = OpenCVUtils.matOfKeyPointImage(imageAbsPath);
-                    // TODO 这里不合适，后续需要再次调整，由于lucene的限制，这里限制了特征向量的长度。
-                    float[] floats = OpenCVUtils.normalize(OpenCVUtils.convertArray(OpenCVUtils.byteArrayToFloatList(bytes), 1024));
+                    // added PCA to reduce dimensions
+                    float[] floats = OpenCVUtils.normalize(OpenCVUtils.convertArray(OpenCVUtils.byteArrayToFloatList(bytes), Integer.MAX_VALUE));
                     if(firstVector == null) {
                         firstVector = floats;
                     }

@@ -84,6 +84,12 @@ public class OpenCVUtils {
         Mat descriptors = new Mat();
         detector.compute(grayImage, keypoints, descriptors);
 
+        // PCA dimensionality reduction
+        Mat pcaData = new Mat();
+        descriptors.convertTo(pcaData, CvType.CV_32F);
+        Mat mean = new Mat();
+        Core.PCACompute(pcaData, mean, descriptors);
+
         // Convert descriptors to byte array
         MatOfByte matOfByte = new MatOfByte();
         descriptors.convertTo(matOfByte, CvType.CV_8U);
