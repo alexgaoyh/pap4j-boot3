@@ -20,6 +20,7 @@
     <modules>
         <module>pap4j-boot3-starters</module>
         <module>pap4j-common</module>
+        <module>pap4j-boot3-example</module>
     </modules>
 
     <properties>
