@@ -247,4 +247,37 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, rotatedImage);
     }
 
+    /**
+     * 边缘像素加深/加浅，使用 Canny边缘检测找到边缘部分，如果是边缘，则进行边缘像素调整。
+     * @param inputPath
+     * @param outputPath
+     * @param scope -60 加深
+     */
+    public static void edgeWeight(String inputPath, String outputPath, Integer scope) {
+        // 读取图像
+        Mat image = Imgcodecs.imread(inputPath);
+        // 使用Canny边缘检测算法检测边缘
+        Mat edges = new Mat();
+        Imgproc.Canny(image, edges, 50, 150);
+        // 加深边缘像素点
+        for (int y = 0; y < edges.rows(); y++) {
+            for (int x = 0; x < edges.cols(); x++) {
+                if (edges.get(y, x)[0] != 0) {
+                    double[] rgb  = image.get(y, x);
+                    if(rgb != null) {
+                        // 将原图和边缘图叠加，这里可以根据需求进行调整
+                        int combinedRed = Math.min(255, (int)rgb[0] + scope);
+                        int combinedGreen = Math.min(255, (int)rgb[1] + scope);
+                        int combinedBlue = Math.min(255, (int)rgb[2] + scope);
+                        // 设置叠加后的像素值
+                        double[] newrgb = new double[]{combinedRed, combinedGreen, combinedBlue};
+                        image.put(y, x, newrgb);
+                    }
+                }
+            }
+        }
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, image);
+    }
+
 }
