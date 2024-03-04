@@ -203,4 +203,48 @@ public class OpenCVUtils {
         return hist;
     }
 
+    /**
+     * 旋转图像，并保持图像大小不变。
+     * @param inputPath 待旋转图像的绝对路径
+     * @param outputPath    旋转后图像的绝对路径
+     * @param angle 角度，逆时针为正， 传入 45 代表 逆时针旋转45度。
+     */
+    public static void rotation(String inputPath, String outputPath, double angle) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 定义旋转中心
+        Point center = new Point(src.cols() / 2, src.rows() / 2);
+        // 计算旋转后的图像边界
+        Rect rotatedRect = Imgproc.boundingRect(new MatOfPoint2f(new Point(0, 0), new Point(src.cols() - 1, 0), new Point(src.cols() - 1, src.rows() - 1), new Point(0, src.rows() - 1)));
+        Point rotatedCorner = new Point(rotatedRect.width, rotatedRect.height);
+        // 计算旋转矩阵
+        Mat rotationMatrix = Imgproc.getRotationMatrix2D(center, angle, 1.0);
+        // 进行图像旋转
+        Mat rotated = new Mat();
+        Imgproc.warpAffine(src, rotated, rotationMatrix, rotatedRect.size(), Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT, new Scalar(255, 255, 255));
+        // 保存旋转后的图像
+        Imgcodecs.imwrite(outputPath, rotated);
+    }
+
+    public static void rotation2(String inputPath, String outputPath, double angle) {
+        // 读取图像
+        Mat originalImage = Imgcodecs.imread(inputPath);
+        // 计算旋转后的图像大小
+        int newWidth = (int) (originalImage.width() * Math.abs(Math.cos(Math.toRadians(angle))) +
+                originalImage.height() * Math.abs(Math.sin(Math.toRadians(angle))));
+        int newHeight = (int) (originalImage.width() * Math.abs(Math.sin(Math.toRadians(angle))) +
+                originalImage.height() * Math.abs(Math.cos(Math.toRadians(angle))));
+        // 定义旋转矩阵
+        Mat rotationMatrix = Imgproc.getRotationMatrix2D(new Point(originalImage.cols() / 2, originalImage.rows() / 2), angle, 1);
+        // 计算旋转后的图像平移量，使其居中显示
+        double offsetX = (newWidth - originalImage.width()) / 2.0;
+        double offsetY = (newHeight - originalImage.height()) / 2.0;
+        rotationMatrix.put(0, 2, rotationMatrix.get(0, 2)[0] + offsetX);
+        rotationMatrix.put(1, 2, rotationMatrix.get(1, 2)[0] + offsetY);
+        // 执行旋转
+        Mat rotatedImage = new Mat();
+        Imgproc.warpAffine(originalImage, rotatedImage, rotationMatrix, new Size(newWidth, newHeight), Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT, new Scalar(255, 255, 255));
+        Imgcodecs.imwrite(outputPath, rotatedImage);
+    }
+
 }
