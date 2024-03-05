@@ -345,4 +345,40 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, src);
     }
 
+    public static void removeBlackEdge(String inputPath, String outputPath, Integer blackEdgeWidth) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 将图像转换为灰度图像
+        Mat gray = new Mat();
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY);
+        // 使用边缘检测算法检测图像的边缘
+        Mat edges = new Mat();
+        Imgproc.Canny(gray, edges, 50, 150);
+        // 查找轮廓
+        List<MatOfPoint> contours = new ArrayList<>();
+        Imgproc.findContours(edges, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+        // 计算最大边界框
+        Rect boundingRect = Imgproc.boundingRect(contours.get(0));
+        for (int i = 1; i < contours.size(); i++) {
+            Rect rect = Imgproc.boundingRect(contours.get(i));
+            if (boundingRect == null) {
+                boundingRect = rect;
+            } else {
+                boundingRect = new Rect(
+                        Math.min(boundingRect.x, rect.x),
+                        Math.min(boundingRect.y, rect.y),
+                        Math.max(boundingRect.x + boundingRect.width, rect.x + rect.width) - Math.min(boundingRect.x, rect.x),
+                        Math.max(boundingRect.y + boundingRect.height, rect.y + rect.height) - Math.min(boundingRect.y, rect.y)
+                );
+            }
+        }
+        // 额外的处理，假设四周黑色边框的宽度是 blackEdgeWidth 个像素
+        if(blackEdgeWidth != null && blackEdgeWidth > 0) {
+            boundingRect = new Rect(boundingRect.x + blackEdgeWidth, boundingRect.y + blackEdgeWidth, boundingRect.width - blackEdgeWidth * 2 , boundingRect.height - blackEdgeWidth * 2);
+        }
+        // 裁剪图像
+        Mat croppedImage = new Mat(src, boundingRect);
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, croppedImage);
+    }
 }
