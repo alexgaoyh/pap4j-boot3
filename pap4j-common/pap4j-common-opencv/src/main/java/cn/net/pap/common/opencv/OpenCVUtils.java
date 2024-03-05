@@ -318,4 +318,31 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, sharpened);
     }
 
+    /**
+     * 区域内套红
+     * @param inputPath
+     * @param outputPath
+     * @param x
+     * @param y
+     * @param width
+     * @param height
+     */
+    public static void drawRedBox(String inputPath, String outputPath, int x, int y, int width, int height) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 定义矩形区域
+        Rect rect = new Rect(x, y, width, height);
+        // 遍历指定矩形区域内的像素
+        for (int yTmp = rect.y; yTmp < rect.y + rect.height; yTmp++) {
+            for (int xTmp = rect.x; xTmp < rect.x + rect.width; xTmp++) {
+                double[] pixel = src.get(yTmp, xTmp); // 获取像素值
+                // 增加红色通道的值，确保不超过255
+                pixel[2] = Math.min(pixel[2] + 100, 255);
+                src.put(yTmp, xTmp, pixel); // 更新像素值
+            }
+        }
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, src);
+    }
+
 }
