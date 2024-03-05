@@ -381,4 +381,39 @@ public class OpenCVUtils {
         // 显示或保存处理后的图像
         Imgcodecs.imwrite(outputPath, croppedImage);
     }
+
+
+    public static void croppedInnerImage(String inputPath, String outputPath, int x, int y, int width, int height) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 定义矩形的左上角和右下角坐标
+        Rect rect = new Rect(x, y, width, height); // 参数依次为：x, y, width, height
+        // 创建一个和原始图像同样大小和类型的掩码
+        Mat mask = new Mat(src.size(), src.type());
+        // 在掩码上绘制一个白色的矩形
+        Imgproc.rectangle(mask, rect.tl(), rect.br(), new Scalar(255, 255, 255), Imgproc.FILLED);
+        // 使用掩码将原始图像中对应区域设置为白色
+        src.setTo(new Scalar(255, 255, 255), mask);
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, src);
+    }
+
+    public static void croppedOuterImage(String inputPath, String outputPath, int x, int y, int width, int height) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 定义矩形的左上角和右下角坐标
+        Rect rect = new Rect(50, 50, 150, 150); // 参数依次为：x, y, width, height
+        // 创建一个和原始图像同样大小的掩码，并初始化为白色（255）
+        Mat mask = new Mat(src.size(), src.type());
+        mask.setTo(new Scalar(255, 255, 255));
+        // 在掩码上将矩形区域设置为黑色（0）
+        Imgproc.rectangle(mask, rect.tl(), rect.br(), new Scalar(0, 0, 0), Imgproc.FILLED);
+        // 创建一个和原始图像同样大小的白色图像
+        Mat white = new Mat(src.size(), src.type(), Scalar.all(255));
+        // 使用掩码将原始图像中矩形区域外部的像素复制到白色图像上
+        white.copyTo(src, mask);
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, src);
+    }
+
 }
