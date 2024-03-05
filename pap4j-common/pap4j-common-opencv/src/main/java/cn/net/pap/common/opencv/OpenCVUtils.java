@@ -4,6 +4,7 @@ import org.opencv.core.*;
 import org.opencv.features2d.ORB;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.photo.Photo;
 
 import java.net.URL;
 import java.util.ArrayList;
@@ -489,4 +490,21 @@ public class OpenCVUtils {
         // 显示或保存处理后的图像
         Imgcodecs.imwrite(outputPath, padded);
     }
+
+    public static void denoiseImage(String inputPath, String outputPath) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // Convert the image to grayscale
+        Mat gray = new Mat();
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY);
+        // Apply non-local means denoising
+        Mat denoised = new Mat();
+        float h = 5; // Strength of the filter
+        int templateWindowSize = 7  ; // Window size for searching
+        int searchWindowSize = 11; // Window size for matching
+        Photo.fastNlMeansDenoisingColored(src, denoised, h, searchWindowSize, templateWindowSize);
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, denoised);
+    }
+
 }
