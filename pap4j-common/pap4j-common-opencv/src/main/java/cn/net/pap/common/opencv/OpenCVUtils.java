@@ -280,4 +280,42 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, image);
     }
 
+    /**
+     * 高斯模糊 - 柔化
+     * @param inputPath
+     * @param outputPath
+     */
+    public static void gaussianBlur(String inputPath, String outputPath) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 创建一个新的矩阵以存储结果
+        Mat dst = new Mat();
+        // 使用高斯模糊
+        Imgproc.GaussianBlur(src, dst, new Size(5, 5), 0);
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, dst);
+    }
+
+    /**
+     * Unsharp Masking 锐化 是一种通过从原始图像中减去一个模糊版本的图像来增强图像边缘的方法。
+     * @param inputPath
+     * @param outputPath
+     */
+    public static void unsharpMasking(String inputPath, String outputPath) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 创建一个新的矩阵以存储模糊后的图像
+        Mat blurred = new Mat();
+        // 应用高斯模糊
+        Imgproc.GaussianBlur(src, blurred, new Size(0, 0), 5); // 核大小必须是正奇数，这里使用5x5
+        // 创建一个新的矩阵以存储锐化后的图像
+        Mat sharpened = new Mat();
+        // Unsharp Masking 锐化
+        // alpha 是一个可调参数，控制锐化的程度
+        double alpha = 1.5;
+        Core.addWeighted(src, alpha, blurred, -alpha + 1, 0, sharpened);
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, sharpened);
+    }
+
 }
