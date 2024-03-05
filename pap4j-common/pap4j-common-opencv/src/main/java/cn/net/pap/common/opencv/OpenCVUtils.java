@@ -416,4 +416,77 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, src);
     }
 
+    public static void cropImage(String inputPath, String outputPath, int x, int y, int width, int height) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 裁剪图像
+        Mat croppedImage = new Mat(src, new Rect(x, y, width, height));
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, croppedImage);
+    }
+
+    public static void invertColors(String inputPath, String outputPath, int x, int y, int width, int height) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 定义矩形的左上角和右下角坐标
+        Rect rect = new Rect(50, 50, 150, 150); // 参数依次为：x, y, width, height
+        // 创建一个和原始图像同样大小的Mat对象用于存储反色后的结果
+        Mat dst = new Mat();
+        src.copyTo(dst);
+        // 遍历矩形区域内的每个像素并取反
+        for (int yTmp = rect.y; yTmp < rect.y + rect.height; yTmp++) {
+            for (int xTmp = rect.x; xTmp < rect.x + rect.width; xTmp++) {
+                // 获取当前像素值
+                Scalar pixel = new Scalar(dst.get(yTmp, xTmp)[0], dst.get(yTmp, xTmp)[1], dst.get(yTmp, xTmp)[2]);
+
+                // 对每个通道进行取反操作
+                double blue = 255 - pixel.val[0];
+                double green = 255 - pixel.val[1];
+                double red = 255 - pixel.val[2];
+
+                // 设置新的像素值
+                dst.put(yTmp, xTmp, new double[]{blue, green, red});
+            }
+        }
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, dst);
+    }
+
+    public static void upSizeImage(String inputPath, String outputPath, int width, int height) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // 定义目标尺寸
+        Size targetSize = new Size(width, height); // 你可以修改为你想要的尺寸
+
+        // 计算缩放比例
+        double scaleWidth = (double) targetSize.width / src.cols();
+        double scaleHeight = (double) targetSize.height / src.rows();
+
+        // 确定缩放比例，以较小的那个为准，防止图像变形
+        double scale = Math.min(scaleWidth, scaleHeight);
+
+        // 计算新的图像尺寸
+        int newWidth = (int) (src.cols() * scale);
+        int newHeight = (int) (src.rows() * scale);
+
+        // 创建新的Mat对象来存储调整大小后的图像
+        Mat resized = new Mat();
+        Imgproc.resize(src, resized, new Size(newWidth, newHeight));
+
+        // 计算补齐图像的边框大小
+        double topBorder = (targetSize.height - newHeight) / 2;
+        double bottomBorder = targetSize.height - newHeight - topBorder;
+        double leftBorder = (targetSize.width - newWidth) / 2;
+        double rightBorder = targetSize.width - newWidth - leftBorder;
+
+        // 创建目标Mat对象，其大小为目标尺寸
+        Mat padded = new Mat(targetSize, src.type());
+
+        // 在目标Mat对象中填充边框
+        Core.copyMakeBorder(resized, padded, (int)Math.round(topBorder), (int)Math.round(bottomBorder), (int)Math.round(leftBorder), (int)Math.round(rightBorder),
+                Core.BORDER_CONSTANT, new Scalar(255, 255, 255)); // 使用白色作为边框颜色
+
+        // 显示或保存处理后的图像
+        Imgcodecs.imwrite(outputPath, padded);
+    }
 }
