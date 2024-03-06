@@ -638,4 +638,34 @@ public class OpenCVUtils {
         );
     }
 
+    /**
+     * 过滤底色 首先将图像灰度化，像素值为0-255，数值越大越浅，比如可以把数值240以上的区域都填充成白色，就达到了过滤底色的目的。
+     * @param inputPath
+     * @param outputPath
+     * @param colorThreshold 定义底色过滤阈值 240
+     */
+    public static void filterBackgroundColor(String inputPath, String outputPath, double colorThreshold) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+
+        // 转换图像为灰度图像
+        Mat grayImage = new Mat();
+        Imgproc.cvtColor(src, grayImage, Imgproc.COLOR_BGR2GRAY);
+
+        // 过滤底色
+        for (int y = 0; y < grayImage.rows(); y++) {
+            for (int x = 0; x < grayImage.cols(); x++) {
+                double[] pixel = grayImage.get(y, x);
+
+                // 如果像素值大于阈值，则设置为白色
+                if (pixel[0] > colorThreshold) {
+                    grayImage.put(y, x, 255);
+                }
+            }
+        }
+
+        // 保存处理后的图像
+        Imgcodecs.imwrite(outputPath, grayImage);
+    }
+
 }
