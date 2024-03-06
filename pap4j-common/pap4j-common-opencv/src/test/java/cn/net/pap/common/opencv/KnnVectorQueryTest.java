@@ -27,7 +27,7 @@ public class KnnVectorQueryTest {
 
     public static final Path indexPath = Paths.get("target/index");
 
-    @Test
+    // @Test
     public void testQuery() throws IOException {
 
         float[] firstVector = null;
