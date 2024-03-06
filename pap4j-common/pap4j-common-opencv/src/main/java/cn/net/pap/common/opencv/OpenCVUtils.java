@@ -8,6 +8,8 @@ import org.opencv.photo.Photo;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class OpenCVUtils {
@@ -346,6 +348,12 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, src);
     }
 
+    /**
+     * 去黑边
+     * @param inputPath
+     * @param outputPath
+     * @param blackEdgeWidth    外的处理，假设四周黑色边框的宽度是 blackEdgeWidth 个像素
+     */
     public static void removeBlackEdge(String inputPath, String outputPath, Integer blackEdgeWidth) {
         // 读取图像
         Mat src = Imgcodecs.imread(inputPath);
@@ -383,7 +391,15 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, croppedImage);
     }
 
-
+    /**
+     * 去除区域内
+     * @param inputPath
+     * @param outputPath
+     * @param x
+     * @param y
+     * @param width
+     * @param height
+     */
     public static void croppedInnerImage(String inputPath, String outputPath, int x, int y, int width, int height) {
         // 读取图像
         Mat src = Imgcodecs.imread(inputPath);
@@ -399,6 +415,15 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, src);
     }
 
+    /**
+     * 去除区域外
+     * @param inputPath
+     * @param outputPath
+     * @param x
+     * @param y
+     * @param width
+     * @param height
+     */
     public static void croppedOuterImage(String inputPath, String outputPath, int x, int y, int width, int height) {
         // 读取图像
         Mat src = Imgcodecs.imread(inputPath);
@@ -417,6 +442,15 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, src);
     }
 
+    /**
+     * 裁剪
+     * @param inputPath
+     * @param outputPath
+     * @param x
+     * @param y
+     * @param width
+     * @param height
+     */
     public static void cropImage(String inputPath, String outputPath, int x, int y, int width, int height) {
         // 读取图像
         Mat src = Imgcodecs.imread(inputPath);
@@ -426,6 +460,15 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, croppedImage);
     }
 
+    /**
+     * 反色
+     * @param inputPath
+     * @param outputPath
+     * @param x
+     * @param y
+     * @param width
+     * @param height
+     */
     public static void invertColors(String inputPath, String outputPath, int x, int y, int width, int height) {
         // 读取图像
         Mat src = Imgcodecs.imread(inputPath);
@@ -453,6 +496,13 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, dst);
     }
 
+    /**
+     * 补齐图像
+     * @param inputPath
+     * @param outputPath
+     * @param width
+     * @param height
+     */
     public static void upSizeImage(String inputPath, String outputPath, int width, int height) {
         // 读取图像
         Mat src = Imgcodecs.imread(inputPath);
@@ -491,6 +541,11 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, padded);
     }
 
+    /**
+     * 去噪   非局部均值去噪（Non-Local Means Denoising，NLMeans）
+     * @param inputPath
+     * @param outputPath
+     */
     public static void denoiseImage(String inputPath, String outputPath) {
         // 读取图像
         Mat src = Imgcodecs.imread(inputPath);
@@ -505,6 +560,82 @@ public class OpenCVUtils {
         Photo.fastNlMeansDenoisingColored(src, denoised, h, searchWindowSize, templateWindowSize);
         // 显示或保存处理后的图像
         Imgcodecs.imwrite(outputPath, denoised);
+    }
+
+    /**
+     * 背景色平滑
+     * @param inputPath
+     * @param outputPath
+     * @param colorThreshold 定义颜色相似性阈值 50.0
+     */
+    public static void smoothBackground(String inputPath, String outputPath, double colorThreshold) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+
+        // 找到像素最多的颜色作为背景色
+        Scalar backgroundColor = findBackgroundColor(src);
+
+        // 转换图像到HSV颜色空间
+        Mat hsvImage = new Mat();
+        Imgproc.cvtColor(src, hsvImage, Imgproc.COLOR_BGR2HSV);
+
+        // 进行背景平滑操作
+        for (int y = 0; y < src.rows(); y++) {
+            for (int x = 0; x < src.cols(); x++) {
+                double[] pixel = hsvImage.get(y, x);
+
+                // 计算当前像素与背景色的颜色相似性
+                double similarity = calculateColorSimilarity(pixel, backgroundColor.val);
+                // 如果颜色相似，则进行平滑操作
+                if (similarity < colorThreshold) {
+                    Imgproc.blur(src.submat(y, y + 1, x, x + 1), src.submat(y, y + 1, x, x + 1), new Size(3, 3));
+                }
+            }
+        }
+
+        // 保存处理后的图像
+        Imgcodecs.imwrite(outputPath, src);
+    }
+
+    // 找到像素最多的颜色
+    private static Scalar findBackgroundColor(Mat image) {
+        List<Scalar> colors = new ArrayList<>();
+        for (int y = 0; y < image.rows(); y++) {
+            for (int x = 0; x < image.cols(); x++) {
+                double[] pixel = image.get(y, x);
+                Scalar color = new Scalar(pixel);
+                colors.add(color);
+            }
+        }
+        // 统计每种颜色出现的次数
+        Collections.sort(colors, new Comparator<Scalar>() {
+            @Override
+            public int compare(Scalar o1, Scalar o2) {
+                return Double.compare(o1.val[0] + o1.val[1] + o1.val[2], o2.val[0] + o2.val[1] + o2.val[2]);
+            }
+        });
+        // 返回出现次数最多的颜色
+        return colors.get(colors.size() - 1);
+    }
+
+    // 计算颜色相似性
+    private static double calculateColorSimilarity(double[] color1, double[] color2) {
+        double hueDiff = Math.abs(color1[0] - color2[0]);
+        double satDiff = Math.abs(color1[1] - color2[1]);
+        double valDiff = Math.abs(color1[2] - color2[2]);
+
+        // 在HSV颜色空间中，Hue的取值范围是0到180
+        // 饱和度和值的取值范围是0到255
+        // 此处可以根据需要调整权重
+        double hueWeight = 2.0;
+        double satWeight = 1.0;
+        double valWeight = 1.0;
+
+        return Math.sqrt(
+                hueWeight * hueDiff * hueDiff +
+                        satWeight * satDiff * satDiff +
+                        valWeight * valDiff * valDiff
+        );
     }
 
 }
