@@ -9,7 +9,7 @@ import java.util.Map;
 
 public class ExcelUtilTest {
 
-    @Test
+    // @Test
     public void extract() {
         String excelAbsolutePath = "C:\\Users\\86181\\Desktop\\test.xlsx";
 
