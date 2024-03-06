@@ -668,4 +668,49 @@ public class OpenCVUtils {
         Imgcodecs.imwrite(outputPath, grayImage);
     }
 
+    /**
+     * 图像倾斜角度
+     * @param inputPath
+     * @return
+     */
+    public static double autoCorrectionGetAngle(String inputPath) {
+        // 读取图像
+        Mat src = Imgcodecs.imread(inputPath);
+        // Convert image to grayscale
+        Mat gray = new Mat();
+        Imgproc.cvtColor(src, gray, Imgproc.COLOR_BGR2GRAY);
+        // Apply GaussianBlur to reduce noise
+        Imgproc.GaussianBlur(gray, gray, new Size(3, 3), 0);
+        // Detect edges using Canny
+        Mat edges = new Mat();
+        Imgproc.Canny(gray, edges, 50, 150, 3, false);
+        // Perform Hough Line Transform to detect lines
+        Mat lines = new Mat();
+        Imgproc.HoughLinesP(edges, lines, 1, Math.PI / 180, 100, 50, 10);
+        // Find the longest line
+        double maxLength = -1;
+        double[] longestLine = null;
+        for (int i = 0; i < lines.rows(); i++) {
+            double[] line = lines.get(i, 0);
+            double x1 = line[0], y1 = line[1], x2 = line[2], y2 = line[3];
+            double length = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            if (length > maxLength) {
+                maxLength = length;
+                longestLine = line;
+            }
+        }
+        // Draw the longest line on a blank image
+        Mat longestLineImage = Mat.zeros(src.size(), CvType.CV_8UC3);
+        Imgproc.line(longestLineImage, new Point(longestLine[0], longestLine[1]), new Point(longestLine[2], longestLine[3]), new Scalar(0, 255, 0), 1);
+        // Overlay the longest line on the original image
+        Mat output = new Mat();
+        Core.addWeighted(src, 0.7, longestLineImage, 0.3, 0, output);
+        // Calculate the angle of the longest line
+        double angle = Math.atan2(longestLine[3] - longestLine[1], longestLine[2] - longestLine[0]);
+        double angleDegrees = Math.toDegrees(angle);
+        if (angleDegrees < 0) {
+            angleDegrees = angleDegrees + 90;
+        }
+        return angleDegrees;
+    }
 }
