@@ -12,6 +12,9 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+/**
+ * java opencv4.0.1 handle image
+ */
 public class OpenCVUtils {
 
     static {
