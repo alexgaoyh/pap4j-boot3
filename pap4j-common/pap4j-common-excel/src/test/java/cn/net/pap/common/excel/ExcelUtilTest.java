@@ -7,6 +7,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class ExcelUtilTest {
 
     // @Test
@@ -26,5 +28,13 @@ public class ExcelUtilTest {
 
         System.out.println(oneToManyRowList);
 
+    }
+
+    // @Test
+    public void compareString() {
+        String minStr = "!!!!"; // ASCII 33
+        String maxStr = "~~~~"; // ASCII 126
+        String checkStr = "@@@@";
+        assertTrue(checkStr.compareTo(maxStr) <= 0 && checkStr.compareTo(minStr) >= 0);
     }
 }
