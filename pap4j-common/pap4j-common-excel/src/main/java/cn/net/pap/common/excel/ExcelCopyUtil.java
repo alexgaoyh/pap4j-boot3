@@ -107,7 +107,7 @@ public class ExcelCopyUtil {
                             Cell sourceCell = sourceRow.getCell(i);
                             Cell destCell = destRow.createCell(i);
 
-                            copyCellValue(sourceCell, destCell);
+                            copyCellValue2(sourceCell, destCell, numberOfGroupIdx);
                             copyCellStyle(sourceCell, destCell, destWorkbook);
                             copyColumnWidth(sourceSheet, destSheet, i);
                         }
@@ -139,6 +139,12 @@ public class ExcelCopyUtil {
     private static void copyCellValue(Cell sourceCell, Cell destCell) {
         if (sourceCell != null) {
             destCell.setCellValue(getCellValue(sourceCell));
+        }
+    }
+
+    private static void copyCellValue2(Cell sourceCell, Cell destCell, Integer idx) {
+        if (sourceCell != null) {
+            destCell.setCellValue(getCellValue2(sourceCell, idx));
         }
     }
 
@@ -175,6 +181,28 @@ public class ExcelCopyUtil {
         switch (cell.getCellType()) {
             case STRING:
                 return cell.getStringCellValue();
+            case NUMERIC:
+                return String.valueOf(cell.getNumericCellValue());
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return "";
+        }
+    }
+
+    private static String getCellValue2(Cell cell, Integer idx) {
+        if (cell == null) {
+            return "";
+        }
+        switch (cell.getCellType()) {
+            case STRING:
+                String stringCellValue = cell.getStringCellValue();
+                if(stringCellValue.endsWith("_1}")) {
+                    stringCellValue = stringCellValue.replace("_1}", "_" + idx + "}");
+                }
+                return stringCellValue;
             case NUMERIC:
                 return String.valueOf(cell.getNumericCellValue());
             case BOOLEAN:
