@@ -716,4 +716,66 @@ public class OpenCVUtils {
         }
         return angleDegrees;
     }
+
+    public static Mat imread(String image) {
+        return Imgcodecs.imread(image);
+    }
+
+    // 将信息编码到图像中
+    public static Mat embedMessage(Mat image, String message) {
+        int width = image.cols();
+        int height = image.rows();
+
+        StringBuilder binaryMessage = new StringBuilder();
+        for (char c : message.toCharArray()) {
+            binaryMessage.append(String.format("%8s", Integer.toBinaryString(c)).replace(' ', '0'));
+        }
+
+        int messageLength = binaryMessage.length();
+        int bitIndex = 0;
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                double[] pixel = image.get(y, x);
+                for (int i = 0; i < pixel.length; i++) {
+                    if (bitIndex < messageLength) {
+                        pixel[i] = (int) pixel[i] & 0xFE | (binaryMessage.charAt(bitIndex++) - '0');
+                    } else {
+                        break;
+                    }
+                }
+                image.put(y, x, pixel);
+            }
+        }
+
+        return image;
+    }
+
+    // 从图像中提取隐藏的信息
+    public static String extractMessage(Mat image) {
+        int width = image.cols();
+        int height = image.rows();
+
+        StringBuilder binaryMessage = new StringBuilder();
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                double[] pixel = image.get(y, x);
+                for (double value : pixel) {
+                    binaryMessage.append((int) value & 1);
+                }
+            }
+        }
+        StringBuilder message = new StringBuilder();
+        for (int i = 0; i < binaryMessage.length(); i += 8) {
+            int ascii = Integer.parseInt(binaryMessage.substring(i, i + 8), 2);
+            message.append((char) ascii);
+            if((char)ascii == '.') {
+                break;
+            }
+        }
+
+        return message.toString();
+    }
+
 }
