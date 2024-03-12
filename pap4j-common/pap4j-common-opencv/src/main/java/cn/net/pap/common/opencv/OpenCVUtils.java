@@ -725,6 +725,10 @@ public class OpenCVUtils {
         return Imgcodecs.imread(image);
     }
 
+    public static Mat imread(String image, int flags) {
+        return Imgcodecs.imread(image, flags);
+    }
+
     // 将信息编码到图像中
     public static Mat embedMessage(Mat image, String message) {
         int width = image.cols();
