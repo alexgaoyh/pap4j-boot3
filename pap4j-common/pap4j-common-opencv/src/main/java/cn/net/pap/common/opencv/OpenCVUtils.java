@@ -12,6 +12,12 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import static org.opencv.core.Core.*;
+import static org.opencv.core.CvType.CV_32F;
+import static org.opencv.core.CvType.CV_8U;
+import static org.opencv.core.CvType.CV_8UC1;
+import static org.opencv.imgproc.Imgproc.*;
+
 /**
  * java opencv4.0.1 handle image
  */
@@ -784,6 +790,66 @@ public class OpenCVUtils {
         }
 
         return message.toString();
+    }
+
+    /**
+     * 基于离散余弦变换（DCT）的水印编码功能
+     * @param inputImgPath
+     * @param textWatermark
+     * @param outputImgPath
+     */
+    public static void dctWaterMarkEncode(String inputImgPath, String textWatermark, String outputImgPath) {
+        // 读取图像
+        Mat src = OpenCVUtils.imread(inputImgPath, org.opencv.core.CvType.CV_8S);
+
+        List<Mat> channel = new ArrayList<>(3);
+        List<Mat> newChannel = new ArrayList<>(3);
+        org.opencv.core.Core.split(src, channel);
+
+        for (int i = 0; i < 3; i++) {
+            Mat com = dctWaterMarkDCT(channel.get(i)).clone();
+            // you can set different location in 'new Point()'， just copy putText method
+            putText(com, textWatermark,
+                    new Point(com.cols() / 3, com.rows() / 2),
+                    FONT_HERSHEY_COMPLEX, 5.0,
+                    new Scalar(2, 2, 2, 0), 20, 80, false);
+            idct(com, com);
+            newChannel.add(i, com);
+        }
+
+        Mat res = new Mat();
+        org.opencv.core.Core.merge(newChannel, res);
+
+        if (res.rows() != src.rows() || res.cols() != src.cols()) {
+            res = new Mat(res, new Rect(0, 0, src.width(), src.height()));
+        }
+
+        org.opencv.imgcodecs.Imgcodecs.imwrite(outputImgPath, res);
+    }
+
+    /**
+     * 基于离散余弦变换（DCT）的水印解码功能
+     * @param inputImgPath
+     * @param outputImgPath
+     */
+    public static void dctWaterMarkDecode(String inputImgPath, String outputImgPath) {
+        Mat dctWaterMark = dctWaterMarkDCT(OpenCVUtils.imread(inputImgPath, CV_8U));
+        dctWaterMark.convertTo(dctWaterMark, COLOR_RGB2HSV);
+        inRange(dctWaterMark, new Scalar(0, 0, 0, 0), new Scalar(16, 16, 16, 0), dctWaterMark);
+        org.opencv.core.Core.normalize(dctWaterMark, dctWaterMark, 0, 255, NORM_MINMAX, CV_8UC1);
+        org.opencv.imgcodecs.Imgcodecs.imwrite(outputImgPath, dctWaterMark);
+    }
+
+    private static Mat dctWaterMarkDCT(Mat src) {
+        if ((src.cols() & 1) != 0) {
+            copyMakeBorder(src, src, 0, 0, 0, 1, BORDER_CONSTANT, Scalar.all(0));
+        }
+        if ((src.rows() & 1) != 0) {
+            copyMakeBorder(src, src, 0, 1, 0, 0, BORDER_CONSTANT, Scalar.all(0));
+        }
+        src.convertTo(src, CV_32F);
+        dct(src, src);
+        return src;
     }
 
 }

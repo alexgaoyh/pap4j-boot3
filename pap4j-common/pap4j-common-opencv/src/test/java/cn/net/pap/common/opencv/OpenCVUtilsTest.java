@@ -1,5 +1,7 @@
 package cn.net.pap.common.opencv;
 
+import org.junit.jupiter.api.Test;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -49,4 +51,11 @@ public class OpenCVUtilsTest {
 //            e.printStackTrace();
 //        }
     }
+
+    // @Test
+    public void dctWaterMarkConvert() {
+        OpenCVUtils.dctWaterMarkEncode("origin.jpg", "alexgaoyh", "inner.jpg");
+        OpenCVUtils.dctWaterMarkDecode("inner.jpg", "textWatermark.jpg");
+    }
+
 }
