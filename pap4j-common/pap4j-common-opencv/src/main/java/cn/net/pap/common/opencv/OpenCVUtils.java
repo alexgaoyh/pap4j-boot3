@@ -812,7 +812,7 @@ public class OpenCVUtils {
             putText(com, textWatermark,
                     new Point(com.cols() / 3, com.rows() / 2),
                     FONT_HERSHEY_COMPLEX, 5.0,
-                    new Scalar(2, 2, 2, 0), 20, 80, false);
+                    new Scalar(2, 2, 2, 0), 20, LINE_AA, false);
             idct(com, com);
             newChannel.add(i, com);
         }
