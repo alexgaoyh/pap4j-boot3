@@ -19,7 +19,11 @@ public class OpenCVUtils {
 
     static {
         URL url = ClassLoader.getSystemResource("opencv_java401.dll");
-        System.load(url.getPath());
+        if(url != null) {
+            System.load(url.getPath());
+        } else {
+            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        }
     }
 
     /**
