@@ -1,6 +1,10 @@
 package cn.net.pap.common.opencv;
 
 import org.junit.jupiter.api.Test;
+import org.opencv.core.Core;
+import org.opencv.core.Mat;
+import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.Imgproc;
 
 import java.util.Arrays;
 import java.util.List;
@@ -58,4 +62,23 @@ public class OpenCVUtilsTest {
         OpenCVUtils.dctWaterMarkDecode("inner.jpg", "textWatermark.jpg");
     }
 
+    /**
+     * 图像尺寸需相同
+     */
+    // @Test
+    public void imgCompare() {
+        Mat image1 = OpenCVUtils.imread("pap1.jpg");
+        Mat image2 = OpenCVUtils.imread("pap2.jpg");
+
+        Imgproc.cvtColor(image1, image1, Imgproc.COLOR_BGR2GRAY);
+        Imgproc.cvtColor(image2, image2, Imgproc.COLOR_BGR2GRAY);
+
+        Mat difference = new Mat();
+        Core.absdiff(image1, image2, difference);
+
+        Imgcodecs.imwrite("diff.jpg", difference);
+
+        Imgproc.threshold(difference, difference, 128, 255, Imgproc.THRESH_BINARY);
+        Imgcodecs.imwrite("tdiff.jpg", difference);
+    }
 }
