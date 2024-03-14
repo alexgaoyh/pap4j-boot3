@@ -39,7 +39,7 @@ public class OpenCVUtils {
      * @param templateImg 模板小图   image abs path test image(https://sm.ms/image/9RV7wI6QfYJlxhn)
      * @param targetImg   匹配出来的结果   image abs path test image(https://sm.ms/image/QZPycMl3FSgihJ1)
      */
-    public static void templateMatching(String sourceImg, String templateImg, String targetImg) {
+    public static Boolean templateMatching(String sourceImg, String templateImg, String targetImg) {
 
         Mat src = Imgcodecs.imread(sourceImg);
         Mat template = Imgcodecs.imread(templateImg);
@@ -52,11 +52,15 @@ public class OpenCVUtils {
         double similarity = result.maxVal;
         int x = (int) matchLoc.x;
         int y = (int) matchLoc.y;
+        if(similarity > 0.5) {
+            Imgproc.rectangle(src, new Point(x, y), new Point(x + template.cols(), y + template.rows()),
+                    new Scalar(0, 0, 255), 2, Imgproc.LINE_AA);
+            Imgcodecs.imwrite(targetImg, src);
+            return true;
+        } else {
+            return false;
+        }
 
-        Imgproc.rectangle(src, new Point(x, y), new Point(x + template.cols(), y + template.rows()),
-                new Scalar(0, 0, 255), 2, Imgproc.LINE_AA);
-
-        Imgcodecs.imwrite(targetImg, src);
     }
 
     /**
