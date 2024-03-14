@@ -77,13 +77,53 @@ public class OpenCVUtils {
     }
 
     /**
+     * 根据目标尺寸与原始图像的比例来缩放图像，并确保在新图像中居中显示
+     * @param image
+     * @param targetWidth
+     * @param targetHeight
+     * @return
+     */
+    public static Mat resizeAndCenter(Mat image, int targetWidth, int targetHeight) {
+        // 计算缩放比例
+        double scaleX = (double) targetWidth / image.cols();
+        double scaleY = (double) targetHeight / image.rows();
+        double scale = Math.min(scaleX, scaleY);
+
+        // 计算调整后的尺寸
+        int newWidth = (int) (image.cols() * scale);
+        int newHeight = (int) (image.rows() * scale);
+
+        // 调整图像大小
+        Mat resizedImage = new Mat();
+        Imgproc.resize(image, resizedImage, new Size(newWidth, newHeight));
+
+        // 创建一个带有背景的新图像
+        Mat centeredImage = Mat.zeros(targetHeight, targetWidth, resizedImage.type());
+
+        // 计算居中位置
+        int startX = (targetWidth - newWidth) / 2;
+        int startY = (targetHeight - newHeight) / 2;
+
+        // 将调整后的图像复制到中心位置
+        resizedImage.copyTo(centeredImage.rowRange(startY, startY + newHeight)
+                .colRange(startX, startX + newWidth));
+
+        return centeredImage;
+    }
+
+    /**
      * 图像特征
      *
      * @param imagePath
      * @return
      */
-    public static byte[] matOfKeyPointImage(String imagePath) {
+    public static byte[] matOfKeyPointImage(String imagePath, Boolean resizeFlag, Integer targetWidth, Integer targetHeight) {
         Mat image = Imgcodecs.imread(imagePath);
+
+        // 在相同的尺寸下提前特征
+        if(resizeFlag != null && targetWidth != null && targetHeight != null && resizeFlag == true) {
+            image = resizeAndCenter(image, targetWidth, targetHeight);
+        }
 
         // Convert image to grayscale
         Mat grayImage = new Mat();

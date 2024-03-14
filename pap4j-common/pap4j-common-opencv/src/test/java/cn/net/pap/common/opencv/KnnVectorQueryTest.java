@@ -35,11 +35,11 @@ public class KnnVectorQueryTest {
         try (MMapDirectory dir = new MMapDirectory(indexPath)) {
             try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
                 List<String> imageAbsPathList = new ArrayList<>();
-                imageAbsPathList.add("C:\\Users\\86181\\Desktop\\1.jpg");
-                imageAbsPathList.add("C:\\Users\\86181\\Desktop\\2.jpg");
-                imageAbsPathList.add("C:\\Users\\86181\\Desktop\\3.jpg");
+                imageAbsPathList.add("1.jpg");
+                imageAbsPathList.add("2.jpg");
+                imageAbsPathList.add("3.jpg");
                 for(String imageAbsPath : imageAbsPathList) {
-                    byte[] bytes = OpenCVUtils.matOfKeyPointImage(imageAbsPath);
+                    byte[] bytes = OpenCVUtils.matOfKeyPointImage(imageAbsPath, true, 500, 500);
                     // added PCA to reduce dimensions
                     float[] floats = OpenCVUtils.normalize(OpenCVUtils.convertArray(OpenCVUtils.byteArrayToFloatList(bytes), Integer.MAX_VALUE));
                     if(firstVector == null) {
