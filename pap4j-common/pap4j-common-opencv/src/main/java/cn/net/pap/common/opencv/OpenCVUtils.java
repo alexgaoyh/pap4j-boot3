@@ -4,13 +4,11 @@ import org.opencv.core.*;
 import org.opencv.features2d.ORB;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
+import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.photo.Photo;
 
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
 
 import static org.opencv.core.Core.*;
 import static org.opencv.core.CvType.CV_32F;
@@ -894,6 +892,69 @@ public class OpenCVUtils {
         src.convertTo(src, CV_32F);
         dct(src, src);
         return src;
+    }
+
+    /**
+     * 人脸比对
+     *
+     * @param img_1
+     * @param img_2
+     * @return
+     */
+    public static double faceCompare(String img_1, String img_2) throws Exception {
+
+        Mat mat_1 = convMat(img_1);
+        Mat mat_2 = convMat(img_2);
+        if(mat_1 != null && mat_2 != null) {
+            Mat hist_1 = new Mat();
+            Mat hist_2 = new Mat();
+
+            //颜色范围
+            MatOfFloat ranges = new MatOfFloat(0f, 256f);
+            //直方图大小， 越大匹配越精确 (越慢)
+            MatOfInt histSize = new MatOfInt(1000);
+
+            Imgproc.calcHist(Arrays.asList(mat_1), new MatOfInt(0), new Mat(), hist_1, histSize, ranges);
+            Imgproc.calcHist(Arrays.asList(mat_2), new MatOfInt(0), new Mat(), hist_2, histSize, ranges);
+
+            // CORREL 相关系数
+            double res = Imgproc.compareHist(hist_1, hist_2, Imgproc.CV_COMP_CORREL);
+            return res;
+        } else {
+            return 0.0;
+        }
+    }
+
+    /**
+     * 灰度化人脸
+     *
+     * @param img
+     * @return
+     */
+    private static Mat convMat(String img) throws Exception {
+        String haarcascade_frontalface_alt_path = "";
+        URL systemResource = ClassLoader.getSystemResource("haarcascade_frontalface_alt.xml");
+        if(systemResource != null && systemResource.toURI() != null
+                && systemResource.toURI().getPath() != null && systemResource.toURI().getPath().startsWith("/")) {
+            haarcascade_frontalface_alt_path = systemResource.toURI().getPath().substring(1);
+        }
+        if(!haarcascade_frontalface_alt_path.equals("")) {
+            CascadeClassifier faceDetector = new CascadeClassifier(haarcascade_frontalface_alt_path);
+
+            Mat image0 = Imgcodecs.imread(img);
+            Mat image1 = new Mat();
+            // 灰度化
+            Imgproc.cvtColor(image0, image1, Imgproc.COLOR_BGR2GRAY);
+            // 探测人脸
+            MatOfRect faceDetections = new MatOfRect();
+            faceDetector.detectMultiScale(image1, faceDetections);
+            // rect中人脸图片的范围
+            for (Rect rect : faceDetections.toArray()) {
+                Mat face = new Mat(image1, rect);
+                return face;
+            }
+        }
+        return null;
     }
 
 }
