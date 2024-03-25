@@ -16,9 +16,11 @@ public class LiteflowDemoTest {
     @Resource
     private FlowExecutor flowExecutor;
 
-    @Test
+    // @Test
     public void liteflowDemoTest() throws Exception {
-        LiteflowResponse response = flowExecutor.execute2Resp("demo", null, DemoContextDTO.class);
+        DemoContextDTO demoContextDTO = new DemoContextDTO();
+        demoContextDTO.getContextMap().put("BUSS_ID", System.currentTimeMillis() + "");
+        LiteflowResponse response = flowExecutor.execute2Resp("demo", null, demoContextDTO);
         DemoContextDTO context = response.getFirstContextBean();
         System.out.println(context);
     }

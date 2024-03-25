@@ -9,7 +9,7 @@ public class DemoStartComponent extends NodeComponent {
     @Override
     public void process() throws Exception {
         DemoContextDTO demoContextDTO = (DemoContextDTO) this.getFirstContextBean();
-        demoContextDTO.getContextMap().put("demoStart", System.currentTimeMillis() + "");
+        demoContextDTO.getContextMap().put("demoStart", demoContextDTO.getContextMap().get("BUSS_ID") + "-demoStart");
 
     }
 }
