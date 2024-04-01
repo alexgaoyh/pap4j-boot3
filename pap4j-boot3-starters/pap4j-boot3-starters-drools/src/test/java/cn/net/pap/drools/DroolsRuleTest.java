@@ -6,6 +6,8 @@ import cn.net.pap.drools.service.IDroolsRuleService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.kie.api.KieBase;
+import org.kie.api.builder.Message;
+import org.kie.api.builder.Results;
 import org.kie.api.io.Resource;
 import org.kie.api.io.ResourceType;
 import org.kie.api.runtime.KieSession;
@@ -66,14 +68,20 @@ public class DroolsRuleTest {
 //        Resource resource = ResourceFactory.newClassPathResource("discount.drl");
 //        kieHelper.addResource(resource);
         kieHelper.addContent(read("discount.drl"), ResourceType.DRL);
-        KieBase kieBase = kieHelper.build();
-        KieSession kieSession = kieBase.newKieSession();
-        OrderDTO order = new OrderDTO();
-        order.setPrice(new BigDecimal(150));
-        kieSession.insert(order);
-        kieSession.fireAllRules();
-        kieSession.dispose();
-        System.out.println("指定规则引擎后的结果：" + order.getDiscount());
+        Results results = kieHelper.verify();
+        if (results.hasMessages(Message.Level.ERROR)) {
+            assertTrue(false, "drl file error : " + results.getMessages(Message.Level.ERROR));
+        } else {
+            KieBase kieBase = kieHelper.build();
+            KieSession kieSession = kieBase.newKieSession();
+            OrderDTO order = new OrderDTO();
+            order.setPrice(new BigDecimal(150));
+            kieSession.insert(order);
+            kieSession.fireAllRules();
+            kieSession.dispose();
+            System.out.println("指定规则引擎后的结果：" + order.getDiscount());
+        }
+
     }
 
 
