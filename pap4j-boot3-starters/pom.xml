@@ -17,10 +17,13 @@
     <modules>
         <module>pap4j-boot3-starter-statemachine</module>
         <module>pap4j-boot3-starters-liteflow</module>
+        <module>pap4j-boot3-starters-drools</module>
     </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <liteflow.version>2.11.4.2</liteflow.version>
+        <drools.version>9.44.0.Final</drools.version>
     </properties>
 
     <dependencyManagement>
@@ -28,7 +31,28 @@
             <dependency>
                 <groupId>com.yomahub</groupId>
                 <artifactId>liteflow-spring-boot-starter</artifactId>
-                <version>2.11.4.2</version>
+                <version>${liteflow.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.drools</groupId>
+                <artifactId>drools-core</artifactId>
+                <version>${drools.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.drools</groupId>
+                <artifactId>drools-compiler</artifactId>
+                <version>${drools.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.drools</groupId>
+                <artifactId>drools-mvel</artifactId>
+                <version>${drools.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.kie</groupId>
+                <artifactId>kie-api</artifactId>
+                <version>${drools.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

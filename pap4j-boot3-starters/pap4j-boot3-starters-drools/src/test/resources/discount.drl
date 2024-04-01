@@ -1,0 +1,9 @@
+import cn.net.pap.drools.dto.OrderDTO
+import java.math.BigDecimal
+
+rule "order_price_discount"
+    when
+        $orderDTO: OrderDTO(price >= 100 && price < 200)
+    then
+        $orderDTO.setDiscount($orderDTO.getPrice().subtract(BigDecimal.valueOf(10)));
+end
