@@ -112,6 +112,14 @@ public class DroolsRuleTest {
         ExecutorService executor = Executors.newFixedThreadPool(100);
         CountDownLatch latch = new CountDownLatch(100);
 
+        org.kie.internal.utils.KieHelper kieHelper1 = new org.kie.internal.utils.KieHelper();
+        kieHelper1.addContent(read("discount.drl"), ResourceType.DRL);
+        KieBase kieBase1 = kieHelper1.build();
+
+        org.kie.internal.utils.KieHelper kieHelper2 = new org.kie.internal.utils.KieHelper();
+        kieHelper2.addContent(read("spring.drl"), ResourceType.DRL);
+        KieBase kieBase2 = kieHelper2.build();
+
         for (int i = 1; i <= 100; i++) {
             int finalI = -1;
             double randomNumber = new Random().nextDouble();
@@ -121,14 +129,6 @@ public class DroolsRuleTest {
                 finalI = 2;
             }
             int request = finalI;
-
-            org.kie.internal.utils.KieHelper kieHelper1 = new org.kie.internal.utils.KieHelper();
-            kieHelper1.addContent(read("discount.drl"), ResourceType.DRL);
-            KieBase kieBase1 = kieHelper1.build();
-
-            org.kie.internal.utils.KieHelper kieHelper2 = new org.kie.internal.utils.KieHelper();
-            kieHelper2.addContent(read("spring.drl"), ResourceType.DRL);
-            KieBase kieBase2 = kieHelper2.build();
 
             executor.execute(() -> {
                 if(request == 1) {
@@ -142,7 +142,7 @@ public class DroolsRuleTest {
                 } else {
                     KieSession kieSession = kieBase2.newKieSession();
                     OrderDTO order = new OrderDTO();
-                    order.setPrice(new BigDecimal(150));
+                    order.setPrice(new BigDecimal((int)(Math.random() * (100)) + 100));
                     kieSession.setGlobal("droolsRuleService", droolsRuleService);
                     kieSession.insert(order);
                     kieSession.fireAllRules();
