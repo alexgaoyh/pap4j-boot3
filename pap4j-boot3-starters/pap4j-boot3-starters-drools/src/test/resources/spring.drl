@@ -1,0 +1,10 @@
+import cn.net.pap.drools.dto.OrderDTO
+
+global cn.net.pap.drools.service.IDroolsRuleService droolsRuleService
+
+rule "spring_bean"
+    when
+        $orderDTO: OrderDTO(price >= 100 && price < 200)
+    then
+        $orderDTO.setMessage(droolsRuleService.success(Long.parseLong($orderDTO.getPrice() + "")));
+end

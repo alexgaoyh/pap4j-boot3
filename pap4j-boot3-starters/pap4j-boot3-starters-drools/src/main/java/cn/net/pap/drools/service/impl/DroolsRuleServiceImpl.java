@@ -51,4 +51,10 @@ public class DroolsRuleServiceImpl implements IDroolsRuleService {
         return result;
     }
 
+    @Override
+    public String success(Long droolsRuleId) {
+        DroolsRule byId = findById(droolsRuleId);
+        return "success(" + droolsRuleId + ") : " + byId;
+    }
+
 }

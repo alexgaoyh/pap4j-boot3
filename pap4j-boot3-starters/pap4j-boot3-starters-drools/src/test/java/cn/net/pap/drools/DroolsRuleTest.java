@@ -8,10 +8,8 @@ import org.junit.runner.RunWith;
 import org.kie.api.KieBase;
 import org.kie.api.builder.Message;
 import org.kie.api.builder.Results;
-import org.kie.api.io.Resource;
 import org.kie.api.io.ResourceType;
 import org.kie.api.runtime.KieSession;
-import org.kie.internal.io.ResourceFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -80,6 +78,27 @@ public class DroolsRuleTest {
             kieSession.fireAllRules();
             kieSession.dispose();
             System.out.println("指定规则引擎后的结果：" + order.getDiscount());
+        }
+
+    }
+
+    @Test
+    public void springDroolsTest() {
+        org.kie.internal.utils.KieHelper kieHelper = new org.kie.internal.utils.KieHelper();
+        kieHelper.addContent(read("spring.drl"), ResourceType.DRL);
+        Results results = kieHelper.verify();
+        if (results.hasMessages(Message.Level.ERROR)) {
+            assertTrue(false, "drl file error : " + results.getMessages(Message.Level.ERROR));
+        } else {
+            KieBase kieBase = kieHelper.build();
+            KieSession kieSession = kieBase.newKieSession();
+            OrderDTO order = new OrderDTO();
+            order.setPrice(new BigDecimal(150));
+            kieSession.setGlobal("droolsRuleService", droolsRuleService);
+            kieSession.insert(order);
+            kieSession.fireAllRules();
+            kieSession.dispose();
+            System.out.println("指定规则引擎后的结果：" + order.getMessage());
         }
 
     }

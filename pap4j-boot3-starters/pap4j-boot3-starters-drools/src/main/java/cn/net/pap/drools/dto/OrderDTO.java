@@ -9,6 +9,8 @@ public class OrderDTO implements Serializable {
 
     private BigDecimal discount;
 
+    private String message;
+
     public BigDecimal getPrice() {
         return price;
     }
@@ -23,5 +25,13 @@ public class OrderDTO implements Serializable {
 
     public void setDiscount(BigDecimal discount) {
         this.discount = discount;
+    }
+
+    public String getMessage() {
+        return message;
+    }
+
+    public void setMessage(String message) {
+        this.message = message;
     }
 }

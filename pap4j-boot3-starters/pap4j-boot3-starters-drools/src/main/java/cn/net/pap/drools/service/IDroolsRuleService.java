@@ -15,4 +15,7 @@ public interface IDroolsRuleService {
     public DroolsRule edit(DroolsRule DroolsRule);
 
     public boolean deleteById(Long droolsRuleId);
+
+    public String success(Long droolsRuleId);
+
 }
