@@ -19,6 +19,10 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
+import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -101,6 +105,56 @@ public class DroolsRuleTest {
             System.out.println("指定规则引擎后的结果：" + order.getMessage());
         }
 
+    }
+
+    @Test
+    public void countDownLatchTest() throws Exception {
+        ExecutorService executor = Executors.newFixedThreadPool(100);
+        CountDownLatch latch = new CountDownLatch(100);
+
+        for (int i = 1; i <= 100; i++) {
+            int finalI = -1;
+            double randomNumber = new Random().nextDouble();
+            if (randomNumber < 0.5) {
+                finalI = 1;
+            } else {
+                finalI = 2;
+            }
+            int request = finalI;
+
+            org.kie.internal.utils.KieHelper kieHelper1 = new org.kie.internal.utils.KieHelper();
+            kieHelper1.addContent(read("discount.drl"), ResourceType.DRL);
+            KieBase kieBase1 = kieHelper1.build();
+
+            org.kie.internal.utils.KieHelper kieHelper2 = new org.kie.internal.utils.KieHelper();
+            kieHelper2.addContent(read("spring.drl"), ResourceType.DRL);
+            KieBase kieBase2 = kieHelper2.build();
+
+            executor.execute(() -> {
+                if(request == 1) {
+                    KieSession kieSession = kieBase1.newKieSession();
+                    OrderDTO order = new OrderDTO();
+                    order.setPrice(new BigDecimal((int)(Math.random() * (100)) + 100));
+                    kieSession.insert(order);
+                    kieSession.fireAllRules();
+                    kieSession.dispose();
+                    System.out.println("指定规则引擎后的结果：" + order.getDiscount());
+                } else {
+                    KieSession kieSession = kieBase2.newKieSession();
+                    OrderDTO order = new OrderDTO();
+                    order.setPrice(new BigDecimal(150));
+                    kieSession.setGlobal("droolsRuleService", droolsRuleService);
+                    kieSession.insert(order);
+                    kieSession.fireAllRules();
+                    kieSession.dispose();
+                    System.out.println("指定规则引擎后的结果：" + order.getMessage());
+                }
+                latch.countDown();
+            });
+        }
+
+        latch.await();
+        executor.shutdown();
     }
 
 
