@@ -103,8 +103,10 @@ public class JsonORMTest {
             List<TableFieldValueDTO> tableFieldValueDTOList = JsonORMUtil.geneTableFieldValueDTOList(mappingORMDTO, jsonNode);
             System.out.println(tableFieldValueDTOList);
 
-            List<TableFieldValueDTO> tableFieldValueDTOListRefresh = JsonORMUtil.refreshTableFieldValueDTOList(tableFieldValueDTOList);
-            System.out.println(tableFieldValueDTOListRefresh);
+            if(mappingORMDTO.getOperator().equals("insert")) {
+                List<TableFieldValueDTO> tableFieldValueDTOListRefresh = JsonORMUtil.refreshTableFieldValueDTOList(tableFieldValueDTOList);
+                System.out.println(tableFieldValueDTOListRefresh);
+            }
         }
 
     }

@@ -4,6 +4,7 @@ import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.dto.MappingTableDTO;
 import cn.net.pap.common.jsonorm.dto.TableFieldValueDTO;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
@@ -118,10 +119,12 @@ public class JsonORMUtil {
      * @throws Exception
      */
     public static List<TableFieldValueDTO> refreshTableFieldValueDTOList(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
-        if(tableFieldValueDTOList != null && tableFieldValueDTOList.size() > 0) {
-            tableFieldValueDTOList = tableFieldValueDTOList.stream().sorted(Comparator.comparing(l -> l.getFk() == null ? 0 : l.getFk().size(), Comparator.nullsFirst(Integer::compareTo))).collect(toList());
+        List<TableFieldValueDTO> returnList = deepCopyList(tableFieldValueDTOList, TableFieldValueDTO.class);
+
+        if(returnList != null && returnList.size() > 0) {
+            returnList = returnList.stream().sorted(Comparator.comparing(l -> l.getFk() == null ? 0 : l.getFk().size(), Comparator.nullsFirst(Integer::compareTo))).collect(toList());
             Map<String, String> pkIdMap = new HashMap<>();
-            for(TableFieldValueDTO tableFieldValueDTO : tableFieldValueDTOList) {
+            for(TableFieldValueDTO tableFieldValueDTO : returnList) {
                 if(!StringUtils.isEmpty(tableFieldValueDTO.getPk())) {
                     String idStr = UUID.randomUUID().toString().replace("-", "");
                     pkIdMap.put(tableFieldValueDTO.getPk(), idStr);
@@ -140,7 +143,7 @@ public class JsonORMUtil {
             }
         }
 
-        return tableFieldValueDTOList;
+        return returnList;
     }
 
     /**
@@ -158,7 +161,15 @@ public class JsonORMUtil {
         if (checkBool) {
             tableFieldValueDTO.setTableName(tableName);
             tableFieldValueDTO.setPk(mappingTableDTO.getPk());
-            tableFieldValueDTO.setValueMap(values);
+            if(mappingTableDTO.getField() != null && mappingTableDTO.getField().size() > 0) {
+                Map<String, Object> filterValues = new HashMap<>();
+                for(String field : mappingTableDTO.getField()) {
+                    if(values.containsKey(field)) {
+                        filterValues.put(field, values.get(field));
+                    }
+                }
+                tableFieldValueDTO.setValueMap(filterValues);
+            }
         } else {
             tableFieldValueDTO.setSuccessInt(1);
             tableFieldValueDTO.setErrorMsg("缺失字段!");
@@ -203,6 +214,21 @@ public class JsonORMUtil {
             }
         }
         return checkFlag;
+    }
+
+    /**
+     * List 深拷贝
+     * @param originalList
+     * @return
+     * @param <T>
+     * @throws IOException
+     */
+    public static <T> List<T> deepCopyList(List<T> originalList, Class<T> clazz) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        // 序列化List为JSON字符串
+        String jsonString = mapper.writeValueAsString(originalList);
+        // 使用明确的类型信息反序列化JSON字符串为新的List
+        return mapper.readValue(jsonString, mapper.getTypeFactory().constructCollectionType(List.class, clazz));
     }
 
     /**

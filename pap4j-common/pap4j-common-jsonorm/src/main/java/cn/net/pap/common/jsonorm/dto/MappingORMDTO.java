@@ -17,12 +17,25 @@ public class MappingORMDTO implements Serializable {
     private String papBussId;
 
     /**
+     * 业务标识: 操作方式
+     */
+    private String operator;
+
+    /**
      * table mapping 表结构映射关系
      */
     private Map<String, MappingTableDTO> mapping;
 
     public String getPapBussId() {
         return papBussId;
+    }
+
+    public String getOperator() {
+        return operator;
+    }
+
+    public void setOperator(String operator) {
+        this.operator = operator;
     }
 
     public void setPapBussId(String papBussId) {
@@ -41,6 +54,7 @@ public class MappingORMDTO implements Serializable {
     public String toString() {
         final StringBuffer sb = new StringBuffer("MappingORMDTO{");
         sb.append("papBussId='").append(papBussId).append('\'');
+        sb.append(", operator='").append(operator).append('\'');
         sb.append(", mapping=").append(mapping);
         sb.append('}');
         return sb.toString();

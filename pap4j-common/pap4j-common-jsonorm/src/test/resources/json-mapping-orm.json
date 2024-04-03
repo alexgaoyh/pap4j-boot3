@@ -1,6 +1,7 @@
 [
   {
     "papBussId": "C_001_001",
+    "operator": "insert",
     "mapping": {
       "student": {
         "pk": "student_id",
