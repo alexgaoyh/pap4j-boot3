@@ -1,0 +1,29 @@
+{
+  "papBussId": "C_001_001",
+  "data": [
+    {
+      "student_name": "pap_alexgaoyh_11",
+      "student_age": "pap_1989_11",
+      "detail": [
+        {
+          "student_ext_key": "language",
+          "student_ext_value": "english"
+        },
+        {
+          "student_ext_key": "education",
+          "student_ext_value": "master"
+        }
+      ]
+    },
+    {
+      "student_name": "pap_alexgaoyh_12",
+      "student_age": "pap_1989_12",
+      "detail": [
+        {
+          "student_ext_key": "sex",
+          "student_ext_value": "male"
+        }
+      ]
+    }
+  ]
+}
