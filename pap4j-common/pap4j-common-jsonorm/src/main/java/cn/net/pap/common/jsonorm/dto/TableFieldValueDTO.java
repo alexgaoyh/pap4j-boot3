@@ -32,7 +32,7 @@ public class TableFieldValueDTO implements Serializable {
 
     /**
      * 是否成功状态标识
-     * 0-成功 ; 1-缺失字段
+     * 0-成功 ; 1-缺失字段 ; 2-刷新外键异常
      */
     private Integer successInt = 0;
 

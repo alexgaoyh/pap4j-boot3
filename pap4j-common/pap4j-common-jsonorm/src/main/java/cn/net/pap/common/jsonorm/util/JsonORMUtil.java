@@ -4,9 +4,12 @@ import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.dto.MappingTableDTO;
 import cn.net.pap.common.jsonorm.dto.TableFieldValueDTO;
 import com.fasterxml.jackson.databind.JsonNode;
+import org.springframework.util.StringUtils;
 
 import java.io.*;
 import java.util.*;
+
+import static java.util.stream.Collectors.toList;
 
 /**
  * JSON ORM 工具类
@@ -103,6 +106,38 @@ public class JsonORMUtil {
                 }
             }
 
+        }
+
+        return tableFieldValueDTOList;
+    }
+
+    /**
+     * 刷新生成的 TableFieldValueDTO 对象，根据主键和外键标识，将主键和外键的关联关系添加进来。
+     * @param tableFieldValueDTOList
+     * @return
+     * @throws Exception
+     */
+    public static List<TableFieldValueDTO> refreshTableFieldValueDTOList(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
+        if(tableFieldValueDTOList != null && tableFieldValueDTOList.size() > 0) {
+            tableFieldValueDTOList = tableFieldValueDTOList.stream().sorted(Comparator.comparing(l -> l.getFk() == null ? 0 : l.getFk().size(), Comparator.nullsFirst(Integer::compareTo))).collect(toList());
+            Map<String, String> pkIdMap = new HashMap<>();
+            for(TableFieldValueDTO tableFieldValueDTO : tableFieldValueDTOList) {
+                if(!StringUtils.isEmpty(tableFieldValueDTO.getPk())) {
+                    String idStr = UUID.randomUUID().toString().replace("-", "");
+                    pkIdMap.put(tableFieldValueDTO.getPk(), idStr);
+                    tableFieldValueDTO.getValueMap().put(tableFieldValueDTO.getPk(), idStr);
+                }
+                if(tableFieldValueDTO.getFk() != null && tableFieldValueDTO.getFk().size() > 0) {
+                    for(String fk : tableFieldValueDTO.getFk()) {
+                        if(pkIdMap.containsKey(fk)) {
+                            tableFieldValueDTO.getValueMap().put(fk, pkIdMap.get(fk));
+                        } else {
+                            tableFieldValueDTO.setSuccessInt(2);
+                            tableFieldValueDTO.setErrorMsg("刷新外键异常!");
+                        }
+                    }
+                }
+            }
         }
 
         return tableFieldValueDTOList;

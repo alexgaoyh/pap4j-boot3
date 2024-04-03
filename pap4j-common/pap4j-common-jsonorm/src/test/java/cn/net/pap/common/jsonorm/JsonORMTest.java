@@ -102,6 +102,9 @@ public class JsonORMTest {
         for (JsonNode jsonNode : mappingDataDTO) {
             List<TableFieldValueDTO> tableFieldValueDTOList = JsonORMUtil.geneTableFieldValueDTOList(mappingORMDTO, jsonNode);
             System.out.println(tableFieldValueDTOList);
+
+            List<TableFieldValueDTO> tableFieldValueDTOListRefresh = JsonORMUtil.refreshTableFieldValueDTOList(tableFieldValueDTOList);
+            System.out.println(tableFieldValueDTOListRefresh);
         }
 
     }
