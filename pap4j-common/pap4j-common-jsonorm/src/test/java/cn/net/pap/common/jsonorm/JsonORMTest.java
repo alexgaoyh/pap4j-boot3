@@ -3,10 +3,12 @@ package cn.net.pap.common.jsonorm;
 import cn.net.pap.common.jsonorm.dto.MappingDataDTO;
 import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.dto.TableFieldValueDTO;
+import cn.net.pap.common.jsonorm.serializer.TableFieldValueDTOSerializer;
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.Test;
 import org.springframework.util.ResourceUtils;
 
@@ -101,11 +103,15 @@ public class JsonORMTest {
 
         for (JsonNode jsonNode : mappingDataDTO) {
             List<TableFieldValueDTO> tableFieldValueDTOList = JsonORMUtil.geneTableFieldValueDTOList(mappingORMDTO, jsonNode);
-            System.out.println(tableFieldValueDTOList);
+            // System.out.println(tableFieldValueDTOList);
 
             if(mappingORMDTO.getOperator().equals("insert")) {
                 List<TableFieldValueDTO> tableFieldValueDTOListRefresh = JsonORMUtil.refreshTableFieldValueDTOList(tableFieldValueDTOList);
-                System.out.println(tableFieldValueDTOListRefresh);
+                ObjectMapper mapper = new ObjectMapper();
+                SimpleModule module = new SimpleModule();
+                module.addSerializer(TableFieldValueDTO.class, new TableFieldValueDTOSerializer());
+                mapper.registerModule(module);
+                System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tableFieldValueDTOListRefresh));
             }
         }
 
