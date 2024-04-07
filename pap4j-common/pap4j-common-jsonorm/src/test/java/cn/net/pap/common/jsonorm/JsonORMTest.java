@@ -28,7 +28,7 @@ public class JsonORMTest {
     }
 
     private List<MappingORMDTO> getJSONMappingORM() throws Exception {
-        File file = ResourceUtils.getFile("classpath:json-mapping-orm.json");
+        File file = ResourceUtils.getFile("classpath:json-mapping-orm-C_001_001.json");
         String json = JsonORMUtil.readFileToString(file);
         ObjectMapper mapper = new ObjectMapper();
         List<MappingORMDTO> mappingORMDTOList = mapper.readValue(json, new TypeReference<List<MappingORMDTO>>() {
@@ -91,7 +91,7 @@ public class JsonORMTest {
     }
 
     /**
-     * 读取 json-mapping-orm.json(业务-表结构映射关系) 和 C_001_001.json(业务数据) 两个文件，封装结构化的可供 DB 操作的对象。
+     * 读取 json-mapping-orm-C_001_001.json(业务-表结构映射关系) 和 C_001_001.json(业务数据) 两个文件，封装结构化的可供 DB 操作的对象。
      * @throws Exception
      */
     @Test
