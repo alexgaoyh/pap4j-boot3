@@ -3,6 +3,7 @@ package cn.net.pap.common.jsonorm.util;
 import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.dto.MappingTableDTO;
 import cn.net.pap.common.jsonorm.dto.TableFieldValueDTO;
+import cn.net.pap.common.jsonorm.dto.DelDetailTableValueDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.util.StringUtils;
@@ -118,7 +119,7 @@ public class JsonORMUtil {
      * @return
      * @throws Exception
      */
-    public static List<TableFieldValueDTO> refreshTableFieldValueDTOList(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
+    public static List<TableFieldValueDTO> refreshTableFieldValueDTOListInsert(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
         List<TableFieldValueDTO> returnList = deepCopyList(tableFieldValueDTOList, TableFieldValueDTO.class);
 
         if(returnList != null && returnList.size() > 0) {
@@ -144,6 +145,44 @@ public class JsonORMUtil {
         }
 
         return returnList;
+    }
+
+    /**
+     * 如果是一对多关系的更新操作，那么多方的数据部分需要进行删除，这里将多方数据删除后新增，这里维护对应需要删除的数据。
+     * @param tableFieldValueDTOList
+     * @return
+     * @throws Exception
+     */
+    public static DelDetailTableValueDTO<String> refreshTableFieldValueDTOListUpdate2Del(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
+        DelDetailTableValueDTO<String> unNecessaryTableValueDTO = new DelDetailTableValueDTO<String>();
+
+        List<TableFieldValueDTO> returnList = deepCopyList(tableFieldValueDTOList, TableFieldValueDTO.class);
+
+        if(returnList != null && returnList.size() > 0) {
+            returnList = returnList.stream().sorted(Comparator.comparing(l -> l.getFk() == null ? 0 : l.getFk().size(), Comparator.nullsFirst(Integer::compareTo))).collect(toList());
+
+            for(TableFieldValueDTO tableFieldValueDTO : returnList) {
+                if(tableFieldValueDTO.getFk() == null || tableFieldValueDTO.getFk().size() == 0) {
+                    String pkValue = tableFieldValueDTO.getValueMap().get(tableFieldValueDTO.getPk()).toString();
+                    unNecessaryTableValueDTO.setPk(tableFieldValueDTO.getPk());
+                    unNecessaryTableValueDTO.setPkValue(pkValue);
+                }
+                if(tableFieldValueDTO.getFk() != null && tableFieldValueDTO.getFk().size() > 0) {
+                    if(tableFieldValueDTO.getFk().contains(unNecessaryTableValueDTO.getPk())) {
+                        List<String> tableNameList = unNecessaryTableValueDTO.getTableNameList();
+                        if(tableNameList == null) {
+                            tableNameList = new ArrayList<>();
+                        }
+                        if(!tableNameList.contains(tableFieldValueDTO.getTableName())) {
+                            tableNameList.add(tableFieldValueDTO.getTableName());
+                        }
+                        unNecessaryTableValueDTO.setTableNameList(tableNameList);
+                    }
+                }
+            }
+        }
+
+        return unNecessaryTableValueDTO;
     }
 
     /**

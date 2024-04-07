@@ -1,5 +1,6 @@
 package cn.net.pap.common.jsonorm;
 
+import cn.net.pap.common.jsonorm.dto.DelDetailTableValueDTO;
 import cn.net.pap.common.jsonorm.dto.MappingDataDTO;
 import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.dto.TableFieldValueDTO;
@@ -26,11 +27,11 @@ public class JsonORMTest {
      */
     @Test
     public void parseJsonMappingORMTest() throws Exception {
-        System.out.println(getJSONMappingORM());
+        System.out.println(getJSONMappingORM("json-mapping-orm-C_001_001.json"));
     }
 
-    private List<MappingORMDTO> getJSONMappingORM() throws Exception {
-        File file = ResourceUtils.getFile("classpath:json-mapping-orm-C_001_001.json");
+    private List<MappingORMDTO> getJSONMappingORM(String ormJson) throws Exception {
+        File file = ResourceUtils.getFile("classpath:" + ormJson);
         String json = JsonORMUtil.readFileToString(file);
         ObjectMapper mapper = new ObjectMapper();
         List<MappingORMDTO> mappingORMDTOList = mapper.readValue(json, new TypeReference<List<MappingORMDTO>>() {
@@ -44,11 +45,11 @@ public class JsonORMTest {
      */
     @Test
     public void parseJsonMappingDataTest() throws Exception {
-        System.out.println(getJSONMappingData());
+        System.out.println(getJSONMappingData("C_001_001.json"));
     }
 
-    private MappingDataDTO getJSONMappingData() throws Exception {
-        File file = ResourceUtils.getFile("classpath:C_001_001.json");
+    private MappingDataDTO getJSONMappingData(String datajSON) throws Exception {
+        File file = ResourceUtils.getFile("classpath:" + datajSON);
         String json = JsonORMUtil.readFileToString(file);
         ObjectMapper mapper = new ObjectMapper();
 
@@ -64,7 +65,7 @@ public class JsonORMTest {
     @Test
     public void flattenJsonTest() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        List<JsonNode> data = getJSONMappingData().getData();
+        List<JsonNode> data = getJSONMappingData("C_001_001.json").getData();
         for (JsonNode node : data) {
             String dataStr = mapper.writeValueAsString(node);
             JsonNode jsonNode2 = mapper.readTree(dataStr);
@@ -80,7 +81,7 @@ public class JsonORMTest {
     @Test
     public void findUniqueKeyValuePairsTest() throws Exception {
         ObjectMapper mapper = new ObjectMapper();
-        List<JsonNode> data = getJSONMappingData().getData();
+        List<JsonNode> data = getJSONMappingData("C_001_001.json").getData();
         for (JsonNode node : data) {
             String dataStr = mapper.writeValueAsString(node);
             JsonNode jsonNode2 = mapper.readTree(dataStr);
@@ -99,16 +100,16 @@ public class JsonORMTest {
     @Test
     public void geneForOperator() throws Exception {
         // 业务 - 表结构 映射关系
-        MappingORMDTO mappingORMDTO = getJSONMappingORM().stream().filter(e -> e.getPapBussId().equals("C_001_001")).findFirst().get();
+        MappingORMDTO mappingORMDTO = getJSONMappingORM("json-mapping-orm-C_001_001.json").stream().filter(e -> e.getPapBussId().equals("C_001_001")).findFirst().get();
         // 业务 数据
-        List<JsonNode> mappingDataDTO = getJSONMappingData().getData();
+        List<JsonNode> mappingDataDTO = getJSONMappingData("C_001_001.json").getData();
 
         for (JsonNode jsonNode : mappingDataDTO) {
             List<TableFieldValueDTO> tableFieldValueDTOList = JsonORMUtil.geneTableFieldValueDTOList(mappingORMDTO, jsonNode);
             // System.out.println(tableFieldValueDTOList);
 
             if(mappingORMDTO.getOperator().equals("insert")) {
-                List<TableFieldValueDTO> tableFieldValueDTOListRefresh = JsonORMUtil.refreshTableFieldValueDTOList(tableFieldValueDTOList);
+                List<TableFieldValueDTO> tableFieldValueDTOListRefresh = JsonORMUtil.refreshTableFieldValueDTOListInsert(tableFieldValueDTOList);
                 ObjectMapper mapper = new ObjectMapper();
                 SimpleModule module = new SimpleModule();
                 module.addSerializer(TableFieldValueDTO.class, new TableFieldValueDTOSerializer(Arrays.asList("tableName", "pk", "valueMap")));
@@ -119,10 +120,29 @@ public class JsonORMTest {
 
     }
 
+
+    @Test
+    public void geneForOperatorUpdate2Del() throws Exception {
+        // 业务 - 表结构 映射关系
+        MappingORMDTO mappingORMDTO = getJSONMappingORM("json-mapping-orm-C_001_002.json").stream().filter(e -> e.getPapBussId().equals("C_001_002")).findFirst().get();
+        // 业务 数据
+        List<JsonNode> mappingDataDTO = getJSONMappingData("C_001_002.json").getData();
+
+        for (JsonNode jsonNode : mappingDataDTO) {
+            List<TableFieldValueDTO> tableFieldValueDTOList = JsonORMUtil.geneTableFieldValueDTOList(mappingORMDTO, jsonNode);
+
+            if(mappingORMDTO.getOperator().equals("update")) {
+                DelDetailTableValueDTO<String> stringDelDetailTableValueDTO = JsonORMUtil.refreshTableFieldValueDTOListUpdate2Del(tableFieldValueDTOList);
+                System.out.println(stringDelDetailTableValueDTO);
+            }
+        }
+
+    }
+
     @Test
     public void validateTest() throws Exception {
         // 业务 数据
-        List<JsonNode> mappingDataDTO = getJSONMappingData().getData();
+        List<JsonNode> mappingDataDTO = getJSONMappingData("C_001_001.json").getData();
 
         for (JsonNode jsonNode : mappingDataDTO) {
             List<String> studentAge = JsonORMUtil.extractKeyValues(jsonNode, "student_age");

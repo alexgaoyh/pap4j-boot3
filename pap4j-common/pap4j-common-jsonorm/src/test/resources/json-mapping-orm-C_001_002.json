@@ -1,0 +1,32 @@
+[
+  {
+    "papBussId": "C_001_002",
+    "operator": "update",
+    "mapping": {
+      "student": {
+        "pk": "student_id",
+        "field": [
+          "student_id",
+          "student_name",
+          "student_age"
+        ]
+      },
+      "student_ext": {
+        "pk": "student_ext_id",
+        "fk": [
+          "student_id"
+        ],
+        "field": [
+          "student_ext_id",
+          "student_ext_key",
+          "student_ext_value"
+        ]
+      }
+    },
+    "validate": {
+      "student_age": {
+        "type": "number"
+      }
+    }
+  }
+]

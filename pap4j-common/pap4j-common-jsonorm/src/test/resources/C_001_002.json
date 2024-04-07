@@ -1,0 +1,34 @@
+{
+  "papBussId": "C_001_002",
+  "data": [
+    {
+      "student_id": "123456789_11",
+      "student_name": "pap_alexgaoyh_11",
+      "student_age": "pap_1989_11",
+      "detail": [
+        {
+          "student_ext_id": "123456789_11_0",
+          "student_ext_key": "language",
+          "student_ext_value": "english"
+        },
+        {
+          "student_ext_id": "123456789_11_1",
+          "student_ext_key": "education",
+          "student_ext_value": "master"
+        }
+      ]
+    },
+    {
+      "student_id": "123456789_12",
+      "student_name": "pap_alexgaoyh_12",
+      "student_age": "pap_1989_12",
+      "detail": [
+        {
+          "student_ext_id": "123456789_12_0",
+          "student_ext_key": "sex",
+          "student_ext_value": "male"
+        }
+      ]
+    }
+  ]
+}
