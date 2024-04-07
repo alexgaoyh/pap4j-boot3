@@ -14,6 +14,7 @@ import org.junit.Test;
 import org.springframework.util.ResourceUtils;
 
 import java.io.File;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -110,7 +111,7 @@ public class JsonORMTest {
                 List<TableFieldValueDTO> tableFieldValueDTOListRefresh = JsonORMUtil.refreshTableFieldValueDTOList(tableFieldValueDTOList);
                 ObjectMapper mapper = new ObjectMapper();
                 SimpleModule module = new SimpleModule();
-                module.addSerializer(TableFieldValueDTO.class, new TableFieldValueDTOSerializer());
+                module.addSerializer(TableFieldValueDTO.class, new TableFieldValueDTOSerializer(Arrays.asList("tableName", "pk", "valueMap")));
                 mapper.registerModule(module);
                 System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tableFieldValueDTOListRefresh));
             }
