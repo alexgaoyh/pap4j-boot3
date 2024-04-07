@@ -232,6 +232,33 @@ public class JsonORMUtil {
     }
 
     /**
+     * 使用 jackson 把 JSON 对象中特定节点的值都查询出来， 可用于参数校验、参数提取
+     * @param node
+     * @param targetKey
+     * @return
+     */
+    public static List<String> extractKeyValues(JsonNode node, String targetKey) {
+        List<String> values = new ArrayList<>();
+
+        Iterator<String> fieldNames = node.fieldNames();
+        while (fieldNames.hasNext()) {
+            String fieldName = fieldNames.next();
+            JsonNode fieldValue = node.get(fieldName);
+
+            if (fieldValue.isObject()) {
+                values.addAll(extractKeyValues(fieldValue, targetKey));
+            } else if (fieldValue.isArray()) {
+                for (JsonNode element : fieldValue) {
+                    values.addAll(extractKeyValues(element, targetKey));
+                }
+            } else if (fieldName.equals(targetKey)) {
+                values.add(fieldValue.asText());
+            }
+        }
+        return values;
+    }
+
+    /**
      * json 转平铺
      *
      * @param jsonNode

@@ -117,5 +117,15 @@ public class JsonORMTest {
 
     }
 
+    @Test
+    public void validateTest() throws Exception {
+        // 业务 数据
+        List<JsonNode> mappingDataDTO = getJSONMappingData().getData();
+
+        for (JsonNode jsonNode : mappingDataDTO) {
+            List<String> studentAge = JsonORMUtil.extractKeyValues(jsonNode, "student_age");
+            System.out.println(studentAge);
+        }
+    }
 
 }
