@@ -5,6 +5,7 @@ import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.dto.TableFieldValueDTO;
 import cn.net.pap.common.jsonorm.serializer.TableFieldValueDTOSerializer;
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
+import cn.net.pap.common.jsonorm.util.ValidateUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -124,7 +125,10 @@ public class JsonORMTest {
 
         for (JsonNode jsonNode : mappingDataDTO) {
             List<String> studentAge = JsonORMUtil.extractKeyValues(jsonNode, "student_age");
-            System.out.println(studentAge);
+            for(String age : studentAge) {
+                boolean numberBool = ValidateUtil.isNumber(age);
+                System.out.println(age + " : " + numberBool);
+            }
         }
     }
 
