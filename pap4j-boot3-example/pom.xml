@@ -17,6 +17,7 @@
         <module>pap4j-boot3-example-user</module>
         <module>pap4j-boot3-example-admin</module>
         <module>pap4j-boot3-example-proguard</module>
+        <module>pap4j-boot3-example-assembly</module>
     </modules>
 
     <properties>
