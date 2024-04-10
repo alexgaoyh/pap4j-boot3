@@ -31,24 +31,28 @@ public class PapTokenFilterJacksonComponentAnnotation {
         public void serialize(String value, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
             // 当前序列化的字段名
             String currentFieldName = jsonGenerator.getOutputContext().getCurrentName();
-
-            try {
-                // 获取序列化对象，然后获得一些当前字段有哪些其他指定的注解。
-                Object currentValue = jsonGenerator.getCurrentValue();
-                Field currentFieldNameField = currentValue.getClass().getDeclaredField(currentFieldName);
-                Description descriptionAnno = currentFieldNameField.getAnnotation(Description.class);
-                String descriptionValue = descriptionAnno.value();
-                System.out.println(descriptionValue);
-            } catch (NoSuchFieldException e) {
-                throw new RuntimeException(e);
-            }
-
             // 当前的 httpRequest
             HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
             if(request.getHeader("field") != null && request.getHeader("field").toString().contains(currentFieldName)) {
                 jsonGenerator.writeString(value);
             } else {
                 jsonGenerator.writeString("");
+            }
+
+            try {
+                // 获取序列化对象，然后获得一些当前字段有哪些其他指定的注解。
+                Object currentValue = jsonGenerator.getCurrentValue();
+                Field currentFieldNameField = currentValue.getClass().getDeclaredField(currentFieldName);
+                Description descriptionAnno = currentFieldNameField.getAnnotation(Description.class);
+                if(descriptionAnno != null) {
+                    String descriptionValue = descriptionAnno.value();
+                    System.out.println(descriptionValue);
+                    // 新增字段
+//                jsonGenerator.writeFieldName(currentFieldName + "_Description");
+//                jsonGenerator.writeString(descriptionValue);
+                }
+            } catch (NoSuchFieldException e) {
+                throw new RuntimeException(e);
             }
         }
     }
