@@ -7,10 +7,12 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import jakarta.servlet.http.HttpServletRequest;
+import jdk.jfr.Description;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.io.IOException;
+import java.lang.reflect.Field;
 
 /**
  * 判断 request 的 header{field} 是否有当前属性，如果有则正常序列化，如果没有则忽略当前值
@@ -29,6 +31,18 @@ public class PapTokenFilterJacksonComponentAnnotation {
         public void serialize(String value, JsonGenerator jsonGenerator, SerializerProvider serializerProvider) throws IOException {
             // 当前序列化的字段名
             String currentFieldName = jsonGenerator.getOutputContext().getCurrentName();
+
+            try {
+                // 获取序列化对象，然后获得一些当前字段有哪些其他指定的注解。
+                Object currentValue = jsonGenerator.getCurrentValue();
+                Field currentFieldNameField = currentValue.getClass().getDeclaredField(currentFieldName);
+                Description descriptionAnno = currentFieldNameField.getAnnotation(Description.class);
+                String descriptionValue = descriptionAnno.value();
+                System.out.println(descriptionValue);
+            } catch (NoSuchFieldException e) {
+                throw new RuntimeException(e);
+            }
+
             // 当前的 httpRequest
             HttpServletRequest request = ((ServletRequestAttributes) RequestContextHolder.getRequestAttributes()).getRequest();
             if(request.getHeader("field") != null && request.getHeader("field").toString().contains(currentFieldName)) {
