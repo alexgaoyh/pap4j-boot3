@@ -62,16 +62,24 @@ public class GStoreTest {
         gc.load(curdDBName, null, request_type_get);
 
         // 插入三元组数据
-        String res = gc.query(curdDBName, format_json, "insert data { " +
+        String insertRes = gc.query(curdDBName, format_json, "insert data { " +
                 "<人物/#张三> <好友> <人物/#李四>." +
                 "<人物/#张三> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <人物>." +
                 "<人物/#李四> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <人物>." +
                 "<人物/#张三> <性别> \"男\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
                 "<人物/#张三> <年龄> \"28\"^^<http://www.w3.org/2001/XMLSchema#Int>.\n" +
                 "}", request_type_get);
-        System.out.println(res);
+        System.out.println(insertRes);
 
+        String updateRes = gc.query(curdDBName, format_json, "DELETE data {\n" +
+                "  <人物/#张三> <性别> \"男\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
+                "}", request_type_get);
+        System.out.println(updateRes);
 
+        String insert2Res = gc.query(curdDBName, format_json, "insert data {\n" +
+                "  <人物/#张三> <性别> \"女\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
+                "}", request_type_get);
+        System.out.println(insert2Res);
     }
 
 
