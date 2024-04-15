@@ -30,14 +30,13 @@ public class GStoreTest {
     // SPARQL 语句，查询所有
     public static final String SPARQL_SELECT_ALL = "SELECT * WHERE { ?s ?p ?o }";
 
-
     // @Test
     public void queryAll() throws Exception {
         GstoreConnector gc = new GstoreConnector(ip, port, httpType, username, password);
 
         gc.load(dbName, null, request_type_get);
 
-        String res = gc.query(dbName, "json", SPARQL_SELECT_ALL, request_type_get);
+        String res = gc.query(dbName, format_json, SPARQL_SELECT_ALL, request_type_get);
         JSONObject queryJson = new JSONObject(res);
         assertTrue(queryJson.get("StatusCode").toString().equals("0"));
 
@@ -63,13 +62,14 @@ public class GStoreTest {
         gc.load(curdDBName, null, request_type_get);
 
         // 插入三元组数据
-        String res = gc.query(curdDBName, "json", "insert data { " +
+        String res = gc.query(curdDBName, format_json, "insert data { " +
                 "<人物/#张三> <好友> <人物/#李四>." +
                 "<人物/#张三> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <人物>." +
                 "<人物/#李四> <http://www.w3.org/1999/02/22-rdf-syntax-ns#type> <人物>." +
-            "}", request_type_get);
+                "<人物/#张三> <性别> \"男\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
+                "<人物/#张三> <年龄> \"28\"^^<http://www.w3.org/2001/XMLSchema#Int>.\n" +
+                "}", request_type_get);
         System.out.println(res);
-
 
 
     }
