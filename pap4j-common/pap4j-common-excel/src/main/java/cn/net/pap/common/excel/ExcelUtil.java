@@ -1,11 +1,13 @@
 package cn.net.pap.common.excel;
 
 import cn.net.pap.common.excel.dto.CompareDTO;
+import cn.net.pap.common.excel.dto.SimpleTriple;
 import cn.net.pap.common.excel.listener.ColumnReadListener;
 import cn.net.pap.common.excel.listener.HeadRowReadListener;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelReader;
 import com.alibaba.excel.read.metadata.ReadSheet;
+import com.alibaba.excel.util.StringUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -108,6 +110,35 @@ public class ExcelUtil {
         });
 
         return returnMapList;
+    }
+
+    /**
+     * 把从 excel 中读取的 rowMapList转换为三元组信息，其中 subjectMapKey 对应的数据当成主语
+     * @param rowMapList    excel提取的数据
+     * @param subjectMapKey 主语对应的key
+     * @param fileterMapKeyList 需要过滤的map
+     * @return
+     */
+    public static List<SimpleTriple<String, String, Object>> convert2SimpleTriple(List<Map<String, Object>> rowMapList, String subjectMapKey, List<String> fileterMapKeyList) {
+        List<SimpleTriple<String, String, Object>> returnTripleList = new ArrayList<>();
+
+        if(rowMapList != null && rowMapList.size() > 0) {
+            for(Map<String, Object> rowMap : rowMapList) {
+                if(rowMap.containsKey(subjectMapKey)) {
+                    String subjectValue = rowMap.get(subjectMapKey).toString();
+                    if(!StringUtils.isEmpty(subjectValue)) {
+                        for(Map.Entry<String, Object> entry : rowMap.entrySet()) {
+                            if(!entry.getKey().equals(subjectMapKey) && entry.getValue() != null && !fileterMapKeyList.contains(entry.getKey())) {
+                                SimpleTriple tmp = new SimpleTriple(subjectValue, entry.getKey(), entry.getValue());
+                                returnTripleList.add(tmp);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return returnTripleList;
     }
 
     public static Map<String, List<Map<String, Object>>> groupByField(List<Map<String, Object>> sourceRowList, List<String> sourceFieldList) {
