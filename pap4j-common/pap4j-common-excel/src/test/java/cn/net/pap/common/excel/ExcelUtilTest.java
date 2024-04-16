@@ -1,8 +1,17 @@
 package cn.net.pap.common.excel;
 
 import cn.net.pap.common.excel.dto.CompareDTO;
+import cn.net.pap.common.excel.dto.ExportDTO;
+import cn.net.pap.common.excel.handle.ImageModifyHandler;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.ExcelWriter;
+import com.alibaba.excel.write.metadata.WriteSheet;
+import com.alibaba.excel.write.metadata.fill.FillConfig;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,4 +46,25 @@ public class ExcelUtilTest {
         String checkStr = "@@@@";
         assertTrue(checkStr.compareTo(maxStr) <= 0 && checkStr.compareTo(minStr) >= 0);
     }
+
+
+    // @Test
+    public void pictureExport() throws Exception {
+        String tempFileName = "template.xlsx";
+        InputStream resourceAsStream = new FileInputStream(new File(tempFileName));
+        String fileName = "out.xlsx";
+
+        List<ExportDTO> dataList = new ArrayList<>();
+        dataList.add(new ExportDTO(new File("3.jpg")));
+        dataList.add(new ExportDTO(new File("2.jpg")));
+        dataList.add(new ExportDTO(new File("1.jpg")));
+
+        try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
+            WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler()).build();
+            FillConfig fillConfig0 = FillConfig.builder().forceNewRow(Boolean.TRUE).build();
+            excelWriter.fill(dataList, fillConfig0, writeSheet0);
+        }
+
+    }
+
 }
