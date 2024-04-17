@@ -3,6 +3,7 @@ package cn.net.pap.example.admin.controller;
 import cn.net.pap.example.admin.controller.dto.ExampleAdminDTO;
 import cn.net.pap.example.bean.config.dto.ExampleBeanDTO;
 import cn.net.pap.example.user.config.dto.ExampleUserDTO;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -32,6 +33,16 @@ public class BeanController {
         exampleAdminDTO.setCode(0);
         exampleAdminDTO.setMsg("field");
         return exampleAdminDTO;
+    }
+
+    @GetMapping(value = "dto2", produces="application/json;charset=UTF-8")
+    public String exampleAdminDTO2() throws Exception {
+        ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
+        exampleAdminDTO.setCode(0);
+        exampleAdminDTO.setMsg("field");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(exampleAdminDTO);
     }
 
 }
