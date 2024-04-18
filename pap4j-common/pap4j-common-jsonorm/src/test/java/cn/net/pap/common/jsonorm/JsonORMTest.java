@@ -153,4 +153,22 @@ public class JsonORMTest {
         }
     }
 
+    @Test
+    public void geneForOperatorDelete() throws Exception {
+        // 业务 - 表结构 映射关系
+        MappingORMDTO mappingORMDTO = getJSONMappingORM("json-mapping-orm-C_001_003.json").stream().filter(e -> e.getPapBussId().equals("C_001_003")).findFirst().get();
+        // 业务 数据
+        List<JsonNode> mappingDataDTO = getJSONMappingData("C_001_003.json").getData();
+
+        for (JsonNode jsonNode : mappingDataDTO) {
+            List<TableFieldValueDTO> tableFieldValueDTOList = JsonORMUtil.geneTableFieldValueDTOList(mappingORMDTO, jsonNode);
+
+            if(mappingORMDTO.getOperator().equals("delete")) {
+                List<DelDetailTableValueDTO<String>> delDetailTableValueDTOS = JsonORMUtil.refreshTableFieldValueDTOListDelete(tableFieldValueDTOList);
+                System.out.println(delDetailTableValueDTOS);
+            }
+        }
+
+    }
+
 }

@@ -1,0 +1,17 @@
+[
+  {
+    "papBussId": "C_001_003",
+    "operator": "delete",
+    "mapping": {
+      "student": {
+        "pk": "student_id"
+      },
+      "student_ext": {
+        "pk": "student_ext_id",
+        "fk": [
+          "student_id"
+        ]
+      }
+    }
+  }
+]

@@ -185,6 +185,64 @@ public class JsonORMUtil {
         return unNecessaryTableValueDTO;
     }
 
+    public static List<DelDetailTableValueDTO<String>> refreshTableFieldValueDTOListDelete(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
+        List<DelDetailTableValueDTO<String>> unNecessaryTableValueDTOList = new ArrayList<DelDetailTableValueDTO<String>>();
+
+        List<TableFieldValueDTO> returnList = deepCopyList(tableFieldValueDTOList, TableFieldValueDTO.class);
+
+        if(returnList != null && returnList.size() > 0) {
+            returnList = returnList.stream().sorted(Comparator.comparing(l -> l.getFk() == null ? 0 : l.getFk().size(), Comparator.nullsFirst(Integer::compareTo))).collect(toList());
+
+            for(TableFieldValueDTO tableFieldValueDTO : returnList) {
+                if(tableFieldValueDTO.getFk() == null || tableFieldValueDTO.getFk().size() == 0) {
+                    if(tableFieldValueDTO.getValueMap().containsKey(tableFieldValueDTO.getPk())) {
+                        DelDetailTableValueDTO<String> unNecessaryTableValueDTO = new DelDetailTableValueDTO<String>();
+                        String pkValue = tableFieldValueDTO.getValueMap().get(tableFieldValueDTO.getPk()).toString();
+                        unNecessaryTableValueDTO.setPk(tableFieldValueDTO.getPk());
+                        unNecessaryTableValueDTO.setPkValue(pkValue);
+
+                        List<String> tableNameList = unNecessaryTableValueDTO.getTableNameList();
+                        if(tableNameList == null) {
+                            tableNameList = new ArrayList<>();
+                        }
+                        if(!tableNameList.contains(tableFieldValueDTO.getTableName())) {
+                            tableNameList.add(tableFieldValueDTO.getTableName());
+                        }
+                        unNecessaryTableValueDTO.setTableNameList(tableNameList);
+
+                        unNecessaryTableValueDTOList.add(unNecessaryTableValueDTO);
+                    }
+
+                }
+                if(tableFieldValueDTO.getFk() != null && tableFieldValueDTO.getFk().size() > 0) {
+                    for(String fk : tableFieldValueDTO.getFk()) {
+                        if(tableFieldValueDTO.getValueMap().containsKey(fk)) {
+                            DelDetailTableValueDTO<String> unNecessaryTableValueDTO = new DelDetailTableValueDTO<String>();
+                            String pkValue = tableFieldValueDTO.getValueMap().get(fk).toString();
+                            unNecessaryTableValueDTO.setPk(fk);
+                            unNecessaryTableValueDTO.setPkValue(pkValue);
+
+                            List<String> tableNameList = unNecessaryTableValueDTO.getTableNameList();
+                            if(tableNameList == null) {
+                                tableNameList = new ArrayList<>();
+                            }
+                            if(!tableNameList.contains(tableFieldValueDTO.getTableName())) {
+                                tableNameList.add(tableFieldValueDTO.getTableName());
+                            }
+                            unNecessaryTableValueDTO.setTableNameList(tableNameList);
+
+                            unNecessaryTableValueDTOList.add(unNecessaryTableValueDTO);
+                        }
+
+                    }
+
+                }
+            }
+        }
+
+        return unNecessaryTableValueDTOList;
+    }
+
     /**
      * 根据 业务 - 表结构 映射关系，维护对应的操作数据
      *
@@ -208,6 +266,8 @@ public class JsonORMUtil {
                     }
                 }
                 tableFieldValueDTO.setValueMap(filterValues);
+            } else {
+                tableFieldValueDTO.setValueMap(values);
             }
         } else {
             tableFieldValueDTO.setSuccessInt(1);
@@ -246,10 +306,12 @@ public class JsonORMUtil {
      */
     public static Boolean checkMapAllInFieldList(List<String> fieldList, Map<String, Object> values) {
         Boolean checkFlag = true;
-        for (String field : fieldList) {
-            if (!values.containsKey(field)) {
-                checkFlag = false;
-                break;
+        if(fieldList != null && fieldList.size() > 0) {
+            for (String field : fieldList) {
+                if (!values.containsKey(field)) {
+                    checkFlag = false;
+                    break;
+                }
             }
         }
         return checkFlag;
