@@ -6,6 +6,7 @@ import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.dto.TableFieldValueDTO;
 import cn.net.pap.common.jsonorm.serializer.TableFieldValueDTOSerializer;
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
+import cn.net.pap.common.jsonorm.util.SqlUtil;
 import cn.net.pap.common.jsonorm.util.ValidateUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -98,7 +99,7 @@ public class JsonORMTest {
      * @throws Exception
      */
     @Test
-    public void geneForOperator() throws Exception {
+    public void geneForOperatorInsert() throws Exception {
         // 业务 - 表结构 映射关系
         MappingORMDTO mappingORMDTO = getJSONMappingORM("json-mapping-orm-C_001_001.json").stream().filter(e -> e.getPapBussId().equals("C_001_001")).findFirst().get();
         // 业务 数据
@@ -110,11 +111,14 @@ public class JsonORMTest {
 
             if(mappingORMDTO.getOperator().equals("insert")) {
                 List<TableFieldValueDTO> tableFieldValueDTOListRefresh = JsonORMUtil.refreshTableFieldValueDTOListInsert(tableFieldValueDTOList);
-                ObjectMapper mapper = new ObjectMapper();
-                SimpleModule module = new SimpleModule();
-                module.addSerializer(TableFieldValueDTO.class, new TableFieldValueDTOSerializer(Arrays.asList("tableName", "pk", "valueMap")));
-                mapper.registerModule(module);
-                System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tableFieldValueDTOListRefresh));
+//                ObjectMapper mapper = new ObjectMapper();
+//                SimpleModule module = new SimpleModule();
+//                module.addSerializer(TableFieldValueDTO.class, new TableFieldValueDTOSerializer(Arrays.asList("tableName", "pk", "valueMap")));
+//                mapper.registerModule(module);
+//                System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(tableFieldValueDTOListRefresh));
+                for(TableFieldValueDTO tableFieldValueDTO : tableFieldValueDTOListRefresh) {
+                    System.out.println(SqlUtil.geneInsertStatement(tableFieldValueDTO.getTableName(), tableFieldValueDTO.getValueMap()));
+                }
             }
         }
 
@@ -132,8 +136,19 @@ public class JsonORMTest {
             List<TableFieldValueDTO> tableFieldValueDTOList = JsonORMUtil.geneTableFieldValueDTOList(mappingORMDTO, jsonNode);
 
             if(mappingORMDTO.getOperator().equals("update")) {
-                DelDetailTableValueDTO<String> stringDelDetailTableValueDTO = JsonORMUtil.refreshTableFieldValueDTOListUpdate2Del(tableFieldValueDTOList);
-                System.out.println(stringDelDetailTableValueDTO);
+//                DelDetailTableValueDTO<String> tableFieldValueDTOListUpdate2Del = JsonORMUtil.refreshTableFieldValueDTOListUpdate2Del(tableFieldValueDTOList);
+//                System.out.println(SqlUtil.generateDeleteStatement(tableFieldValueDTOListUpdate2Del.getTableNameList().get(0),
+//                        tableFieldValueDTOListUpdate2Del.getPk(), tableFieldValueDTOListUpdate2Del.getPkValue()));
+                List<DelDetailTableValueDTO<String>> delDetailTableValueDTOS = JsonORMUtil.refreshTableFieldValueDTOListDelete(tableFieldValueDTOList);
+                for(DelDetailTableValueDTO<String> delDetailTableValueDTO : delDetailTableValueDTOS) {
+                    System.out.println(SqlUtil.generateDeleteStatement(delDetailTableValueDTO.getTableNameList().get(0),
+                            delDetailTableValueDTO.getPk(), delDetailTableValueDTO.getPkValue()));
+                }
+
+                List<TableFieldValueDTO> tableFieldValueDTOListInsert = JsonORMUtil.refreshTableFieldValueDTOListInsert(tableFieldValueDTOList);
+                for(TableFieldValueDTO tableFieldValueDTOInsert : tableFieldValueDTOListInsert) {
+                    System.out.println(SqlUtil.geneInsertStatement(tableFieldValueDTOInsert.getTableName(),tableFieldValueDTOInsert.getValueMap()));
+                }
             }
         }
 
@@ -165,7 +180,11 @@ public class JsonORMTest {
 
             if(mappingORMDTO.getOperator().equals("delete")) {
                 List<DelDetailTableValueDTO<String>> delDetailTableValueDTOS = JsonORMUtil.refreshTableFieldValueDTOListDelete(tableFieldValueDTOList);
-                System.out.println(delDetailTableValueDTOS);
+                // System.out.println(delDetailTableValueDTOS);
+                for(DelDetailTableValueDTO<String> delDetailTableValueDTO : delDetailTableValueDTOS) {
+                    System.out.println(SqlUtil.generateDeleteStatement(delDetailTableValueDTO.getTableNameList().get(0),
+                            delDetailTableValueDTO.getPk(), delDetailTableValueDTO.getPkValue()));
+                }
             }
         }
 

@@ -232,6 +232,22 @@ public class JsonORMUtil {
                             unNecessaryTableValueDTO.setTableNameList(tableNameList);
 
                             unNecessaryTableValueDTOList.add(unNecessaryTableValueDTO);
+                        } else if(tableFieldValueDTO.getValueMap().containsKey(tableFieldValueDTO.getPk())) {
+                            DelDetailTableValueDTO<String> unNecessaryTableValueDTO = new DelDetailTableValueDTO<String>();
+                            String pkValue = tableFieldValueDTO.getValueMap().get(tableFieldValueDTO.getPk()).toString();
+                            unNecessaryTableValueDTO.setPk(tableFieldValueDTO.getPk());
+                            unNecessaryTableValueDTO.setPkValue(pkValue);
+
+                            List<String> tableNameList = unNecessaryTableValueDTO.getTableNameList();
+                            if(tableNameList == null) {
+                                tableNameList = new ArrayList<>();
+                            }
+                            if(!tableNameList.contains(tableFieldValueDTO.getTableName())) {
+                                tableNameList.add(tableFieldValueDTO.getTableName());
+                            }
+                            unNecessaryTableValueDTO.setTableNameList(tableNameList);
+
+                            unNecessaryTableValueDTOList.add(unNecessaryTableValueDTO);
                         }
 
                     }
