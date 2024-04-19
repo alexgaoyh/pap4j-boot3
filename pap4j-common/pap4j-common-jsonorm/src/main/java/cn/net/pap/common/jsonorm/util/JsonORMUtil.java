@@ -147,6 +147,48 @@ public class JsonORMUtil {
         return returnList;
     }
 
+
+    /**
+     * 刷新生成的 TableFieldValueDTO 对象，根据主键和外键标识，将主键和外键的关联关系添加进来。
+     * @param tableFieldValueDTOList
+     * @param usingInputPK  true代表使用前端传递过来的主键值(更新操作使用先删除再插入，此时可以传递true使用前端传值)；  false代表使用服务端的主键生成策略
+     * @return
+     * @throws Exception
+     */
+    public static List<TableFieldValueDTO> refreshTableFieldValueDTOListInsert(List<TableFieldValueDTO> tableFieldValueDTOList, Boolean usingInputPK) throws Exception {
+        if(usingInputPK == false) {
+            return refreshTableFieldValueDTOListInsert(tableFieldValueDTOList);
+        } else {
+            // 当前代码段落要求主键部分使用前端传递的值，而不是自动创建。
+            List<TableFieldValueDTO> returnList = deepCopyList(tableFieldValueDTOList, TableFieldValueDTO.class);
+
+            if(returnList != null && returnList.size() > 0) {
+                returnList = returnList.stream().sorted(Comparator.comparing(l -> l.getFk() == null ? 0 : l.getFk().size(), Comparator.nullsFirst(Integer::compareTo))).collect(toList());
+                Map<String, String> pkIdMap = new HashMap<>();
+                for(TableFieldValueDTO tableFieldValueDTO : returnList) {
+                    if(!StringUtils.isEmpty(tableFieldValueDTO.getPk())) {
+                        String idStr = tableFieldValueDTO.getValueMap().get(tableFieldValueDTO.getPk()).toString();
+                        pkIdMap.put(tableFieldValueDTO.getPk(), idStr);
+                        tableFieldValueDTO.getValueMap().put(tableFieldValueDTO.getPk(), idStr);
+                    }
+                    if(tableFieldValueDTO.getFk() != null && tableFieldValueDTO.getFk().size() > 0) {
+                        for(String fk : tableFieldValueDTO.getFk()) {
+                            if(pkIdMap.containsKey(fk)) {
+                                tableFieldValueDTO.getValueMap().put(fk, pkIdMap.get(fk));
+                            } else {
+                                tableFieldValueDTO.setSuccessInt(2);
+                                tableFieldValueDTO.setErrorMsg("刷新外键异常!");
+                            }
+                        }
+                    }
+                }
+            }
+
+            return returnList;
+        }
+
+    }
+
     /**
      * 如果是一对多关系的更新操作，那么多方的数据部分需要进行删除，这里将多方数据删除后新增，这里维护对应需要删除的数据。
      * @param tableFieldValueDTOList

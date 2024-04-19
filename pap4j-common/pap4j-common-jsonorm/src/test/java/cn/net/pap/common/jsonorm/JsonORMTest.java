@@ -145,7 +145,7 @@ public class JsonORMTest {
                             delDetailTableValueDTO.getPk(), delDetailTableValueDTO.getPkValue()));
                 }
 
-                List<TableFieldValueDTO> tableFieldValueDTOListInsert = JsonORMUtil.refreshTableFieldValueDTOListInsert(tableFieldValueDTOList);
+                List<TableFieldValueDTO> tableFieldValueDTOListInsert = JsonORMUtil.refreshTableFieldValueDTOListInsert(tableFieldValueDTOList, true);
                 for(TableFieldValueDTO tableFieldValueDTOInsert : tableFieldValueDTOListInsert) {
                     System.out.println(SqlUtil.geneInsertStatement(tableFieldValueDTOInsert.getTableName(),tableFieldValueDTOInsert.getValueMap()));
                 }
