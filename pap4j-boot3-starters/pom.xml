@@ -19,12 +19,14 @@
         <module>pap4j-boot3-starters-liteflow</module>
         <module>pap4j-boot3-starters-drools</module>
         <module>pap4j-boot3-starters-gStore</module>
+        <module>pap4j-boot3-starters-milvus</module>
     </modules>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liteflow.version>2.11.4.2</liteflow.version>
         <drools.version>9.44.0.Final</drools.version>
+        <milvus-sdk-java>2.3.4</milvus-sdk-java>
     </properties>
 
     <dependencyManagement>
@@ -54,6 +56,12 @@
                 <groupId>org.kie</groupId>
                 <artifactId>kie-api</artifactId>
                 <version>${drools.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.milvus</groupId>
+                <artifactId>milvus-sdk-java</artifactId>
+                <version>${milvus-sdk-java}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
