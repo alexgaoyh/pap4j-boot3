@@ -32,8 +32,7 @@ public class PinsFaceRecognitionVectorTest {
             List<Path> picPathList = picStream.collect(Collectors.toList());
             for(Path picPath : picPathList) {
                 System.out.println(picPath);
-                byte[] bytes = OpenCVUtils.matOfKeyPointImage(picPath.toString(), false, null, null);
-                float[] floats = OpenCVUtils.normalize(OpenCVUtils.convertArray(OpenCVUtils.byteArrayToFloatList(bytes), Integer.MAX_VALUE));
+                float[] floats = OpenCVUtils.matOfKeyPointImage2(picPath.toString());
 
                 Map<String, Object> vectorMap = new HashMap<>();
                 String picName = picPath.toString().substring(picPath.toString().lastIndexOf(File.separator), picPath.toString().length());

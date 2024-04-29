@@ -159,6 +159,39 @@ public class OpenCVUtils {
         return descriptorsData;
     }
 
+    public static float[] matOfKeyPointImage2(String imagePath) {
+        Mat image = Imgcodecs.imread(imagePath);
+
+        // Convert image to grayscale
+        Mat grayImage = new Mat();
+        Imgproc.cvtColor(image, grayImage, Imgproc.COLOR_BGR2GRAY);
+
+        // Initialize ORB detector
+        ORB detector = ORB.create();
+
+        // Detect keypoints
+        MatOfKeyPoint keypoints = new MatOfKeyPoint();
+        detector.detect(grayImage, keypoints);
+
+        // Compute descriptors
+        Mat descriptors = new Mat();
+        detector.compute(grayImage, keypoints, descriptors);
+
+        // PCA dimensionality reduction
+        Mat pcaData = new Mat();
+        descriptors.convertTo(pcaData, CvType.CV_32F);
+        Mat mean = new Mat();
+        Core.PCACompute(pcaData, mean, descriptors);
+
+        // 创建一个float数组来存储pcaData中的数据
+        float[] pcaDataArray = new float[(int) (pcaData.total() * pcaData.channels())];
+
+        // 将pcaData中的数据复制到pcaDataArray中
+        pcaData.get(0, 0, pcaDataArray);
+
+        return pcaDataArray;
+    }
+
     /**
      * 将byte类型的arr转换成float
      *
