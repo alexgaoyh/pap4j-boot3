@@ -197,7 +197,7 @@ public class MilvusTest {
             InsertParam insertParam = InsertParam.newBuilder()
                     .withCollectionName(COLLECTION_NAME)
                     .withPartitionName(PARTITION_NAME)
-                    .withRows(insertRowsList.subList(0, 500))
+                    .withRows(insertRowsList.subList(0, 1000))
                     .build();
 
             R<MutationResult> insertResponse = milvusClient.insert(insertParam);
@@ -209,7 +209,8 @@ public class MilvusTest {
     }
 
     @Test
-    public void test7_search() {
+    public void test7_search() throws Exception {
+        Thread.sleep(1000);
         MilvusClient milvusClient = milvusClient();
         R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
                 .withCollectionName(COLLECTION_NAME)
@@ -282,6 +283,9 @@ public class MilvusTest {
 
                     if(vectorFloatList.size() == 16000) {
                         rowsData.add(row);
+                        if(rowsData.size() > 1000) {
+                            break;
+                        }
                     }
                 }
             }
