@@ -197,7 +197,7 @@ public class MilvusTest {
             InsertParam insertParam = InsertParam.newBuilder()
                     .withCollectionName(COLLECTION_NAME)
                     .withPartitionName(PARTITION_NAME)
-                    .withRows(insertRowsList.subList(0, 1000))
+                    .withRows(insertRowsList)
                     .build();
 
             R<MutationResult> insertResponse = milvusClient.insert(insertParam);
@@ -219,12 +219,8 @@ public class MilvusTest {
         if (loadResponse.getStatus() == 0) {
 
             List<String> outFields = Collections.singletonList("name");
-            // name -> \Adriana Lima0_0.jpg
             List<List<Float>> vectors = new ArrayList<>();
-            List<Float> vector = new ArrayList<>();
-            for (int i = 0; i < 16000; ++i) {
-                vector.add(Float.parseFloat(new Random(100).nextFloat() + ""));
-            }
+            List<Float> vector = Taylor_Swift0_4550_Vector();
             vectors.add(vector);
 
             SearchParam searchParam = SearchParam.newBuilder()
@@ -283,7 +279,7 @@ public class MilvusTest {
 
                     if(vectorFloatList.size() == 16000) {
                         rowsData.add(row);
-                        if(rowsData.size() > 1000) {
+                        if(i > 5) {
                             break;
                         }
                     }
@@ -296,4 +292,18 @@ public class MilvusTest {
         return rowsData;
     }
 
+    private List<Float> Taylor_Swift0_4550_Vector() throws Exception {
+        List<Float> floats = new ArrayList<>();
+        try {
+            String basePath = "C:\\Users\\86181\\Desktop";
+            String content = new String(java.nio.file.Files.readAllBytes(Paths.get(basePath + File.separator + "Taylor_Swift0_4550_Vector.txt")));
+            for (int i = 0; i < content.split(",").length; i++) {
+                floats.add(Float.parseFloat(content.split(",")[i] + ""));
+            }
+
+        } catch (Exception e) {
+
+        }
+        return floats;
+    }
 }
