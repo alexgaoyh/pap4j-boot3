@@ -1,19 +1,32 @@
 package cn.net.pap.milvus;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import io.milvus.client.MilvusClient;
 import io.milvus.client.MilvusServiceClient;
-import io.milvus.grpc.CheckHealthResponse;
-import io.milvus.grpc.DataType;
-import io.milvus.grpc.DescribeCollectionResponse;
+import io.milvus.common.clientenum.ConsistencyLevelEnum;
+import io.milvus.grpc.*;
 import io.milvus.param.*;
 import io.milvus.param.collection.*;
+import io.milvus.param.dml.InsertParam;
+import io.milvus.param.dml.SearchParam;
 import io.milvus.param.index.CreateIndexParam;
+import io.milvus.param.partition.CreatePartitionParam;
 import io.milvus.response.DescCollResponseWrapper;
+import io.milvus.response.SearchResultsWrapper;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
 
+import java.io.File;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -21,6 +34,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public class MilvusTest {
 
     private static final String COLLECTION_NAME = "USER";
+
+    private static final String PARTITION_NAME = "alexgaoyh";
 
     public MilvusClient milvusClient() {
         ConnectParam connectParam = ConnectParam.newBuilder()
@@ -82,13 +97,20 @@ public class MilvusTest {
                 .withName("vector")
                 .withDescription("vector embedding")
                 .withDataType(DataType.FloatVector)
-                .withDimension(64)
+                .withDimension(16000)
                 .build();
 
         FieldType fieldType3 = FieldType.newBuilder()
                 .withName("age")
                 .withDescription("age")
                 .withDataType(DataType.Int8)
+                .build();
+
+        FieldType fieldType4 = FieldType.newBuilder()
+                .withName("name")
+                .withDescription("name")
+                .withDataType(DataType.VarChar)
+                .withMaxLength(1000)
                 .build();
 
         CreateCollectionParam createCollectionReq = CreateCollectionParam.newBuilder()
@@ -99,6 +121,7 @@ public class MilvusTest {
                 .addFieldType(fieldType1)
                 .addFieldType(fieldType2)
                 .addFieldType(fieldType3)
+                .addFieldType(fieldType4)
                 .build();
         R<RpcStatus> response = milvusClient.withTimeout(3000, TimeUnit.MILLISECONDS)
                 .createCollection(createCollectionReq);
@@ -147,4 +170,126 @@ public class MilvusTest {
         }
         milvusClient.close();
     }
+
+    @Test
+    public void test6_partitionCreate() {
+        MilvusClient milvusClient = milvusClient();
+        R<RpcStatus> createPartitionResponse = milvusClient.createPartition(CreatePartitionParam.newBuilder()
+                .withCollectionName(COLLECTION_NAME)
+                .withPartitionName(PARTITION_NAME)
+                .build());
+
+        assertTrue(0 == createPartitionResponse.getStatus());
+
+        milvusClient.close();
+    }
+
+    @Test
+    public void test7_insertRows() throws Exception {
+        MilvusClient milvusClient = milvusClient();
+        R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
+                .withCollectionName(COLLECTION_NAME)
+                .build());
+        assertTrue(0 == loadResponse.getStatus());
+        if (loadResponse.getStatus() == 0) {
+            List<JSONObject> insertRowsList = insertRows();
+
+            InsertParam insertParam = InsertParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withPartitionName(PARTITION_NAME)
+                    .withRows(insertRowsList.subList(0, 500))
+                    .build();
+
+            R<MutationResult> insertResponse = milvusClient.insert(insertParam);
+
+            assertTrue(0 == insertResponse.getStatus());
+
+        }
+        milvusClient.close();
+    }
+
+    @Test
+    public void test7_search() {
+        MilvusClient milvusClient = milvusClient();
+        R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
+                .withCollectionName(COLLECTION_NAME)
+                .build());
+        assertTrue(0 == loadResponse.getStatus());
+        if (loadResponse.getStatus() == 0) {
+
+            List<String> outFields = Collections.singletonList("name");
+            // name -> \Adriana Lima0_0.jpg
+            List<List<Float>> vectors = new ArrayList<>();
+            List<Float> vector = new ArrayList<>();
+            for (int i = 0; i < 16000; ++i) {
+                vector.add(Float.parseFloat(new Random(100).nextFloat() + ""));
+            }
+            vectors.add(vector);
+
+            SearchParam searchParam = SearchParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withMetricType(MetricType.L2)
+                    .withOutFields(outFields)
+                    .withTopK(10)
+                    .withVectors(vectors)
+                    .withVectorFieldName("vector")
+                    .withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
+                    .build();
+
+            R<SearchResults> response = milvusClient.search(searchParam);
+            SearchResultsWrapper wrapper = new SearchResultsWrapper(response.getData().getResults());
+            for (int i = 0; i < vectors.size(); ++i) {
+                System.out.println("Search result of No." + i);
+                List<SearchResultsWrapper.IDScore> scores = wrapper.getIDScore(i);
+                System.out.println(scores);
+                System.out.println("Output field data for No." + i);
+                System.out.println(wrapper.getFieldData("name", i));
+            }
+
+        }
+        milvusClient.close();
+    }
+
+    /**
+     * using PinsFaceRecognitionVectorTest.java to gene 105_classes_pins_dataset_vector.json file
+     * @return
+     */
+    private List<JSONObject> insertRows() throws Exception {
+        List<JSONObject> rowsData = new ArrayList<>();
+        try {
+            String basePath = "C:\\Users\\86181\\Desktop";
+            basePath = basePath + File.separator + "vector";
+            Stream<Path> topDirStream = Files.list(Paths.get(basePath));
+            List<Path> topDirList = topDirStream.collect(Collectors.toList());
+            for(Path path : topDirList) {
+                String content = new String(java.nio.file.Files.readAllBytes(path));
+                List<Map> listMap = JSON.parseArray(content, Map.class);
+
+
+                for (int i = 0; i < listMap.size(); i++) {
+                    JSONObject row = new JSONObject();
+                    row.put("age", 35);
+                    row.put("name", listMap.get(i).get("picName"));
+
+                    List<Float> vectorFloatList = new ArrayList<>();
+                    Object vectorObj = listMap.get(i).get("vector");
+                    if(vectorObj instanceof com.alibaba.fastjson.JSONArray) {
+                        for (Object o : (com.alibaba.fastjson.JSONArray) vectorObj) {
+                            vectorFloatList.add(Float.parseFloat(new BigDecimal(o.toString()).toPlainString() + ""));
+                        }
+                    }
+                    row.put("vector", vectorFloatList);
+
+                    if(vectorFloatList.size() == 16000) {
+                        rowsData.add(row);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+
+        }
+        return rowsData;
+    }
+
 }
