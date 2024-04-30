@@ -20,7 +20,7 @@ public class PinsFaceRecognitionVectorTest {
      *
      * 移除  Pedro Alonso180_2138.jpg
      */
-    // @Test
+    @Test
     public void classes_pins_dataset() throws Exception {
         String basePath = "C:\\Users\\86181\\Desktop";
         Stream<Path> topDirStream = Files.list(Paths.get(basePath + File.separator + "Pins Face Recognition\\105_classes_pins_dataset"));
@@ -46,7 +46,7 @@ public class PinsFaceRecognitionVectorTest {
             String dirName = path.toString().substring(path.toString().lastIndexOf(File.separator) + 1, path.toString().length());
 
             ObjectMapper objectMapper = new ObjectMapper();
-            try (FileWriter file = new FileWriter(basePath + File.separator +  dirName + ".json")) {
+            try (FileWriter file = new FileWriter(basePath + File.separator + "vector" + File.separator +  dirName + ".json")) {
                 file.write(objectMapper.writeValueAsString(vectorMapList));
                 file.flush();
             }

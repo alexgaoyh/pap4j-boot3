@@ -184,6 +184,7 @@ public class OpenCVUtils {
         Core.PCACompute(pcaData, mean, descriptors);
 
         // 创建一个float数组来存储pcaData中的数据
+        // 测试期间，这里直接把数组的长度写死 = 16000 了，从而确保不同图像获得的特征向量的长度是相同的。
         float[] pcaDataArray = new float[(int) (pcaData.total() * pcaData.channels())];
 
         // 将pcaData中的数据复制到pcaDataArray中
