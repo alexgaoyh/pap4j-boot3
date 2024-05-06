@@ -5,6 +5,7 @@ import org.opencv.features2d.ORB;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
+import org.opencv.objdetect.HOGDescriptor;
 import org.opencv.photo.Photo;
 
 import java.net.URL;
@@ -189,6 +190,41 @@ public class OpenCVUtils {
 
         // 将pcaData中的数据复制到pcaDataArray中
         pcaData.get(0, 0, pcaDataArray);
+
+        return pcaDataArray;
+    }
+
+    /**
+     * 获得图像特征，可以指定特征长度。
+     * @param imagePath
+     * @param arrayLength
+     * @return
+     */
+    public static float[] matOfKeyPointImage3(String imagePath, Long arrayLength) {
+        // 加载HOG描述符
+        HOGDescriptor hog = new HOGDescriptor();
+        hog.setSVMDetector(HOGDescriptor.getDefaultPeopleDetector()); // 注意：这通常是用于行人检测的，但你可以自定义HOG参数
+
+        // 读取图像
+        Mat image = Imgcodecs.imread(imagePath);
+
+        // 转换为灰度图
+        Mat gray = new Mat();
+        Imgproc.cvtColor(image, gray, Imgproc.COLOR_BGR2GRAY);
+
+        // 计算HOG特征
+        MatOfFloat descriptor = new MatOfFloat();
+        hog.compute(gray, descriptor);
+
+        if(arrayLength == null) {
+            arrayLength = descriptor.total() * descriptor.channels();
+        }
+
+        // 测试期间，这里直接把数组的长度写死 = 100 了，从而确保不同图像获得的特征向量的长度是相同的。
+        float[] pcaDataArray = new float[Integer.parseInt(arrayLength + "")];
+
+        // 将pcaData中的数据复制到pcaDataArray中
+        descriptor.get(0, 0, pcaDataArray);
 
         return pcaDataArray;
     }
