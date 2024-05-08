@@ -2,6 +2,7 @@ package cn.net.pap.common.excel;
 
 import cn.net.pap.common.excel.dto.CompareDTO;
 import cn.net.pap.common.excel.dto.ExportDTO;
+import cn.net.pap.common.excel.dto.SimpleTriple;
 import cn.net.pap.common.excel.handle.ImageModifyHandler;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
@@ -65,6 +66,13 @@ public class ExcelUtilTest {
             excelWriter.fill(dataList, fillConfig0, writeSheet0);
         }
 
+    }
+
+    // @Test
+    public void triple() {
+        List<Map<String, Object>> rowList = ExcelUtil.getRowListWithMergeCell("merge.xls", "Sheet1", "pap");
+        List<SimpleTriple<String, String, Object>> tripleList = ExcelUtil.convert2SimpleTriple(rowList, "名字", new ArrayList<>());
+        assertTrue(tripleList.size() > 0);
     }
 
 }

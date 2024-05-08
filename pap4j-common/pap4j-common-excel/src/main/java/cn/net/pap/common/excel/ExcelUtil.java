@@ -3,9 +3,12 @@ package cn.net.pap.common.excel;
 import cn.net.pap.common.excel.dto.CompareDTO;
 import cn.net.pap.common.excel.dto.SimpleTriple;
 import cn.net.pap.common.excel.listener.ColumnReadListener;
+import cn.net.pap.common.excel.listener.ColumnReadWithMergeListener;
 import cn.net.pap.common.excel.listener.HeadRowReadListener;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelReader;
+import com.alibaba.excel.enums.CellExtraTypeEnum;
+import com.alibaba.excel.metadata.CellExtra;
 import com.alibaba.excel.read.metadata.ReadSheet;
 import com.alibaba.excel.util.StringUtils;
 
@@ -66,6 +69,39 @@ public class ExcelUtil {
                     Map<String, Object> tmp = new LinkedHashMap<>();
                     for(Map.Entry<Integer, String> headEntry : archiverColumnReadListener.getHeadMap().entrySet()) {
                         String value = dataMap.get(headEntry.getKey());
+                        tmp.put(headEntry.getValue(), value);
+                    }
+                    if(indexNoConstantKey != null && !"".equals(indexNoConstantKey)) {
+                        tmp.put(indexNoConstantKey, idx + 1);
+                    }
+                    resultData.add(tmp);
+                }
+
+            }
+        } catch (Exception error) {
+            error.printStackTrace();
+        }
+        return resultData;
+    }
+
+    /**
+     * 同 getRowList ， 增加了合并的单元格的数据重新维护的情况。  合并的单元格在读取数据之后，类似转平铺的效果，把null进行填充。
+     * @param fileAbsolutePath
+     * @param sheetName
+     * @param indexNoConstantKey
+     * @return
+     */
+    public static List<Map<String, Object>> getRowListWithMergeCell(String fileAbsolutePath, String sheetName, String indexNoConstantKey) {
+        List<Map<String, Object>> resultData = new ArrayList<>();
+        try {
+            ColumnReadWithMergeListener archiverColumnReadListener = new ColumnReadWithMergeListener();
+            EasyExcel.read(fileAbsolutePath, archiverColumnReadListener).extraRead(CellExtraTypeEnum.MERGE).ignoreEmptyRow(true).sheet(sheetName).doReadSync();
+            if(archiverColumnReadListener.getHeadMap() != null
+                    && archiverColumnReadListener.getDataList() != null) {
+                for(int idx = 0; idx < archiverColumnReadListener.getDataList().size(); idx++) {
+                    Map<String, Object> tmp = new LinkedHashMap<>();
+                    for(Map.Entry<Integer, String> headEntry : archiverColumnReadListener.getHeadMap().entrySet()) {
+                        String value = checkIsMergedCellAndGetValue(archiverColumnReadListener, idx, headEntry.getKey(), 1);
                         tmp.put(headEntry.getValue(), value);
                     }
                     if(indexNoConstantKey != null && !"".equals(indexNoConstantKey)) {
@@ -154,5 +190,45 @@ public class ExcelUtil {
         return sourceFieldList.parallelStream()
                 .map(field -> String.valueOf(row.get(field)))
                 .collect(Collectors.joining("~~~"));
+    }
+
+    /**
+     * 判断是否是被合并的单元格，如果是的话，把应该存在的值查询出来返回，并填充值，类似转平铺的效果
+     * @param archiverColumnReadListener    EasyExcel 解析出来的数据信息
+     * @param rowIdx    当前的行号
+     * @param columnIdx 当前的列号
+     * @param HEAD_NUMBER 表头的行数
+     * @return
+     */
+    private static String checkIsMergedCellAndGetValue(ColumnReadWithMergeListener archiverColumnReadListener, Integer rowIdx, Integer columnIdx, Integer HEAD_NUMBER) {
+        // 真实的 所属行/所属列 编号， 如果单元格被合并，那么需要取出来正确的数据值。
+        Integer realRowIdx = rowIdx;
+        Integer realColumnIdx = columnIdx;
+        List<CellExtra> cellExtraMergeList = archiverColumnReadListener.getCellExtraMergeList();
+        if(cellExtraMergeList != null && cellExtraMergeList.size() > 0) {
+            for(CellExtra cellExtra : cellExtraMergeList) {
+                if(cellExtra.getFirstColumnIndex() == cellExtra.getLastColumnIndex()) {
+                    if(cellExtra.getFirstRowIndex() - HEAD_NUMBER <= rowIdx &&
+                            cellExtra.getLastRowIndex() - HEAD_NUMBER >= rowIdx &&
+                            cellExtra.getFirstColumnIndex() <= columnIdx &&
+                            cellExtra.getLastColumnIndex() >= columnIdx) {
+                        realRowIdx = cellExtra.getFirstRowIndex() - HEAD_NUMBER;
+                        realColumnIdx = cellExtra.getFirstColumnIndex();
+                        break;
+                    }
+                }
+                if(cellExtra.getFirstRowIndex() == cellExtra.getLastRowIndex()) {
+                    if(cellExtra.getFirstRowIndex() - HEAD_NUMBER <= rowIdx &&
+                            cellExtra.getLastRowIndex() - HEAD_NUMBER >= rowIdx &&
+                            cellExtra.getFirstColumnIndex() <= columnIdx &&
+                            cellExtra.getLastColumnIndex() >= columnIdx) {
+                        realRowIdx = cellExtra.getFirstRowIndex() - HEAD_NUMBER;
+                        realColumnIdx = cellExtra.getFirstColumnIndex();
+                        break;
+                    }
+                }
+            }
+        }
+        return archiverColumnReadListener.getDataList().get(realRowIdx).get(realColumnIdx);
     }
 }
