@@ -230,6 +230,36 @@ public class OpenCVUtils {
     }
 
     /**
+     * HOG 特征提取器， 将原始图像灰度化，并且将原始图像缩放至相同大小后获得特征向量.
+     * @param imagePath
+     * @param widthOrHeight
+     * @return
+     */
+    public static float[] hogFeatureExtraction(String imagePath, Integer widthOrHeight) {
+        Mat image = Imgcodecs.imread(imagePath);
+
+        // 将图像转换为灰度图像
+        Mat grayImage = new Mat();
+        Imgproc.cvtColor(image, grayImage, Imgproc.COLOR_BGR2GRAY);
+
+        Mat resizedImage = new Mat();
+        Imgproc.resize(grayImage, resizedImage, new Size(widthOrHeight, widthOrHeight));
+
+        // 创建HOG描述符对象
+        HOGDescriptor hog = new HOGDescriptor(new Size(widthOrHeight, widthOrHeight), new Size(16, 16), new Size(8, 8), new Size(4, 4), 9);
+
+        // 计算图像的HOG特征
+        MatOfFloat features = new MatOfFloat();
+        hog.compute(resizedImage, features);
+
+        // 将特征向量转换为列表
+        float[] featureVector = features.toArray();
+
+        return featureVector;
+
+    }
+
+    /**
      * 将byte类型的arr转换成float
      *
      * @return

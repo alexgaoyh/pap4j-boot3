@@ -37,4 +37,28 @@ public class SimilarityUtils {
         return dotProduct / (normA * normB);
     }
 
+    public static double cosineSimilarity(float[] a, float[] b) {
+        if (a.length != b.length) {
+            return 0;
+        }
+
+        double dotProduct = 0.0;
+        double normA = 0.0;
+        double normB = 0.0;
+
+        for (int i = 0; i < a.length; i++) {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+
+        normA = Math.sqrt(normA);
+        normB = Math.sqrt(normB);
+
+        if (normA == 0 || normB == 0) {
+            return 0;
+        }
+
+        return dotProduct / (normA * normB);
+    }
 }
