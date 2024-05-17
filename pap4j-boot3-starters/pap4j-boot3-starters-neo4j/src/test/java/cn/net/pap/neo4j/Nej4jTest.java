@@ -4,6 +4,7 @@ import cn.net.pap.neo4j.entity.HobbyEntity;
 import cn.net.pap.neo4j.entity.PersonEntity;
 import cn.net.pap.neo4j.repository.HobbyRepository;
 import cn.net.pap.neo4j.repository.PersonRepository;
+import cn.net.pap.neo4j.util.kg.PersonEntity2KGConvert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -27,22 +29,21 @@ public class Nej4jTest {
 
     //@Test
     public void insert() {
-        String currentTimeMillis = System.currentTimeMillis() + "";
 
         HobbyEntity hobbyEntity1 = new HobbyEntity();
-        hobbyEntity1.setHobbyId(currentTimeMillis);
+        hobbyEntity1.setHobbyId("H1");
         hobbyEntity1.setHobbyName("H1");
 
         HobbyEntity hobbyEntity2 = new HobbyEntity();
-        hobbyEntity2.setHobbyId(currentTimeMillis + "_1");
+        hobbyEntity2.setHobbyId("H2");
         hobbyEntity2.setHobbyName("H2");
 
         HobbyEntity hobbyEntity3 = new HobbyEntity();
-        hobbyEntity3.setHobbyId(currentTimeMillis + "_2");
+        hobbyEntity3.setHobbyId("H3");
         hobbyEntity3.setHobbyName("H3");
 
         PersonEntity personEntity1 = new PersonEntity();
-        personEntity1.setPersonId(currentTimeMillis);
+        personEntity1.setPersonId("P1");
         personEntity1.setPersonName("P1");
         personEntity1.setDescription("D1");
         List<HobbyEntity> hobbyEntityList12 = new ArrayList<>();
@@ -51,7 +52,7 @@ public class Nej4jTest {
         personEntity1.setHobbys(hobbyEntityList12);
 
         PersonEntity personEntity2 = new PersonEntity();
-        personEntity2.setPersonId(currentTimeMillis + "_1");
+        personEntity2.setPersonId("P2");
         personEntity2.setPersonName("P2");
         personEntity2.setDescription("D2");
         List<HobbyEntity> hobbyEntityList3 = new ArrayList<>();
@@ -94,5 +95,8 @@ public class Nej4jTest {
         List<PersonEntity> p2 = personRepository.findByPersonName("P2");
         // 验证这里能不能查出来一对多的关联信息.
         assertTrue(p2.get(0).getHobbys().size() > 0);
+
+        Map<String, Object> kgGraph = PersonEntity2KGConvert.convertToKnowledgeGraph(p2.get(0));
+        assertTrue(!kgGraph.isEmpty());
     }
 }
