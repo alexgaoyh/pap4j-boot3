@@ -14,6 +14,8 @@ import reactor.core.publisher.Mono;
 import java.util.ArrayList;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {Neo4jApplication.class})
 public class Nej4jTest {
@@ -24,7 +26,7 @@ public class Nej4jTest {
     @Autowired
     private HobbyRepository hobbyRepository;
 
-    //@Test
+    @Test
     public void insert() {
         String currentTimeMillis = System.currentTimeMillis() + "";
 
@@ -73,5 +75,12 @@ public class Nej4jTest {
     //@Test
     public void delete() {
         personRepository.deleteAll();
+    }
+
+    //@Test
+    public void getPerson() {
+        List<PersonEntity> p1 = personRepository.findByPersonName("P1");
+        // 验证这里能不能查出来一对多的关联信息.
+        assertTrue(p1.get(0).getHobbys().size() > 0);
     }
 }
