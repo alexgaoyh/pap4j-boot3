@@ -27,6 +27,9 @@ public class PersonEntity implements Serializable {
     @Relationship(type = "parents", direction = Relationship.Direction.INCOMING)
     private List<PersonEntity> parents = new ArrayList<>();
 
+    @Relationship(type = "childrens", direction = Relationship.Direction.INCOMING)
+    private List<PersonEntity> childrens = new ArrayList<>();
+
     public String getPersonId() {
         return personId;
     }
@@ -65,5 +68,13 @@ public class PersonEntity implements Serializable {
 
     public void setParents(List<PersonEntity> parents) {
         this.parents = parents;
+    }
+
+    public List<PersonEntity> getChildrens() {
+        return childrens;
+    }
+
+    public void setChildrens(List<PersonEntity> childrens) {
+        this.childrens = childrens;
     }
 }

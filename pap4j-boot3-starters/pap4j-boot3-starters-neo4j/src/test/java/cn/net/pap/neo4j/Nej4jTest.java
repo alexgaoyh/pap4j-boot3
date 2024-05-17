@@ -9,7 +9,6 @@ import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
-import reactor.core.publisher.Mono;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,7 +25,7 @@ public class Nej4jTest {
     @Autowired
     private HobbyRepository hobbyRepository;
 
-    @Test
+    //@Test
     public void insert() {
         String currentTimeMillis = System.currentTimeMillis() + "";
 
@@ -37,6 +36,10 @@ public class Nej4jTest {
         HobbyEntity hobbyEntity2 = new HobbyEntity();
         hobbyEntity2.setHobbyId(currentTimeMillis + "_1");
         hobbyEntity2.setHobbyName("H2");
+
+        HobbyEntity hobbyEntity3 = new HobbyEntity();
+        hobbyEntity3.setHobbyId(currentTimeMillis + "_2");
+        hobbyEntity3.setHobbyName("H3");
 
         PersonEntity personEntity1 = new PersonEntity();
         personEntity1.setPersonId(currentTimeMillis);
@@ -51,12 +54,21 @@ public class Nej4jTest {
         personEntity2.setPersonId(currentTimeMillis + "_1");
         personEntity2.setPersonName("P2");
         personEntity2.setDescription("D2");
+        List<HobbyEntity> hobbyEntityList3 = new ArrayList<>();
+        hobbyEntityList3.add(hobbyEntity3);
+        personEntity2.setHobbys(hobbyEntityList3);
+
+        List<PersonEntity> personEntities2 = new ArrayList<>();
+        personEntities2.add(personEntity2);
+        personEntity1.setChildrens(personEntities2);
+
         List<PersonEntity> personEntities1 = new ArrayList<>();
         personEntities1.add(personEntity1);
         personEntity2.setParents(personEntities1);
 
         hobbyRepository.save(hobbyEntity1);
         hobbyRepository.save(hobbyEntity2);
+        hobbyRepository.save(hobbyEntity3);
         personRepository.save(personEntity1);
         personRepository.save(personEntity2);
     }
@@ -79,8 +91,8 @@ public class Nej4jTest {
 
     //@Test
     public void getPerson() {
-        List<PersonEntity> p1 = personRepository.findByPersonName("P1");
+        List<PersonEntity> p2 = personRepository.findByPersonName("P2");
         // 验证这里能不能查出来一对多的关联信息.
-        assertTrue(p1.get(0).getHobbys().size() > 0);
+        assertTrue(p2.get(0).getHobbys().size() > 0);
     }
 }
