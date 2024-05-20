@@ -1,0 +1,58 @@
+package cn.net.pap.neo4j;
+
+import cn.net.pap.neo4j.entity.AbsNodeEntity;
+import cn.net.pap.neo4j.repository.AbsNodeRepository;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes = {Neo4jApplication.class})
+public class AbsNodeRelationTest {
+
+    @Autowired
+    private AbsNodeRepository absNodeRepository;
+
+    @Test
+    public void insert() {
+        AbsNodeEntity child1 = new AbsNodeEntity("child1", "child1", "child");
+        AbsNodeEntity child2 = new AbsNodeEntity("child2", "child2", "child");
+        AbsNodeEntity child3 = new AbsNodeEntity("child3", "child3", "child");
+        Set<AbsNodeEntity> childSet = new HashSet<>(3) {{
+            add(child1);
+            add(child2);
+            add(child3);
+        }};
+
+        AbsNodeEntity parent1 = new AbsNodeEntity("parent1", "parent1", "parent");
+        AbsNodeEntity parent2 = new AbsNodeEntity("parent2", "parent2", "parent");
+        Set<AbsNodeEntity> parentSet = new HashSet<>(3) {{
+            add(parent1);
+            add(parent2);
+        }};
+
+        child1.setParents(parentSet);
+        child2.setParents(parentSet);
+        child3.setParents(parentSet);
+        absNodeRepository.save(child1);
+        absNodeRepository.save(child2);
+        absNodeRepository.save(child3);
+        parent1.setChildrens(childSet);
+        parent2.setChildrens(childSet);
+        absNodeRepository.save(parent1);
+        absNodeRepository.save(parent2);
+    }
+
+    @Test
+    public void findByAbsNodeLabelTest() {
+        List<AbsNodeEntity> child1 = absNodeRepository.findByAbsNodeLabel("child1");
+        System.out.println(child1);
+    }
+
+}
