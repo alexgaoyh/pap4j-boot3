@@ -4,7 +4,11 @@ import cn.net.pap.neo4j.entity.HobbyEntity;
 import cn.net.pap.neo4j.entity.PersonEntity;
 import cn.net.pap.neo4j.repository.HobbyRepository;
 import cn.net.pap.neo4j.repository.PersonRepository;
+import cn.net.pap.neo4j.serializer.jackson.PersonEntitySerializer;
 import cn.net.pap.neo4j.util.kg.PersonEntity2KGConvert;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -98,5 +102,24 @@ public class Nej4jTest {
 
         Map<String, Object> kgGraph = PersonEntity2KGConvert.convertToKnowledgeGraph(p2.get(0));
         assertTrue(!kgGraph.isEmpty());
+
+        try {
+            // 在 PersonEntity.java 类上添加注解 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "personId")
+            ObjectMapper objectMapperJsonIdentityInfo = new ObjectMapper();
+            String jsonIdentityInfoStr = objectMapperJsonIdentityInfo.writeValueAsString(p2);
+            System.out.println(jsonIdentityInfoStr);
+        } catch (JsonProcessingException e) {
+        }
+
+        try {
+            ObjectMapper objectMapperSerializer = new ObjectMapper();
+            SimpleModule module = new SimpleModule();
+            module.addSerializer(PersonEntity.class, new PersonEntitySerializer());
+            objectMapperSerializer.registerModule(module);
+            String serializerStr = objectMapperSerializer.writeValueAsString(p2);
+            System.out.println(serializerStr);
+        } catch (JsonProcessingException e) {
+        }
+
     }
 }

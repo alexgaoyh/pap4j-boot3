@@ -9,6 +9,11 @@ import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 1、可以在类文件上添加 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "personId") 注解处理循环引用，使用对象的属性作为唯一标识符，
+ *          ObjectMapper objectMapperJsonIdentityInfo = new ObjectMapper();
+ *          String jsonIdentityInfoStr = objectMapperJsonIdentityInfo.writeValueAsString(p2);
+ */
 @Node("person")
 public class PersonEntity implements Serializable {
 
