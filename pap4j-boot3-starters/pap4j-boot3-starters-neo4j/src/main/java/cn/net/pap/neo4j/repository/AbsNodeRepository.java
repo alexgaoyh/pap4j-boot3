@@ -38,4 +38,13 @@ public interface AbsNodeRepository extends Neo4jRepository<AbsNodeEntity, String
     @Query("match p = (a:absNodeEntity)-[r*..5]-(b:absNodeEntity) where a.absNodeLabel = {startAbsNodeLabel} and b.absNodeLabel={endAbsNodeLabel} and ALL( n1 in nodes(p) where size([n2 in nodes(p) where id(n1) = id(n2)])=1 ) return p")
     List<List<PathValue>> getPathBetweenNodesByAbsNodeLabel(@Param("startAbsNodeLabel") String startAbsNodeLabel, @Param("endAbsNodeLabel") String endAbsNodeLabel);
 
+    /**
+     * 节点路径 最短距离
+     * @param startAbsNodeLabel
+     * @param endAbsNodeLabel
+     * @return
+     */
+    @Query("match p = shortestpath((a:absNodeEntity)-[r*0..4]-(b:absNodeEntity)) where a.absNodeLabel = 'parent1' and b.absNodeLabel='parent2' return p")
+    List<List<PathValue>> getShortestPathBetweenNodesByAbsNodeLabel(@Param("startAbsNodeLabel") String startAbsNodeLabel, @Param("endAbsNodeLabel") String endAbsNodeLabel);
+
 }

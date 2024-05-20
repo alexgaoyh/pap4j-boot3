@@ -71,6 +71,9 @@ public class AbsNodeRelationTest {
 
         List<List<PathValue>> pathBetweenNodesByAbsNodeLabelList = absNodeRepository.getPathBetweenNodesByAbsNodeLabel("parent1", "parent2");
         System.out.println(pathBetweenNodesByAbsNodeLabelList);
+
+        List<List<PathValue>> shortestPathBetweenNodesByAbsNodeLabelList = absNodeRepository.getShortestPathBetweenNodesByAbsNodeLabel("parent1", "parent2");
+        System.out.println(shortestPathBetweenNodesByAbsNodeLabelList);
     }
 
 }
