@@ -1,9 +1,13 @@
 package cn.net.pap.neo4j;
 
+import cn.net.pap.neo4j.dto.AbsNodeWithTypeDTO;
 import cn.net.pap.neo4j.entity.AbsNodeEntity;
 import cn.net.pap.neo4j.repository.AbsNodeRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.neo4j.driver.internal.value.PathValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -53,6 +57,20 @@ public class AbsNodeRelationTest {
     public void findByAbsNodeLabelTest() {
         List<AbsNodeEntity> child1 = absNodeRepository.findByAbsNodeLabel("child1");
         System.out.println(child1);
+
+        List<AbsNodeEntity> child1RelationList = absNodeRepository.getRelationByAbsNodeLabel("child1");
+        System.out.println(child1RelationList);
+
+        try {
+            List<AbsNodeWithTypeDTO> child1AbsNodeWithTypeDTOList = absNodeRepository.getAbsNodeWithTypeDTOsByAbsNodeLabel("child1");
+            ObjectMapper objectMapperJsonIdentityInfo = new ObjectMapper();
+            String absNodeWithTypeDTOStr = objectMapperJsonIdentityInfo.writeValueAsString(child1AbsNodeWithTypeDTOList);
+            System.out.println(absNodeWithTypeDTOStr);
+        } catch (JsonProcessingException e) {
+        }
+
+        List<List<PathValue>> pathBetweenNodesByAbsNodeLabelList = absNodeRepository.getPathBetweenNodesByAbsNodeLabel("parent1", "parent2");
+        System.out.println(pathBetweenNodesByAbsNodeLabelList);
     }
 
 }
