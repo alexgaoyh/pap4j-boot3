@@ -15,6 +15,7 @@ public interface AbsNodeRepository extends Neo4jRepository<AbsNodeEntity, String
 
     /**
      * 与 absNodeLabel 有关联的节点.
+     *
      * @param absNodeLabel
      * @return
      */
@@ -23,6 +24,7 @@ public interface AbsNodeRepository extends Neo4jRepository<AbsNodeEntity, String
 
     /**
      * 查询与当前节点关联的节点和关联关系
+     *
      * @param absNodeLabel
      * @return
      */
@@ -31,6 +33,7 @@ public interface AbsNodeRepository extends Neo4jRepository<AbsNodeEntity, String
 
     /**
      * 节点路径距离查询
+     *
      * @param startAbsNodeLabel
      * @param endAbsNodeLabel
      * @return
@@ -40,11 +43,22 @@ public interface AbsNodeRepository extends Neo4jRepository<AbsNodeEntity, String
 
     /**
      * 节点路径 最短距离
+     *
      * @param startAbsNodeLabel
      * @param endAbsNodeLabel
      * @return
      */
-    @Query("match p = shortestpath((a:absNodeEntity)-[r*0..4]-(b:absNodeEntity)) where a.absNodeLabel = 'parent1' and b.absNodeLabel='parent2' return p")
+    @Query("match p = shortestpath((a:absNodeEntity)-[r*0..4]-(b:absNodeEntity)) where a.absNodeLabel = {startAbsNodeLabel} and b.absNodeLabel={endAbsNodeLabel} return p")
     List<List<PathValue>> getShortestPathBetweenNodesByAbsNodeLabel(@Param("startAbsNodeLabel") String startAbsNodeLabel, @Param("endAbsNodeLabel") String endAbsNodeLabel);
+
+    /**
+     * 查询与当前节点关联的节点和关联关系(集合)
+     *
+     * @param absNodeLabel
+     * @return
+     */
+    @Query("MATCH (p:absNodeEntity {absNodeLabel: {absNodeLabel}})-[:childrens]->(m:absNodeEntity) RETURN {parentNode: p, childrenNodes: collect(m)} AS result;")
+    List<Object[]> getParentWithChildrens(@Param("absNodeLabel") String absNodeLabel);
+
 
 }

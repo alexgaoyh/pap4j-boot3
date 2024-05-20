@@ -1,5 +1,6 @@
 package cn.net.pap.neo4j;
 
+import cn.net.pap.neo4j.dto.AbsNodeWithChildrensDTO;
 import cn.net.pap.neo4j.dto.AbsNodeWithTypeDTO;
 import cn.net.pap.neo4j.entity.AbsNodeEntity;
 import cn.net.pap.neo4j.repository.AbsNodeRepository;
@@ -74,6 +75,9 @@ public class AbsNodeRelationTest {
 
         List<List<PathValue>> shortestPathBetweenNodesByAbsNodeLabelList = absNodeRepository.getShortestPathBetweenNodesByAbsNodeLabel("parent1", "parent2");
         System.out.println(shortestPathBetweenNodesByAbsNodeLabelList);
+
+        List<AbsNodeWithChildrensDTO> parentWithChildrensList = AbsNodeWithChildrensDTO.convert(absNodeRepository.getParentWithChildrens("parent1"));
+        System.out.println(parentWithChildrensList);
     }
 
 }
