@@ -92,4 +92,28 @@ public class HLMEntityTest {
         System.out.println(results);
     }
 
+    @Test
+    public void getRoot() {
+        List<HLMEntity> rootList = hlmRepository.getRoot();
+        System.out.println(rootList);
+    }
+
+    @Test
+    public void getLeaf() {
+        List<HLMEntity> leafList = hlmRepository.getLeaf();
+        System.out.println(leafList);
+    }
+
+    @Test
+    public void getDistinctRelationshipType() {
+        List<String> relationshipTypeList = hlmRelationshipRepository.getDistinctRelationshipType();
+        System.out.println(relationshipTypeList);
+    }
+
+    @Test
+    public void getCycle() {
+        List<HLMEntity> leafList = hlmRepository.getCycle();
+        System.out.println(leafList);
+    }
+
 }

@@ -33,4 +33,11 @@ public interface HLMRelationshipRepository extends Neo4jRepository<HLMRelationsh
     @Query("match p = shortestpath((a:HLM)-[r*0..4]-(b:HLM)) where a.name = {startNodeName} and b.name={endNodeName} return p")
     List<List<PathValue>> getShortestPathBetweenNodesByName(@Param("startNodeName") String startNodeName, @Param("endNodeName") String endNodeName);
 
+    /**
+     * 查询所有关系 去重
+     * @return
+     */
+    @Query("MATCH ()-[r]-() RETURN distinct r.type")
+    List<String> getDistinctRelationshipType();
+
 }
