@@ -1,6 +1,7 @@
 package cn.net.pap.neo4j.dto;
 
 import cn.net.pap.neo4j.entity.HLMEntity;
+import cn.net.pap.neo4j.entity.HLMRelationshipEntity;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -16,12 +17,22 @@ public class HLMListDTO implements Serializable {
 
     private List<HLMEntity> details;
 
+    private List<HLMRelationshipEntity> relations;
+
     public List<HLMEntity> getDetails() {
         return details;
     }
 
     public void setDetails(List<HLMEntity> details) {
         this.details = details;
+    }
+
+    public List<HLMRelationshipEntity> getRelations() {
+        return relations;
+    }
+
+    public void setRelations(List<HLMRelationshipEntity> relations) {
+        this.relations = relations;
     }
 
     /**

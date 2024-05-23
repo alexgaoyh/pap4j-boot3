@@ -11,6 +11,7 @@ import cn.net.pap.neo4j.util.kg.PathValue2KGConvert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.neo4j.driver.internal.InternalNode;
+import org.neo4j.driver.internal.InternalRelationship;
 import org.neo4j.driver.internal.value.PathValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -119,23 +120,50 @@ public class HLMEntityTest {
 
     @Test
     public void getCycle2(){
-        String cypherQuery = "MATCH path = (n:HLM)-[*]->(n:HLM) RETURN DISTINCT nodes(path) AS loopNodes";
+        String cypherQuery = "MATCH path = (n:HLM)-[*]->(n:HLM) RETURN DISTINCT nodes(path) AS loopNodes, relationships(path) AS loopRelationships";
         List<HLMListDTO> results = neo4jClient.query(cypherQuery)
                 .fetchAs(HLMListDTO.class)
                 .mappedBy((typeSystem, record) -> {
-                    HLMListDTO HLMListDTO = new HLMListDTO();
+                    HLMListDTO hlmListDTO = new HLMListDTO();
                     List<HLMEntity> cycleList = new ArrayList<>();
+                    Map<Long, String> elementIdAndNameMap = new HashMap<>();
                     List<Object> loopNodes = record.get("loopNodes").asList();
                     for(Object object : loopNodes) {
                         if(object instanceof InternalNode) {
                             InternalNode internalNode = (InternalNode)object;
                             HLMEntity hlmEntity = new HLMEntity();
                             hlmEntity.setName(internalNode.asMap().get("name").toString());
+                            elementIdAndNameMap.put(internalNode.id(), internalNode.asMap().get("name").toString());
                             cycleList.add(hlmEntity);
                         }
                     }
-                    HLMListDTO.setDetails(cycleList);
-                    return HLMListDTO;
+                    hlmListDTO.setDetails(cycleList);
+
+                    List<HLMRelationshipEntity> relationshipList = new ArrayList<>();
+                    List<Object> loopRelationships = record.get("loopRelationships").asList();
+                    for(Object object : loopRelationships) {
+                        if(object instanceof InternalRelationship) {
+                            InternalRelationship internalRelationship = (InternalRelationship)object;
+                            HLMRelationshipEntity hlmRelationshipEntity = new HLMRelationshipEntity();
+
+                            long startNodeId = internalRelationship.startNodeId();
+                            String startNodeName = elementIdAndNameMap.get(startNodeId);
+                            HLMEntity startHLMEntity = new HLMEntity();
+                            startHLMEntity.setName(startNodeName);
+
+                            long endNodeId = internalRelationship.endNodeId();
+                            String endNodeName = elementIdAndNameMap.get(endNodeId);
+                            HLMEntity endHLMEntity = new HLMEntity();
+                            endHLMEntity.setName(endNodeName);
+
+                            hlmRelationshipEntity.setStartNode(startHLMEntity);
+                            hlmRelationshipEntity.setEndNode(endHLMEntity);
+                            hlmRelationshipEntity.setType(internalRelationship.asMap().get("type").toString());
+                            relationshipList.add(hlmRelationshipEntity);
+                        }
+                    }
+                    hlmListDTO.setRelations(relationshipList);
+                    return hlmListDTO;
                 }).all().stream().collect(Collectors.toList());
         System.out.println(results);
         List<HLMListDTO> distinctResults = HLMListDTO.distinct(results);
