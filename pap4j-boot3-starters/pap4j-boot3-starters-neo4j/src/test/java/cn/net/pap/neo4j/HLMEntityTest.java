@@ -7,6 +7,7 @@ import cn.net.pap.neo4j.entity.HLMRelationshipEntity;
 import cn.net.pap.neo4j.repository.HLMRelationshipRepository;
 import cn.net.pap.neo4j.repository.HLMRepository;
 import cn.net.pap.neo4j.util.kg.HLMEntity2KGConvert;
+import cn.net.pap.neo4j.util.kg.HLMListDTO2KGConvert;
 import cn.net.pap.neo4j.util.kg.PathValue2KGConvert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -168,6 +169,8 @@ public class HLMEntityTest {
         System.out.println(results);
         List<HLMListDTO> distinctResults = HLMListDTO.distinct(results);
         System.out.println(distinctResults);
+        Map<String, Object> kgGraph = HLMListDTO2KGConvert.convertToKnowledgeGraph(distinctResults);
+        System.out.println(kgGraph);
     }
 
 }
