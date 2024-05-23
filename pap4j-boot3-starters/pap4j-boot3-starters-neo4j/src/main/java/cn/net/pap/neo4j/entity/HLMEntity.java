@@ -6,6 +6,7 @@ import org.springframework.data.neo4j.core.schema.Relationship;
 
 import java.io.Serializable;
 import java.util.HashSet;
+import java.util.Objects;
 import java.util.Set;
 
 @Node("HLM")
@@ -40,4 +41,29 @@ public class HLMEntity implements Serializable {
     public void setRelationships(Set<HLMRelationshipEntity> relationships) {
         this.relationships = relationships;
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        HLMEntity hlmEntity = (HLMEntity) o;
+        return Objects.equals(name, hlmEntity.name);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(name);
+    }
+
+    public static int sort(HLMEntity o1, HLMEntity o2) {
+        if (o1.getName() == null) {
+            return 1;
+        }
+        if (o2.getName() == null) {
+            return -1;
+        }
+        //升序
+        return o1.getName().compareTo(o2.getName());
+    }
+
 }

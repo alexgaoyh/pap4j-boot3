@@ -1,6 +1,7 @@
 package cn.net.pap.neo4j;
 
 import cn.net.pap.neo4j.dto.HLMNodeWithTypeDTO;
+import cn.net.pap.neo4j.dto.HLMListDTO;
 import cn.net.pap.neo4j.entity.HLMEntity;
 import cn.net.pap.neo4j.entity.HLMRelationshipEntity;
 import cn.net.pap.neo4j.repository.HLMRelationshipRepository;
@@ -114,6 +115,31 @@ public class HLMEntityTest {
     public void getCycle() {
         List<HLMEntity> leafList = hlmRepository.getCycle();
         System.out.println(leafList);
+    }
+
+    @Test
+    public void getCycle2(){
+        String cypherQuery = "MATCH path = (n:HLM)-[*]->(n:HLM) RETURN DISTINCT nodes(path) AS loopNodes";
+        List<HLMListDTO> results = neo4jClient.query(cypherQuery)
+                .fetchAs(HLMListDTO.class)
+                .mappedBy((typeSystem, record) -> {
+                    HLMListDTO HLMListDTO = new HLMListDTO();
+                    List<HLMEntity> cycleList = new ArrayList<>();
+                    List<Object> loopNodes = record.get("loopNodes").asList();
+                    for(Object object : loopNodes) {
+                        if(object instanceof InternalNode) {
+                            InternalNode internalNode = (InternalNode)object;
+                            HLMEntity hlmEntity = new HLMEntity();
+                            hlmEntity.setName(internalNode.asMap().get("name").toString());
+                            cycleList.add(hlmEntity);
+                        }
+                    }
+                    HLMListDTO.setDetails(cycleList);
+                    return HLMListDTO;
+                }).all().stream().collect(Collectors.toList());
+        System.out.println(results);
+        List<HLMListDTO> distinctResults = HLMListDTO.distinct(results);
+        System.out.println(distinctResults);
     }
 
 }
