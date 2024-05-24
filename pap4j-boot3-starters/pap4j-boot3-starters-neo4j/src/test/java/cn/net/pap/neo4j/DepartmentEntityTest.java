@@ -14,6 +14,8 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {Neo4jApplication.class})
 public class DepartmentEntityTest {
@@ -35,6 +37,13 @@ public class DepartmentEntityTest {
 
         departmentRepository.saveAll(departmentEntities);
 
+    }
+
+    // @Test
+    public void getBrothersByRemark() throws Exception {
+        List<DepartmentEntity> A0101 = departmentRepository.getBrothersByRemark("A0101");
+        List<DepartmentEntity> A010101 = departmentRepository.getBrothersByRemark("A010101");
+        assertTrue(A0101 != null && A010101 != null);
     }
 
 }
