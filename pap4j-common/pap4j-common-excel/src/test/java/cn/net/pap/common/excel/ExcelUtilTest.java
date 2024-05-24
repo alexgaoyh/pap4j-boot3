@@ -2,12 +2,19 @@ package cn.net.pap.common.excel;
 
 import cn.net.pap.common.excel.dto.CompareDTO;
 import cn.net.pap.common.excel.dto.ExportDTO;
+import cn.net.pap.common.excel.dto.ParentChildDTO;
 import cn.net.pap.common.excel.dto.SimpleTriple;
 import cn.net.pap.common.excel.handle.ImageModifyHandler;
+import cn.net.pap.common.excel.jackson.ParentChildDeserializer;
+import cn.net.pap.common.excel.jackson.ParentChildSerializer;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
 import com.alibaba.excel.write.metadata.fill.FillConfig;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -73,6 +80,36 @@ public class ExcelUtilTest {
         List<Map<String, Object>> rowList = ExcelUtil.getRowListWithMergeCell("merge.xls", "Sheet1", "pap");
         List<SimpleTriple<String, String, Object>> tripleList = ExcelUtil.convert2SimpleTriple(rowList, "名字", new ArrayList<>());
         assertTrue(tripleList.size() > 0);
+    }
+
+    /**
+     * parent-child.xlsx 文件中有三列： 部门、上级部门、备注， '部门/上级部门'是对应的，‘备注’是记录额外属性.
+     */
+    // @Test
+    public void parentChild() {
+        List<Map<String, Object>> rowList = ExcelUtil.getRowList("parent-child.xlsx", "Sheet1", null);
+        System.out.println(rowList);
+        List<ParentChildDTO> parentChildDTOS = ParentChildDTO.convertToParentChildList(rowList);
+        try {
+            // 自定义父子关系的 序列化
+            ObjectMapper objectMapperSerializer = new ObjectMapper();
+            SimpleModule module = new SimpleModule();
+            module.addSerializer(ParentChildDTO.class, new ParentChildSerializer());
+            objectMapperSerializer.registerModule(module);
+            String serializerStr = objectMapperSerializer.writeValueAsString(parentChildDTOS);
+            System.out.println(serializerStr);
+
+            // 自定义父子关系的 反序列化
+            ObjectMapper objectMapperDeserializer = new ObjectMapper();
+            SimpleModule module2 = new SimpleModule();
+            module2.addDeserializer(ParentChildDTO.class, new ParentChildDeserializer());
+            objectMapperDeserializer.registerModule(module2);
+            List<ParentChildDTO> parentChildDTOList = objectMapperDeserializer.readValue(serializerStr, new TypeReference<List<ParentChildDTO>>() {});
+            System.out.println(parentChildDTOList);
+
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+        }
     }
 
 }
