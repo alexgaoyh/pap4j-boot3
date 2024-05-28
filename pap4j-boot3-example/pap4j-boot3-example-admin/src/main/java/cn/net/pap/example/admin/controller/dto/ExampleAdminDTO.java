@@ -1,6 +1,8 @@
 package cn.net.pap.example.admin.controller.dto;
 
 import cn.net.pap.example.admin.config.jackson.annotation.PapTokenFilterJacksonComponentAnnotation;
+import cn.net.pap.example.admin.config.jackson.view.JacksonViews;
+import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import jdk.jfr.Description;
 import lombok.Data;
@@ -13,6 +15,7 @@ import java.io.Serializable;
 @Data
 public class ExampleAdminDTO implements Serializable {
 
+    @JsonView(JacksonViews.Basic.class)
     private Integer code;
 
     /**
@@ -20,6 +23,7 @@ public class ExampleAdminDTO implements Serializable {
      */
     @JsonSerialize(using = PapTokenFilterJacksonComponentAnnotation.TokenFilterSerializer.class)
     @Description("This is a description")
+    @JsonView(JacksonViews.BasicWithMsg.class)
     private String msg;
 
 }
