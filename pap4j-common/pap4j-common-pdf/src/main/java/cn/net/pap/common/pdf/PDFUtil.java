@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.util.Calendar;
 
 public class PDFUtil {
 
@@ -60,6 +61,7 @@ public class PDFUtil {
             signature.setName("alexgaoyh name");
             signature.setLocation("alexgaoyh location");
             signature.setReason("alexgaoyh reason");
+            signature.setSignDate(Calendar.getInstance());
 
             SignatureOptions signatureOptions = new SignatureOptions();
             document.addSignature(signature, new SignatureInterfaceImpl(privateKey), signatureOptions);
