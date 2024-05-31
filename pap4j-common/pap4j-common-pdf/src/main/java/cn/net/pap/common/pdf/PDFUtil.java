@@ -3,25 +3,30 @@ package cn.net.pap.common.pdf;
 import cn.net.pap.common.pdf.sign.SignatureInterfaceImpl;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.IOUtils;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.*;
+import org.apache.pdfbox.pdmodel.common.PDMetadata;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
+import org.apache.pdfbox.pdmodel.graphics.color.PDOutputIntent;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.ExternalSigningSupport;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
+import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
 import java.util.Calendar;
 
 public class PDFUtil {
+
+    private static final float PDF_VERSION = 1.4f;
+    private static final String PDF_PART = "1";
+    private static final String PDF_CONFORMANCE = "A";
 
     /**
      * 添加印章
@@ -105,4 +110,91 @@ public class PDFUtil {
             document.save(outputFilePath);
         }
     }
+
+    /**
+     * convert PDF/A
+     * @param inputFilePath
+     * @param outputFilePath
+     * @throws Exception
+     */
+    public static void convertPDFA(final String inputFilePath, final String outputFilePath)
+            throws Exception {
+        final File inputFile = new File(inputFilePath);
+        final File outputFile = new File(outputFilePath);
+
+        byte[] inputContent = Files.readAllBytes(inputFile.getAbsoluteFile().toPath());
+
+        final InputStream colorSpaceProfileInputStream = PDFUtil.class.getClassLoader().getResourceAsStream("sRGB Color Space Profile.icm");
+
+        PDDocument doc = Loader.loadPDF(inputContent);
+
+        PDDocumentCatalog catalog = setCompliant(doc, PDF_PART, PDF_CONFORMANCE);
+
+        addOutputIntent(doc, catalog, colorSpaceProfileInputStream);
+
+        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        doc.setVersion(PDF_VERSION);
+        doc.save(byteArrayOutputStream);
+        doc.close();
+
+        final byte[] outputContent = byteArrayOutputStream.toByteArray();
+        try (final OutputStream outputStream = Files.newOutputStream(outputFile.toPath())) {
+            outputStream.write(outputContent);
+        }
+
+    }
+
+    private static PDDocumentCatalog setCompliant(final PDDocument doc, final String pdfPart,
+                                                  final String pdfConformance) throws IOException, Exception {
+
+        final PDDocumentCatalog catalog = doc.getDocumentCatalog();
+        final PDDocumentInformation info = doc.getDocumentInformation();
+        final PDMetadata metadata = new PDMetadata(doc);
+        catalog.setMetadata(metadata);
+
+        final PDDocumentInformation newInfo = new PDDocumentInformation();
+        newInfo.setProducer(info.getProducer());
+        newInfo.setAuthor(info.getAuthor());
+        newInfo.setTitle(info.getTitle());
+        newInfo.setSubject(info.getSubject());
+        newInfo.setKeywords(info.getKeywords());
+        doc.setDocumentInformation(newInfo);
+
+        final Charset charset = StandardCharsets.UTF_8;
+
+        final InputStream is = PDFUtil.class.getClassLoader().getResourceAsStream("xmpTemplate.xml");
+
+        final byte[] fileBytes = IOUtils.toByteArray(is);
+
+        String content = new String(fileBytes, charset);
+        content = content.replace("@#pdfaid:part#@", pdfPart);
+        content = content.replace("@#pdfaid:conformance#@", pdfConformance);
+
+        is.close();
+
+        final byte[] editedBytes = content.getBytes(charset);
+        metadata.importXMPMetadata(editedBytes);
+
+        return catalog;
+    }
+
+    private static void addOutputIntent(final PDDocument doc, final PDDocumentCatalog catalog,
+                                        final InputStream colorProfile) throws IOException {
+
+        final String profile = "sRGB IEC61966-2.1";
+
+        if (catalog.getOutputIntents().isEmpty()) {
+
+            final PDOutputIntent outputIntent;
+            outputIntent = new PDOutputIntent(doc, colorProfile);
+            outputIntent.setInfo(profile);
+            outputIntent.setOutputCondition(profile);
+            outputIntent.setOutputConditionIdentifier(profile);
+            outputIntent.setRegistryName("http://www.color.org");
+
+            catalog.addOutputIntent(outputIntent);
+        }
+
+    }
+
 }

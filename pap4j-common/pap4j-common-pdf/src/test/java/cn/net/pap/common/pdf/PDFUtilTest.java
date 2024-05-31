@@ -39,4 +39,14 @@ public class PDFUtilTest {
         }
     }
 
+    @Test
+    public void convertPDFATest() {
+        try {
+            PDFUtil.convertPDFA("origin.pdf",
+                    "output.pdf");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 }
