@@ -13,7 +13,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.test.context.junit4.SpringRunner;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -62,6 +64,26 @@ public class DepartmentEntityTest {
                     DepartmentEntity departmentEntity = new DepartmentEntity();
                     departmentEntity.setRemark(record.values().get(0).get("remark").asString());
                     return departmentEntity;
+                }).all().stream().collect(Collectors.toList());
+        System.out.println(results);
+    }
+
+
+    /**
+     * 子图同构的一种编写实现，在 match where 中把关系指定出来，之后返回符合条件的节点
+     */
+    // @Test
+    public void getTargetGraph(){
+        // a[:child]->b[:child]->c， c 没有 child
+        String cypherQuery = "MATCH (a:department)-[:child]->(b:department), (b:department)-[:child]->(c:department) WHERE NOT (c:department)-[:child]->() RETURN a, b, c;";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("a", record.values().get(0).get("remark").toString());
+                    map.put("b", record.values().get(1).get("remark").toString());
+                    map.put("c", record.values().get(2).get("remark").toString());
+                    return map;
                 }).all().stream().collect(Collectors.toList());
         System.out.println(results);
     }
