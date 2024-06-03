@@ -10,9 +10,11 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.neo4j.core.Neo4jClient;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -22,6 +24,9 @@ public class DepartmentEntityTest {
 
     @Autowired
     private DepartmentRepository departmentRepository;
+
+    @Autowired
+    private Neo4jClient neo4jClient;
 
     // @Test
     public void initData() throws Exception {
@@ -46,4 +51,18 @@ public class DepartmentEntityTest {
         assertTrue(A0101 != null && A010101 != null);
     }
 
+
+    // @Test
+    public void getMaxOutDegree(){
+        // 最大 出度 节点
+        String cypherQuery = "MATCH (n) OPTIONAL MATCH (n)-[r]->() WITH n, COUNT(r) AS outDegree ORDER BY outDegree DESC LIMIT 1 RETURN n";
+        List<DepartmentEntity> results = neo4jClient.query(cypherQuery)
+                .fetchAs(DepartmentEntity.class)
+                .mappedBy((typeSystem, record) -> {
+                    DepartmentEntity departmentEntity = new DepartmentEntity();
+                    departmentEntity.setRemark(record.values().get(0).get("remark").asString());
+                    return departmentEntity;
+                }).all().stream().collect(Collectors.toList());
+        System.out.println(results);
+    }
 }
