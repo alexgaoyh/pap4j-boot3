@@ -173,4 +173,52 @@ public class HLMEntityTest {
         System.out.println(kgGraph);
     }
 
+    /**
+     * 指定两个节点[荣国府、贾宝玉] 两者之间的 jaccard 相似度
+     */
+    @Test
+    public void getJaccard() {
+        String cypherQuery = "MATCH (p1:HLM {name: '荣国府'})-[:RELATIONSHIP]->(p11) " +
+                "WITH p1, collect(id(p11)) AS p1Cuisine " +
+                "MATCH (p2:HLM {name: \"贾宝玉\"})-[:RELATIONSHIP]->(p22) " +
+                "WITH p1, p1Cuisine, p2, collect(id(p22)) AS p2Cuisine " +
+                "RETURN p1.name AS from, " +
+                "p2.name AS to, " +
+                "algo.similarity.jaccard(p1Cuisine, p2Cuisine) AS similarity";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> jaccardMap = new HashMap<>();
+                    jaccardMap.put("from", record.get("from"));
+                    jaccardMap.put("to", record.get("to"));
+                    jaccardMap.put("similarity", record.get("similarity"));
+                    return jaccardMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
+    /**
+     * 指定节点 [荣国府] 与其他节点的 jaccard 相似度
+     */
+    @Test
+    public void getJaccard2() {
+        String cypherQuery = "MATCH (p1:HLM {name: '荣国府'})-[:RELATIONSHIP]-(p11) " +
+                "WITH p1, collect(id(p11)) AS p1Cuisine " +
+                "MATCH (p2:HLM)-[:RELATIONSHIP]-(p22) where p2.name <> '荣国府' " +
+                "WITH p1, p1Cuisine, p2, collect(id(p22)) AS p2Cuisine " +
+                "RETURN p1.name AS from, " +
+                "p2.name AS to, " +
+                "algo.similarity.jaccard(p1Cuisine, p2Cuisine) AS similarity order by similarity desc";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> jaccardMap = new HashMap<>();
+                    jaccardMap.put("from", record.get("from"));
+                    jaccardMap.put("to", record.get("to"));
+                    jaccardMap.put("similarity", record.get("similarity"));
+                    return jaccardMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
 }
