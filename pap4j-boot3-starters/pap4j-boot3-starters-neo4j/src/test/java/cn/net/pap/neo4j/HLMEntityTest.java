@@ -221,4 +221,90 @@ public class HLMEntityTest {
         System.out.println(results);
     }
 
+    /**
+     * 紧密中心度
+     */
+    @Test
+    public void getClosenessCentrality() {
+        String cypherQuery = "CALL algo.closeness.stream(\"HLM\", \"RELATIONSHIP\") " +
+                "YIELD nodeId, centrality " +
+                "MATCH (n:HLM) WHERE id(n) = nodeId " +
+                "RETURN n.name AS node, centrality " +
+                "ORDER BY centrality DESC " +
+                "LIMIT 20;";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> centerMap = new HashMap<>();
+                    centerMap.put("node", record.get("node"));
+                    centerMap.put("centrality", record.get("centrality"));
+                    return centerMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
+    /**
+     * 度中心度
+     */
+    @Test
+    public void getDegreeCentrality() {
+        // 这里的 direction 可以有三种参数：Both incoming outgoing
+        String cypherQuery = "CALL algo.degree.stream(\"HLM\", \"RELATIONSHIP\", {direction: \"Both\"}) " +
+                "YIELD nodeId, score " +
+                "RETURN algo.asNode(nodeId).name AS name, score AS degree " +
+                "ORDER BY degree DESC";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> centerMap = new HashMap<>();
+                    centerMap.put("name", record.get("name"));
+                    centerMap.put("degree", record.get("degree"));
+                    return centerMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
+    /**
+     * 中介中心度
+     */
+    @Test
+    public void getBetweenessCentrality() {
+        String cypherQuery = "MATCH (c:HLM) " +
+                "WITH collect(c) as characters " +
+                "CALL algo.betweenness.stream(\"HLM\", \"RELATIONSHIP\") " +
+                "YIELD nodeId, centrality " +
+                "MATCH (c) WHERE id(c) = nodeId " +
+                "RETURN c.name as name, centrality " +
+                "ORDER BY centrality desc";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> centerMap = new HashMap<>();
+                    centerMap.put("name", record.get("name"));
+                    centerMap.put("centrality", record.get("centrality"));
+                    return centerMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
+    /**
+     * 特征向量中心度
+     */
+    @Test
+    public void getEigenVectorCentrality() {
+        String cypherQuery = "CALL algo.pageRank.stream('HLM', 'RELATIONSHIP', {iterations:20, dampingFactor:0.85}) " +
+                "YIELD nodeId, score " +
+                "RETURN algo.asNode(nodeId).name AS name, score " +
+                "ORDER BY score DESC";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> centerMap = new HashMap<>();
+                    centerMap.put("name", record.get("name"));
+                    centerMap.put("score", record.get("score"));
+                    return centerMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
 }
