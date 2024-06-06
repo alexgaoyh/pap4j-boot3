@@ -14,6 +14,7 @@ import org.junit.runner.RunWith;
 import org.neo4j.driver.internal.InternalNode;
 import org.neo4j.driver.internal.InternalRelationship;
 import org.neo4j.driver.internal.value.PathValue;
+import org.neo4j.driver.summary.ResultSummary;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
@@ -262,6 +263,23 @@ public class HLMEntityTest {
                     return centerMap;
                 }).all().stream().toList();
         System.out.println(results);
+    }
+
+    /**
+     * 写入 度中心度
+     */
+    @Test
+    public void setDegreeCentrality() {
+        // 这里的 direction 可以有三种参数：Both incoming outgoing
+        String cypherQuery = "CALL algo.degree.stream(\"HLM\", \"RELATIONSHIP\", {direction: \"Both\"}) " +
+                "YIELD nodeId, score " +
+                "WITH collect({name: algo.asNode(nodeId).name, degree: score}) AS degrees " +
+                "UNWIND degrees AS degreeRecord " +
+                "MERGE (n:HLM {name: degreeRecord.name}) " +
+                "ON CREATE SET n._degree = degreeRecord.degree " +
+                "ON MATCH SET n._degree = degreeRecord.degree ";
+        ResultSummary run = neo4jClient.query(cypherQuery).run();
+        System.out.println(run.counters().propertiesSet());
     }
 
     /**
