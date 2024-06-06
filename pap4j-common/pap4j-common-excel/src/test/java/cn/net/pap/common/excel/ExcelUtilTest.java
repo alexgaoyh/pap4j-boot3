@@ -20,6 +20,8 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +57,14 @@ public class ExcelUtilTest {
         assertTrue(checkStr.compareTo(maxStr) <= 0 && checkStr.compareTo(minStr) >= 0);
     }
 
+    // @Test
+    public void weeksBetween() {
+        LocalDate startDate = LocalDate.of(2024, 2, 5); // 开始日期
+        LocalDate endDate = LocalDate.now();
+
+        long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
+        System.out.println(weeksBetween);
+    }
 
     // @Test
     public void pictureExport() throws Exception {
