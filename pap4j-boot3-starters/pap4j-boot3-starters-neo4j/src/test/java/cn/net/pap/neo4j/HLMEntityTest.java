@@ -348,4 +348,24 @@ public class HLMEntityTest {
         System.out.println(results);
     }
 
+    /**
+     * 社区检测并聚合结果.
+     * 这里会把 社区ID 写入 节点的_community属性.
+     */
+    @Test
+    public void getCommunity() {
+        String cypherQuery = "CALL apoc.algo.community(10, ['HLM'], '_community',  'RELATIONSHIP', 'BOTH',  '',  1000) " +
+                "MATCH (n:HLM) RETURN distinct(n._community) as community, count(n) as count, collect(n.name) as names ORDER BY count(n) DESC ";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> centerMap = new HashMap<>();
+                    centerMap.put("community", record.get("community"));
+                    centerMap.put("count", record.get("count"));
+                    centerMap.put("names", record.get("names"));
+                    return centerMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
 }
