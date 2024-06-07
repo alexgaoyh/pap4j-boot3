@@ -223,6 +223,29 @@ public class HLMEntityTest {
     }
 
     /**
+     * 指定属性文本的 LevenshteinSimilarity
+     * apoc-3.5.0.5-all.jar、 graph-algorithms-algo-3.5.4.0.jar
+     * dbms.security.procedures.unrestricted=algo.\*,apoc.\*
+     */
+    @Test
+    public void getTextLevenshteinSimilarity() {
+        String cypherQuery = "MATCH (user1:HLM{name: \"林黛玉\"}), (user2:HLM) " +
+                "WHERE user1 <> user2 " +
+                "RETURN user2.name as name, apoc.text.levenshteinSimilarity(user1.name, user2.name) AS similarity " +
+                "ORDER BY similarity DESC " +
+                "LIMIT 10";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> jaccardMap = new HashMap<>();
+                    jaccardMap.put("name", record.get("name"));
+                    jaccardMap.put("similarity", record.get("similarity"));
+                    return jaccardMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
+    /**
      * 紧密中心度
      */
     @Test
