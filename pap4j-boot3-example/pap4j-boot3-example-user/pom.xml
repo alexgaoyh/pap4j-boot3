@@ -10,6 +10,7 @@
     </parent>
 
     <artifactId>pap4j-boot3-example-user</artifactId>
+    <packaging>jar</packaging>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

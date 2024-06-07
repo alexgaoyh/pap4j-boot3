@@ -22,13 +22,13 @@
     <dependencies>
 
         <dependency>
-            <groupId>cn.net.pap.example.bean</groupId>
+            <groupId>cn.net.pap.example</groupId>
             <artifactId>pap4j-boot3-example-bean</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
 
         <dependency>
-            <groupId>cn.net.pap.example.user</groupId>
+            <groupId>cn.net.pap.example</groupId>
             <artifactId>pap4j-boot3-example-user</artifactId>
             <version>0.0.1-SNAPSHOT</version>
         </dependency>
