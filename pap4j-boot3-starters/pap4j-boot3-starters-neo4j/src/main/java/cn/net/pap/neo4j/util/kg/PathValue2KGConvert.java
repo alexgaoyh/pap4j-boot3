@@ -42,6 +42,38 @@ public class PathValue2KGConvert {
         return knowledgeGraph;
     }
 
+    public static Map<String, Object> convertToKnowledgeGraph2(List<PathValue> pathValues) {
+        Map<String, Object> knowledgeGraph = new HashMap<>();
+        List<Map<String, Object>> nodes = new ArrayList<>();
+        List<Map<String, Object>> relations = new ArrayList<>();
+
+        for (PathValue pathValue : pathValues) {
+            Path path = pathValue.asPath();
+            for (Node node : path.nodes()) {
+                Map<String, Object> nodeData = convertNodeToMap(node);
+                if(nodes.stream().filter(e -> e.get("id").toString().equals(nodeData.get("id").toString())).count() == 0) {
+                    nodes.add(nodeData);
+                }
+            }
+            for (Relationship relationship : path.relationships()) {
+                Map<String, Object> relationData = convertRelationshipToMap(relationship);
+                if(relations.stream().filter(
+                        e -> e.get("startNode").toString().equals(relationData.get("startNode").toString())
+                                && e.get("endNode").toString().equals(relationData.get("endNode").toString())
+                                && e.get("type").toString().equals(relationData.get("type").toString())
+                        )
+                .count() == 0) {
+                    relations.add(relationData);
+                }
+
+            }
+        }
+
+        knowledgeGraph.put("nodes", nodes);
+        knowledgeGraph.put("relations", relations);
+        return knowledgeGraph;
+    }
+
     private static Map<String, Object> convertNodeToMap(Node node) {
         Map<String, Object> nodeData = new HashMap<>();
         nodeData.put("id", node.id());
@@ -54,6 +86,7 @@ public class PathValue2KGConvert {
         relationData.put("startNode", relationship.startNodeId());
         relationData.put("endNode", relationship.endNodeId());
         relationData.put("properties", relationship.asMap());
+        relationData.put("type", (relationship.asMap() != null && relationship.asMap().containsKey("type")) ? relationship.asMap().get("type") : "");
         return relationData;
     }
 

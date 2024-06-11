@@ -389,4 +389,21 @@ public class HLMEntityTest {
         System.out.println(results);
     }
 
+    /**
+     * 节点扩展过程apoc.path.expand()可以从给定节点或节点列表开始，沿着指定的关系类型进行遍历，直到特定结束条件满足时停止，并返回路径或节点。
+     *
+     * 记录从 '林黛玉' 开始的，向外拥有关系的，最多3层的关系信息
+     */
+    @Test
+    public void getPathExpand() {
+        String cypherQuery = "match (n:HLM) where n.name = '林黛玉' WITH n " +
+                "CALL apoc.path.expand(n, 'RELATIONSHIP', \"+HLM\", 0, 3) YIELD path as paths return paths;";
+        List<PathValue> results = neo4jClient.query(cypherQuery)
+                .fetchAs(PathValue.class)
+                .mappedBy((typeSystem, record) -> {
+                    return (PathValue) record.get("paths");
+                }).all().stream().toList();
+        Map<String, Object> kgGraph = PathValue2KGConvert.convertToKnowledgeGraph2(results);
+        System.out.println(kgGraph);
+    }
 }
