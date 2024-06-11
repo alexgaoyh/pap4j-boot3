@@ -403,7 +403,7 @@ public class HLMEntityTest {
                 .mappedBy((typeSystem, record) -> {
                     return (PathValue) record.get("paths");
                 }).all().stream().toList();
-        Map<String, Object> kgGraph = PathValue2KGConvert.convertToKnowledgeGraph2(results);
+        Map<String, Object> kgGraph = PathValue2KGConvert.convertToKnowledgeGraph2(results, "type");
         System.out.println(kgGraph);
     }
 }

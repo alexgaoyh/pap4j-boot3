@@ -42,7 +42,13 @@ public class PathValue2KGConvert {
         return knowledgeGraph;
     }
 
-    public static Map<String, Object> convertToKnowledgeGraph2(List<PathValue> pathValues) {
+    /**
+     *
+     * @param pathValues
+     * @param relationKey   取得是关系部分的属性标签，比如如果是 红楼梦 数据的话，关系类型的属性是 type
+     * @return
+     */
+    public static Map<String, Object> convertToKnowledgeGraph2(List<PathValue> pathValues, String relationKey) {
         Map<String, Object> knowledgeGraph = new HashMap<>();
         List<Map<String, Object>> nodes = new ArrayList<>();
         List<Map<String, Object>> relations = new ArrayList<>();
@@ -56,11 +62,11 @@ public class PathValue2KGConvert {
                 }
             }
             for (Relationship relationship : path.relationships()) {
-                Map<String, Object> relationData = convertRelationshipToMap(relationship);
+                Map<String, Object> relationData = convertRelationshipToMap(relationship, relationKey);
                 if(relations.stream().filter(
                         e -> e.get("startNode").toString().equals(relationData.get("startNode").toString())
                                 && e.get("endNode").toString().equals(relationData.get("endNode").toString())
-                                && e.get("type").toString().equals(relationData.get("type").toString())
+                                && e.get(relationKey).toString().equals(relationData.get(relationKey).toString())
                         )
                 .count() == 0) {
                     relations.add(relationData);
@@ -87,6 +93,15 @@ public class PathValue2KGConvert {
         relationData.put("endNode", relationship.endNodeId());
         relationData.put("properties", relationship.asMap());
         relationData.put("type", (relationship.asMap() != null && relationship.asMap().containsKey("type")) ? relationship.asMap().get("type") : "");
+        return relationData;
+    }
+
+    private static Map<String, Object> convertRelationshipToMap(Relationship relationship, String relationKey) {
+        Map<String, Object> relationData = new HashMap<>();
+        relationData.put("startNode", relationship.startNodeId());
+        relationData.put("endNode", relationship.endNodeId());
+        relationData.put("properties", relationship.asMap());
+        relationData.put(relationKey, (relationship.asMap() != null && relationship.asMap().containsKey(relationKey)) ? relationship.asMap().get(relationKey) : "");
         return relationData;
     }
 
