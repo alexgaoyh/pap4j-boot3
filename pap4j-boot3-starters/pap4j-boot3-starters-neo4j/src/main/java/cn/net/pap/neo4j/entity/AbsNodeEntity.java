@@ -45,6 +45,12 @@ public class AbsNodeEntity implements Serializable {
     @Relationship(type = "childrens", direction = Relationship.Direction.OUTGOING)
     private Set<AbsNodeEntity> childrens = new HashSet<>();
 
+    /**
+     * 构造函数
+     * @param absNodeId id
+     * @param absNodeLabel label
+     * @param absNodeType type
+     */
     public AbsNodeEntity(String absNodeId, String absNodeLabel, String absNodeType) {
         this.absNodeId = absNodeId;
         this.absNodeLabel = absNodeLabel;

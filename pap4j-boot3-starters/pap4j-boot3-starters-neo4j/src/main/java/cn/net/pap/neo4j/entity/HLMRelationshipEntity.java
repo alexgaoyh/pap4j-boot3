@@ -7,17 +7,29 @@ import java.io.Serializable;
 @RelationshipProperties
 public class HLMRelationshipEntity implements Serializable {
 
+    /**
+     * 编号 主键
+     */
     @Id
     @GeneratedValue
     private Long id;
 
+    /**
+     * 关系 开始节点
+     */
     @Relationship(type = "relation", direction = Relationship.Direction.OUTGOING)
     private HLMEntity startNode;
 
+    /**
+     * 关系 结束节点
+     */
     @Relationship(type = "relation", direction = Relationship.Direction.INCOMING)
     @TargetNode
     private HLMEntity endNode;
 
+    /**
+     * 类型
+     */
     private String type;
 
     public HLMEntity getStartNode() {

@@ -12,12 +12,23 @@ import java.util.Set;
 @Node("HLM")
 public class HLMEntity implements Serializable {
 
+    /**
+     * 名称
+     */
     @Id
     private String name;
 
+    /**
+     * 关系
+     */
     @Relationship(type = "RELATIONSHIP", direction = Relationship.Direction.OUTGOING)
     private Set<HLMRelationshipEntity> relationships = new HashSet<>();
 
+    /**
+     * 添加关系
+     * @param type
+     * @param target
+     */
     public void addRelationship(String type, HLMEntity target) {
         HLMRelationshipEntity relationship = new HLMRelationshipEntity();
         relationship.setType(type);

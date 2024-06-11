@@ -17,21 +17,39 @@ import java.util.List;
 @Node("person")
 public class PersonEntity implements Serializable {
 
+    /**
+     * 编号
+     */
     @Id
     private String personId;
 
+    /**
+     * 名称
+     */
     @Property("personName")
     private String personName;
 
+    /**
+     * 描述
+     */
     @Property("description")
     private String description;
 
+    /**
+     * 爱好
+     */
     @Relationship(type = "hobbys", direction = Relationship.Direction.INCOMING)
     private List<HobbyEntity> hobbys;
 
+    /**
+     * 父节点
+     */
     @Relationship(type = "parents", direction = Relationship.Direction.INCOMING)
     private List<PersonEntity> parents = new ArrayList<>();
 
+    /**
+     * 子节点
+     */
     @Relationship(type = "childrens", direction = Relationship.Direction.INCOMING)
     private List<PersonEntity> childrens = new ArrayList<>();
 

@@ -8,6 +8,11 @@ import java.util.List;
 
 public interface HLMRepository extends Neo4jRepository<HLMEntity, String> {
 
+    /**
+     * 根据 name 查询
+     * @param name
+     * @return
+     */
     public List<HLMEntity> findByName(String name);
 
     /**

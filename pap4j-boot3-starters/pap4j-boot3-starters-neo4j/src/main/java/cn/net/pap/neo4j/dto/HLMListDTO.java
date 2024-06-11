@@ -15,8 +15,14 @@ import java.util.stream.Collectors;
  */
 public class HLMListDTO implements Serializable {
 
+    /**
+     * 明细
+     */
     private List<HLMEntity> details;
 
+    /**
+     * 关系
+     */
     private List<HLMRelationshipEntity> relations;
 
     public List<HLMEntity> getDetails() {

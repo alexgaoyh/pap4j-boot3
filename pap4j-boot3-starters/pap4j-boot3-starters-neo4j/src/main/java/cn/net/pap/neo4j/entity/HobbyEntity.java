@@ -9,9 +9,15 @@ import java.io.Serializable;
 @Node("hobby")
 public class HobbyEntity implements Serializable {
 
+    /**
+     * 编号
+     */
     @Id
     private String hobbyId;
 
+    /**
+     * 爱好
+     */
     @Property("hobbyName")
     private String hobbyName;
 

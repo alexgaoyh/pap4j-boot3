@@ -10,12 +10,21 @@ import java.util.List;
 @Node("department")
 public class DepartmentEntity implements Serializable {
 
+    /**
+     * 备注
+     */
     @Id
     private String remark;
 
+    /**
+     * 父节点
+     */
     @Relationship(type = "parent", direction = Relationship.Direction.OUTGOING)
     private DepartmentEntity parent;
 
+    /**
+     * 子节点
+     */
     @Relationship(type = "child", direction = Relationship.Direction.OUTGOING)
     private List<DepartmentEntity> child;
 

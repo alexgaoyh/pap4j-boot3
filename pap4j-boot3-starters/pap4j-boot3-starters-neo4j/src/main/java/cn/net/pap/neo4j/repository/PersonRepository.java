@@ -7,6 +7,11 @@ import java.util.List;
 
 public interface PersonRepository extends Neo4jRepository<PersonEntity, String> {
 
+    /**
+     * 根据 personName 查询
+     * @param personName
+     * @return
+     */
     public List<PersonEntity> findByPersonName(String personName);
 
 }

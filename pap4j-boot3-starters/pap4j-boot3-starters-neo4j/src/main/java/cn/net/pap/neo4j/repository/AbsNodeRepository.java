@@ -11,6 +11,11 @@ import java.util.List;
 
 public interface AbsNodeRepository extends Neo4jRepository<AbsNodeEntity, String> {
 
+    /**
+     * 根据 absNodeLabel 查询
+     * @param absNodeLabel
+     * @return
+     */
     public List<AbsNodeEntity> findByAbsNodeLabel(String absNodeLabel);
 
     /**

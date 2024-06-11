@@ -20,6 +20,11 @@ public class AbsNodeWithChildrensDTO implements Serializable {
      */
     private List<AbsNodeEntity> childrenNodes;
 
+    /**
+     * 构造函数
+     * @param parentNode
+     * @param childrenNodes
+     */
     public AbsNodeWithChildrensDTO(AbsNodeEntity parentNode, List<AbsNodeEntity> childrenNodes) {
         this.parentNode = parentNode;
         this.childrenNodes = childrenNodes;
