@@ -368,4 +368,25 @@ public class HLMEntityTest {
         System.out.println(results);
     }
 
+    /**
+     * 基于模块度的社区发现算法 Louvain algorithm
+     */
+    @Test
+    public void getLouvain() {
+        String cypherQuery = "CALL algo.louvain.stream('HLM', 'RELATIONSHIP') YIELD nodeId, community " +
+                "WITH algo.getNodeById(nodeId).name as personName, community as community " +
+                "RETURN community, collect(personName) as names, count(personName) as count " +
+                "ORDER BY count desc ";
+        List<Map> results = neo4jClient.query(cypherQuery)
+                .fetchAs(Map.class)
+                .mappedBy((typeSystem, record) -> {
+                    Map<String, Object> centerMap = new HashMap<>();
+                    centerMap.put("community", record.get("community"));
+                    centerMap.put("count", record.get("count"));
+                    centerMap.put("names", record.get("names"));
+                    return centerMap;
+                }).all().stream().toList();
+        System.out.println(results);
+    }
+
 }
