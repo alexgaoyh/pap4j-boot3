@@ -18,12 +18,11 @@
     </properties>
 
     <dependencies>
+        <!-- mvn install:install-file -Dfile=“C:\Users\86181\Desktop\opencv-401.jar” -DgroupId=org.opencv -DartifactId=opencv-401 -Dversion=401 -Dpackaging=jar -->
         <dependency>
             <groupId>org.opencv</groupId>
             <artifactId>opencv-401</artifactId>
             <version>401</version>
-            <scope>system</scope>
-            <systemPath>${pom.basedir}/libs/opencv-401.jar</systemPath>
         </dependency>
 
         <dependency>
