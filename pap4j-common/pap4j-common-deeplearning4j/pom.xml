@@ -9,7 +9,6 @@
         <version>0.0.1</version>
     </parent>
 
-    <groupId>cn.net.pap.common.deeplearning4j</groupId>
     <artifactId>pap4j-common-deeplearning4j</artifactId>
 
     <properties>

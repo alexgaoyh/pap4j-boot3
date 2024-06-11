@@ -9,7 +9,6 @@
         <version>0.0.1</version>
     </parent>
 
-    <groupId>cn.net.pap.example.admin</groupId>
     <artifactId>pap4j-boot3-example-admin</artifactId>
     <packaging>jar</packaging>
 
