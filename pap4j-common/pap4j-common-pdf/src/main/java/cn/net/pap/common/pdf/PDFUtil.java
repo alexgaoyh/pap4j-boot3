@@ -1,6 +1,7 @@
 package cn.net.pap.common.pdf;
 
 import cn.net.pap.common.pdf.dto.CoordsDTO;
+import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.enums.ChineseFont;
 import cn.net.pap.common.pdf.sign.SignatureInterfaceImpl;
 import org.apache.pdfbox.Loader;
@@ -186,6 +187,50 @@ public class PDFUtil {
                     contentStream.showText(text);
                     contentStream.endText();
                 }
+            }
+
+            // 保存PDF文档
+            document.save(pdfPath);
+        }
+    }
+
+    /**
+     * 画矩形， 或者是表格的一个长方形的框。 提供一个从左下角开始，左上角结束的逆时针的四个点坐标.
+     * @param pdfPath
+     * @param leftBottom    左下角
+     * @param rightBottom   右下角
+     * @param rightTop  右上角
+     * @param leftTop   左上角
+     * @throws IOException
+     */
+    public static void drawRectangleBy4Point(String pdfPath, PointDTO leftBottom, PointDTO rightBottom, PointDTO rightTop, PointDTO leftTop) throws IOException {
+        // 创建或加载PDF文档
+        try (PDDocument document = new PDDocument()) {
+            // 创建新页面
+            PDPage page = new PDPage();
+            document.addPage(page);
+
+            // 获取页面内容流
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                // bottom
+                contentStream.moveTo(leftBottom.getX(), leftBottom.getY());
+                contentStream.lineTo(rightBottom.getX(), rightBottom.getY());
+                contentStream.stroke();
+
+                // right
+                contentStream.moveTo(rightBottom.getX(), rightBottom.getY());
+                contentStream.lineTo(rightTop.getX(), rightTop.getY());
+                contentStream.stroke();
+
+                // top
+                contentStream.moveTo(leftTop.getX(), leftTop.getY());
+                contentStream.lineTo(rightTop.getX(), rightTop.getY());
+                contentStream.stroke();
+
+                // left
+                contentStream.moveTo(leftTop.getX(), leftTop.getY());
+                contentStream.lineTo(leftBottom.getX(), leftBottom.getY());
+                contentStream.stroke();
             }
 
             // 保存PDF文档

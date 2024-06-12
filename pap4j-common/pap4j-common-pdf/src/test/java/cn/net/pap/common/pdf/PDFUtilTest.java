@@ -1,6 +1,7 @@
 package cn.net.pap.common.pdf;
 
 import cn.net.pap.common.pdf.dto.CoordsDTO;
+import cn.net.pap.common.pdf.dto.PointDTO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
@@ -9,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public class PDFUtilTest {
@@ -88,6 +90,22 @@ public class PDFUtilTest {
             document.close();
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void drawRectangleBy4PointTest() {
+        try {
+            List<Integer> coords = Arrays.asList(new Integer[]{100, 100, 160, 100, 160, 160, 100, 160});
+            PointDTO[] pointDTOS = PointDTO.convert2RectangleBy4Point(coords);
+            // drawRectangleBy4Point 方法的传参，同样可以使用 pointDTOS[0], pointDTOS[1], pointDTOS[2], pointDTOS[3]
+            PDFUtil.drawRectangleBy4Point("C:\\Users\\86181\\Desktop\\output.pdf",
+                    new PointDTO(100, 100),
+                    new PointDTO(160, 100),
+                    new PointDTO(160, 160),
+                    new PointDTO(100, 160));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }
 
