@@ -1,6 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.opencv.calib3d.Calib3d;
 import org.opencv.core.*;
+import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.ORB;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
@@ -1024,6 +1026,115 @@ public class OpenCVUtils {
             return 0.0;
         }
     }
+
+    /**
+     * 拼接融合两张图像并保存到指定路径，类似缝合图像的效果（两周图像有重叠的部分，类似分别拍多张图像后合并）
+     * @param imgPath1 第一张图像的文件路径
+     * @param imgPath2 第二张图像的文件路径
+     * @param resultPath 拼接后图像的保存路径
+     */
+    public static boolean stitchImages(String imgPath1, String imgPath2, String resultPath) {
+        // 读取两张图像
+        Mat img1 = Imgcodecs.imread(imgPath1);
+        Mat img2 = Imgcodecs.imread(imgPath2);
+
+        // 检查图像是否读取成功
+        if (img1.empty() || img2.empty()) {
+            return false;
+        }
+
+        // 特征检测器和描述符
+        ORB orb = ORB.create();
+        MatOfKeyPoint keypoints1 = new MatOfKeyPoint(), keypoints2 = new MatOfKeyPoint();
+        Mat descriptors1 = new Mat(), descriptors2 = new Mat();
+
+        // 检测关键点和描述符
+        orb.detectAndCompute(img1, new Mat(), keypoints1, descriptors1);
+        orb.detectAndCompute(img2, new Mat(), keypoints2, descriptors2);
+
+        // 特征匹配
+        DescriptorMatcher matcher = DescriptorMatcher.create(DescriptorMatcher.BRUTEFORCE_HAMMING);
+        MatOfDMatch matches = new MatOfDMatch();
+        matcher.match(descriptors1, descriptors2, matches);
+
+        // 筛选匹配项
+        List<DMatch> matchList = matches.toList();
+        double maxDist = 0, minDist = 100;
+        for (DMatch match : matchList) {
+            double dist = match.distance;
+            if (dist < minDist) minDist = dist;
+            if (dist > maxDist) maxDist = dist;
+        }
+
+        LinkedList<DMatch> goodMatchesList = new LinkedList<>();
+        for (DMatch match : matchList) {
+            if (match.distance <= Math.max(2 * minDist, 30.0)) {
+                goodMatchesList.add(match);
+            }
+        }
+
+        // 提取好的匹配点
+        List<KeyPoint> keypoints1List = keypoints1.toList();
+        List<KeyPoint> keypoints2List = keypoints2.toList();
+        LinkedList<Point> imgPoints1 = new LinkedList<>();
+        LinkedList<Point> imgPoints2 = new LinkedList<>();
+
+        for (DMatch goodMatch : goodMatchesList) {
+            imgPoints1.addLast(keypoints1List.get(goodMatch.queryIdx).pt);
+            imgPoints2.addLast(keypoints2List.get(goodMatch.trainIdx).pt);
+        }
+
+        MatOfPoint2f imgPoints1Mat = new MatOfPoint2f();
+        imgPoints1Mat.fromList(imgPoints1);
+        MatOfPoint2f imgPoints2Mat = new MatOfPoint2f();
+        imgPoints2Mat.fromList(imgPoints2);
+
+        // 计算单应性矩阵
+        Mat H = Calib3d.findHomography(imgPoints2Mat, imgPoints1Mat, Calib3d.RANSAC, 5);
+
+        // 透视变换
+        Mat result = new Mat();
+        Imgproc.warpPerspective(img2, result, H, new Size(img1.cols() + img2.cols(), img1.rows() + img2.rows()));
+
+        // 将第一张图像拷贝到结果图像上
+        Mat half = new Mat(result, new Rect(0, 0, img1.cols(), img1.rows()));
+        img1.copyTo(half);
+
+        // 将拼接结果转换为灰度图
+        Mat grayResult = new Mat();
+        Imgproc.cvtColor(result, grayResult, Imgproc.COLOR_BGR2GRAY);
+
+        // 找到实际图像区域的最小边界矩形
+        Mat mask = new Mat();
+        Core.inRange(grayResult, new Scalar(1), new Scalar(255), mask); // 生成二值掩码图像
+        List<MatOfPoint> contours = new ArrayList<>();
+        Imgproc.findContours(mask, contours, new Mat(), Imgproc.RETR_EXTERNAL, Imgproc.CHAIN_APPROX_SIMPLE);
+
+        // 手动计算边界矩形的联合区域
+        int minX = Integer.MAX_VALUE;
+        int minY = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE;
+        int maxY = Integer.MIN_VALUE;
+
+        for (MatOfPoint contour : contours) {
+            Rect rect = Imgproc.boundingRect(contour);
+            if (rect.x < minX) minX = rect.x;
+            if (rect.y < minY) minY = rect.y;
+            if (rect.x + rect.width > maxX) maxX = rect.x + rect.width;
+            if (rect.y + rect.height > maxY) maxY = rect.y + rect.height;
+        }
+
+        Rect boundingRect = new Rect(minX, minY, maxX - minX, maxY - minY);
+
+        // 裁剪掉黑色边框
+        Mat croppedResult = new Mat(result, boundingRect);
+
+        // 保存结果图像
+        Imgcodecs.imwrite(resultPath, croppedResult);
+
+        return true;
+    }
+
 
     /**
      * 灰度化人脸

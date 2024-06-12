@@ -81,4 +81,14 @@ public class OpenCVUtilsTest {
         Imgproc.threshold(difference, difference, 128, 255, Imgproc.THRESH_BINARY);
         Imgcodecs.imwrite("tdiff.jpg", difference);
     }
+
+    /**
+     * 将两张图像进行缝合，左侧图像和右侧图像有重叠的部分，合并起来生成新的图像.
+     */
+    // @Test
+    public void stitchImagesTest() {
+        OpenCVUtils.stitchImages("leftPart.jpg",
+                "rightPart.jpg",
+                "stitched.jpg");
+    }
 }
