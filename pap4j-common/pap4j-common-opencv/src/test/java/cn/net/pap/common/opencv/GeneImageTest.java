@@ -52,6 +52,14 @@ public class GeneImageTest {
     }
 
     // @Test
+    public void generateImageTest() {
+        String basePath = "";
+        for(int idx = 0; idx < 2000; idx++) {
+            generateImage(basePath + "\\dir\\", idx);
+        }
+    }
+
+    // @Test
     public void test() {
         Path sourceFilePath = Paths.get("");
         Path destinationFolderPath = Paths.get("");
