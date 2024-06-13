@@ -5,6 +5,7 @@ import org.opencv.core.*;
 import org.opencv.features2d.DescriptorMatcher;
 import org.opencv.features2d.ORB;
 import org.opencv.imgcodecs.Imgcodecs;
+import org.opencv.imgproc.CLAHE;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.objdetect.HOGDescriptor;
@@ -1135,6 +1136,78 @@ public class OpenCVUtils {
         return true;
     }
 
+    /**
+     * CLAHE（限制对比度自适应直方图均衡化）技术进行图像的色彩矫正
+     *
+     * @param imgPath 输入图像
+     * @param resultPath 输出图像
+     * @return 矫正后的图像
+     */
+    public static boolean correctColor(String imgPath, String resultPath) {
+        // 读取图像
+        Mat image = Imgcodecs.imread(imgPath);
+        // 检查图像是否读取成功
+        if (image.empty()) {
+            return false;
+        }
+        Mat labImage = new Mat();
+        // 转换到Lab颜色空间
+        Imgproc.cvtColor(image, labImage, Imgproc.COLOR_BGR2Lab);
+        // 拆分Lab通道
+        List<Mat> labPlanes = new ArrayList<>(3);
+        Core.split(labImage, labPlanes);
+        // 对L通道进行CLAHE均衡化
+        CLAHE clahe = Imgproc.createCLAHE();
+        clahe.setClipLimit(2.0);
+        Mat lChannel = labPlanes.get(0);
+        clahe.apply(lChannel, lChannel);
+        // 合并Lab通道
+        Core.merge(labPlanes, labImage);
+        // 转回BGR颜色空间
+        Mat correctedImage = new Mat();
+        Imgproc.cvtColor(labImage, correctedImage, Imgproc.COLOR_Lab2BGR);
+        // 保存结果图像
+        Imgcodecs.imwrite(resultPath, correctedImage);
+        return true;
+    }
+
+    /**
+     * "灰度世界" 白平衡算法
+     * @param imgPath
+     * @param resultPath
+     * @return
+     */
+    public static boolean whiteBalance(String imgPath, String resultPath) {
+        Mat image = Imgcodecs.imread(imgPath);
+        if (image.empty()) {
+            return false;
+        }
+
+        List<Mat> splitMat = new ArrayList<>();
+        Core.split(image, splitMat);
+
+        double meanB = Core.mean(splitMat.get(0)).val[0];
+        double meanG = Core.mean(splitMat.get(1)).val[0];
+        double meanR = Core.mean(splitMat.get(2)).val[0];
+
+        double meanGray = (meanB + meanG + meanR) / 3.0;
+        double kB = meanGray / meanB;
+        double kG = meanGray / meanG;
+        double kR = meanGray / meanR;
+
+        Core.multiply(splitMat.get(0), new Scalar(kB), splitMat.get(0));
+        Core.multiply(splitMat.get(1), new Scalar(kG), splitMat.get(1));
+        Core.multiply(splitMat.get(2), new Scalar(kR), splitMat.get(2));
+
+        Mat balancedImage = new Mat();
+        Core.merge(splitMat, balancedImage);
+
+        if (!Imgcodecs.imwrite(resultPath, balancedImage)) {
+            return false;
+        }
+
+        return true;
+    }
 
     /**
      * 灰度化人脸
