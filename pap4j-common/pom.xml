@@ -24,6 +24,7 @@
         <module>pap4j-common-pdf</module>
         <module>pap4j-common-docx</module>
         <module>pap4j-common-file</module>
+        <module>pap4j-common-boofcv</module>
     </modules>
 
     <properties>
