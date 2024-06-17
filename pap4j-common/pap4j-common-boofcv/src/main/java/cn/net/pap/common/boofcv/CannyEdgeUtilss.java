@@ -216,12 +216,14 @@ public class CannyEdgeUtilss {
                 if (checkOrientation(startX, startY, endX, endY).equals("horizon")) {
                     // 水平线
                     if (startY < originImgHeight * 0.4 && endY < originImgHeight * 0.4) {
-                        // 这里说明是下侧的垂直线
+                        // 这里说明是下侧的水平线
                         minYList.add(Math.max(startY, endY));
                     }
                     if (startY > originImgHeight * 0.6 && endY > originImgHeight * 0.6) {
-                        // 这里说明是下侧的垂直线
+                        // 这里说明是上侧的水平线
                         maxYList.add(Math.min(startY, endY));
+                        // 上册的水平线，最右侧的x坐标有可能是一条线的最右侧的点。这里可以将他添加进来。
+                        maxXList.add(Math.max(startX, endX));
                     }
                 }
             }
@@ -243,6 +245,13 @@ public class CannyEdgeUtilss {
     private static String checkOrientation(Double x1, Double y1, Double x2, Double y2) {
         Double dx = Math.abs(x2 - x1);
         Double dy = Math.abs(y2 - y1);
+        if(dx != 0 && dy == 0) {
+            return "horizon";
+        }
+        if(dx == 0 && dy != 0) {
+            return "vertical";
+        }
+
         Double max = Math.max(dx, dy);
 
         double ratio = (double) dx / max;
