@@ -245,10 +245,10 @@ public class CannyEdgeUtilss {
     private static String checkOrientation(Double x1, Double y1, Double x2, Double y2) {
         Double dx = Math.abs(x2 - x1);
         Double dy = Math.abs(y2 - y1);
-        if(dx != 0 && dy == 0) {
+        if (dx != 0 && dy == 0) {
             return "horizon";
         }
-        if(dx == 0 && dy != 0) {
+        if (dx == 0 && dy != 0) {
             return "vertical";
         }
 
@@ -297,4 +297,26 @@ public class CannyEdgeUtilss {
         return min;
     }
 
+    /**
+     * 计算两点间斜率
+     *
+     * @param x1
+     * @param y1
+     * @param x2
+     * @param y2
+     * @return
+     */
+    private static double getAngleByPoint(Double x1, Double y1, Double x2, Double y2) {
+        // 计算斜率
+        double slope = (y2 - y1) / (x2 - x1);
+        if (x2 - x1 == 0) {
+            // 如果分母为零，直线垂直于x轴
+            double angleInDegrees = (y2 > y1) ? 0 : 0;
+            return angleInDegrees;
+        } else {
+            // 计算倾斜角度（以度为单位）
+            double angleInDegrees = Math.atan(slope) * (180 / Math.PI);
+            return angleInDegrees;
+        }
+    }
 }
