@@ -2,6 +2,7 @@ package cn.net.pap.common.boofcv;
 
 import boofcv.abst.feature.detect.line.DetectLine;
 import boofcv.alg.filter.blur.GBlurImageOps;
+import boofcv.factory.feature.detect.line.ConfigHoughFootSubimage;
 import boofcv.factory.feature.detect.line.ConfigHoughGradient;
 import boofcv.factory.feature.detect.line.FactoryDetectLine;
 import boofcv.io.image.ConvertBufferedImage;
@@ -22,10 +23,11 @@ public class DetectLineUtilss {
      *
      * @param bufferedImage
      * @param maxLines
+     * @param type 1=houghLinePolar  2=houghLineFoot  3=houghLineFootSub
      * @return
      */
-    public static Double getAngleByHoughLines(BufferedImage bufferedImage, int maxLines) {
-        List<Double> anglesByHoughLines = getAnglesByHoughLines(bufferedImage, maxLines);
+    public static Double getAngleByHoughLines(BufferedImage bufferedImage, int maxLines, Integer type) {
+        List<Double> anglesByHoughLines = getAnglesByHoughLines(bufferedImage, maxLines, type);
         Double angle = getAngle(anglesByHoughLines);
         return angle;
     }
@@ -35,15 +37,28 @@ public class DetectLineUtilss {
      *
      * @param bufferedImage
      * @param maxLines
+     * @param type 1=houghLinePolar  2=houghLineFoot  3=houghLineFootSub
      * @return
      */
-    private static List<Double> getAnglesByHoughLines(BufferedImage bufferedImage, int maxLines) {
+    private static List<Double> getAnglesByHoughLines(BufferedImage bufferedImage, int maxLines, Integer type) {
         GrayU8 input = ConvertBufferedImage.convertFromSingle(bufferedImage, null, GrayU8.class);
         GrayU8 blurred = input.createSameShape();
         GBlurImageOps.gaussian(input, blurred, 0, 5, null);
 
-        DetectLine<GrayU8> detectorPolar = FactoryDetectLine.houghLinePolar(
-                new ConfigHoughGradient(maxLines), null, GrayU8.class);
+        DetectLine<GrayU8> detectorPolar = null;
+        if(type == 1) {
+            detectorPolar = FactoryDetectLine.houghLinePolar(
+                    new ConfigHoughGradient(maxLines), null, GrayU8.class);
+        }
+        if(type == 2) {
+            detectorPolar = FactoryDetectLine.houghLineFoot(
+                    new ConfigHoughGradient(maxLines), null, GrayU8.class);
+        }
+        if(type == 3) {
+            detectorPolar = FactoryDetectLine.houghLineFootSub(
+                    new ConfigHoughFootSubimage(3, 8, 5, 25, maxLines, 2, 2), GrayU8.class);
+        }
+
 
         List<LineParametric2D_F32> lineParametric2D_f32s = detectorPolar.detect(blurred);
         List<Double> angles = calculateAngles(lineParametric2D_f32s);

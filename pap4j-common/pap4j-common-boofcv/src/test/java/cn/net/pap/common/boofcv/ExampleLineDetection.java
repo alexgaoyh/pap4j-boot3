@@ -32,12 +32,24 @@ import java.util.List;
 public class ExampleLineDetection {
 
     /**
-     * 获得图像的倾斜角度.
+     * 获得图像的倾斜角度. 针对原图的情况
+     * 可以使用当前类文件的 main 方法进行可视化的图像霍夫变换直线的展示
      */
     @Test
-    public void getAngles() {
+    public void getAnglesByOriginPic() {
         BufferedImage bufferedImage = UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\test1.jpg"));
-        Double angle = DetectLineUtilss.getAngleByHoughLines(bufferedImage, 10);
+        Double angle = DetectLineUtilss.getAngleByHoughLines(bufferedImage, 10, 1);
+        System.out.println(angle);
+    }
+
+    /**
+     * 针对已经进行 FourierTransform 傅里叶变换后的图像，去获得倾斜角度
+     * 可以使用当前类文件的 main 方法进行可视化的图像霍夫变换直线的展示
+     */
+    @Test
+    public void getAnglesByFourierTransformPic() {
+        BufferedImage bufferedImage = UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\test-out.jpg"));
+        Double angle = DetectLineUtilss.getAngleByHoughLines(bufferedImage, 10, 2);
         System.out.println(angle);
     }
 
