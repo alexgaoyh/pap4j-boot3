@@ -18,12 +18,6 @@
     </properties>
 
     <dependencies>
-        <!-- mvn install:install-file -Dfile=“C:\Users\86181\Desktop\opencv-401.jar” -DgroupId=org.opencv -DartifactId=opencv-401 -Dversion=401 -Dpackaging=jar -->
-        <dependency>
-            <groupId>org.opencv</groupId>
-            <artifactId>opencv-401</artifactId>
-            <version>401</version>
-        </dependency>
 
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -41,6 +35,15 @@
             <groupId>org.apache.lucene</groupId>
             <artifactId>lucene-core</artifactId>
             <version>9.10.0</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- https://mvnrepository.com/artifact/org.apache.sanselan/sanselan -->
+        <!-- get DPI in image -->
+        <dependency>
+            <groupId>org.apache.sanselan</groupId>
+            <artifactId>sanselan</artifactId>
+            <version>0.97-incubator</version>
             <scope>test</scope>
         </dependency>
 
@@ -78,4 +81,37 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <!-- different dependencies by diff profile -->
+        <profile>
+            <id>dev</id>
+            <activation>
+                <!-- default active -->
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <profiles.active>dev</profiles.active>
+            </properties>
+            <dependencies>
+                <!-- mvn install:install-file -Dfile=“C:\Users\86181\Desktop\opencv-401.jar” -DgroupId=org.opencv -DartifactId=opencv-401 -Dversion=401 -Dpackaging=jar -->
+                <dependency>
+                    <groupId>org.opencv</groupId>
+                    <artifactId>opencv-401</artifactId>
+                    <version>401</version>
+                </dependency>
+            </dependencies>
+        </profile>
+        <profile>
+            <id>prod</id>
+            <properties>
+                <profiles.active>prod</profiles.active>
+            </properties>
+            <dependencies>
+                <!-- if using in linux -->
+
+            </dependencies>
+        </profile>
+    </profiles>
+
 </project>

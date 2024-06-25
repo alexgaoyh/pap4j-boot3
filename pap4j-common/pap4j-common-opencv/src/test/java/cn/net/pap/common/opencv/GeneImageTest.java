@@ -1,11 +1,13 @@
 package cn.net.pap.common.opencv;
 
+import cn.net.pap.common.opencv.jpeg.JpegDPIProcessor;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -80,6 +82,56 @@ public class GeneImageTest {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    @Test
+    public void geneAndCheckImageTest() throws Exception {
+        createImageWithDPI("C:\\Users\\86181\\Desktop\\geneAndCheckImageTest.jpg", 1, 300);
+        Integer dpi = getDPI("C:\\Users\\86181\\Desktop\\geneAndCheckImageTest.jpg");
+        System.out.println(dpi);
+    }
+
+    /**
+     * 引入 org.apache.sanselan.sanselan 后，获得原始图像的 DPI
+     * @param imageAbsPath
+     * @return
+     * @throws Exception
+     */
+    private static Integer getDPI(String imageAbsPath) throws Exception {
+        org.apache.sanselan.ImageInfo imageInfo = org.apache.sanselan.Sanselan.getImageInfo(new File(imageAbsPath));
+        int physicalWidthDpi = imageInfo.getPhysicalWidthDpi();
+        int physicalHeightDpi = imageInfo.getPhysicalHeightDpi();
+        return Math.max(physicalWidthDpi, physicalHeightDpi);
+    }
+
+    private static void createImageWithDPI(String imagePath, int number, int dpi) throws Exception {
+        int width = 800;
+        int height = 800;
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        Graphics2D g2d = image.createGraphics();
+
+        // 设置背景颜色
+        g2d.setColor(Color.WHITE);
+        g2d.fillRect(0, 0, width, height);
+
+        // 设置文本颜色
+        g2d.setColor(Color.BLACK);
+        Font font = new Font("Arial", Font.PLAIN, 500); // 设置字体和大小
+        g2d.setFont(font);
+        FontMetrics fm = g2d.getFontMetrics();
+        int x = (width - fm.stringWidth(String.valueOf(number))) / 2; // 计算文本的水平位置
+        int y = (height + fm.getAscent() - fm.getDescent()) / 2; // 计算文本的垂直位置
+        g2d.drawString(String.valueOf(number), x, y); // 绘制文本
+
+        g2d.dispose(); // 释放资源
+
+        JpegDPIProcessor processor = new JpegDPIProcessor();
+        byte[] img = processor.setDPI(image,dpi);
+        //将img字节写到本地
+        try (FileOutputStream outputStream = new FileOutputStream(imagePath);){
+            outputStream.write(img);
         }
     }
 
