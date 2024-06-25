@@ -16,6 +16,7 @@ import boofcv.struct.feature.AssociatedTripleIndex;
 import boofcv.struct.feature.TupleDesc_F64;
 import boofcv.struct.geo.AssociatedTriple;
 import boofcv.struct.image.GrayU8;
+import cn.net.pap.common.boofcv.dto.AssociatedTripleDTO;
 import georegression.struct.point.Point2D_F64;
 import org.ddogleg.struct.DogArray;
 import org.ddogleg.struct.DogArray_I32;
@@ -25,7 +26,11 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.*;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 图像拼接，相似点
@@ -35,7 +40,7 @@ public class AssociateThreeViewUtil {
 
     /**
      * 合并两周图像
-     * todo 不完备，后续需要根据图像的映射点的坐标的情况，处理不同情况下的图像合并。
+     * todo 不完备，此方法需要保证图像的比例，并且仅测试了左右拼接，没有旋转映射等操作.
      * @param image1Path
      * @param image2Path
      * @param outputPath
@@ -47,26 +52,47 @@ public class AssociateThreeViewUtil {
             BufferedImage image1 = ImageIO.read(new File(image1Path));
             BufferedImage image2 = ImageIO.read(new File(image2Path));
 
+            // 定义新图像的大小为原始图像大小和的2倍，原因在于在合并的时候无法确定两张图像的相对位置
+            int totalWidth = (image1.getWidth() + image2.getWidth()) * 2;
+            int totalHeight = (image1.getHeight() + image2.getHeight()) * 2;
+
             // 创建一个合并后的图像
-            BufferedImage mergedImage = new BufferedImage(image1.getWidth() + image2.getWidth(),
-                    image1.getHeight() + image2.getHeight(),
-                    BufferedImage.TYPE_INT_RGB);
+            BufferedImage mergedImage = new BufferedImage(totalWidth, totalHeight, BufferedImage.TYPE_INT_RGB);
 
             // 将第一张图像绘制到合并后的图像中
             Graphics2D g2d = mergedImage.createGraphics();
-            g2d.drawImage(image1, 0, 0,  image1.getWidth(), image1.getHeight(), null);
+            g2d.drawImage(image1, (totalWidth - image1.getWidth()) / 2, (totalHeight - image1.getHeight()) / 2,  image1.getWidth(), image1.getHeight(), null);
 
-            // 根据映射关系绘制第二张图像的对应部分到合并后的图像中
-            for (AssociatedTriple mapping : mappings.toList()) {
-                // 计算映射点在合并后图像中的位置
+            // 这里是计算获得的图像特征点，但是获得的图像特征点有可能出现噪点，所以需要额外的处理，把两个点之间的相对距离计算出来，出现次数多的点是真正的相似点，其他点是噪点，需要忽略
+            List<AssociatedTriple> geneAssociatedTripleFilterList = new ArrayList<>();
+            List<AssociatedTriple> geneAssociatedTripleList = mappings.toList();
+            List<AssociatedTripleDTO> associatedTripleDTOList = new ArrayList<>();
+            for(AssociatedTriple mapping : geneAssociatedTripleList) {
                 int x1 = (int) Math.round(mapping.p1.x);
                 int y1 = (int) Math.round(mapping.p1.y);
                 int x2 = (int) Math.round(mapping.p2.x);
                 int y2 = (int) Math.round(mapping.p2.y);
+                associatedTripleDTOList.add(new AssociatedTripleDTO(x2 - x1, y2 - y1, mapping));
+            }
+            Map<String, List<AssociatedTripleDTO>> combinedDTOMap = associatedTripleDTOList.stream()
+                    .collect(Collectors.groupingBy(person -> person.getxDiffValue() + ":" + person.getyDiffValue(), Collectors.toList()));
+
+            Optional<Map.Entry<String, List<AssociatedTripleDTO>>> largestEntry = combinedDTOMap.entrySet().stream()
+                    .max(Map.Entry.comparingByValue(Comparator.comparingInt(List::size)));
+
+            // 根据映射关系绘制第二张图像的对应部分到合并后的图像中
+            for (AssociatedTripleDTO mapping : largestEntry.get().getValue()) {
+                // 计算映射点在合并后图像中的位置
+                int x1 = (int) Math.round(mapping.getAssociatedTriple().p1.x);
+                int y1 = (int) Math.round(mapping.getAssociatedTriple().p1.y);
+                int x2 = (int) Math.round(mapping.getAssociatedTriple().p2.x);
+                int y2 = (int) Math.round(mapping.getAssociatedTriple().p2.y);
 
                 // 绘制第二张图像的部分到合并后的图像中
-                boolean b = g2d.drawImage(image2, x1 - x2, y1 - y2, image2.getWidth(), image2.getHeight(), null);
-                System.out.println(b);
+                boolean b = g2d.drawImage(image2,
+                        x1 - x2 + (totalWidth - image1.getWidth()) / 2,
+                        y1 - y2 + (totalHeight - image1.getHeight()) / 2,
+                        image2.getWidth(), image2.getHeight(), null);
             }
             g2d.dispose();
 
