@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @RestController
@@ -26,6 +27,18 @@ public class ProguardController {
     @GetMapping("/searchAllByProguardName")
     public List<Proguard> searchAllByProguardName(@RequestParam(name = "proguardName") String proguardName) {
         return proguardService.searchAllByProguardName(proguardName);
+    }
+
+    @GetMapping("/saveAllAndFlush")
+    public List<Proguard> saveAllAndFlush() {
+        List<Proguard> proguards = new ArrayList<>();
+        for(int idx = 0; idx < 100; idx++) {
+            Proguard proguard = new Proguard();
+            proguard.setProguardId(System.currentTimeMillis());
+            proguard.setProguardName(proguard.getProguardId() + "");
+            proguards.add(proguard);
+        }
+        return proguardService.saveAllAndFlush(proguards);
     }
 
 }

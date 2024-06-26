@@ -10,4 +10,10 @@ public interface IProguardService {
 
     Proguard saveAndFlush(Proguard entity);
 
+    /**
+     * 批量保存，返回值含主键
+     * @param proguards
+     * @return
+     */
+    List<Proguard> saveAllAndFlush(List<Proguard> proguards);
 }

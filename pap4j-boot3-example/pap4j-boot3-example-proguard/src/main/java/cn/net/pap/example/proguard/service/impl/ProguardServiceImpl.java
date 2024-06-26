@@ -25,4 +25,9 @@ public class ProguardServiceImpl implements IProguardService {
         Proguard proguard = proguardRepository.saveAndFlush(entity);
         return proguard;
     }
+
+    @Override
+    public List<Proguard> saveAllAndFlush(List<Proguard> proguards) {
+        return proguardRepository.saveAllAndFlush(proguards);
+    }
 }
