@@ -21,6 +21,7 @@
         <module>pap4j-boot3-starters-gStore</module>
         <module>pap4j-boot3-starters-milvus</module>
         <module>pap4j-boot3-starters-neo4j</module>
+        <module>pap4j-boot3-starters-logback</module>
     </modules>
 
     <properties>
