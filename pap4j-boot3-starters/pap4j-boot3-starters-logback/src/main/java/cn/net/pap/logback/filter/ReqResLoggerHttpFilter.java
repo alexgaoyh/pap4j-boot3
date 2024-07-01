@@ -69,7 +69,8 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
     private boolean shouldSkip (HttpServletRequest request) {
         if (request.getRequestURI().contains("/upload") ||
                 request.getRequestURI().contains("/download") ||
-                request.getRequestURI().contains("/static")) {
+                request.getRequestURI().contains("/static") ||
+                request.getRequestURI().endsWith(".ico")) {
             // 跳过 上传 下载 静态 等
             return true;
         } else {

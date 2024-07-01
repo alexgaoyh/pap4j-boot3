@@ -1,5 +1,6 @@
 package cn.net.pap.logback;
 
+import ch.qos.logback.classic.AsyncAppender;
 import ch.qos.logback.classic.LoggerContext;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
@@ -61,7 +62,16 @@ public class PapLogbackLoggerFactory {
         consoleAppender.setEncoder(consoleEncoder);
         consoleAppender.start();
 
-        logger.addAppender(rollingFileAppender);
+        // AsyncAppender
+        AsyncAppender asyncAppender = new AsyncAppender();
+        asyncAppender.setContext(context);
+        asyncAppender.setName("asyncAppender");
+        asyncAppender.addAppender(rollingFileAppender);
+        asyncAppender.setIncludeCallerData(true); // 设置 includeCallerData 为 true
+        asyncAppender.start();
+
+        // Adding appenders to logger
+        logger.addAppender(asyncAppender);
         logger.addAppender(consoleAppender);
         logger.setAdditive(false);
 
