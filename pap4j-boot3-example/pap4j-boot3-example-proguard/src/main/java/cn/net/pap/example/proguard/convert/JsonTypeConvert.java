@@ -46,8 +46,8 @@ public class JsonTypeConvert implements UserType<Object> {
             return null;
         }
         try {
-            // 注意这里存的数据被双引号包裹，并且包括 /， 都需要把他移除掉.
-            return new ObjectMapper().readValue(cellContent.substring(1, cellContent.length() - 1).replaceAll("\\\\", ""), Object.class);
+            // 注意这里存的数据被双引号包裹，包括 /，需要把他移除掉.
+            return new ObjectMapper().readValue(cellContent.replaceAll("^\"|\"$", "").replaceAll("\\\\", ""), Object.class);
         } catch (Exception ex) {
             throw new RuntimeException("Failed to convert String to Object: " + ex.getMessage(), ex);
         }
