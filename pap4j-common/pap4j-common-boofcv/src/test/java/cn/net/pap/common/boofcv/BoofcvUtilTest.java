@@ -1,6 +1,10 @@
 package cn.net.pap.common.boofcv;
 
+import boofcv.alg.misc.ImageMiscOps;
+import boofcv.io.UtilIO;
+import boofcv.io.image.ConvertBufferedImage;
 import boofcv.io.image.UtilImageIO;
+import boofcv.struct.image.*;
 import org.junit.jupiter.api.Test;
 
 import java.awt.image.BufferedImage;
@@ -18,6 +22,17 @@ public class BoofcvUtilTest {
         // Adjust contrast
         BufferedImage contrastedImage = BoofcvUtil.adjustContrast(inputImage, 15f);
         UtilImageIO.saveImage(contrastedImage, "contrasted_origin.jpg");
+    }
+
+    @Test
+    public void rotateTest() {
+        BufferedImage input = UtilImageIO.loadImage(UtilIO.pathExample("input.jpg"));
+        InterleavedF32 imageInterleaved = new InterleavedF32();
+        ConvertBufferedImage.convertFromInterleaved(input, imageInterleaved, true);
+        // 旋转
+        InterleavedF32 interleavedF32 = ImageMiscOps.rotateCW(imageInterleaved, null);
+        UtilImageIO.saveImage(interleavedF32, "output.jpg");
+
     }
 
 }
