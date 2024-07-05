@@ -10,7 +10,6 @@
     </parent>
 
     <artifactId>pap4j-common-excel</artifactId>
-    <version>0.0.1</version>
     <name>pap4j-common-excel</name>
 
     <description>pap4j-common-excel</description>

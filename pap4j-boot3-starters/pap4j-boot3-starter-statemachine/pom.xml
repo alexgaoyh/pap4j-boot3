@@ -6,7 +6,6 @@
         <groupId>cn.net.pap</groupId>
         <artifactId>pap4j-boot3</artifactId>
         <version>0.0.1</version>
-        <relativePath>../../pom.xml</relativePath>
     </parent>
 
     <artifactId>pap4j-boot3-starter-statemachine</artifactId>
