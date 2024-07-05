@@ -91,4 +91,33 @@ public class OpenCVUtilsTest {
                 "rightPart.jpg",
                 "stitched.jpg");
     }
+
+    // @Test
+    public void rotate1Test() {
+        // 读取图像
+        Mat src = Imgcodecs.imread("input.jpg");
+        // 旋转角度 非90度的倍数
+        double angle = 45.0;
+        // 获取图像中心
+        org.opencv.core.Point center = new org.opencv.core.Point(src.width() / 2.0, src.height() / 2.0);
+        // 生成旋转矩阵
+        Mat rotationMatrix = Imgproc.getRotationMatrix2D(center, angle, 1.0);
+        // 计算旋转后的图像尺寸
+        org.opencv.core.Size size = new org.opencv.core.Size(src.width(), src.height());
+        // 进行仿射变换（旋转），使用双三次插值
+        Mat rotated = new Mat();
+        Imgproc.warpAffine(src, rotated, rotationMatrix, size, Imgproc.INTER_CUBIC);
+        // 保存结果
+        Imgcodecs.imwrite("output.jpg", rotated);
+    }
+
+    // @Test
+    public void rotate2Test() {
+        Mat src = OpenCVUtils.imread("input.jpg");
+        Mat rotated = new Mat();
+        Core.transpose(src, rotated);
+        // 第三个参数为 1、-1、0，对应不同的90倍旋转的参数。
+        Core.flip(rotated, rotated, 1);
+        Imgcodecs.imwrite("out.jpg", rotated);
+    }
 }
