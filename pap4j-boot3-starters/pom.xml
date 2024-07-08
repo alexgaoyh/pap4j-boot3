@@ -23,6 +23,7 @@
         <module>pap4j-boot3-starters-neo4j</module>
         <module>pap4j-boot3-starters-logback</module>
         <module>pap4j-boot3-starters-task</module>
+        <module>pap4j-boot3-starters-quartz</module>
     </modules>
 
     <properties>
