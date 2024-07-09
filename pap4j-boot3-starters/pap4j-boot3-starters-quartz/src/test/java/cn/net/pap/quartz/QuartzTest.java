@@ -50,6 +50,12 @@ public class QuartzTest {
 
         Thread.sleep(6000);
 
+        QuartzUtils.pauseScheduleJob(scheduler, "pap", "pap");
+        QuartzUtils.resumeScheduleJob(scheduler, "pap", "pap");
+        QuartzUtils.deleteScheduleJob(scheduler, "pap", "pap");
+
+        Thread.sleep(6000);
+
         ResultSet resultSet = dataSource.getConnection().prepareStatement("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA = 'PUBLIC'").executeQuery();
         while (resultSet.next()) {
             System.out.println(resultSet.getString("TABLE_NAME"));

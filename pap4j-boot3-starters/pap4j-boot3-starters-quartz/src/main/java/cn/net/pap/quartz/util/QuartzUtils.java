@@ -49,4 +49,42 @@ public class QuartzUtils {
         scheduler.scheduleJob(jobDetail, trigger);
     }
 
+    /**
+     * 删除
+     * @param scheduler
+     * @param jobId
+     * @param jobGroup
+     * @throws SchedulerException
+     */
+    public static void deleteScheduleJob(Scheduler scheduler,
+                                         String jobId,
+                                         String jobGroup) throws SchedulerException {
+        scheduler.deleteJob(JobKey.jobKey(jobId, jobGroup));
+    }
+
+    /**
+     * 暂停
+     * @param scheduler
+     * @param jobId
+     * @param jobGroup
+     * @throws SchedulerException
+     */
+    public static void pauseScheduleJob(Scheduler scheduler,
+                                         String jobId,
+                                         String jobGroup) throws SchedulerException {
+        scheduler.pauseJob(JobKey.jobKey(jobId, jobGroup));
+    }
+
+    /**
+     * 恢复
+     * @param scheduler
+     * @param jobId
+     * @param jobGroup
+     * @throws SchedulerException
+     */
+    public static void resumeScheduleJob(Scheduler scheduler,
+                                         String jobId,
+                                         String jobGroup) throws SchedulerException {
+        scheduler.resumeJob(JobKey.jobKey(jobId, jobGroup));
+    }
 }
