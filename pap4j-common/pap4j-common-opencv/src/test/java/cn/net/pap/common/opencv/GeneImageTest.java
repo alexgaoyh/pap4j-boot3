@@ -21,9 +21,9 @@ public class GeneImageTest {
      * @param fileDirPath
      * @param number
      */
-    private static void generateImage(String fileDirPath, int number) {
-        int width = 8000; // 图片宽度
-        int height = 8000; // 图片高度
+    private static void generateImage(String fileDirPath, int number, String fileNamePrefix) {
+        int width = 10; // 图片宽度
+        int height = 10; // 图片高度
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = image.createGraphics();
 
@@ -33,7 +33,7 @@ public class GeneImageTest {
 
         // 设置文本颜色
         g2d.setColor(Color.WHITE);
-        Font font = new Font("Arial", Font.PLAIN, 500); // 设置字体和大小
+        Font font = new Font("Arial", Font.PLAIN, 5); // 设置字体和大小
         g2d.setFont(font);
         FontMetrics fm = g2d.getFontMetrics();
         int x = (width - fm.stringWidth(String.valueOf(number))) / 2; // 计算文本的水平位置
@@ -44,7 +44,7 @@ public class GeneImageTest {
 
         try {
             // 将图片写入文件
-            String newFileName = String.format("%06d.jpg", number);
+            String newFileName = fileNamePrefix + "-" + String.format("%03d", number) + "-00.jpg";
             File file = new File(fileDirPath + newFileName);
             ImageIO.write(image, "jpg", file);
             System.out.println("Image " + number + " has been generated.");
@@ -53,12 +53,18 @@ public class GeneImageTest {
         }
     }
 
-    // @Test
+    @Test
     public void generateImageTest() {
         String basePath = "";
-        for(int idx = 0; idx < 2000; idx++) {
-            generateImage(basePath + "\\dir\\", idx);
+        for(int dirIdx = 0; dirIdx < 400; dirIdx++) {
+            String detailPath = "" + String.format("%04d", dirIdx);
+            String basePath2 = basePath + detailPath;
+            new File(basePath2).mkdirs();
+            for(int idx = 0; idx < 230; idx++) {
+                generateImage(basePath2 + "\\", idx, detailPath);
+            }
         }
+
     }
 
     // @Test
