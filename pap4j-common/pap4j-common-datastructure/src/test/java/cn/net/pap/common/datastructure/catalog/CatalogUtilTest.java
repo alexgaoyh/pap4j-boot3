@@ -12,21 +12,22 @@ public class CatalogUtilTest {
     @Test
     public void convert(){
         List<CatalogDTO> catalogDTOList = new ArrayList<>();
-        catalogDTOList.add(new CatalogDTO("1", "目录一"));
-        catalogDTOList.add(new CatalogDTO("1.1", "目录二"));
-        catalogDTOList.add(new CatalogDTO("1.1.1", "目录三"));
-        catalogDTOList.add(new CatalogDTO("1.1.2", "目录三"));
-        catalogDTOList.add(new CatalogDTO("1.2", "目录二"));
-        catalogDTOList.add(new CatalogDTO("1.2.1", "目录三"));
-        catalogDTOList.add(new CatalogDTO("1.2.2", "目录三"));
-        catalogDTOList.add(new CatalogDTO("1.2.2.1", "目录四"));
-        catalogDTOList.add(new CatalogDTO("2", "目录一"));
-        catalogDTOList.add(new CatalogDTO("2.1", "目录二"));
-        catalogDTOList.add(new CatalogDTO("2.1.1", "目录三"));
-        catalogDTOList.add(new CatalogDTO("2.1.2", "目录三"));
-        catalogDTOList.add(new CatalogDTO("2.2", "目录二"));
-        catalogDTOList.add(new CatalogDTO("2.2.1", "目录三"));
-        catalogDTOList.add(new CatalogDTO("2.2.2", "目录三"));
+        catalogDTOList.add(new CatalogDTO("w", "目录一"));
+        catalogDTOList.add(new CatalogDTO("w1", "目录一"));
+        catalogDTOList.add(new CatalogDTO("f", "目录二"));
+        catalogDTOList.add(new CatalogDTO("e", "目录三"));
+        catalogDTOList.add(new CatalogDTO("v", "目录三"));
+        catalogDTOList.add(new CatalogDTO("t", "目录二"));
+        catalogDTOList.add(new CatalogDTO("b", "目录三"));
+        catalogDTOList.add(new CatalogDTO("aa", "目录三"));
+        catalogDTOList.add(new CatalogDTO("aaa", "目录四"));
+        catalogDTOList.add(new CatalogDTO("z", "目录一"));
+        catalogDTOList.add(new CatalogDTO("x", "目录二"));
+        catalogDTOList.add(new CatalogDTO("c", "目录三"));
+        catalogDTOList.add(new CatalogDTO("v", "目录三"));
+        catalogDTOList.add(new CatalogDTO("b", "目录二"));
+        catalogDTOList.add(new CatalogDTO("n", "目录三"));
+        catalogDTOList.add(new CatalogDTO("m", "目录三"));
 
         List<CatalogTreeDTO> tree = CatalogUtil.buildCatalogTree(catalogDTOList);
         System.out.println(tree);

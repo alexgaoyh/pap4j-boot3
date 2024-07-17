@@ -3,10 +3,7 @@ package cn.net.pap.common.datastructure.catalog;
 import cn.net.pap.common.datastructure.catalog.dto.CatalogDTO;
 import cn.net.pap.common.datastructure.catalog.dto.CatalogTreeDTO;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class CatalogUtil {
 
@@ -25,15 +22,16 @@ public class CatalogUtil {
 
         for (CatalogDTO dto : catalogDTOList) {
             CatalogTreeDTO node = new CatalogTreeDTO(dto.getText(), dto.getType());
-            map.put(dto.getText(), node);
+            map.put(dto.getType(), node);
 
             if (TYPE_LEVEL.get(dto.getType()) == 1) {
                 roots.add(node);
             } else {
-                String parentText = findParent(map, dto.getText(), dto.getType());
-                CatalogTreeDTO parent = map.get(parentText);
+                CatalogTreeDTO parent = findParent(map, dto);
                 if (parent != null) {
                     parent.addChild(node);
+                } else {
+                    roots.add(node);
                 }
             }
         }
@@ -41,19 +39,18 @@ public class CatalogUtil {
         return roots;
     }
 
-    private static String findParent(Map<String, CatalogTreeDTO> map, String text, String type) {
-        int level = TYPE_LEVEL.get(type) - 1;
-        while (level > 0) {
-            text = text.substring(0, text.lastIndexOf('.'));
-            String parentType = getTypeByLevel(level);
-            CatalogTreeDTO potentialParent = map.get(text);
-            if (potentialParent != null && potentialParent.getType().equals(parentType)) {
-                break;
-            }
-            level--;
+    private static CatalogTreeDTO findParent(Map<String, CatalogTreeDTO> map, CatalogDTO dto) {
+        int currentLevel = TYPE_LEVEL.get(dto.getType()) - 1;
+
+        while (currentLevel > 0) {
+            String parentType = getTypeByLevel(currentLevel);
+            CatalogTreeDTO potentialParent = map.get(parentType);
+            return potentialParent;
         }
-        return text;
+
+        return null;
     }
+
 
     private static String getTypeByLevel(int level) {
         for (Map.Entry<String, Integer> entry : TYPE_LEVEL.entrySet()) {
@@ -63,6 +60,5 @@ public class CatalogUtil {
         }
         return null;
     }
-
 
 }
