@@ -148,8 +148,8 @@ public class GeneImageTest {
      */
     public static void generateTextImage(String filePath, String chineseCharacter) {
         // Image dimensions
-        int width = 200;
-        int height = 200;
+        int width = 100;
+        int height = 100;
 
         // Create a buffered image in which to draw
         BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
@@ -162,7 +162,7 @@ public class GeneImageTest {
         g2d.fillRect(0, 0, width, height);
 
         // Set the font and color
-        g2d.setFont(new Font("Serif", Font.BOLD, 100));
+        g2d.setFont(new Font("Serif", Font.BOLD, 50));
         g2d.setColor(Color.BLACK);
 
         // Get font metrics to calculate the positioning of the text
@@ -191,8 +191,13 @@ public class GeneImageTest {
     // @Test
     public void geneTextTest() {
         String basePath = "C:\\Users\\86181\\Desktop\\dir";
+        int idx = 0;
         for(char c = '\u4E00'; c <= '\u9FA5'; c++) {
             generateTextImage(basePath + File.separator + String.valueOf(c) + ".jpg", String.valueOf(c));
+            idx++;
+            if(idx > 1000) {
+                break;
+            }
         }
 
     }
