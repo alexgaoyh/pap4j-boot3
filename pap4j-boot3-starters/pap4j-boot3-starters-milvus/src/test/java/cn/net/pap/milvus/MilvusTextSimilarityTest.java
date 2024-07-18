@@ -45,7 +45,7 @@ public class MilvusTextSimilarityTest {
     }
 
     @Test
-    public void insertAndSearch() throws Exception {
+    public void insert() throws Exception {
         MilvusClient milvusClient = milvusClient();
 
         // step
@@ -119,6 +119,14 @@ public class MilvusTextSimilarityTest {
         R<MutationResult> insertResponse = milvusClient.insert(insertParam);
         assertTrue(0 == insertResponse.getStatus());
 
+        milvusClient.close();
+    }
+
+
+    @Test
+    public void search() throws Exception {
+        MilvusClient milvusClient = milvusClient();
+
         List<String> outFields = Collections.singletonList("name");
         List<List<Float>> vectors = new ArrayList<>();
         List<Float> vector = searchVector();
@@ -143,8 +151,10 @@ public class MilvusTextSimilarityTest {
             System.out.println("Output field data for No." + i);
             System.out.println(wrapper.getFieldData("name", i));
         }
-
-        milvusClient.close();
+//        Search result of No.0
+//        [(ID: '一.jpg' Score: 0.0 OutputFields: [name:一.jpg]), (ID: '丶.jpg' Score: 132.0 OutputFields: [name:丶.jpg]), (ID: '冖.jpg' Score: 158.0 OutputFields: [name:冖.jpg]), (ID: '丷.jpg' Score: 165.0 OutputFields: [name:丷.jpg]), (ID: '冫.jpg' Score: 165.0 OutputFields: [name:冫.jpg]), (ID: '乛.jpg' Score: 177.0 OutputFields: [name:乛.jpg]), (ID: '亠.jpg' Score: 186.0 OutputFields: [name:亠.jpg]), (ID: '亻.jpg' Score: 193.0 OutputFields: [name:亻.jpg]), (ID: '丿.jpg' Score: 194.0 OutputFields: [name:丿.jpg]), (ID: '亅.jpg' Score: 197.0 OutputFields: [name:亅.jpg])]
+//        Output field data for No.0
+//        [一.jpg, 丶.jpg, 冖.jpg, 丷.jpg, 冫.jpg, 乛.jpg, 亠.jpg, 亻.jpg, 丿.jpg, 亅.jpg]
     }
 
 
