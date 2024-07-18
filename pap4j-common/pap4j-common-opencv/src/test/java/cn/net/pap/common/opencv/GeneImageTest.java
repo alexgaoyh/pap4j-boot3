@@ -141,4 +141,61 @@ public class GeneImageTest {
         }
     }
 
+    /**
+     * 文字生成
+     * @param filePath
+     * @param chineseCharacter
+     */
+    public static void generateTextImage(String filePath, String chineseCharacter) {
+        // Image dimensions
+        int width = 200;
+        int height = 200;
+
+        // Create a buffered image in which to draw
+        BufferedImage bufferedImage = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        // Create a graphics context on the buffered image
+        Graphics2D g2d = bufferedImage.createGraphics();
+
+        // Set background color to white and fill the image with it
+        g2d.setColor(Color.WHITE);
+        g2d.fillRect(0, 0, width, height);
+
+        // Set the font and color
+        g2d.setFont(new Font("Serif", Font.BOLD, 100));
+        g2d.setColor(Color.BLACK);
+
+        // Get font metrics to calculate the positioning of the text
+        FontMetrics fontMetrics = g2d.getFontMetrics();
+        int stringWidth = fontMetrics.stringWidth(chineseCharacter);
+        int stringHeight = fontMetrics.getAscent();
+
+        // Calculate the position to start drawing the text
+        int x = (width - stringWidth) / 2;
+        int y = (height + stringHeight) / 2;
+
+        // Draw the string
+        g2d.drawString(chineseCharacter, x, y);
+
+        // Dispose of the graphics context and release any system resources
+        g2d.dispose();
+
+        // Write the image to a file
+        try {
+            ImageIO.write(bufferedImage, "jpg", new File(filePath));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // @Test
+    public void geneTextTest() {
+        String basePath = "C:\\Users\\86181\\Desktop\\dir";
+        // 所有汉字
+        for(char c = '\u4E00'; c <= '\u9FA5'; c++) {
+            generateTextImage(basePath + File.separator + String.valueOf(c) + ".jpg", String.valueOf(c));
+        }
+
+    }
+
 }
