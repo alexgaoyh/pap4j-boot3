@@ -191,7 +191,6 @@ public class GeneImageTest {
     // @Test
     public void geneTextTest() {
         String basePath = "C:\\Users\\86181\\Desktop\\dir";
-        // 所有汉字
         for(char c = '\u4E00'; c <= '\u9FA5'; c++) {
             generateTextImage(basePath + File.separator + String.valueOf(c) + ".jpg", String.valueOf(c));
         }
