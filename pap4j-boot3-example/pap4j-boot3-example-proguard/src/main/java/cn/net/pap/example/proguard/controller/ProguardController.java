@@ -44,6 +44,13 @@ public class ProguardController {
         return proguardService.getProguardByProguardId(proguardId);
     }
 
+    @GetMapping("updateProguardByProguardId")
+    public Proguard updateProguardByProguardId(@RequestParam(name = "proguardId") Long proguardId) {
+        Proguard proguardByProguardId = proguardService.getProguardByProguardId(proguardId);
+        proguardByProguardId.setProguardName("update : " + System.currentTimeMillis());
+        return proguardService.updateProguardByProguardId(proguardByProguardId);
+    }
+
     @GetMapping("/searchAllByProguardName")
     public List<Proguard> searchAllByProguardName(@RequestParam(name = "proguardName") String proguardName) {
         return proguardService.searchAllByProguardName(proguardName);

@@ -35,4 +35,9 @@ public class ProguardServiceImpl implements IProguardService {
     public Proguard getProguardByProguardId(Long proguardId) {
         return proguardRepository.getProguardByProguardId(proguardId);
     }
+
+    @Override
+    public Proguard updateProguardByProguardId(Proguard proguard) {
+        return proguardRepository.saveAndFlush(proguard);
+    }
 }
