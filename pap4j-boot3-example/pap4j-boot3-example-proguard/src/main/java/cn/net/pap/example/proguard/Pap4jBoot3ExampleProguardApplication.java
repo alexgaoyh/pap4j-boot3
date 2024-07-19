@@ -7,7 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 
-@SpringBootApplication(scanBasePackages = "cn.net.pap.example")
+@SpringBootApplication(scanBasePackages = "cn.net.pap")
 public class Pap4jBoot3ExampleProguardApplication {
 
     public static class Pap4jCustomGenerator implements BeanNameGenerator {

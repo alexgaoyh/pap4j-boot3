@@ -11,4 +11,6 @@ public interface ProguardRepository extends JpaRepository<Proguard,Long>, JpaSpe
 
     List<Proguard> searchAllByProguardName(@Param("proguardName") String proguardName);
 
+    Proguard getProguardByProguardId(@Param("proguardId") Long proguardId);
+
 }

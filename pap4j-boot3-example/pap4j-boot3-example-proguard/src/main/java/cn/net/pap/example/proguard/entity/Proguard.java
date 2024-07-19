@@ -5,7 +5,9 @@ import jakarta.persistence.*;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.Type;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Entity
@@ -23,6 +25,10 @@ public class Proguard {
     @Type(value = JsonTypeConvert.class)
     @Column(nullable = false, columnDefinition = "json")
     private Map<String, Object> extMap = new HashMap<>();
+
+    @Type(value = JsonTypeConvert.class)
+    @Column(nullable = false, columnDefinition = "json")
+    private List<String> extList = new ArrayList<>();
 
     public Long getProguardId() {
         return proguardId;
@@ -48,4 +54,11 @@ public class Proguard {
         this.extMap = extMap;
     }
 
+    public List<String> getExtList() {
+        return extList;
+    }
+
+    public void setExtList(List<String> extList) {
+        this.extList = extList;
+    }
 }

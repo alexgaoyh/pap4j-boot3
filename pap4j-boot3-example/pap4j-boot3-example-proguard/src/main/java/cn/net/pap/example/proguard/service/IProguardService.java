@@ -16,4 +16,6 @@ public interface IProguardService {
      * @return
      */
     List<Proguard> saveAllAndFlush(List<Proguard> proguards);
+
+    Proguard getProguardByProguardId(Long proguardId);
 }

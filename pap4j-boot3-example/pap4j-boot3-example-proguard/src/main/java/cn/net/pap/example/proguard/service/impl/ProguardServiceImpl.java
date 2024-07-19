@@ -30,4 +30,9 @@ public class ProguardServiceImpl implements IProguardService {
     public List<Proguard> saveAllAndFlush(List<Proguard> proguards) {
         return proguardRepository.saveAllAndFlush(proguards);
     }
+
+    @Override
+    public Proguard getProguardByProguardId(Long proguardId) {
+        return proguardRepository.getProguardByProguardId(proguardId);
+    }
 }

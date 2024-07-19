@@ -29,7 +29,19 @@ public class ProguardController {
         extMap.put("threadId", Thread.currentThread().getName());
         proguard.setExtMap(extMap);
 
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+        extList.add("B");
+        extList.add("C");
+        extList.add("D");
+        proguard.setExtList(extList);
+
         return proguardService.saveAndFlush(proguard);
+    }
+
+    @GetMapping("getProguardByProguardId")
+    public Proguard getProguardByProguardId(@RequestParam(name = "proguardId") Long proguardId) {
+        return proguardService.getProguardByProguardId(proguardId);
     }
 
     @GetMapping("/searchAllByProguardName")
