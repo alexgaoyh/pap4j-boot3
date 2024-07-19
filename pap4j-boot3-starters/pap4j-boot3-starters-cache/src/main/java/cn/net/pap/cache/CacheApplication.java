@@ -39,12 +39,16 @@ public class CacheApplication {
     @Value("${spring.data.redis.password}")
     private String password;
 
+    @Value("${spring.data.redis.database}")
+    private Integer database;
+
     @Bean
     RedisConnectionFactory redisConnectionFactory() {
         RedisStandaloneConfiguration redisStandaloneConfiguration = new RedisStandaloneConfiguration();
         redisStandaloneConfiguration.setHostName(host);
         redisStandaloneConfiguration.setPort(port);
         redisStandaloneConfiguration.setPassword(password);
+        redisStandaloneConfiguration.setDatabase(database);
 
         LettuceClientConfiguration.LettuceClientConfigurationBuilder lettuceClientConfigurationBuilder =
                 LettuceClientConfiguration.builder();

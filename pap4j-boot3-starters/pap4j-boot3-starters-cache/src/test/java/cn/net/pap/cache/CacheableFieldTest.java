@@ -4,6 +4,7 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -22,10 +23,13 @@ public class CacheableFieldTest {
 
     @Test
     public void redisTemplateTest() {
-        boolean exposeConnection = redisTemplate.isExposeConnection();
-        if(exposeConnection) {
-            Object o = redisTemplate.opsForValue().get("test");
-            System.out.println(o);
+        String response = redisTemplate.execute((RedisConnection connection) -> {
+            return connection.ping();
+        });
+        if(response.equals("PONG")) {
+            redisTemplate.opsForValue().set("test", "test");
+            Boolean delete = redisTemplate.delete("test");
+            System.out.println(delete);
         } else {
             System.out.println("redisTemplate.isExposeConnection() == false");
         }
