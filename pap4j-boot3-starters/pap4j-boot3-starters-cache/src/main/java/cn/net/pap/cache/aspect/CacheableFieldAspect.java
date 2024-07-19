@@ -1,5 +1,6 @@
 package cn.net.pap.cache.aspect;
 
+import cn.net.pap.cache.annotation.CacheEvictField;
 import cn.net.pap.cache.annotation.CacheableField;
 import cn.net.pap.cache.annotation.CacheableType;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -19,6 +20,7 @@ import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -83,9 +85,7 @@ public class CacheableFieldAspect {
                         Map<Object, Object> map = (Map)extractField(result, type.field());
                         String mapKey = key + ":" + type.field();
                         if(map != null && !map.isEmpty()) {
-                            for(Map.Entry<Object, Object> entry : map.entrySet()) {
-                                cache.put(mapKey + ":" + entry.getKey(), entry.getValue());
-                            }
+                            cache.put(mapKey, map);
                         }
                     }
                     if(type.type().equals("list")) {
@@ -97,6 +97,48 @@ public class CacheableFieldAspect {
             }
         }
         return result;
+    }
+
+    @Around(value = "@annotation(cn.net.pap.cache.annotation.CacheEvictField)")
+    public Object cacheEvict(ProceedingJoinPoint pjp) throws Throwable {
+        MethodSignature signature = (MethodSignature) pjp.getSignature();
+        Method method = signature.getMethod();
+        CacheEvictField cacheEvictField = method.getAnnotation(CacheEvictField.class);
+        String cacheName = cacheEvictField.value();
+        String key = cacheEvictField.key();
+
+        // 获取参数名称
+        String[] parameterNames = signature.getParameterNames();
+        Object[] args = pjp.getArgs();
+
+        // 创建 EL 表达式上下文
+        ExpressionParser parser = new SpelExpressionParser();
+        StandardEvaluationContext context = new StandardEvaluationContext();
+
+        // 将参数名称和参数值放入上下文
+        for (int i = 0; i < parameterNames.length; i++) {
+            context.setVariable(parameterNames[i], args[i]);
+        }
+
+        // 解析 keyExpression
+        key = parser.parseExpression(key).getValue(context, String.class);
+
+        if (cacheManager == null) {
+            return pjp.proceed();
+        }
+        Cache cache = cacheManager.getCache(cacheName);
+        if (cache == null) {
+            return pjp.proceed();
+        }
+
+        Object cachedValue = cache.get(key, Object.class);
+        cache.evict(key);
+        Map<String, Object> fieldMap = extractFields(cachedValue);
+        for(Map.Entry<String, Object> entry : fieldMap.entrySet()) {
+            cache.evict(key + ":" + entry.getKey());
+        }
+
+        return pjp.proceed();
     }
 
     private Object extractField(Object result, String field) {
@@ -111,6 +153,25 @@ public class CacheableFieldAspect {
             }
 
             return null;
+        } catch (Exception e) {
+            throw new RuntimeException("Error extracting fields for caching", e);
+        }
+    }
+
+    public Map<String, Object> extractFields(Object result) {
+        try {
+            Class<?> resultClass = result.getClass();
+            Map<String, Object> fieldValues = new HashMap<>();
+
+            // 获取所有声明的字段（包括私有字段）
+            Field[] declaredFields = resultClass.getDeclaredFields();
+            for (Field field : declaredFields) {
+                field.setAccessible(true);
+                Object value = field.get(result);
+                fieldValues.put(field.getName(), value);
+            }
+
+            return fieldValues;
         } catch (Exception e) {
             throw new RuntimeException("Error extracting fields for caching", e);
         }

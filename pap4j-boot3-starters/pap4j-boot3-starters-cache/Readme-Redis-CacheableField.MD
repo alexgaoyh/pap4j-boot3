@@ -29,6 +29,11 @@
     public Proguard getProguardByProguardId(Long proguardId) {
         
     }
+
+    @CacheEvictField(value = "Proguard", key = "'Proguard:id:'+#proguard.proguardId")
+    public Proguard updateProguardByProguardId(Proguard proguard) {
+
+    }
 ```
 
 4、单元测试
