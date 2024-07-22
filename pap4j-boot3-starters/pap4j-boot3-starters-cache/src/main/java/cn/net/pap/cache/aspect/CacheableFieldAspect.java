@@ -160,18 +160,23 @@ public class CacheableFieldAspect {
 
     public Map<String, Object> extractFields(Object result) {
         try {
-            Class<?> resultClass = result.getClass();
-            Map<String, Object> fieldValues = new HashMap<>();
+            if(result != null) {
+                Class<?> resultClass = result.getClass();
+                Map<String, Object> fieldValues = new HashMap<>();
 
-            // 获取所有声明的字段（包括私有字段）
-            Field[] declaredFields = resultClass.getDeclaredFields();
-            for (Field field : declaredFields) {
-                field.setAccessible(true);
-                Object value = field.get(result);
-                fieldValues.put(field.getName(), value);
+                // 获取所有声明的字段（包括私有字段）
+                Field[] declaredFields = resultClass.getDeclaredFields();
+                for (Field field : declaredFields) {
+                    field.setAccessible(true);
+                    Object value = field.get(result);
+                    fieldValues.put(field.getName(), value);
+                }
+
+                return fieldValues;
+            } else {
+                return new HashMap<>();
             }
 
-            return fieldValues;
         } catch (Exception e) {
             throw new RuntimeException("Error extracting fields for caching", e);
         }

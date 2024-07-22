@@ -17,6 +17,7 @@
     spring.data.redis.host=127.0.0.1
     spring.data.redis.port=6379
     spring.data.redis.password=
+    spring.data.redis.database=8
 ```
 
 3、指定方法增加注解
