@@ -4,49 +4,56 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
- * 十进制与六十四进制转换
+ * 十进制与高进制转换
  */
 public class BinaryConvertUtilTest {
 
     @Test
     public void convertBase64() {
         for(long i = 1000000000000000l; i < 9999999999999999l; i++) {
-            String base64 = decimalToBase64(i);
-            long l = base64ToDecimal(base64);
-            System.out.println(i + " : " + base64);
+            String baseHigh = dToB62(i);
+            long l = b62Tod(baseHigh);
+            System.out.println(i + " : " + baseHigh);
             assertTrue(i == l);
-            break;
         }
     }
 
-    // 定义六十四进制的字符集
-    private static final String BASE64_CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    public static String dToB62(long decimal) {
+        return decimalToBaseHigh(decimal, BASE62_CHARS);
+    }
 
-    // 将十进制数转换为六十四进制
-    public static String decimalToBase64(long decimal) {
+    public static long b62Tod(String baseHigh) {
+        return baseHighToDecimal(baseHigh, BASE62_CHARS);
+    }
+
+    // 定义六十二进制的字符集
+    private static final String BASE62_CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+
+    // 将十进制数转换为高进制
+    private static String decimalToBaseHigh(long decimal, String chars) {
         if (decimal == 0) {
-            return "A";
+            return "0";
         }
 
         StringBuilder base64 = new StringBuilder();
         while (decimal > 0) {
-            int remainder = (int) (decimal % 64);
-            base64.append(BASE64_CHARS.charAt(remainder));
-            decimal /= 64;
+            int remainder = (int) (decimal % chars.length());
+            base64.append(chars.charAt(remainder));
+            decimal /= chars.length();
         }
 
         return base64.reverse().toString();
     }
 
-    // 将六十四进制数转换为十进制
-    public static long base64ToDecimal(String base64) {
+    // 将高进制数转换为十进制
+    private static long baseHighToDecimal(String baseHigh, String chars) {
         long decimal = 0;
-        int length = base64.length();
+        int length = baseHigh.length();
 
         for (int i = 0; i < length; i++) {
-            char c = base64.charAt(i);
-            int value = BASE64_CHARS.indexOf(c);
-            decimal = decimal * 64 + value;
+            char c = baseHigh.charAt(i);
+            int value = chars.indexOf(c);
+            decimal = decimal * chars.length() + value;
         }
 
         return decimal;
