@@ -6,11 +6,20 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
+import java.util.Optional;
 
 public interface ProguardRepository extends JpaRepository<Proguard,Long>, JpaSpecificationExecutor<Proguard> {
 
     List<Proguard> searchAllByProguardName(@Param("proguardName") String proguardName);
 
     Proguard getProguardByProguardId(@Param("proguardId") Long proguardId);
+
+    /**
+     * 查询指定字段
+     * @param proguardId
+     * @param type 形如 ProguardDTO.java 这个 interface
+     * @return
+     */
+    <T> Optional<T> getProguardByProguardId(@Param("proguardId") Long proguardId, Class<T> type);
 
 }

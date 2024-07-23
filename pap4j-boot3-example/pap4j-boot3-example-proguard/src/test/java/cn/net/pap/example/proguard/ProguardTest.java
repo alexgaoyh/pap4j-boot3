@@ -1,0 +1,46 @@
+package cn.net.pap.example.proguard;
+
+import cn.net.pap.example.proguard.dto.ProguardDTO;
+import cn.net.pap.example.proguard.entity.Proguard;
+import cn.net.pap.example.proguard.repository.ProguardRepository;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit4.SpringRunner;
+
+import java.util.*;
+
+@RunWith(SpringRunner.class)
+@SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+public class ProguardTest {
+
+    @Autowired
+    ProguardRepository proguardRepository;
+
+    @Test
+    public void projectionsTest() {
+        Long proguardId = System.currentTimeMillis();
+
+        Proguard proguard = new Proguard();
+        proguard.setProguardId(proguardId);
+        proguard.setProguardName(proguardId + "");
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        extMap.put("threadId", Thread.currentThread().getName());
+        proguard.setExtMap(extMap);
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+        extList.add("B");
+        extList.add("C");
+        extList.add("D");
+        proguard.setExtList(extList);
+        proguardRepository.saveAndFlush(proguard);
+
+        Optional<ProguardDTO> optional = proguardRepository.getProguardByProguardId(proguardId, ProguardDTO.class);
+        if(optional.isPresent()) {
+            System.out.println(optional.get().getProguardId() + " : " + optional.get().getProguardName());
+        }
+    }
+
+}
