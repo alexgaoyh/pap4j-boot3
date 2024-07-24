@@ -35,4 +35,11 @@ public class BoofcvUtilTest {
 
     }
 
+    // @Test
+    public void cropTest() {
+        BufferedImage input = UtilImageIO.loadImage(UtilIO.pathExample("input.jpg"));
+        BufferedImage crop = BoofcvUtil.crop(input, 100, 100, 1000, 1000);
+        UtilImageIO.saveImage(crop, "output.jpg");
+    }
+
 }

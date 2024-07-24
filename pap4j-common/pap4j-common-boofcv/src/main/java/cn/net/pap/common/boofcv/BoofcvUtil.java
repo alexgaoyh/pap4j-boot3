@@ -2,6 +2,7 @@ package cn.net.pap.common.boofcv;
 
 import boofcv.io.image.ConvertBufferedImage;
 import boofcv.struct.image.GrayF32;
+import boofcv.struct.image.GrayU8;
 import boofcv.struct.image.Planar;
 
 import java.awt.image.BufferedImage;
@@ -56,5 +57,24 @@ public class BoofcvUtil {
         return ConvertBufferedImage.convertTo(image, null, true);
     }
 
+    /**
+     * 裁剪
+     * @param input
+     * @param x
+     * @param y
+     * @param width
+     * @param height
+     * @return
+     */
+    public static BufferedImage crop(BufferedImage input, Integer x, Integer y, Integer width, Integer height) {
+        Planar<GrayU8> colorImage = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayU8.class);
+
+        // 创建一个新的图像用于存储裁剪结果
+        Planar<GrayU8> croppedImage = colorImage.subimage(x, y, x + width, y + height, null);
+
+        // 转换回 BufferedImage 格式
+        BufferedImage outputImage = ConvertBufferedImage.convertTo(croppedImage, null, true);
+        return outputImage;
+    }
 
 }
