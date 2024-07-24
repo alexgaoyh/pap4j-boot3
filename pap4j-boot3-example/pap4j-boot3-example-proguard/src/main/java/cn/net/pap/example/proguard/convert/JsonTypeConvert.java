@@ -16,6 +16,10 @@ import java.util.Objects;
  *     @Type(value = JsonTypeConvert.class)
  *     @Column(nullable = false, columnDefinition = "json")
  *     private Map<String, Object> extMap = new HashMap<>();
+ *
+ *
+ * 方法二： 根据 hibernate 的版本，引入不同的jar依赖 (io.hypersistence  hypersistence-utils-hibernate-62  3.8.1)
+ *     之后按照如上的方式，只调整类型即可： @Type(value = JsonBlobType.class)
  */
 public class JsonTypeConvert implements UserType<Object> {
 
