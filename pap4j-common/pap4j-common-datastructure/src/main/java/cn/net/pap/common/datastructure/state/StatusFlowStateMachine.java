@@ -77,4 +77,29 @@ public class StatusFlowStateMachine {
         return returnList;
     }
 
+    public static List<String> getBeforeEventByName(String eventName) {
+        List<String> returnList = new ArrayList<>();
+        List<Integer> returnIdxList = new ArrayList<>();
+
+        Integer eventLevel = -1;
+        for (Integer eventTableIdx = 0; eventTableIdx < eventTable.length; eventTableIdx++) {
+            if (eventTable[eventTableIdx].equals(eventName)) {
+                eventLevel = eventTableIdx;
+                break;
+            }
+        }
+
+        for (Integer outIdx = 0; outIdx < transitionTable.length; outIdx++) {
+            if(transitionTable[outIdx][eventLevel] == 1) {
+                returnIdxList.add(outIdx);
+            }
+        }
+
+        for (Integer idx = 0; idx < returnIdxList.size(); idx++) {
+            returnList.add(eventTable[returnIdxList.get(idx)]);
+        }
+
+        return returnList;
+    }
+
 }

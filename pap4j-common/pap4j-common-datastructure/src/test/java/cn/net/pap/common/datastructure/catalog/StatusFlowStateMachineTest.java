@@ -17,5 +17,18 @@ public class StatusFlowStateMachineTest {
         System.out.println(StatusFlowStateMachine.getNextEventByName("事件8"));
         System.out.println(StatusFlowStateMachine.getNextEventByName("事件9"));
         System.out.println(StatusFlowStateMachine.getNextEventByName("事件10"));
+
+        System.out.println("-----------------------------------------------------------");
+
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件1"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件2"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件3"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件4"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件5"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件6"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件7"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件8"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件9"));
+        System.out.println(StatusFlowStateMachine.getBeforeEventByName("事件10"));
     }
 }
