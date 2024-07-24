@@ -2,6 +2,8 @@ package cn.net.pap.common.datastructure.rectangle;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -73,6 +75,27 @@ public class RectangleUtil {
         }
 
         return subRects;
+    }
+
+    /**
+     * 重排序
+     * @param rectList [x, y, x', y'] 坐标集合
+     * @return
+     */
+    public static void reSort(List<Double[]> rectList) {
+        Collections.sort(rectList, new Comparator<Double[]>() {
+            @Override
+            public int compare(Double[] c1, Double[] c2) {
+                // x 坐标是越大越在前面
+                int xCompare = Double.compare(c2[0], c1[0]);
+                if (xCompare != 0) {
+                    return xCompare;
+                } else {
+                    // y 坐标是越小越在前面
+                    return Double.compare(c1[1], c2[1]);
+                }
+            }
+        });
     }
 
 }

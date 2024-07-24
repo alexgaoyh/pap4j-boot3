@@ -36,4 +36,21 @@ public class RectangleUtilTest {
         List<Double[]> partRects = RectangleUtil.verticalPart(rect, 4);
         System.out.println(partRects);
     }
+
+    @Test
+    public void reSortTest() {
+        Double[] rect1 = new Double[]{1702.08,2920.65,1806.04,3472.88};
+        Double[] rect2 = new Double[]{1702.08,1125.63,1806.04,1565.68};
+        Double[] rect3 = new Double[]{1346.68,2023.14,1450.64,3248.51};
+        Double[] rect4 = new Double[]{1524.38,2023.14,1628.34,3248.51};
+        List<Double[]> rectList = new ArrayList<>();
+        rectList.add(rect1);
+        rectList.add(rect2);
+        rectList.add(rect3);
+        rectList.add(rect4);
+
+        RectangleUtil.reSort(rectList);
+        System.out.println(rectList);
+    }
+
 }
