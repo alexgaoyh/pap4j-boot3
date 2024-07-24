@@ -1,5 +1,7 @@
 package cn.net.pap.common.datastructure.rectangle;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -7,22 +9,22 @@ import java.util.List;
  */
 public class RectangleUtil {
 
-
     /**
      * 两个矩形区域集合是否有重叠
-     * @param rectangleList1    矩形区域集合1 [x, x', y, y']
-     * @param rectangleList2    矩形区域集合2 [x, x', y, y']
+     *
+     * @param rectangleList1 矩形区域集合1 [x, x', y, y']
+     * @param rectangleList2 矩形区域集合2 [x, x', y, y']
      * @return
      */
     public static boolean isOverlap(List<List<Double>> rectangleList1, List<List<Double>> rectangleList2) {
-        if(rectangleList1 == null || rectangleList1.size() == 0 ||
-            rectangleList2 == null || rectangleList2.size() == 0) {
+        if (rectangleList1 == null || rectangleList1.size() == 0 ||
+                rectangleList2 == null || rectangleList2.size() == 0) {
             return false;
         }
-        for(List<Double> box1 : rectangleList1) {
-            for(List<Double> box2 : rectangleList2) {
+        for (List<Double> box1 : rectangleList1) {
+            for (List<Double> box2 : rectangleList2) {
                 boolean b = doRectanglesOverlap(box1, box2);
-                if(b) {
+                if (b) {
                     return true;
                 }
             }
@@ -47,6 +49,30 @@ public class RectangleUtil {
         boolean overlapY = y1 < y2Prime && y1Prime > y2;
 
         return overlapX && overlapY;
+    }
+
+    /**
+     * 垂直切分矩形区域
+     *
+     * @param rect     [x y x' y']  (x,y)左上角  (x',y')右下角
+     * @param partSize 切分的份数
+     * @return
+     */
+    public static List<Double[]> verticalPart(Double[] rect, Integer partSize) {
+        List<Double[]> subRects = new ArrayList<>();
+        double height = rect[3] - rect[1];
+        double quarterHeight = height / partSize; // 计算 partSize 分之一的宽度
+
+        // 创建等分的矩形
+        for (int i = 0; i < partSize; i++) {
+            double newY = rect[1] + i * quarterHeight;
+            double newYPrime = newY + quarterHeight;
+            BigDecimal newYBigDecimal = new BigDecimal(newY).setScale(2, BigDecimal.ROUND_HALF_UP);
+            BigDecimal newYPrimeBigDecimal = new BigDecimal(newYPrime).setScale(2, BigDecimal.ROUND_HALF_UP);
+            subRects.add(new Double[]{rect[0], newYBigDecimal.doubleValue(), rect[2], newYPrimeBigDecimal.doubleValue()});
+        }
+
+        return subRects;
     }
 
 }

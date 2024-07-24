@@ -30,4 +30,10 @@ public class RectangleUtilTest {
         System.out.println(overlap);
     }
 
+    @Test
+    public void verticalPartTest() {
+        Double[] rect = new Double[]{1702.08,1125.63,1806.04,1565.68};
+        List<Double[]> partRects = RectangleUtil.verticalPart(rect, 4);
+        System.out.println(partRects);
+    }
 }
