@@ -55,6 +55,43 @@ public class StatusFlowStateMachine {
             {0, 0, 0, 0, 0, 0, 0, 0, 0, -1},
     };
 
+    public static List<List<String>> getAllPath() {
+        List<List<String>> allPaths = new ArrayList<>();
+        boolean[] visited = new boolean[transitionTable.length];
+
+        for (int i = 0; i < transitionTable.length; i++) {
+            List<String> singleNodePath = new ArrayList<>();
+            singleNodePath.add(eventTable[i]);
+            allPaths.add(singleNodePath);
+        }
+
+        for (int i = 0; i < transitionTable.length; i++) {
+            dfs(transitionTable, i, visited, new ArrayList<>(), allPaths);
+        }
+
+        return allPaths;
+    }
+
+    private static void dfs(Integer[][] matrix, int current, boolean[] visited, List<String> path, List<List<String>> allPaths) {
+        visited[current] = true;
+        path.add(eventTable[current]);
+
+        boolean hasNext = false;
+        for (int i = 0; i < matrix.length; i++) {
+            if (matrix[current][i] == 1 && !visited[i]) {
+                hasNext = true;
+                dfs(matrix, i, visited, path, allPaths);
+            }
+        }
+
+        if (path.size() > 1) {
+            allPaths.add(new ArrayList<>(path));
+        }
+
+        path.remove(path.size() - 1);
+        visited[current] = false;
+    }
+
     public static List<String> getNextEventByName(String eventName) {
         List<String> returnList = new ArrayList<>();
 

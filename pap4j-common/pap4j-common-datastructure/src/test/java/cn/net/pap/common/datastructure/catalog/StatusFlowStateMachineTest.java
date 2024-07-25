@@ -3,7 +3,15 @@ package cn.net.pap.common.datastructure.catalog;
 import cn.net.pap.common.datastructure.state.StatusFlowStateMachine;
 import org.junit.jupiter.api.Test;
 
+import java.util.List;
+
 public class StatusFlowStateMachineTest {
+
+    @Test
+    public void getAllPathTest() {
+        List<List<String>> allPath = StatusFlowStateMachine.getAllPath();
+        System.out.println(allPath);
+    }
 
     @Test
     public void getNextEventByNameTest() {
