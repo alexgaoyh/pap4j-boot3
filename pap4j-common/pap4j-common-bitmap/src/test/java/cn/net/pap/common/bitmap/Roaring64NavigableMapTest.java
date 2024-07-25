@@ -3,6 +3,9 @@ package cn.net.pap.common.bitmap;
 import org.junit.jupiter.api.Test;
 import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
+
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Roaring64NavigableMapTest {
@@ -34,6 +37,27 @@ public class Roaring64NavigableMapTest {
         Roaring64NavigableMap dBitMap = Roaring64NavigableMapUtil.deserialize(serialize);
         // 经过序列化和反序列化之后，再次判断数据长度
         assertTrue(dBitMap.getLongCardinality() == rangeLong);
+    }
+
+    @Test
+    public void getPageOrderByAddedTest() {
+        long currentTimeMillis = 101l;
+        Roaring64NavigableMap r64nMap = new Roaring64NavigableMap();
+        // 添加范围，前闭区间后开区间
+        long rangeLong = 100l;
+        r64nMap.add(currentTimeMillis, currentTimeMillis + rangeLong);
+        for(int pageIdx = 1; pageIdx <= 10; pageIdx++) {
+            List<Long> valueList = Roaring64NavigableMapUtil.getPageOrderByAdded(r64nMap, pageIdx, 10);
+            System.out.println(valueList);
+        }
+
+        System.out.println("----------------------------------------------");
+
+        for(int pageIdx = 1; pageIdx <= 10; pageIdx++) {
+            List<Long> valueList = Roaring64NavigableMapUtil.getPageOrderByAddedReverse(r64nMap, pageIdx, 10);
+            System.out.println(valueList);
+        }
+
     }
 
 }
