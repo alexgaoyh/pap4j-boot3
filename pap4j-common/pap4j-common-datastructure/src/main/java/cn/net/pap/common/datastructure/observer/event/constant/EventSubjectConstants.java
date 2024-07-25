@@ -62,4 +62,55 @@ public class EventSubjectConstants {
         }
     });
 
+
+    /**
+     * 维护一系列观察者， 通过观察只需要对外暴露根上的 event1， 其他的观察者之间通过 addNextPapSubject 进行传递.
+     * 配合 PapObserverTest.test2 进行测试验证. 打印出来的结果就是从根开始，一层一层向下进行状态流转.
+     *  1->2->3
+     *  1->2->4
+     *  1->2->5
+     *  1->2->6->7
+     *  1->2->8->9
+     *  1->2->8->0
+     */
+    public static final Map<String, PapSubject> eventSubjectMap2 = Collections.unmodifiableMap(new HashMap<String, PapSubject>()
+    {
+        private static final long serialVersionUID = 1L;
+        {
+            PapObserver event1 = new Event1PapObserver();
+            PapObserver event2 = new Event2PapObserver();
+            PapObserver event3 = new Event3PapObserver();
+            PapObserver event4 = new Event4PapObserver();
+            PapObserver event5 = new Event5PapObserver();
+            PapObserver event6 = new Event6PapObserver();
+            PapObserver event7 = new Event7PapObserver();
+            PapObserver event8 = new Event8PapObserver();
+            PapObserver event9 = new Event9PapObserver();
+            PapObserver event0 = new Event0PapObserver();
+
+            PapSubject p1 = new PapPublisher();
+            p1.attach(event2);
+
+            PapSubject p2 = new PapPublisher();
+            p2.attach(event3);
+            p2.attach(event4);
+            p2.attach(event5);
+            p2.attach(event6);
+            p2.attach(event8);
+
+            PapSubject p6 = new PapPublisher();
+            p6.attach(event7);
+
+            PapSubject p8 = new PapPublisher();
+            p8.attach(event9);
+            p8.attach(event0);
+
+            p1.addNextPapSubject(p2);
+            p2.addNextPapSubject(p6);
+            p2.addNextPapSubject(p8);
+
+            put("event1", p1);
+        }
+    });
+
 }

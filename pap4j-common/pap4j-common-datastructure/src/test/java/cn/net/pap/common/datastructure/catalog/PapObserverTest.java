@@ -19,4 +19,15 @@ public class PapObserverTest {
         }
 
     }
+
+    /**
+     * 类似 观察者+责任链
+     */
+    @Test
+    public void test2() {
+        Map<String, PapSubject> eventSubjectMap2 = EventSubjectConstants.eventSubjectMap2;
+        for(Map.Entry<String, PapSubject> entry : eventSubjectMap2.entrySet()) {
+            entry.getValue().callNotify(entry.getKey() + " finish, call next");
+        }
+    }
 }
