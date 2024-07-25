@@ -55,6 +55,37 @@ public class StatusFlowStateMachine {
             {0, 0, 0, 0, 0, 0, 0, 0, 0, -1},
     };
 
+    public static List<List<String>> getPathsFromRootToLeaf() {
+        List<List<String>> rootToLeafPaths = new ArrayList<>();
+        boolean[] visited = new boolean[transitionTable.length];
+        List<String> path = new ArrayList<>();
+
+        dfsFromRootToLeaf(transitionTable, 0, visited, path, rootToLeafPaths);
+
+        return rootToLeafPaths;
+    }
+
+    private static void dfsFromRootToLeaf(Integer[][] matrix, int current, boolean[] visited, List<String> path, List<List<String>> rootToLeafPaths) {
+        visited[current] = true;
+        path.add(eventTable[current]);
+
+        boolean isLeaf = true;
+        for (int i = 0; i < matrix.length; i++) {
+            if (matrix[current][i] == 1 && !visited[i]) {
+                isLeaf = false;
+                dfsFromRootToLeaf(matrix, i, visited, path, rootToLeafPaths);
+            }
+        }
+
+        // 如果当前节点是叶子节点，则记录路径
+        if (isLeaf) {
+            rootToLeafPaths.add(new ArrayList<>(path));
+        }
+
+        path.remove(path.size() - 1);
+        visited[current] = false;
+    }
+
     public static List<List<String>> getAllPath() {
         List<List<String>> allPaths = new ArrayList<>();
         boolean[] visited = new boolean[transitionTable.length];

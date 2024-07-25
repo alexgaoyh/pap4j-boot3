@@ -14,6 +14,12 @@ public class StatusFlowStateMachineTest {
     }
 
     @Test
+    public void getPathsFromRootToLeafTest() {
+        List<List<String>> allPath = StatusFlowStateMachine.getPathsFromRootToLeaf();
+        System.out.println(allPath);
+    }
+
+    @Test
     public void getNextEventByNameTest() {
         System.out.println(StatusFlowStateMachine.getNextEventByName("事件1"));
         System.out.println(StatusFlowStateMachine.getNextEventByName("事件2"));
