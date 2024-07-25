@@ -62,4 +62,47 @@ public class ImageUtil {
         }
     }
 
+    /**
+     * 图像等比缩放并灰度化
+     * @param inputPath
+     * @param outputPath
+     * @param widthHeight
+     * @return
+     */
+    public static boolean scaleAndGray(String inputPath, String outputPath, Integer widthHeight) {
+        try {
+            BufferedImage originalImage = ImageIO.read(new File(inputPath));
+
+            int originalWidth = originalImage.getWidth();
+            int originalHeight = originalImage.getHeight();
+
+            double scale = Math.min(Double.valueOf(widthHeight) / originalWidth, Double.valueOf(widthHeight) / originalHeight);
+            scale = Math.max(scale, 1.0 / Math.max(originalWidth, originalHeight));
+
+            int newWidth = (int) Math.ceil(originalWidth * scale);
+            int newHeight = (int) Math.ceil(originalHeight * scale);
+
+            BufferedImage scaledImage = new BufferedImage(widthHeight, widthHeight, BufferedImage.TYPE_INT_ARGB);
+            Graphics2D g2d = scaledImage.createGraphics();
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(0, 0, widthHeight, widthHeight);
+
+            int x = (widthHeight - newWidth) / 2;
+            int y = (widthHeight - newHeight) / 2;
+            g2d.drawImage(originalImage.getScaledInstance(newWidth, newHeight, Image.SCALE_SMOOTH), x, y, null);
+            g2d.dispose();
+
+            BufferedImage grayImage = new BufferedImage(widthHeight, widthHeight, BufferedImage.TYPE_BYTE_GRAY);
+            Graphics2D g2dGray = grayImage.createGraphics();
+            g2dGray.drawImage(scaledImage, 0, 0, null);
+            g2dGray.dispose();
+
+            ImageIO.write(grayImage, "jpg", new File(outputPath));
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 }
