@@ -18,11 +18,14 @@ public class ITextTest {
     @Test
     public void pointTextTest() {
         try {
-            List<PointTextDTO> pointTextDTOS = new ArrayList<>();
+            LinkedHashSet<PointTextDTO> pointTextDTOS = new LinkedHashSet<>();
 
             List<Map<String, Object>> centerXTextList = new ArrayList<>();
 
-            File file = new File("C:\\Users\\86181\\Desktop\\0004A.pdf");
+            BigDecimal minWidth = new BigDecimal(Integer.MAX_VALUE);
+            BigDecimal maxWidth = new BigDecimal(Integer.MIN_VALUE);
+
+            File file = new File("C:\\Users\\86181\\Desktop\\0006A.pdf");
             PdfReader reader = new PdfReader(file.getAbsolutePath());
             Integer pageNum = 1;
             Rectangle pageSize = reader.getPageSize(pageNum);
@@ -31,23 +34,35 @@ public class ITextTest {
 
             for (String textWithPoint : textWithPoints.split("\n")) {
                 String text = textWithPoint.substring(0, textWithPoint.indexOf("["));
-                String point = textWithPoint.substring(textWithPoint.indexOf("[") + 1, textWithPoint.indexOf("]"));
-                PointTextDTO pointTextDTO = new PointTextDTO(string2Box(point), text);
-                pointTextDTOS.add(pointTextDTO);
+                if(text != null && !"".equals(text) && !"".equals(text.trim())) {
+                    String point = textWithPoint.substring(textWithPoint.indexOf("[") + 1, textWithPoint.indexOf("]"));
+                    PointTextDTO pointTextDTO = new PointTextDTO(string2Box(point), text);
+                    boolean add = pointTextDTOS.add(pointTextDTO);
 
-                Map<String, Object> tmp = new LinkedHashMap<>();
-                tmp.put("x", centerX(point));
-                Map<String, Object> info = new LinkedHashMap<>();
-                info.put("point", point);
-                info.put("text", text);
-                tmp.put("info", info);
-                centerXTextList.add(tmp);
+                    if(add) {
+                        Map<String, Object> tmp = new LinkedHashMap<>();
+                        tmp.put("x", centerX(point));
+                        Map<String, Object> info = new LinkedHashMap<>();
+                        info.put("point", point);
+                        info.put("text", text);
+                        tmp.put("info", info);
+                        if(minWidth.compareTo(new BigDecimal(centerWidth(point))) > 0) {
+                            minWidth = new BigDecimal(centerWidth(point)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                        }
+                        if(maxWidth.compareTo(new BigDecimal(centerWidth(point))) < 0) {
+                            maxWidth = new BigDecimal(centerWidth(point)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                        }
+                        centerXTextList.add(tmp);
+                    }
+                }
 
             }
             System.out.println(pointTextDTOS.size());
             ObjectMapper objectMapper = new ObjectMapper();
             System.out.println(objectMapper.writeValueAsString(pointTextDTOS));
             System.out.println("-------------------------------");
+            System.out.println(minWidth);
+            System.out.println(maxWidth);
             System.out.println(objectMapper.writeValueAsString(centerXTextList));
 
         } catch (Exception e) {
@@ -125,6 +140,11 @@ public class ITextTest {
         return sum.divide(new BigDecimal(2), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
     }
 
+    private static Double centerWidth(String point) {
+        String[] split = point.split(",");
+        return new BigDecimal(split[1]).subtract(new BigDecimal(split[0])).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+    }
+
     class PointTextDTO implements Serializable {
 
         /**
@@ -156,6 +176,20 @@ public class ITextTest {
 
         public void setText(String text) {
             this.text = text;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            PointTextDTO that = (PointTextDTO) o;
+            return Objects.equals(box, that.box) &&
+                    Objects.equals(text, that.text);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(box, text);
         }
 
         @Override
