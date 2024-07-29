@@ -17,9 +17,9 @@ import java.util.*;
 public class ITextTest {
 
     /**
-     * dpi 转换  PDF是72， IMAGE是300
+     * dpi 转换  PDF是72， IMAGE是 真是获取的
      */
-    private static final BigDecimal dpi72To300 = new BigDecimal(300).divide(new BigDecimal(72), 2, BigDecimal.ROUND_HALF_UP);
+    private static BigDecimal dpi72ToReal = new BigDecimal(300).divide(new BigDecimal(72), 2, BigDecimal.ROUND_HALF_UP);
 
     @Test
     public void pointTextTest() {
@@ -41,25 +41,27 @@ public class ITextTest {
             String dpi = textWithPoints.substring(textWithPoints.indexOf("[") + 1, textWithPoints.indexOf("]"));
             textWithPoints = textWithPoints.substring(textWithPoints.indexOf("]") + 1);
 
+            dpi72ToReal = new BigDecimal(dpi).divide(new BigDecimal(72), 2, BigDecimal.ROUND_HALF_UP);
+
             for (String textWithPoint : textWithPoints.split("\n")) {
                 String text = textWithPoint.substring(0, textWithPoint.indexOf("["));
                 if(text != null && !"".equals(text) && !"".equals(text.trim())) {
                     String point = textWithPoint.substring(textWithPoint.indexOf("[") + 1, textWithPoint.indexOf("]"));
-                    PointTextDTO pointTextDTO = new PointTextDTO(string2Box(point), text);
+                    PointTextDTO pointTextDTO = new PointTextDTO(string2Box(point, dpi72ToReal), text);
                     boolean add = pointTextDTOS.add(pointTextDTO);
 
                     if(add) {
                         Map<String, Object> tmp = new LinkedHashMap<>();
-                        tmp.put("x", centerX(point));
+                        tmp.put("x", centerX(point, dpi72ToReal));
                         Map<String, Object> info = new LinkedHashMap<>();
-                        info.put("point", point);
+                        info.put("point", string2Box(point, dpi72ToReal));
                         info.put("text", text);
                         tmp.put("info", info);
-                        if(minWidth.compareTo(new BigDecimal(centerWidth(point))) > 0) {
-                            minWidth = new BigDecimal(centerWidth(point)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                        if(minWidth.compareTo(new BigDecimal(centerWidth(point, dpi72ToReal))) > 0) {
+                            minWidth = new BigDecimal(centerWidth(point, dpi72ToReal)).setScale(2 , BigDecimal.ROUND_HALF_UP);
                         }
-                        if(maxWidth.compareTo(new BigDecimal(centerWidth(point))) < 0) {
-                            maxWidth = new BigDecimal(centerWidth(point)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                        if(maxWidth.compareTo(new BigDecimal(centerWidth(point, dpi72ToReal))) < 0) {
+                            maxWidth = new BigDecimal(centerWidth(point, dpi72ToReal)).setScale(2 , BigDecimal.ROUND_HALF_UP);
                         }
                         centerXTextList.add(tmp);
                     }
@@ -161,25 +163,25 @@ public class ITextTest {
         }
     }
 
-    private static List<Double> string2Box(String point) {
+    private static List<Double> string2Box(String point, BigDecimal dpi72ToReal) {
         List<Double> box = new ArrayList<>();
         for (String coor : point.split(",")) {
-            box.add(new BigDecimal(coor).multiply(dpi72To300).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue());
+            box.add(new BigDecimal(coor).multiply(dpi72ToReal).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue());
         }
         return box;
     }
 
-    private static Double centerX(String point) {
+    private static Double centerX(String point, BigDecimal dpi72ToReal) {
         BigDecimal sum = BigDecimal.ZERO;
         String[] split = point.split(",");
-        sum = sum.add(new BigDecimal(split[0]).multiply(dpi72To300));
-        sum = sum.add(new BigDecimal(split[1]).multiply(dpi72To300));
+        sum = sum.add(new BigDecimal(split[0]).multiply(dpi72ToReal));
+        sum = sum.add(new BigDecimal(split[1]).multiply(dpi72ToReal));
         return sum.divide(new BigDecimal(2), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
     }
 
-    private static Double centerWidth(String point) {
+    private static Double centerWidth(String point, BigDecimal dpi72ToReal) {
         String[] split = point.split(",");
-        return new BigDecimal(split[1]).multiply(dpi72To300).subtract(new BigDecimal(split[0]).multiply(dpi72To300)).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+        return new BigDecimal(split[1]).multiply(dpi72ToReal).subtract(new BigDecimal(split[0]).multiply(dpi72ToReal)).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
     }
 
     class PointTextDTO implements Serializable {
