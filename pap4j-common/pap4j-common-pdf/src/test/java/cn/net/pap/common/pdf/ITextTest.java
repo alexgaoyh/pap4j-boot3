@@ -38,6 +38,9 @@ public class ITextTest {
             PapTextExtractionStrategy strategy = new PapTextExtractionStrategy(pageSize.getWidth(), pageSize.getHeight());
             String textWithPoints = PdfTextExtractor.getTextFromPage(reader, pageNum, strategy);
 
+            String dpi = textWithPoints.substring(textWithPoints.indexOf("[") + 1, textWithPoints.indexOf("]"));
+            textWithPoints = textWithPoints.substring(textWithPoints.indexOf("]") + 1);
+
             for (String textWithPoint : textWithPoints.split("\n")) {
                 String text = textWithPoint.substring(0, textWithPoint.indexOf("["));
                 if(text != null && !"".equals(text) && !"".equals(text.trim())) {
@@ -64,6 +67,7 @@ public class ITextTest {
 
             }
             System.out.println(pointTextDTOS.size());
+            System.out.println(dpi);
             ObjectMapper objectMapper = new ObjectMapper();
             System.out.println(objectMapper.writeValueAsString(pointTextDTOS));
             System.out.println("-------------------------------");
@@ -79,6 +83,8 @@ public class ITextTest {
     public static class PapTextExtractionStrategy implements TextExtractionStrategy {
 
         private StringBuilder withPointString = new StringBuilder();
+
+        private Integer imageDPI = 300;
 
         private float pageWidth = 0.0f;
 
@@ -140,7 +146,10 @@ public class ITextTest {
                 Integer dpiXInt = Math.round(dpiX);
                 Integer dpiYInt = Math.round(dpiY);
 
-                System.out.println("Image DPI: X = " + dpiXInt + ", Y = " + dpiYInt);
+                if(dpiXInt == dpiYInt) {
+                    imageDPI = dpiXInt;
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -148,7 +157,7 @@ public class ITextTest {
 
         @Override
         public String getResultantText() {
-            return withPointString.toString();
+            return "[" + imageDPI + "]" + withPointString.toString();
         }
     }
 
