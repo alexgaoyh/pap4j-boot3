@@ -9,6 +9,7 @@ import com.itextpdf.text.pdf.parser.Vector;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.*;
@@ -120,7 +121,29 @@ public class ITextTest {
 
         @Override
         public void renderImage(ImageRenderInfo imageRenderInfo) {
-            System.out.println(imageRenderInfo);
+            try {
+                PdfImageObject image = imageRenderInfo.getImage();
+                if (image == null) return;
+
+                int widthPx = image.getBufferedImage().getWidth();
+                int heightPx = image.getBufferedImage().getHeight();
+
+                float widthPt = imageRenderInfo.getImageCTM().get(Matrix.I11);
+                float heightPt = imageRenderInfo.getImageCTM().get(Matrix.I22);
+
+                float widthInches = widthPt / 72;
+                float heightInches = heightPt / 72;
+
+                float dpiX = widthPx / widthInches;
+                float dpiY = heightPx / heightInches;
+
+                Integer dpiXInt = Math.round(dpiX);
+                Integer dpiYInt = Math.round(dpiY);
+
+                System.out.println("Image DPI: X = " + dpiXInt + ", Y = " + dpiYInt);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         @Override
