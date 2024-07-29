@@ -16,7 +16,10 @@ import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.ExternalSigningSupport;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
+import org.apache.pdfbox.rendering.PDFRenderer;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -32,6 +35,29 @@ public class PDFUtil {
     private static final float PDF_VERSION = 1.4f;
     private static final String PDF_PART = "1";
     private static final String PDF_CONFORMANCE = "A";
+
+    /**
+     * 单页 PDF 转换 JPG
+     * @param pdfFilePath   PDF文件绝对路径
+     * @param outputPath    JPG文件绝对路径
+     * @param DPI           DPI
+     */
+    public static boolean convertPDFToJPG(String pdfFilePath, String outputPath, Integer DPI) {
+        try (PDDocument document = Loader.loadPDF(new File(pdfFilePath))) {
+            PDFRenderer pdfRenderer = new PDFRenderer(document);
+
+            // 遍历每一页
+            for (int page = 0; page < document.getNumberOfPages(); page++) {
+                BufferedImage bufferedImage = pdfRenderer.renderImageWithDPI(page, DPI);
+                File outputfile = new File(outputPath);
+                ImageIO.write(bufferedImage, "jpg", outputfile);
+            }
+
+            return true;
+        } catch (IOException e) {
+            return false;
+        }
+    }
 
     /**
      * 添加印章

@@ -109,4 +109,9 @@ public class PDFUtilTest {
         }
     }
 
+    @Test
+    public void convertPDFToJPGTest() {
+        PDFUtil.convertPDFToJPG("pdf.pdf", "jpg.jpg", 300);
+    }
+
 }
