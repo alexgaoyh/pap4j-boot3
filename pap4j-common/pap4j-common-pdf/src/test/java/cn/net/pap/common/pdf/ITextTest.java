@@ -15,6 +15,11 @@ import java.util.*;
 
 public class ITextTest {
 
+    /**
+     * dpi 转换  PDF是72， IMAGE是300
+     */
+    private static final BigDecimal dpi72To300 = new BigDecimal(300).divide(new BigDecimal(72), 2, BigDecimal.ROUND_HALF_UP);
+
     @Test
     public void pointTextTest() {
         try {
@@ -127,7 +132,7 @@ public class ITextTest {
     private static List<Double> string2Box(String point) {
         List<Double> box = new ArrayList<>();
         for (String coor : point.split(",")) {
-            box.add(new BigDecimal(coor).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue());
+            box.add(new BigDecimal(coor).multiply(dpi72To300).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue());
         }
         return box;
     }
@@ -135,14 +140,14 @@ public class ITextTest {
     private static Double centerX(String point) {
         BigDecimal sum = BigDecimal.ZERO;
         String[] split = point.split(",");
-        sum = sum.add(new BigDecimal(split[0]));
-        sum = sum.add(new BigDecimal(split[1]));
+        sum = sum.add(new BigDecimal(split[0]).multiply(dpi72To300));
+        sum = sum.add(new BigDecimal(split[1]).multiply(dpi72To300));
         return sum.divide(new BigDecimal(2), 2, BigDecimal.ROUND_HALF_UP).doubleValue();
     }
 
     private static Double centerWidth(String point) {
         String[] split = point.split(",");
-        return new BigDecimal(split[1]).subtract(new BigDecimal(split[0])).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+        return new BigDecimal(split[1]).multiply(dpi72To300).subtract(new BigDecimal(split[0]).multiply(dpi72To300)).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
     }
 
     class PointTextDTO implements Serializable {
