@@ -27,6 +27,7 @@
         <module>pap4j-common-boofcv</module>
         <module>pap4j-common-kingbase</module>
         <module>pap4j-common-datastructure</module>
+        <module>pap4j-common-jena</module>
     </modules>
 
     <properties>
