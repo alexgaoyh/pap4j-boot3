@@ -31,7 +31,7 @@ public class ITextTest {
             BigDecimal minWidth = new BigDecimal(Integer.MAX_VALUE);
             BigDecimal maxWidth = new BigDecimal(Integer.MIN_VALUE);
 
-            File file = new File("C:\\Users\\86181\\Desktop\\0006A.pdf");
+            File file = new File("C:\\Users\\86181\\Desktop\\0029A.pdf");
             PdfReader reader = new PdfReader(file.getAbsolutePath());
             Integer pageNum = 1;
             Rectangle pageSize = reader.getPageSize(pageNum);
@@ -43,31 +43,34 @@ public class ITextTest {
 
             dpi72ToReal = new BigDecimal(dpi).divide(new BigDecimal(72), 2, BigDecimal.ROUND_HALF_UP);
 
-            for (String textWithPoint : textWithPoints.split("\n")) {
-                String text = textWithPoint.substring(0, textWithPoint.indexOf("["));
-                if(text != null && !"".equals(text) && !"".equals(text.trim())) {
-                    String point = textWithPoint.substring(textWithPoint.indexOf("[") + 1, textWithPoint.indexOf("]"));
-                    PointTextDTO pointTextDTO = new PointTextDTO(string2Box(point, dpi72ToReal), text);
-                    boolean add = pointTextDTOS.add(pointTextDTO);
+            if(textWithPoints != null && !"".equals(textWithPoints)) {
+                for (String textWithPoint : textWithPoints.split("\n")) {
+                    String text = textWithPoint.substring(0, textWithPoint.indexOf("["));
+                    if(text != null && !"".equals(text) && !"".equals(text.trim())) {
+                        String point = textWithPoint.substring(textWithPoint.indexOf("[") + 1, textWithPoint.indexOf("]"));
+                        PointTextDTO pointTextDTO = new PointTextDTO(string2Box(point, dpi72ToReal), text);
+                        boolean add = pointTextDTOS.add(pointTextDTO);
 
-                    if(add) {
-                        Map<String, Object> tmp = new LinkedHashMap<>();
-                        tmp.put("x", centerX(point, dpi72ToReal));
-                        Map<String, Object> info = new LinkedHashMap<>();
-                        info.put("point", string2Box(point, dpi72ToReal));
-                        info.put("text", text);
-                        tmp.put("info", info);
-                        if(minWidth.compareTo(new BigDecimal(centerWidth(point, dpi72ToReal))) > 0) {
-                            minWidth = new BigDecimal(centerWidth(point, dpi72ToReal)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                        if(add) {
+                            Map<String, Object> tmp = new LinkedHashMap<>();
+                            tmp.put("x", centerX(point, dpi72ToReal));
+                            Map<String, Object> info = new LinkedHashMap<>();
+                            info.put("point", string2Box(point, dpi72ToReal));
+                            info.put("text", text);
+                            tmp.put("info", info);
+                            if(minWidth.compareTo(new BigDecimal(centerWidth(point, dpi72ToReal))) > 0) {
+                                minWidth = new BigDecimal(centerWidth(point, dpi72ToReal)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                            }
+                            if(maxWidth.compareTo(new BigDecimal(centerWidth(point, dpi72ToReal))) < 0) {
+                                maxWidth = new BigDecimal(centerWidth(point, dpi72ToReal)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                            }
+                            centerXTextList.add(tmp);
                         }
-                        if(maxWidth.compareTo(new BigDecimal(centerWidth(point, dpi72ToReal))) < 0) {
-                            maxWidth = new BigDecimal(centerWidth(point, dpi72ToReal)).setScale(2 , BigDecimal.ROUND_HALF_UP);
-                        }
-                        centerXTextList.add(tmp);
                     }
-                }
 
+                }
             }
+
             System.out.println(pointTextDTOS.size());
             System.out.println(dpi);
             ObjectMapper objectMapper = new ObjectMapper();
