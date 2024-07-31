@@ -2,7 +2,12 @@ package cn.net.pap.common.opencv;
 
 import org.junit.jupiter.api.Test;
 
+import java.awt.*;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ImageUtilTest {
 
@@ -16,4 +21,19 @@ public class ImageUtilTest {
         }
     }
 
+    // @Test
+    public void cropImageCutListTest() {
+        List<Rectangle> regions = new ArrayList<>();
+        Rectangle rect1 = new Rectangle(000, 000, 050, 050);
+        Rectangle rect2 = new Rectangle(050, 050, 050, 050);
+        Rectangle rect3 = new Rectangle(100, 100, 050, 050);
+        Rectangle rect4 = new Rectangle(150, 150, 050, 050);
+        regions.add(rect1);
+        regions.add(rect2);
+        regions.add(rect3);
+        regions.add(rect4);
+
+        List<String> base64s = ImageUtil.cropImageCutList("input.jpg", regions);
+        assertTrue(base64s.size() == regions.size());
+    }
 }

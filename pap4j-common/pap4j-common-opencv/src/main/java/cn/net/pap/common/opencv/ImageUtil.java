@@ -8,8 +8,12 @@ import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Iterator;
+import java.util.List;
 
 public class ImageUtil {
 
@@ -60,6 +64,47 @@ public class ImageUtil {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    /**
+     * 在一张图像中同时截取多个矩形区域并按顺序返回 base64.
+     * @param inputFilePath
+     * @param regions
+     * @return
+     */
+    public static List<String> cropImageCutList(String inputFilePath, List<Rectangle> regions) {
+        List<String> base64Images = new ArrayList<>();
+
+        try {
+            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JPEG");
+            if (!readers.hasNext()) {
+                return base64Images;
+            }
+            ImageReader reader = readers.next();
+
+            try (ImageInputStream iis = ImageIO.createImageInputStream(new File(inputFilePath))) {
+                reader.setInput(iis);
+
+                for (Rectangle rect : regions) {
+                    ImageReadParam param = reader.getDefaultReadParam();
+                    param.setSourceRegion(rect);
+                    BufferedImage image = reader.read(0, param);
+
+                    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
+                        ImageIO.write(image, "JPEG", baos);
+                        byte[] imageBytes = baos.toByteArray();
+                        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+                        base64Images.add(base64Image);
+                    }
+                }
+            } finally {
+                reader.dispose();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return base64Images;
     }
 
     /**
