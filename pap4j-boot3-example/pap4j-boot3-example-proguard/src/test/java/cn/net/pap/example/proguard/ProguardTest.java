@@ -3,6 +3,7 @@ package cn.net.pap.example.proguard;
 import cn.net.pap.example.proguard.dto.ProguardDTO;
 import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.repository.ProguardRepository;
+import cn.net.pap.example.proguard.service.IProguardService;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -11,12 +12,17 @@ import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.*;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
 public class ProguardTest {
 
     @Autowired
     ProguardRepository proguardRepository;
+
+    @Autowired
+    IProguardService proguardService;
 
     @Test
     public void projectionsTest() {
@@ -41,6 +47,9 @@ public class ProguardTest {
         if(optional.isPresent()) {
             System.out.println(optional.get().getProguardId() + " : " + optional.get().getProguardName());
         }
+
+        List<Proguard> proguards = proguardService.searchAllByProguardNameRange(proguardId + "-" + (proguardId + 10l) + "," + proguardId);
+        assertTrue(proguards.size() == 1);
     }
 
 }

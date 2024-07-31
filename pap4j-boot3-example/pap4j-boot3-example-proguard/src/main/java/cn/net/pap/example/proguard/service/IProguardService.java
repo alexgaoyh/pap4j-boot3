@@ -20,4 +20,11 @@ public interface IProguardService {
     Proguard getProguardByProguardId(Long proguardId);
 
     Proguard updateProguardByProguardId(Proguard proguard);
+
+    /**
+     * 范围查询 参数格式为：  A-D,H   代表从 A 到 D，并且包含 H 的 数据   in (A,B,C,D,H)
+     * @param proguardNameRange
+     * @return
+     */
+    List<Proguard> searchAllByProguardNameRange(String proguardNameRange);
 }
