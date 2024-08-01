@@ -54,7 +54,7 @@ public class JsonORMUtil {
         Map<String, Object> returnMap = new LinkedHashMap<>();
 
         // 计算每个key对应的value出现的次数
-        Map<String, List<Object>> keyValueCounts = new HashMap<>();
+        Map<String, List<Object>> keyValueCounts = new LinkedHashMap<>();
         for (Map<String, Object> map : mapList) {
             for (Map.Entry<String, Object> entry : map.entrySet()) {
                 String key = entry.getKey();
@@ -86,26 +86,38 @@ public class JsonORMUtil {
         Map<String, MappingTableDTO> mappingMap = mappingORMDTO.getMapping();
 
         for (Map.Entry<String, MappingTableDTO> entry : mappingMap.entrySet()) {
-            if (entry.getValue().getFk() == null || entry.getValue().getFk().size() == 0) {
-                // 这里理解为主表，没有外键设置的表结构
-                List<Map<String, Object>> flattenedList = JsonORMUtil.flattenJson(jsonNode);
-                Map<String, Object> uniqueKeyValuePairs = JsonORMUtil.findUniqueKeyValuePairs(flattenedList);
-                TableFieldValueDTO tableFieldValueDTO = geneTableFieldValueDTO(entry.getKey(), entry.getValue(), uniqueKeyValuePairs);
-                if (tableFieldValueDTO.getSuccessInt() == 0) {
-                    tableFieldValueDTO.setFk(entry.getValue().getFk());
-                    tableFieldValueDTOList.add(tableFieldValueDTO);
-                }
-            } else {
-                // 这里理解为附表，有外键设置的表结构
-                List<Map<String, Object>> flattenedMapList = JsonORMUtil.flattenJson(jsonNode);
-                flattenedMapList = withFKFilter(entry.getKey(), entry.getValue(), flattenedMapList);
-                for (Map<String, Object> flattenedMap : flattenedMapList) {
-                    TableFieldValueDTO tableFieldValueDTO = geneTableFieldValueDTO(entry.getKey(), entry.getValue(), flattenedMap);
+            if(mappingORMDTO.getOperator().equals("insert") || mappingORMDTO.getOperator().equals("update") || mappingORMDTO.getOperator().equals("delete")) {
+                if (entry.getValue().getFk() == null || entry.getValue().getFk().size() == 0) {
+                    // 这里理解为主表，没有外键设置的表结构
+                    List<Map<String, Object>> flattenedList = JsonORMUtil.flattenJson(jsonNode);
+                    Map<String, Object> uniqueKeyValuePairs = JsonORMUtil.findUniqueKeyValuePairs(flattenedList);
+                    TableFieldValueDTO tableFieldValueDTO = geneTableFieldValueDTO(entry.getKey(), entry.getValue(), uniqueKeyValuePairs);
                     if (tableFieldValueDTO.getSuccessInt() == 0) {
                         tableFieldValueDTO.setFk(entry.getValue().getFk());
                         tableFieldValueDTOList.add(tableFieldValueDTO);
                     }
+                } else {
+                    // 这里理解为附表，有外键设置的表结构
+                    List<Map<String, Object>> flattenedMapList = JsonORMUtil.flattenJson(jsonNode);
+                    flattenedMapList = withFKFilter(entry.getKey(), entry.getValue(), flattenedMapList);
+                    for (Map<String, Object> flattenedMap : flattenedMapList) {
+                        TableFieldValueDTO tableFieldValueDTO = geneTableFieldValueDTO(entry.getKey(), entry.getValue(), flattenedMap);
+                        if (tableFieldValueDTO.getSuccessInt() == 0) {
+                            tableFieldValueDTO.setFk(entry.getValue().getFk());
+                            tableFieldValueDTOList.add(tableFieldValueDTO);
+                        }
+                    }
                 }
+            }
+            if(mappingORMDTO.getOperator().equals("select")) {
+                List<Map<String, Object>> flattenedList = JsonORMUtil.flattenJson(jsonNode);
+                Map<String, Object> uniqueKeyValuePairs = JsonORMUtil.findUniqueKeyValuePairs(flattenedList);
+                TableFieldValueDTO tableFieldValueDTO = new TableFieldValueDTO();
+                tableFieldValueDTO.setTableName(entry.getKey());
+                tableFieldValueDTO.setValueMap(uniqueKeyValuePairs);
+                tableFieldValueDTO.setFk(entry.getValue().getField());
+                tableFieldValueDTOList.add(tableFieldValueDTO);
+
             }
 
         }

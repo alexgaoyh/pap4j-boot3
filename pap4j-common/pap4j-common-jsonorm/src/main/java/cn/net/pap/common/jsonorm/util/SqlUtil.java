@@ -1,5 +1,6 @@
 package cn.net.pap.common.jsonorm.util;
 
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -71,6 +72,38 @@ public class SqlUtil {
 
         // 构建DELETE语句
         String sql = "DELETE FROM " + tableName + " WHERE " + pk + " = " + valueStr + ";";
+        return sql;
+    }
+
+    /**
+     * 生成查询语句
+     * @param tableName
+     * @return
+     */
+    public static String generateSelectStatement(String tableName, List<String> fieldNameList, Map<String, Object> valueMap) {
+        // 验证输入
+        if (tableName == null || tableName.isEmpty()) {
+            throw new IllegalArgumentException("Table name cannot be null or empty");
+        }
+        if (fieldNameList == null || fieldNameList.isEmpty()) {
+            throw new IllegalArgumentException("Primary key cannot be null or empty");
+        }
+        if (valueMap == null || valueMap.isEmpty()) {
+            throw new IllegalArgumentException("Primary key value cannot be null");
+        }
+
+        StringBuffer fieldsStr = new StringBuffer();
+        for(String fieldName : fieldNameList) {
+            fieldsStr.append(fieldName).append(" ").append(",");
+        }
+
+        StringBuffer whereStr = new StringBuffer();
+        for(Map.Entry<String, Object> entry : valueMap.entrySet()) {
+            whereStr.append(" AND ").append(entry.getKey()).append(" = '").append(entry.getValue()).append("' ").append("");
+        }
+
+        // 构建 SELECT 语句
+        String sql = "SELECT " + fieldsStr.toString().substring(0, fieldsStr.toString().length() - 1) + " FROM " + tableName + " WHERE  1 = 1 " + whereStr + ";";
         return sql;
     }
 
