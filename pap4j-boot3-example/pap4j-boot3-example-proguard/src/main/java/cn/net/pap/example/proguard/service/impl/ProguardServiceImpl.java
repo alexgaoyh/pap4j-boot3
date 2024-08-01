@@ -4,8 +4,12 @@ import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.repository.ProguardRepository;
 import cn.net.pap.example.proguard.service.IProguardService;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -79,5 +83,23 @@ public class ProguardServiceImpl implements IProguardService {
         // 设置参数并执行查询
         query.setParameter("ranges", strRanges);
         return query.getResultList();
+    }
+
+    @Override
+    public Page<Proguard> searchAllByNaiveSQL(String naiveSQL, Pageable pageable) {
+        Query naiveSQLQuery = entityManager.createNativeQuery(naiveSQL, Proguard.class);
+        //设置分页
+        naiveSQLQuery.setFirstResult((int)(pageable.getOffset()));
+        naiveSQLQuery.setMaxResults(pageable.getPageSize());
+
+        List resultList = naiveSQLQuery.getResultList();
+
+        // 创建计数查询
+        String countSQL = "SELECT COUNT(*) FROM (" + naiveSQL + ") AS countQuery";
+        Query countQuery = entityManager.createNativeQuery(countSQL);
+        // 获取总条数
+        Number totalCount = (Number) countQuery.getSingleResult();
+
+        return new PageImpl<>(resultList, pageable, totalCount.longValue());
     }
 }

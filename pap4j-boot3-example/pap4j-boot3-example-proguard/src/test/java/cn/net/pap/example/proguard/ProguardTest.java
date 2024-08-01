@@ -8,6 +8,9 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.*;
@@ -50,6 +53,32 @@ public class ProguardTest {
 
         List<Proguard> proguards = proguardService.searchAllByProguardNameRange(proguardId + "-" + (proguardId + 10l) + "," + proguardId);
         assertTrue(proguards.size() == 1);
+
+
+        Proguard proguard1 = proguard;
+        proguard1.setProguardId(proguardId + 1);
+        proguardRepository.saveAndFlush(proguard1);
+
+        Proguard proguard2 = proguard;
+        proguard2.setProguardId(proguardId + 2);
+        proguardRepository.saveAndFlush(proguard2);
+
+        Proguard proguard3 = proguard;
+        proguard3.setProguardId(proguardId + 3);
+        proguardRepository.saveAndFlush(proguard3);
+
+        Proguard proguard4 = proguard;
+        proguard4.setProguardId(proguardId + 3);
+        proguardRepository.saveAndFlush(proguard4);
+
+        Pageable pageable = PageRequest.of(0, 3);
+        Page<Proguard> proguardsPageable = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable);
+        System.out.println(proguardsPageable);
+
+        Pageable pageable2 = PageRequest.of(1, 3);
+        Page<Proguard> proguardsPageable2 = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable2);
+        System.out.println(proguardsPageable2);
+
     }
 
 }
