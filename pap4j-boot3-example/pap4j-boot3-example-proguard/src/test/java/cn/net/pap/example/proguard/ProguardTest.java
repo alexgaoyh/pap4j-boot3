@@ -79,6 +79,10 @@ public class ProguardTest {
         Page<Proguard> proguardsPageable2 = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable2);
         System.out.println(proguardsPageable2);
 
+        Pageable pageable3 = PageRequest.of(1, 3);
+        Page<Map> proguardsPageable3 = proguardService.searchAllByNaiveSQLMap("select proguard_id, proguard_name from proguard order by proguard_id desc", pageable3);
+        System.out.println(proguardsPageable3);
+
     }
 
 }

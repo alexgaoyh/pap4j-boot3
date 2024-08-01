@@ -6,6 +6,8 @@ import cn.net.pap.example.proguard.service.IProguardService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
+import org.hibernate.query.NativeQuery;
+import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -14,6 +16,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
@@ -88,6 +91,27 @@ public class ProguardServiceImpl implements IProguardService {
     @Override
     public Page<Proguard> searchAllByNaiveSQL(String naiveSQL, Pageable pageable) {
         Query naiveSQLQuery = entityManager.createNativeQuery(naiveSQL, Proguard.class);
+        //设置分页
+        naiveSQLQuery.setFirstResult((int)(pageable.getOffset()));
+        naiveSQLQuery.setMaxResults(pageable.getPageSize());
+
+        List resultList = naiveSQLQuery.getResultList();
+
+        // 创建计数查询
+        String countSQL = "SELECT COUNT(*) FROM (" + naiveSQL + ") AS countQuery";
+        Query countQuery = entityManager.createNativeQuery(countSQL);
+        // 获取总条数
+        Number totalCount = (Number) countQuery.getSingleResult();
+
+        return new PageImpl<>(resultList, pageable, totalCount.longValue());
+    }
+
+    @Override
+    public Page<Map> searchAllByNaiveSQLMap(String naiveSQL, Pageable pageable) {
+        NativeQuery naiveSQLQuery = (NativeQuery<?>) entityManager.createNativeQuery(naiveSQL);
+
+        naiveSQLQuery.setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
+
         //设置分页
         naiveSQLQuery.setFirstResult((int)(pageable.getOffset()));
         naiveSQLQuery.setMaxResults(pageable.getPageSize());

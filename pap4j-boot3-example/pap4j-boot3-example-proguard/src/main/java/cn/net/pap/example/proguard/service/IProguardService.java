@@ -5,6 +5,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Map;
 
 public interface IProguardService {
 
@@ -37,5 +38,13 @@ public interface IProguardService {
      * @return
      */
     Page<Proguard> searchAllByNaiveSQL(String naiveSQL, Pageable pageable);
+
+    /**
+     * 原生SQL 分页查询 返回 Map
+     * @param naiveSQL
+     * @param pageable
+     * @return
+     */
+    Page<Map> searchAllByNaiveSQLMap(String naiveSQL, Pageable pageable);
 
 }
