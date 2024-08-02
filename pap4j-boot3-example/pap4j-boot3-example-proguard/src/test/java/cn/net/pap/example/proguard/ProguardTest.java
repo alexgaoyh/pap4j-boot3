@@ -85,7 +85,8 @@ public class ProguardTest {
 
         String updateSQL = "update proguard set proguard_name = ? where proguard_id = ?";
         List<Object> params1 = Arrays.asList("alexgaoyh", proguardId);
-        List<Object> params2 = Arrays.asList(null, proguardId);
+        // alexgaoyh2 -> null 的时候，验证事务
+        List<Object> params2 = Arrays.asList("alexgaoyh2", proguardId);
         List<List<Object>> paramsList = new ArrayList<>();
         paramsList.add(params1);
         paramsList.add(params2);
