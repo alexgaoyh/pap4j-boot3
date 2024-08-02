@@ -47,4 +47,13 @@ public interface IProguardService {
      */
     Page<Map> searchAllByNaiveSQLMap(String naiveSQL, Pageable pageable);
 
+    /**
+     * 批量执行多个SQL
+     * 实现类增加 org.springframework.transaction.annotation.Transactional 注解
+     * @param naiveSQLList
+     * @param paramsList
+     * @return
+     */
+    Boolean executeNaiveSQLBatch(List<String> naiveSQLList, List<List<Object>> paramsList);
+
 }

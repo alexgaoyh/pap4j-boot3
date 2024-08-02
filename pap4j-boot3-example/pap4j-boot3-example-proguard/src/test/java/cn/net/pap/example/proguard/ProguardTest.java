@@ -83,6 +83,15 @@ public class ProguardTest {
         Page<Map> proguardsPageable3 = proguardService.searchAllByNaiveSQLMap("select proguard_id, proguard_name from proguard order by proguard_id desc", pageable3);
         System.out.println(proguardsPageable3);
 
+        String updateSQL = "update proguard set proguard_name = ? where proguard_id = ?";
+        List<Object> params1 = Arrays.asList("alexgaoyh", proguardId);
+        List<Object> params2 = Arrays.asList(null, proguardId);
+        List<List<Object>> paramsList = new ArrayList<>();
+        paramsList.add(params1);
+        paramsList.add(params2);
+        List<String> naiveSQLList = Arrays.asList(updateSQL, updateSQL);
+        Boolean b = proguardService.executeNaiveSQLBatch(naiveSQLList, paramsList);
+        System.out.println(b);
     }
 
 }

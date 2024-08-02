@@ -13,6 +13,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Arrays;
 import java.util.List;
@@ -125,5 +126,25 @@ public class ProguardServiceImpl implements IProguardService {
         Number totalCount = (Number) countQuery.getSingleResult();
 
         return new PageImpl<>(resultList, pageable, totalCount.longValue());
+    }
+
+    @Override
+    @Transactional
+    public Boolean executeNaiveSQLBatch(List<String> naiveSQLList, List<List<Object>> paramsList) {
+        if(naiveSQLList != null && paramsList != null && naiveSQLList.size() == paramsList.size()) {
+            for(int naiveIdx = 0; naiveIdx < naiveSQLList.size(); naiveIdx++) {
+                String naiveSQL = naiveSQLList.get(naiveIdx);
+                List<Object> params = paramsList.get(naiveIdx);
+                Query query = entityManager.createNativeQuery(naiveSQL);
+                for(int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
+                    query.setParameter(paramIdx + 1, params.get(paramIdx));
+                }
+                int i = query.executeUpdate();
+                System.out.println(i);
+            }
+            return true;
+        } else {
+            return false;
+        }
     }
 }
