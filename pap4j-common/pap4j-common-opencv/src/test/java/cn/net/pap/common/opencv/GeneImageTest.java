@@ -45,8 +45,12 @@ public class GeneImageTest {
         try {
             // 将图片写入文件
             String newFileName = fileNamePrefix + "-" + String.format("%03d", number) + "-00.jpg";
-            File file = new File(fileDirPath + newFileName);
-            ImageIO.write(image, "jpg", file);
+
+            JpegDPIProcessor processor = new JpegDPIProcessor();
+            byte[] img = processor.setDPI(image, 300);
+            try (FileOutputStream outputStream = new FileOutputStream(fileDirPath + newFileName);){
+                outputStream.write(img);
+            }
             System.out.println("Image " + number + " has been generated.");
         } catch (IOException e) {
             e.printStackTrace();
