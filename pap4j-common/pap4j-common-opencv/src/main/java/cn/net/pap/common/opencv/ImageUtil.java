@@ -10,6 +10,7 @@ import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Iterator;
@@ -148,6 +149,33 @@ public class ImageUtil {
             e.printStackTrace();
             return false;
         }
+    }
+
+    /**
+     * 将两张图片根据给定的坐标点进行拼接
+     * @param img1Path 第一张图片的路径
+     * @param img2Path 第二张图片的路径
+     * @param x1 第一张图片放置的x坐标
+     * @param y1 第一张图片放置的y坐标
+     * @param x2 第二张图片放置的x坐标
+     * @param y2 第二张图片放置的y坐标
+     * @return 拼接后的图片
+     * @throws IOException
+     */
+    public static BufferedImage mergeImages(String img1Path, String img2Path, int x1, int y1, int x2, int y2) throws IOException {
+        BufferedImage img1 = ImageIO.read(new File(img1Path));
+        BufferedImage img2 = ImageIO.read(new File(img2Path));
+
+        int width = Math.max(img1.getWidth() + x1, img2.getWidth() + x2);
+        int height = Math.max(img1.getHeight() + y1, img2.getHeight() + y2);
+        BufferedImage combined = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+
+        Graphics g = combined.getGraphics();
+        g.drawImage(img1, x1, y1, null);
+        g.drawImage(img2, x2, y2, null);
+        g.dispose();
+
+        return combined;
     }
 
 }

@@ -2,7 +2,9 @@ package cn.net.pap.common.opencv;
 
 import org.junit.jupiter.api.Test;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
@@ -36,4 +38,13 @@ public class ImageUtilTest {
         List<String> base64s = ImageUtil.cropImageCutList("input.jpg", regions);
         assertTrue(base64s.size() == regions.size());
     }
+
+    // @Test
+    public void mergeImagesTest() throws Exception {
+        BufferedImage bufferedImage = ImageUtil.mergeImages("1.png",
+                "2.png",
+                0, 0, 0, 100);
+        ImageIO.write(bufferedImage, "png", new File("out.png"));
+    }
+
 }
