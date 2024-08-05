@@ -8,6 +8,7 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.pdmodel.*;
 import org.apache.pdfbox.pdmodel.common.PDMetadata;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
@@ -27,6 +28,8 @@ import java.nio.file.Files;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
 
@@ -264,6 +267,83 @@ public class PDFUtil {
         }
     }
 
+    public static Boolean jpg2Pdf(String jpgPath, String pdfPath) {
+        List<String> imagePaths = Arrays.asList(new String[]{ jpgPath });
+        PDDocument document = new PDDocument();
+        try {
+            for (String imagePath : imagePaths) {
+                PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
+
+                float imageWidth = imageXObject.getWidth();
+                float imageHeight = imageXObject.getHeight();
+
+                PDPage page = new PDPage(new PDRectangle(imageWidth, imageHeight));
+                document.addPage(page);
+
+                try (PDPageContentStream contentStream = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.OVERWRITE, true, true)) {
+                    contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+
+                }
+            }
+            document.save(pdfPath);
+            return true;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            try {
+                document.close();
+            } catch (IOException e) {
+                return false;
+            }
+        }
+    }
+
+    public static Boolean dir2Pdf(String dirPath, String pdfPath, Integer DPI) {
+        List<String> imagePaths = new ArrayList<>();
+        File dirPathFile = new File(dirPath);
+        if (dirPathFile.isDirectory()) {
+            File[] files = dirPathFile.listFiles();
+            for (File f : files) {
+                if (!f.isDirectory()) {
+                    if (f.getName().toLowerCase().endsWith("jpg")) {
+                        imagePaths.add(f.getAbsolutePath());
+                    }
+                }
+            }
+        }
+
+        PDDocument document = new PDDocument();
+        try {
+            for (String imagePath : imagePaths) {
+
+                PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
+
+                float imageWidth = imageXObject.getWidth();
+                float imageHeight = imageXObject.getHeight();
+
+                // 重新处理宽高
+                imageWidth = imageWidth / DPI * 72;
+                imageHeight = imageHeight / DPI * 72;
+
+                PDPage page = new PDPage(new PDRectangle(imageWidth, imageHeight));
+                document.addPage(page);
+
+                try (PDPageContentStream contentStream = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.OVERWRITE, true, true)) {
+                    contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                }
+            }
+            document.save(pdfPath);
+            return true;
+        } catch (Exception e) {
+            return false;
+        } finally {
+            try {
+                document.close();
+            } catch (IOException e) {
+                return false;
+            }
+        }
+    }
 
     private static PDDocumentCatalog setCompliant(final PDDocument doc, final String pdfPart,
                                                   final String pdfConformance) throws IOException, Exception {
