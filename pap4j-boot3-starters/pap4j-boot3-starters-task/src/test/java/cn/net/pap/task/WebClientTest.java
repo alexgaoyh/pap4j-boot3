@@ -1,0 +1,48 @@
+package cn.net.pap.task;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Mono;
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
+
+public class WebClientTest {
+
+    // @Test
+    public void WebClientGetTest() throws Exception {
+        Mono<String> mono = WebClient.builder().build().get()
+                .uri("")
+                .retrieve().bodyToMono(String.class);
+        System.out.println(mono.block());
+    }
+
+    // @Test
+    public void WebClientPostTest() throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        Map<String, String> reqMap = new HashMap<>();
+        reqMap.put("accessToken", "");
+        reqMap.put("image64", getImgStr("input.jpg"));
+        Mono<String> mono = WebClient.builder().defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).build().post()
+                .uri("")
+                .bodyValue(objectMapper.writeValueAsString(reqMap))
+                .retrieve().bodyToMono(String.class);
+        System.out.println(mono.block());
+    }
+
+    /**
+     * 将图片转换成Base64编码
+     * @param imagePath 待处理图片
+     * @return
+     */
+    private  static String getImgStr(String imagePath) throws Exception {
+        byte[] imageBytes = Files.readAllBytes(Paths.get(imagePath));
+        String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
+        return base64Image;
+    }
+
+}
