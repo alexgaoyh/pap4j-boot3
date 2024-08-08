@@ -13,6 +13,7 @@ import java.util.Map;
 
 @Entity
 @Table(name = "proguard")
+@org.hibernate.envers.Audited
 @EntityListeners(TransactionCompletionListener.class)
 public class Proguard {
 
