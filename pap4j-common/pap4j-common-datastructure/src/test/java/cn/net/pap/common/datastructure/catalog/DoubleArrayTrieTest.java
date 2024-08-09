@@ -5,10 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class DoubleArrayTrieTest {
 
@@ -37,6 +34,9 @@ public class DoubleArrayTrieTest {
 //            writer.write(w);
 //            writer.newLine();
 //        }
+        // 显示调用，需与使用字典序.
+        Collections.sort(words);
+
         System.out.println("字典词条：" + words.size());
 
         {
