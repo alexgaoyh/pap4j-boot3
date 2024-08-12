@@ -95,4 +95,29 @@ public class ProguardTest {
         System.out.println(b);
     }
 
+    /**
+     *
+     */
+    @Test
+    public void crudTest() {
+        Long proguardId = System.currentTimeMillis();
+
+        Proguard proguard = new Proguard();
+        proguard.setProguardId(proguardId);
+        proguard.setProguardName(proguardId + "");
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        proguard.setExtMap(extMap);
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+        proguard.setExtList(extList);
+        proguardRepository.saveAndFlush(proguard);
+
+        proguard.setProguardName("update");
+        proguardRepository.saveAndFlush(proguard);
+
+        proguardRepository.delete(proguard);
+
+
+    }
 }

@@ -1,6 +1,7 @@
 package cn.net.pap.example.proguard.entity;
 
 import cn.net.pap.example.proguard.convert.JsonTypeConvert;
+import cn.net.pap.example.proguard.listener.TransactionCompletionListener;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.Type;
@@ -12,6 +13,8 @@ import java.util.Map;
 
 @Entity
 @Table(name = "proguard")
+@org.hibernate.envers.Audited
+@EntityListeners(TransactionCompletionListener.class)
 public class Proguard {
 
     @Id
@@ -60,5 +63,15 @@ public class Proguard {
 
     public void setExtList(List<String> extList) {
         this.extList = extList;
+    }
+
+    @Override
+    public String toString() {
+        return "Proguard{" +
+                "proguardId=" + proguardId +
+                ", proguardName='" + proguardName + '\'' +
+                ", extMap=" + extMap +
+                ", extList=" + extList +
+                '}';
     }
 }

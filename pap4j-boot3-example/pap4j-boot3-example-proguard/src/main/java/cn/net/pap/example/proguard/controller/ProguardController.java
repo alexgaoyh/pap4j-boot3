@@ -68,4 +68,30 @@ public class ProguardController {
         return proguardService.saveAllAndFlush(proguards);
     }
 
+    @GetMapping("/saveAndUpdate")
+    public Proguard saveAndUpdate() {
+        Proguard proguard = new Proguard();
+        proguard.setProguardId(System.currentTimeMillis());
+        proguard.setProguardName(proguard.getProguardId() + "");
+
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        extMap.put("threadId", Thread.currentThread().getName());
+        proguard.setExtMap(extMap);
+
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+        extList.add("B");
+        extList.add("C");
+        extList.add("D");
+        proguard.setExtList(extList);
+
+        proguardService.saveAndFlush(proguard);
+
+        proguard.setProguardName("update");
+        proguardService.saveAndFlush(proguard);
+
+        return proguard;
+    }
+
 }
