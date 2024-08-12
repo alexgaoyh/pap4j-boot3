@@ -223,6 +223,163 @@ public class PDFUtil {
         }
     }
 
+
+    /**
+     * 写入段落
+     * @param pdfPath
+     * @param paragraphs
+     * @throws IOException
+     */
+    public static void drawParagraphs(String pdfPath, List<String> paragraphs) throws IOException {
+        try (PDDocument document = new PDDocument()) {
+            // 加载字体
+            PDType0Font songFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("宋体")));
+            PDType0Font songFontExtB = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("宋体ExtB")));
+
+            // 页面设置
+            PDRectangle pageSize = PDRectangle.A4;
+            float margin = 50;
+            float width = pageSize.getWidth() - 2 * margin;
+            float startX = margin;
+            float startY = pageSize.getHeight() - margin;
+
+            // 字体大小和行间距
+            float fontSize = 12;
+            float leading = 1.5f * fontSize;
+
+            PDPage page = new PDPage(pageSize);
+            document.addPage(page);
+
+            PDPageContentStream contentStream = new PDPageContentStream(document, page);
+            contentStream.beginText();
+            contentStream.newLineAtOffset(startX, startY);
+
+            for (String paragraph : paragraphs) {
+                String[] lines = wrapText(paragraph, songFont, songFontExtB, fontSize, width);
+
+                for (String line : lines) {
+                    if (startY - leading < margin) {
+                        // 结束当前页面的内容流
+                        contentStream.endText();
+                        contentStream.close();
+
+                        // 添加新页面
+                        page = new PDPage(pageSize);
+                        document.addPage(page);
+
+                        // 创建新的内容流
+                        contentStream = new PDPageContentStream(document, page);
+                        contentStream.beginText();
+                        contentStream.newLineAtOffset(startX, pageSize.getHeight() - margin);
+                        startY = pageSize.getHeight() - margin;
+                    }
+
+                    char[] chars = line.toCharArray();
+                    for (int i = 0; i < chars.length;) {
+                        String c = "";
+                        if (Character.isHighSurrogate(chars[i])) {
+                            // 如果是代理项的高位，则跳过两个字符
+                            c = new String(Character.toChars(Character.toCodePoint(chars[i], chars[i + 1])));
+                            i += 2;
+                        } else {
+                            // 否则，只跳过一个字符
+                            c = chars[i] + "";
+                            i++;
+                        }
+
+                        PDType0Font currentFont = fontContainsCharacter(songFont, songFontExtB, c + "") ? songFont : songFontExtB;
+                        contentStream.setFont(currentFont, fontSize);
+                        contentStream.showText(String.valueOf(c));
+                    }
+
+                    contentStream.newLineAtOffset(0, -leading);
+                    startY -= leading;
+                }
+
+                // 添加段落之间的间距
+                //startY -= leading;
+            }
+
+            // 结束内容流
+            contentStream.endText();
+            contentStream.close();
+
+            // 保存PDF文档
+            document.save(pdfPath);
+        }
+    }
+
+    /**
+     * 字体是否包含文字
+     * @param font
+     * @param fontExtB
+     * @param c
+     * @return
+     */
+    private static boolean fontContainsCharacter(PDType0Font font, PDType0Font fontExtB, String c)  {
+        try {
+            return font.getStringWidth(String.valueOf(c)) > 0;
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    private static String[] wrapText(String text, PDType0Font songFont, PDType0Font songFontExtB, float fontSize, float width) throws IOException {
+        StringBuilder line = new StringBuilder();
+        float spaceWidth = songFont.getStringWidth(" ") / 1000 * fontSize;
+
+        java.util.List<String> lines = new java.util.ArrayList<>();
+        float lineWidth = 0;
+
+        char[] chars = text.toCharArray();
+        for (int i = 0; i < chars.length;) {
+            String c = "";
+            if (Character.isHighSurrogate(chars[i])) {
+                // 如果是代理项的高位，则跳过两个字符
+                c = new String(Character.toChars(Character.toCodePoint(chars[i], chars[i + 1])));
+                i += 2;
+            } else {
+                // 否则，只跳过一个字符
+                c = chars[i] + "";
+                i++;
+            }
+
+            if(c.equals("\t")) {
+                continue;
+            }
+
+            // 选择合适的字体
+            PDType0Font currentFont = fontContainsCharacter(songFont, songFontExtB, c) ? songFont : songFontExtB;
+            float charWidth = currentFont.getStringWidth(String.valueOf(c)) / 1000 * fontSize;
+
+            // 如果行为空，则直接添加字符
+            if (line.length() == 0) {
+                line.append(c);
+                lineWidth = charWidth;
+            } else {
+                // 添加空格宽度
+                float spaceAdjustment = line.length() > 0 ? spaceWidth : 0;
+                if (lineWidth + spaceAdjustment + charWidth <= width) {
+                    line.append(c);
+                    lineWidth += charWidth + spaceAdjustment;
+                } else {
+                    // 当前行已满，添加到行列表
+                    lines.add(line.toString());
+                    // 开始新行
+                    line = new StringBuilder(String.valueOf(c));
+                    lineWidth = charWidth;
+                }
+            }
+        }
+
+        // 添加最后一行
+        if (line.length() > 0) {
+            lines.add(line.toString());
+        }
+
+        return lines.toArray(new String[0]);
+    }
+
     /**
      * 画矩形， 或者是表格的一个长方形的框。 提供一个从左下角开始，左上角结束的逆时针的四个点坐标.
      * @param pdfPath

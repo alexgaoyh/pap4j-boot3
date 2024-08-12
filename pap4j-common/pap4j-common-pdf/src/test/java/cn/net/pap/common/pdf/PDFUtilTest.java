@@ -7,8 +7,8 @@ import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -112,6 +112,27 @@ public class PDFUtilTest {
     @Test
     public void convertPDFToJPGTest() {
         PDFUtil.convertPDFToJPG("pdf.pdf", "jpg.jpg", 300);
+    }
+
+
+    @Test
+    public void utf16ToPdfTest() throws Exception {
+        List<String> paragraphs = new ArrayList<>();
+        String filePath = "utf16.txt";
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_16))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                // 处理每一行内容
+                // System.out.println(line);
+                paragraphs.add(line);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        PDFUtil.drawParagraphs("utf16.pdf", paragraphs);
     }
 
 }

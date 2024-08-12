@@ -12,7 +12,9 @@ public enum ChineseFont {
     //楷体
     SIMKAI("楷体", "SimKai", "SIMKAI.ttf", "fonts/simkai.ttf"),
     //宋体&新宋体
-    SIMSUM("宋体", "SimSun", "simsun.ttc", "fonts/simsun.ttf");
+    SIMSUM("宋体", "SimSun", "simsun.ttc", "fonts/simsun.ttf"),
+    //宋体&新宋体
+    SIMSUMB("宋体ExtB", "SimSunExtB", "simsunb.ttc", "fonts/simsunb.ttf");
 
     /**
      * fontName
