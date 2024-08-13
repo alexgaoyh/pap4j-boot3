@@ -42,7 +42,7 @@ public class ITextWriteParagraphTest {
         Document document = new Document();
         try {
             // 创建 PdfWriter 对象
-            PdfWriter.getInstance(document, new FileOutputStream(pdfPath));
+            PdfWriter pdfWriter = PdfWriter.getInstance(document, new FileOutputStream(pdfPath));
             // 打开文档
             document.open();
 
@@ -51,6 +51,10 @@ public class ITextWriteParagraphTest {
 
             Font simSunFont = new Font(simSun, 12);
             Font simsunbFont = new Font(simsunb, 12);
+
+            com.itextpdf.text.pdf.PdfContentByte content = pdfWriter.getDirectContent();
+            content.setFontAndSize(simSun, 12);
+            content.setFontAndSize(simsunb, 12);
 
             // 循环写入段落
             for (String paragraphStr : paragraphList) {
