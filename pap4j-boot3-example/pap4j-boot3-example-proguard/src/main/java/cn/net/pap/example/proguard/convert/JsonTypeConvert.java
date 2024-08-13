@@ -25,7 +25,7 @@ public class JsonTypeConvert implements UserType<Object> {
 
     @Override
     public int getSqlType() {
-        return Types.OTHER;
+        return Types.BLOB;
     }
 
     @Override
@@ -60,11 +60,11 @@ public class JsonTypeConvert implements UserType<Object> {
     @Override
     public void nullSafeSet(PreparedStatement st, Object value, int index, SharedSessionContractImplementor session) throws SQLException {
         if (value == null) {
-            st.setNull(index, Types.OTHER);
+            st.setNull(index, Types.BLOB);
             return;
         }
         try {
-            st.setObject(index, new ObjectMapper().writeValueAsString(value), Types.OTHER);
+            st.setObject(index, new ObjectMapper().writeValueAsString(value), Types.BLOB);
         } catch (Exception ex) {
             throw new RuntimeException("Failed to convert Object to String: " + ex.getMessage(), ex);
         }
