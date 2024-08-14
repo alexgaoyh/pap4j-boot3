@@ -1,9 +1,6 @@
 package cn.net.pap.common.file;
 
-import java.io.BufferedInputStream;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.RandomAccessFile;
+import java.io.*;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
@@ -81,34 +78,37 @@ public class ReadFileToMapUtil {
         }
 
         private void processChunk() {
-            StringBuilder line = new StringBuilder();
+            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             boolean withinLine = false;
 
             for (int i = start; i < end; i++) {
                 byte b = buffer.get(i);
                 if (b == '\n') {
-                    processLine(line);
-                    line.setLength(0);
+                    processLine(byteArrayOutputStream);
+                    byteArrayOutputStream.reset();
                     withinLine = false;
                 } else {
-                    line.append((char) b);
+                    byteArrayOutputStream.write(b);
                     withinLine = true;
                 }
             }
 
             if (withinLine) {
-                // 将最后一行处理并存储在map中
-                processLine(line);
+                // Process the last line in the chunk
+                processLine(byteArrayOutputStream);
             }
         }
 
-        private void processLine(StringBuilder line) {
-            byte[] lineBytes = line.toString().getBytes(StandardCharsets.UTF_8);
+        private void processLine(ByteArrayOutputStream byteArrayOutputStream) {
+            byte[] lineBytes = byteArrayOutputStream.toByteArray();
             int separatorIndex = findByte(lineBytes, separator);
             if (separatorIndex != -1) {
                 String key = stringAt(lineBytes, 0, separatorIndex);
                 String value = stringAt(lineBytes, separatorIndex + 1, lineBytes.length);
                 lineMap.put(key, value);
+            } else {
+                String key = stringAt(lineBytes, 0, lineBytes.length);
+                lineMap.put(key.trim(), "");
             }
         }
 
@@ -150,6 +150,9 @@ public class ReadFileToMapUtil {
                             String key = stringAt(lineBytes, 0, semicolonIndex);
                             String value = stringAt(lineBytes, semicolonIndex + 1, lineBytes.length);
                             lineMap.put(key, value);
+                        } else {
+                            String key = stringAt(lineBytes, 0, lineBytes.length);
+                            lineMap.put(key, "");
                         }
                         line.setLength(0);
                     } else {
@@ -164,6 +167,9 @@ public class ReadFileToMapUtil {
                     String key = stringAt(lineBytes, 0, semicolonIndex);
                     String value = stringAt(lineBytes, semicolonIndex + 1, lineBytes.length);
                     lineMap.put(key, value);
+                } else {
+                    String key = stringAt(lineBytes, 0, lineBytes.length);
+                    lineMap.put(key, "");
                 }
             }
         } catch (IOException e) {
