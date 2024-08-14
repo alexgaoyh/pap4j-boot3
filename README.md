@@ -23,12 +23,31 @@ https://pap-docs.pap.net.cn/
 ```
 ├─pap4j-boot3                                       根项目节点
    ├─pap4j-boot3-starters                               Starter机制,包括一些自定义start和使用示例
-     ├─pap4j-boot3-starter-statemachine                     statemachine状态机使用示例
+     ├─pap4j-boot3-starter-statemachine                     statemachine 状态机使用示例
+     ├─pap4j-boot3-starter-cache                            Redis Cache 自定义注解
+     ├─pap4j-boot3-starter-drools                           Drools 业务规则引擎
+     ├─pap4j-boot3-starter-gStore                           gStore 图数据库
+     ├─pap4j-boot3-starter-liteflow                         liteflow 组件式规则引擎
+     ├─pap4j-boot3-starter-logback                          logback 扩展组件
+     ├─pap4j-boot3-starter-milvus                           milvus 向量数据库
+     ├─pap4j-boot3-starter-neo4j                            neo4j 图数据库
+     ├─pap4j-boot3-starter-quartz                           quartz 作业调度框架扩展
+     ├─pap4j-boot3-starter-task                             task 自定义异步任务组件
    ├─pap4j-common                                       工具类
      ├─pap4j-common-bitmap                                  位图
+     ├─pap4j-common-boofcv                                  boofcv 计算机视觉库
+     ├─pap4j-common-datastructure                           数据结构: 树形、矩形、设计模式、聚类算法……
      ├─pap4j-common-deeplearning4j                          DL4J
-     ├─pap4j-common-excel                                   easyexcel
-     ├─pap4j-common-opencv                                  opencv
+     ├─pap4j-common-docx                                    Docx 组件
+     ├─pap4j-common-excel                                   Excel 组件
+     ├─pap4j-common-file                                    File 文件操作组件
+     ├─pap4j-common-jena                                    Jena RDF三元组操作组件
+     ├─pap4j-common-jsonorm                                 JSON ORM 自定义基础业务工具集合
+     ├─pap4j-common-jsqlparser                              Java SQL 解析操作组件 
+     ├─pap4j-common-kingbase                                人大金仓数据库
+     ├─pap4j-common-opencv                                  opencv 计算机视觉库
+     ├─pap4j-common-pdf                                     PDF 组件
+     ├─pap4j-common-spider                                  爬虫 组件
 ```
 
 #### 安装指南
