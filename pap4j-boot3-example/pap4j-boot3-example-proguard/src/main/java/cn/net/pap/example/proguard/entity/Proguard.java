@@ -33,6 +33,9 @@ public class Proguard {
     @Column(nullable = false, columnDefinition = "json")
     private List<String> extList = new ArrayList<>();
 
+    @org.hibernate.annotations.TenantId
+    private String tenantId;
+
     public Long getProguardId() {
         return proguardId;
     }
@@ -63,6 +66,14 @@ public class Proguard {
 
     public void setExtList(List<String> extList) {
         this.extList = extList;
+    }
+
+    public String getTenantId() {
+        return tenantId;
+    }
+
+    public void setTenantId(String tenantId) {
+        this.tenantId = tenantId;
     }
 
     @Override

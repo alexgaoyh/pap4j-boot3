@@ -11,6 +11,8 @@ public interface IProguardService {
 
     List<Proguard> searchAllByProguardName(String proguardName);
 
+    List<Proguard> findAll();
+
     Proguard saveAndFlush(Proguard entity);
 
     /**

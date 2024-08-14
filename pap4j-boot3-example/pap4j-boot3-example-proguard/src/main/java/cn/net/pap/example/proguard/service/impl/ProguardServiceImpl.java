@@ -38,6 +38,11 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
+    public List<Proguard> findAll() {
+        return proguardRepository.findAll();
+    }
+
+    @Override
     public Proguard saveAndFlush(Proguard entity) {
         Proguard proguard = proguardRepository.saveAndFlush(entity);
         return proguard;

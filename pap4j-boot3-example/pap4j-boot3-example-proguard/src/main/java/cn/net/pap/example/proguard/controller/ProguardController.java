@@ -3,6 +3,9 @@ package cn.net.pap.example.proguard.controller;
 import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.service.IProguardService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -54,6 +57,18 @@ public class ProguardController {
     @GetMapping("/searchAllByProguardName")
     public List<Proguard> searchAllByProguardName(@RequestParam(name = "proguardName") String proguardName) {
         return proguardService.searchAllByProguardName(proguardName);
+    }
+
+    @GetMapping("/findAll")
+    public List<Proguard> findAll() {
+        return proguardService.findAll();
+    }
+
+    @GetMapping("/findNaive")
+    public Page<Proguard> findNaive() {
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Proguard> proguardsPageable = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable);
+        return proguardsPageable;
     }
 
     @GetMapping("/saveAllAndFlush")
