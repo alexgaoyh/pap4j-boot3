@@ -4,6 +4,9 @@ import cn.net.pap.example.proguard.dto.ProguardDTO;
 import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.repository.ProguardRepository;
 import cn.net.pap.example.proguard.service.IProguardService;
+import cn.net.pap.example.proguard.util.SearchUtil;
+import cn.net.pap.example.proguard.util.dto.SearchConditionDTO;
+import jakarta.persistence.EntityManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +29,9 @@ public class ProguardTest {
 
     @Autowired
     IProguardService proguardService;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Test
     public void projectionsTest() {
@@ -120,4 +126,50 @@ public class ProguardTest {
 
 
     }
+
+    @Test
+    public void searchUtilTest() {
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+
+        SearchConditionDTO idEqual = new SearchConditionDTO("proguardId", SearchConditionDTO.Operator.EQUAL, 1l);
+        SearchConditionDTO greaterEqual = new SearchConditionDTO("proguardId", SearchConditionDTO.Operator.GREATER_THAN, 1l);
+        SearchConditionDTO nameLike = new SearchConditionDTO("proguardName", SearchConditionDTO.Operator.LIKE, "gao");
+
+        Proguard proguard1 = new Proguard();
+        proguard1.setProguardId(1l);
+        proguard1.setProguardName("alexgaoyh");
+        proguard1.setExtMap(extMap);
+        proguard1.setExtList(extList);
+        proguardRepository.saveAndFlush(proguard1);
+
+        List<SearchConditionDTO> conditions = new ArrayList<>();
+        conditions.add(idEqual);
+
+        List<Proguard> proguards1 = SearchUtil.filterEntities(conditions, entityManager, Proguard.class);
+        System.out.println(proguards1);
+
+        conditions.clear();
+        conditions.add(nameLike);
+
+        List<Proguard> proguards2 = SearchUtil.filterEntities(conditions, entityManager, Proguard.class);
+        System.out.println(proguards2);
+
+        conditions.clear();
+        conditions.add(idEqual);
+        conditions.add(nameLike);
+
+        List<Proguard> proguards3 = SearchUtil.filterEntities(conditions, entityManager, Proguard.class);
+        System.out.println(proguards3);
+
+        conditions.clear();
+        conditions.add(greaterEqual);
+
+        List<Proguard> proguards4 = SearchUtil.filterEntities(conditions, entityManager, Proguard.class);
+        System.out.println(proguards4);
+    }
+
+
 }
