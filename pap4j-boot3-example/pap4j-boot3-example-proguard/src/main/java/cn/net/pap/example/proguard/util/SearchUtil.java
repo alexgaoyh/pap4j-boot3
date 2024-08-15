@@ -59,16 +59,39 @@ public class SearchUtil {
                 case EQUAL:
                     predicates.add(cb.equal(root.get(condition.getField()), condition.getValue()));
                     break;
+                case NOT_EQUAL:
+                    predicates.add(cb.notEqual(root.get(condition.getField()), condition.getValue()));
+                    break;
                 case LIKE:
                     predicates.add(cb.like(root.get(condition.getField()), "%" + condition.getValue() + "%"));
+                    break;
+                case NOT_LIKE:
+                    predicates.add(cb.notLike(root.get(condition.getField()), "%" + condition.getValue() + "%"));
                     break;
                 case GREATER_THAN:
                     predicates.add(cb.greaterThan(root.get(condition.getField()), (Comparable) condition.getValue()));
                     break;
+                case GREATER_THAN_OR_EQUAL_TO:
+                    predicates.add(cb.greaterThanOrEqualTo(root.get(condition.getField()), (Comparable) condition.getValue()));
+                    break;
                 case LESS_THAN:
                     predicates.add(cb.lessThan(root.get(condition.getField()), (Comparable) condition.getValue()));
                     break;
-                // todo more
+                case LESS_THAN_OR_EQUAL_TO:
+                    predicates.add(cb.lessThanOrEqualTo(root.get(condition.getField()), (Comparable) condition.getValue()));
+                    break;
+                case GT:
+                    predicates.add(cb.gt(root.get(condition.getField()), (Number) condition.getValue()));
+                    break;
+                case LT:
+                    predicates.add(cb.lt(root.get(condition.getField()), (Number) condition.getValue()));
+                    break;
+                case GE:
+                    predicates.add(cb.ge(root.get(condition.getField()), (Number) condition.getValue()));
+                    break;
+                case LE:
+                    predicates.add(cb.le(root.get(condition.getField()), (Number) condition.getValue()));
+                    break;
             }
         }
 

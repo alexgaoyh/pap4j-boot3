@@ -9,9 +9,17 @@ public class SearchConditionDTO implements Serializable {
 
     public enum Operator {
         EQUAL,
+        NOT_EQUAL,
         LIKE,
+        NOT_LIKE,
         GREATER_THAN,
+        GREATER_THAN_OR_EQUAL_TO,
         LESS_THAN,
+        LESS_THAN_OR_EQUAL_TO,
+        GT,
+        LT,
+        GE,
+        LE,
         // Add more operators as needed
     }
 
