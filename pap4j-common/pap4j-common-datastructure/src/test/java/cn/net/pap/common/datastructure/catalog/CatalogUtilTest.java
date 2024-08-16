@@ -31,5 +31,8 @@ public class CatalogUtilTest {
 
         List<CatalogTreeDTO> tree = CatalogUtil.buildCatalogTree(catalogDTOList);
         System.out.println(tree);
+
+        List<CatalogTreeDTO> tree2 = CatalogUtil.buildCatalogTree2(catalogDTOList);
+        System.out.println(tree2);
     }
 }

@@ -11,7 +11,7 @@ public class Event6PapObserver implements PapObserver {
 
     @Override
     public void callNotify(Object obj) {
-        System.out.println(this.getClass().getSimpleName() + " 接受到信息，并进行处理 : " + obj);
+        System.out.println(this.getClass().getSimpleName() + " 接受到信息" + _eventName() + "，并进行处理 : " + obj);
     }
 
 }

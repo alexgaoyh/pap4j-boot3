@@ -12,6 +12,9 @@ public class ValueLocationDTO implements Serializable {
 
     private Integer end;
 
+    public ValueLocationDTO() {
+    }
+
     public ValueLocationDTO(String text, Integer start, Integer end) {
         this.text = text;
         this.start = start;

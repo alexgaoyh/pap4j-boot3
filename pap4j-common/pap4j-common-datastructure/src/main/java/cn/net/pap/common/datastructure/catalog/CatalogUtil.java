@@ -51,6 +51,29 @@ public class CatalogUtil {
         return null;
     }
 
+    public static List<CatalogTreeDTO> buildCatalogTree2(List<CatalogDTO> catalogDTOList) {
+        Map<String, CatalogTreeDTO> map = new HashMap<>();
+        List<CatalogTreeDTO> roots = new ArrayList<>();
+
+        for (CatalogDTO dto : catalogDTOList) {
+            CatalogTreeDTO node = new CatalogTreeDTO(dto.getText(), dto.getType());
+            map.put(dto.getType(), node);
+
+            if (TYPE_LEVEL.get(dto.getType()) == 1) {
+                roots.add(node);
+            } else {
+                CatalogTreeDTO parent = findParent2(map, dto);
+                if (parent != null) {
+                    parent.addChild(node);
+                } else {
+                    roots.add(node);
+                }
+            }
+        }
+
+        return roots;
+    }
+
     /**
      * 此方法相对于 findParent，区别在于允许层级不连续，允许'目录一'下面直接跟着'目录三'。
      * @param map

@@ -17,6 +17,9 @@ public class CatalogDTO implements Serializable {
      */
     private String type;
 
+    public CatalogDTO() {
+    }
+
     public CatalogDTO(String text, String type) {
         this.text = text;
         this.type = type;

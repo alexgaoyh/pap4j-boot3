@@ -15,7 +15,7 @@ public class Event2PapObserver implements PapObserver {
 
     @Override
     public void callNotify(Object obj) {
-        System.out.println(this.getClass().getSimpleName() + " 接受到信息，并进行处理 : " + obj);
+        System.out.println(this.getClass().getSimpleName() + " 接受到信息" + _eventName() + "，并进行处理 : " + obj);
         // todo 这里可以根据实际情况进行调整 ： 是否自动向下做一个触发.
         if(false) {
             Map<String, PapSubject> eventSubjectMap = EventSubjectConstants.eventSubjectMap;

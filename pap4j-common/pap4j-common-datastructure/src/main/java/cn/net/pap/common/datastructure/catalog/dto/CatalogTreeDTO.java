@@ -25,6 +25,9 @@ public class CatalogTreeDTO implements Serializable {
      */
     private List<CatalogTreeDTO> children;
 
+    public CatalogTreeDTO() {
+    }
+
     public CatalogTreeDTO(String text, String type) {
         this.text = text;
         this.type = type;

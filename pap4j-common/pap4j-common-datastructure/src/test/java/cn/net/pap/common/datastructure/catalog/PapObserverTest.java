@@ -1,9 +1,11 @@
 package cn.net.pap.common.datastructure.catalog;
 
 import cn.net.pap.common.datastructure.observer.*;
+import cn.net.pap.common.datastructure.observer.event.Event1PapObserver;
 import cn.net.pap.common.datastructure.observer.event.constant.EventSubjectConstants;
 import org.junit.jupiter.api.Test;
 
+import java.util.HashMap;
 import java.util.Map;
 
 public class PapObserverTest {
@@ -30,4 +32,26 @@ public class PapObserverTest {
             entry.getValue().callNotify(entry.getKey() + " finish, call next");
         }
     }
+
+
+    @Test
+    public void test3() {
+        PapObserver event1 = new Event1PapObserver();
+
+        PapSubject p1 = new PapPublisher();
+        p1.attach(event1);
+
+        Map<String, PapSubject> eventSubjectMap = new HashMap<>();
+        eventSubjectMap.put("event1", p1);
+
+        for(Map.Entry<String, PapSubject> entry : eventSubjectMap.entrySet()) {
+            entry.getValue().callNotify(entry.getKey() + " finish, call next");
+        }
+
+        for(Map.Entry<String, PapSubject> entry : eventSubjectMap.entrySet()) {
+            entry.getValue().detach(event1);
+            entry.getValue().callNotify(entry.getKey() + " uncalled");
+        }
+    }
+
 }

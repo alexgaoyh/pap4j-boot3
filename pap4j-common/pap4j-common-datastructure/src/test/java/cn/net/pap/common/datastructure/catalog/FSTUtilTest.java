@@ -29,5 +29,7 @@ public class FSTUtilTest {
         List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation(text2, dict);
         System.out.println(result2);
 
+        List<String> maxMatchList = FSTUtil.maxMatch(text2, dict);
+        System.out.println(maxMatchList);
     }
 }
