@@ -1,6 +1,11 @@
 package cn.net.pap.common.spider;
 
 import okhttp3.*;
+import org.assertj.core.util.Arrays;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -68,6 +73,32 @@ public class HttpTest {
         latch.await();
         executor.shutdown();
 
+    }
+
+    /**
+     * auto-completion html check in jsoup
+     */
+    @Test
+    public void completionHtmlTest() {
+        String html = "<span class='class1'>Text 1</span>"
+                + "<span class='class2'>Text 2</span>"
+                + "<span class='class1'>Text 3</span>";
+
+        String html2 = "<span class='class1'>Text 1(completion)</span>"
+                + "<span class='class2'>Text 2(completion)</span>"
+                + "<span class='class1'>Text 3(completion)";
+
+        String[] strArray = Arrays.array(html, html2);
+        for(String tmp :strArray){
+            Document doc = Jsoup.parse(tmp);
+            Elements spans = doc.select("span");
+            for (Element span : spans) {
+                String className = span.className();
+                String text = span.text();
+                System.out.println("Class: " + className + " - Text: " + text);
+            }
+            System.out.println();
+        }
     }
 
 }
