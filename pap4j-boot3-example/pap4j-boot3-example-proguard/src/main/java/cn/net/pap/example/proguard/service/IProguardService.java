@@ -58,4 +58,5 @@ public interface IProguardService {
      */
     Boolean executeNaiveSQLBatch(List<String> naiveSQLList, List<List<Object>> paramsList);
 
+    void deleteAllById(Long proguardId);
 }

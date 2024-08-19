@@ -152,4 +152,9 @@ public class ProguardServiceImpl implements IProguardService {
             return false;
         }
     }
+
+    @Override
+    public void deleteAllById(Long proguardId) {
+        proguardRepository.deleteById(proguardId);
+    }
 }

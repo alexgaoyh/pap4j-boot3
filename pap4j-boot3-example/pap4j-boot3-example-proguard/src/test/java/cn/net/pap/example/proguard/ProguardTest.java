@@ -171,5 +171,26 @@ public class ProguardTest {
         System.out.println(proguards4);
     }
 
+    @Test
+    public void crudTest2() {
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
 
+        Proguard proguard1 = new Proguard();
+        proguard1.setProguardId(1l);
+        proguard1.setProguardName("alexgaoyh");
+        proguard1.setExtMap(extMap);
+        proguard1.setExtList(extList);
+        proguardService.saveAndFlush(proguard1);
+
+        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
+
+        System.out.println(proguardByProguardId);
+
+        proguardService.deleteAllById(1l);
+
+        System.out.println("deleteAllById");
+    }
 }
