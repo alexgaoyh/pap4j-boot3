@@ -78,10 +78,10 @@
                     <obfuscate>true</obfuscate>
                     <!-- 配置一个文件，通常叫做proguard.conf,该文件主要是配置options选项，也就是说使用proguard.cfg那么options下的所有内容都可以移到proguard.cfg中 -->
                     <proguardInclude>${project.basedir}/proguard.conf</proguardInclude>
-                    <!-- 额外的jar包，通常是项目编译所需要的jar -->
-                    <libs>
+                    <!-- todo 额外的jar包，通常是项目编译所需要的jar -->
+                    <!--<libs>
                         <lib>D:\.jdks\jbr-17.0.7\</lib>
-                    </libs>
+                    </libs>-->
                     <!-- 这是输出路径配置，但是要注意这个路径必须要包括injar标签填写的jar -->
                     <outputDirectory>${project.basedir}/target</outputDirectory>
                 </configuration>
