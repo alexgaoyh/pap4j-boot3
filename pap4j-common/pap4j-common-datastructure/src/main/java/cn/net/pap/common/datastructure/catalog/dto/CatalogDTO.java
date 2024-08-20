@@ -8,6 +8,11 @@ import java.io.Serializable;
 public class CatalogDTO implements Serializable {
 
     /**
+     * 主键
+     */
+    private String id;
+
+    /**
      * 文本
      */
     private String text;
@@ -20,9 +25,23 @@ public class CatalogDTO implements Serializable {
     public CatalogDTO() {
     }
 
+    public CatalogDTO(String id, String text, String type) {
+        this.id = id;
+        this.text = text;
+        this.type = type;
+    }
+
     public CatalogDTO(String text, String type) {
         this.text = text;
         this.type = type;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getText() {

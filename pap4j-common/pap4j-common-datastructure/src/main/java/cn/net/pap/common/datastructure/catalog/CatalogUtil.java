@@ -21,7 +21,7 @@ public class CatalogUtil {
         List<CatalogTreeDTO> roots = new ArrayList<>();
 
         for (CatalogDTO dto : catalogDTOList) {
-            CatalogTreeDTO node = new CatalogTreeDTO(dto.getText(), dto.getType());
+            CatalogTreeDTO node = new CatalogTreeDTO(dto.getId(), dto.getText(), dto.getType());
             map.put(dto.getType(), node);
 
             if (TYPE_LEVEL.get(dto.getType()) == 1) {
@@ -29,6 +29,7 @@ public class CatalogUtil {
             } else {
                 CatalogTreeDTO parent = findParent(map, dto);
                 if (parent != null) {
+                    node.setPid(parent.getId());
                     parent.addChild(node);
                 } else {
                     roots.add(node);
@@ -56,7 +57,7 @@ public class CatalogUtil {
         List<CatalogTreeDTO> roots = new ArrayList<>();
 
         for (CatalogDTO dto : catalogDTOList) {
-            CatalogTreeDTO node = new CatalogTreeDTO(dto.getText(), dto.getType());
+            CatalogTreeDTO node = new CatalogTreeDTO(dto.getId(), dto.getText(), dto.getType());
             map.put(dto.getType(), node);
 
             if (TYPE_LEVEL.get(dto.getType()) == 1) {
@@ -64,6 +65,7 @@ public class CatalogUtil {
             } else {
                 CatalogTreeDTO parent = findParent2(map, dto);
                 if (parent != null) {
+                    node.setPid(parent.getId());
                     parent.addChild(node);
                 } else {
                     roots.add(node);

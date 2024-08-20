@@ -11,6 +11,16 @@ import java.util.StringJoiner;
 public class CatalogTreeDTO implements Serializable {
 
     /**
+     * 主键
+     */
+    private String id;
+
+    /**
+     * 主键
+     */
+    private String pid;
+
+    /**
      * 文本
      */
     private String text;
@@ -28,9 +38,31 @@ public class CatalogTreeDTO implements Serializable {
     public CatalogTreeDTO() {
     }
 
+    public CatalogTreeDTO(String id, String text, String type) {
+        this.id = id;
+        this.text = text;
+        this.type = type;
+    }
+
     public CatalogTreeDTO(String text, String type) {
         this.text = text;
         this.type = type;
+    }
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+
+    public String getPid() {
+        return pid;
+    }
+
+    public void setPid(String pid) {
+        this.pid = pid;
     }
 
     public String getText() {
@@ -66,10 +98,12 @@ public class CatalogTreeDTO implements Serializable {
 
     @Override
     public String toString() {
-        return new StringJoiner(", ", CatalogTreeDTO.class.getSimpleName() + "[", "]")
-                .add("text='" + text + "'")
-                .add("type='" + type + "'")
-                .add("children=" + children)
-                .toString();
+        return "CatalogTreeDTO{" +
+                "id='" + id + '\'' +
+                ", pid='" + pid + '\'' +
+                ", text='" + text + '\'' +
+                ", type='" + type + '\'' +
+                ", children=" + children +
+                '}';
     }
 }
