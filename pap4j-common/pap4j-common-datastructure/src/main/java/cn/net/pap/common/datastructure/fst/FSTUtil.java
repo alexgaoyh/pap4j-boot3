@@ -51,15 +51,20 @@ public class FSTUtil {
         List<ValueLocationDTO> result = new ArrayList<>();
         int start = 0;
         while (start < text.length()) {
+            boolean continueFlag = false;
             int end = text.length();
             while (end > start) {
                 String substr = text.substring(start, end);
                 if (dict.isWord(substr)) {
                     result.add(new ValueLocationDTO(substr, start, end));
                     start = end;
+                    continueFlag = true;
                     break;
                 }
                 end--;
+            }
+            if (continueFlag) {
+                continue;
             }
             if (end == start) {
                 start++;
