@@ -18,6 +18,45 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class FSTUtilTest {
 
+    // @Test
+    public void hanziTest() {
+        FST dict = new FST();
+
+        long start = System.currentTimeMillis();
+        int idx = 0;
+        int count = 0;
+        for (char b1 = '\u4E00'; b1 <= '\u9FA5'; b1++) {
+            for (char b2 = '\u4E00'; b2 <= '\u9FA5'; b2++) {
+                if(!String.valueOf(b1).equals(String.valueOf(b2))) {
+                    StringBuilder builder = new StringBuilder();
+                    builder.append(String.valueOf(b1).intern());
+                    builder.append(String.valueOf(b2).intern());
+                    dict.addWord(builder.toString());
+                    count++;
+                }
+            }
+            idx++;
+            if(idx == 1000) {
+                break;
+            }
+        }
+        long end = System.currentTimeMillis();
+        System.out.println("word count : " + count + " ; timeMillis " + (end - start));
+
+        dict.addWord("分词");
+        dict.addWord("彭胜");
+        dict.addWord("彭胜文");
+        String text = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
+        List<ValueLocationDTO> result = FSTUtil.maxMatchLocation(text, dict);
+        System.out.println(result);
+
+        dict.removeWord("18");
+        dict.removeWord("彭胜文");
+        String text2 = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
+        List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation(text2, dict);
+        System.out.println(result2);
+    }
+
     @Test
     public void test() throws Exception {
         FST dict = new FST();

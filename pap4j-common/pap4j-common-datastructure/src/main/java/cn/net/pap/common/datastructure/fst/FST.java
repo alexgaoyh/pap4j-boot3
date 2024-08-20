@@ -2,13 +2,14 @@ package cn.net.pap.common.datastructure.fst;
 
 import java.io.Serializable;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * FST
  */
 public class FST implements Serializable {
 
-    private HashMap<Character, FST> transitions = new HashMap<>();
+    private ConcurrentHashMap<Character, FST> transitions = new ConcurrentHashMap<>(10000);
     private boolean isFinalState = false;
 
     public void addWord(String word) {
