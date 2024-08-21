@@ -18,7 +18,26 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class FSTUtilTest {
 
-    // @Test
+    @Test
+    public void extbTest() throws IOException {
+        FST dict = new FST();
+        dict.addWord("\uD840\uDC00\uD840\uDC01\uD840\uDC02");
+        dict.addWord("\uD840\uDC00\uD840\uDC01");
+        dict.addWord("\uD840\uDC03\uD840\uDC04");
+
+        String text = "叫\uD840\uDC00\uD840\uDC01\uD840\uDC02，曾用名是\uD840\uDC00\uD840\uDC01,别名是\uD840\uDC03\uD840\uDC04";
+        List<ValueLocationDTO> result = FSTUtil.maxMatchLocation(text, dict);
+
+        dict.removeWord("\uD840\uDC00\uD840\uDC01\uD840\uDC02");
+        dict.removeWord("\uD840\uDC00\uD840\uDC01");
+
+        List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation(text, dict);
+
+        System.out.println();
+    }
+
+
+    @Test
     public void hanziTest() {
         FST dict = new FST();
 
@@ -46,6 +65,7 @@ public class FSTUtilTest {
         dict.addWord("分词");
         dict.addWord("彭胜");
         dict.addWord("彭胜文");
+        dict.addWord("18");
         String text = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
         List<ValueLocationDTO> result = FSTUtil.maxMatchLocation(text, dict);
         System.out.println(result);

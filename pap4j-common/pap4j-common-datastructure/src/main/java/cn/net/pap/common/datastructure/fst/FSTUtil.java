@@ -15,6 +15,7 @@ public class FSTUtil {
      * @param dict
      * @return
      */
+    @Deprecated
     public static List<String> maxMatch(String text, FST dict) {
         List<String> result = new ArrayList<>();
         int start = 0;
@@ -61,13 +62,22 @@ public class FSTUtil {
                     continueFlag = true;
                     break;
                 }
-                end--;
+                if(Character.isSupplementaryCodePoint(substr.codePointBefore(substr.length()))) {
+                    end = end - 2;
+                } else {
+                    end = end - 1;
+                }
             }
             if (continueFlag) {
                 continue;
             }
             if (end == start) {
-                start++;
+                char[] chars = text.toCharArray();
+                if (Character.isHighSurrogate(chars[start])) {
+                    start = start + 2;
+                } else {
+                    start = start + 1;
+                }
             }
         }
         return result;

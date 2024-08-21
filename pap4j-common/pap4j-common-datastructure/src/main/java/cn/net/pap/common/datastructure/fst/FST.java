@@ -9,7 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class FST implements Serializable {
 
-    private ConcurrentHashMap<Character, FST> transitions = new ConcurrentHashMap<>(10000);
+    private ConcurrentHashMap<String, FST> transitions = new ConcurrentHashMap<>(10000);
     private boolean isFinalState = false;
 
     public void addWord(String word) {
@@ -18,12 +18,20 @@ public class FST implements Serializable {
             return;
         }
         char c = word.charAt(0);
-        FST nextState = transitions.get(c);
+        String cStr = "";
+        Integer length = 1;
+        if (Character.isHighSurrogate(c)) {
+            cStr = new String(Character.toChars(Character.toCodePoint(c, word.charAt(1))));
+            length = 2;
+        } else {
+            cStr = c + "";
+        }
+        FST nextState = transitions.get(cStr);
         if (nextState == null) {
             nextState = new FST();
-            transitions.put(c, nextState);
+            transitions.put(cStr, nextState);
         }
-        nextState.addWord(word.substring(1));
+        nextState.addWord(word.substring(length));
     }
 
     public boolean isWord(String word) {
@@ -31,11 +39,19 @@ public class FST implements Serializable {
             return isFinalState;
         }
         char c = word.charAt(0);
-        FST nextState = transitions.get(c);
+        String cStr = "";
+        Integer length = 1;
+        if (Character.isHighSurrogate(c)) {
+            cStr = new String(Character.toChars(Character.toCodePoint(c, word.charAt(1))));
+            length = 2;
+        } else {
+            cStr = c + "";
+        }
+        FST nextState = transitions.get(cStr);
         if (nextState == null) {
             return false;
         }
-        return nextState.isWord(word.substring(1));
+        return nextState.isWord(word.substring(length));
     }
 
     public boolean removeWord(String word) {
@@ -45,13 +61,21 @@ public class FST implements Serializable {
             return wasFinal;
         }
         char c = word.charAt(0);
-        FST nextState = transitions.get(c);
+        String cStr = "";
+        Integer length = 1;
+        if (Character.isHighSurrogate(c)) {
+            cStr = new String(Character.toChars(Character.toCodePoint(c, word.charAt(1))));
+            length = 2;
+        } else {
+            cStr = c + "";
+        }
+        FST nextState = transitions.get(cStr);
         if (nextState == null) {
             return false;
         }
-        boolean wasRemoved = nextState.removeWord(word.substring(1));
+        boolean wasRemoved = nextState.removeWord(word.substring(length));
         if (nextState.transitions.isEmpty() && !nextState.isFinalState) {
-            transitions.remove(c);
+            transitions.remove(cStr);
         }
         return wasRemoved;
     }
