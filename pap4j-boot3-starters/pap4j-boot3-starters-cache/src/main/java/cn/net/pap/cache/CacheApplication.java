@@ -23,6 +23,8 @@ import org.springframework.data.redis.serializer.StringRedisSerializer;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
 
 @Configuration
 @EnableCaching
@@ -81,11 +83,17 @@ public class CacheApplication {
     @Bean
     RedisCacheManager cacheManager(RedisConnectionFactory redisConnectionFactory,
                                    RedisCacheConfiguration redisCacheConfiguration) {
+        // set diff CacheName
+        Map<String, RedisCacheConfiguration> cacheConfigurations = new HashMap<>();
+        cacheConfigurations.put("pap.net.cn", cacheConfiguration());
 
-        return RedisCacheManager.builder(redisConnectionFactory)
+        RedisCacheManager build = RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(redisCacheConfiguration)
+                .withInitialCacheConfigurations(cacheConfigurations)
                 .transactionAware()
                 .build();
+
+        return build;
     }
 
 }
