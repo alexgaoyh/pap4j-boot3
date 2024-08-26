@@ -206,4 +206,17 @@ public class GeneImageTest {
 
     }
 
+    // @Test
+    public void copyAndReNameTest() {
+        try {
+            String outputDir = "C:\\Users\\86181\\Desktop\\dir\\";
+            BufferedImage originalImage = ImageIO.read(new File("input.jpg"));
+            for (int i = 1; i <= 5; i++) {
+                String outputImagePath = outputDir + String.format("%06d.jpg", i);
+                ImageIO.write(originalImage, "jpg", new File(outputImagePath));
+            }
+        } catch (IOException e) {
+
+        }
+    }
 }

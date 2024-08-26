@@ -101,4 +101,29 @@ public class HttpTest {
         }
     }
 
+    /**
+     * 拆分 html
+     * @param html
+     * @return
+     */
+    public String splitSpanChars(String html) {
+        Document doc = Jsoup.parse(html);
+        Elements charsSpans = doc.select("span.chars");
+
+        for (Element span : charsSpans) {
+            String text = span.text();
+            if (text.length() > 1) {
+                for (int idx = 0; idx < text.length(); idx++) {
+                    String part = text.substring(idx, idx + 1);
+                    Element newSpan = new Element("span");
+                    newSpan.attributes().addAll(span.attributes());
+                    newSpan.text(part);
+                    span.before(newSpan);
+                }
+                span.remove();
+            }
+        }
+        return doc.html();
+    }
+
 }
