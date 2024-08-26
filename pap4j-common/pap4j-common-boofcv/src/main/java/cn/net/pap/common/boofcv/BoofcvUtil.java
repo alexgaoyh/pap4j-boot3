@@ -4,8 +4,12 @@ import boofcv.io.image.ConvertBufferedImage;
 import boofcv.struct.image.GrayF32;
 import boofcv.struct.image.GrayU8;
 import boofcv.struct.image.Planar;
+import org.apache.commons.io.output.ByteArrayOutputStream;
 
+import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.util.Base64;
 
 public class BoofcvUtil {
 
@@ -75,6 +79,30 @@ public class BoofcvUtil {
         // 转换回 BufferedImage 格式
         BufferedImage outputImage = ConvertBufferedImage.convertTo(croppedImage, null, true);
         return outputImage;
+    }
+
+    /**
+     * BufferedImage to Base64
+     * @param image
+     * @param type
+     * @return
+     */
+    public static String getBase64(BufferedImage image, String type) {
+        String imageString = null;
+        ByteArrayOutputStream bos = new ByteArrayOutputStream();
+
+        try {
+            ImageIO.write(image, type, bos);
+            byte[] imageBytes = bos.toByteArray();
+
+            Base64.Encoder encoder = Base64.getEncoder();
+            imageString = encoder.encodeToString(imageBytes);
+
+            bos.close();
+        } catch (IOException e) {
+            System.out.println("Error: " + e.getMessage());
+        }
+        return imageString;
     }
 
 }

@@ -42,4 +42,10 @@ public class BoofcvUtilTest {
         UtilImageIO.saveImage(crop, "output.jpg");
     }
 
+    // @Test
+    public void base64Test() {
+        BufferedImage input = UtilImageIO.loadImage(UtilIO.pathExample("input.jpg"));
+        String jpg = BoofcvUtil.getBase64(input, "jpg");
+    }
+
 }
