@@ -10,6 +10,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.Base64;
+import java.util.stream.IntStream;
 
 public class BoofcvUtil {
 
@@ -37,6 +38,41 @@ public class BoofcvUtil {
     }
 
     /**
+     * 亮度 并行
+     * @param input
+     * @param brightness
+     * @return
+     */
+    public static BufferedImage adjustBrightness2(BufferedImage input, float brightness) {
+        Planar<GrayF32> image = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayF32.class);
+        int width = image.width;
+        int height = image.height;
+
+        // 使用并行流来加速处理
+        IntStream.range(0, height).parallel().forEach(y -> {
+            for (int x = 0; x < width; x++) {
+                float[] values = new float[image.getNumBands()];
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    values[band] = image.getBand(band).get(x, y);
+                }
+
+                // 调整每个通道的亮度
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    values[band] += brightness * 255;
+                    values[band] = Math.max(0, Math.min(values[band], 255));
+                }
+
+                // 设置调整后的像素值
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    image.getBand(band).set(x, y, values[band]);
+                }
+            }
+        });
+
+        return ConvertBufferedImage.convertTo(image, null, true);
+    }
+
+    /**
      * 对比度
      *
      * @param input
@@ -58,6 +94,44 @@ public class BoofcvUtil {
                 }
             }
         }
+        return ConvertBufferedImage.convertTo(image, null, true);
+    }
+
+    /**
+     * 对比度 并行
+     * @param input
+     * @param contrast
+     * @return
+     */
+    public static BufferedImage adjustContrast2(BufferedImage input, float contrast) {
+        Planar<GrayF32> image = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayF32.class);
+        int width = image.width;
+        int height = image.height;
+
+        // 计算调整对比度所需的因子
+        float factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+        // 使用并行流来加速处理
+        IntStream.range(0, height).parallel().forEach(y -> {
+            for (int x = 0; x < width; x++) {
+                float[] values = new float[image.getNumBands()];
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    values[band] = image.getBand(band).get(x, y);
+                }
+
+                // 调整每个通道的对比度
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    values[band] = factor * (values[band] - 128) + 128;
+                    values[band] = Math.max(0, Math.min(values[band], 255));
+                }
+
+                // 设置调整后的像素值
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    image.getBand(band).set(x, y, values[band]);
+                }
+            }
+        });
+
         return ConvertBufferedImage.convertTo(image, null, true);
     }
 
