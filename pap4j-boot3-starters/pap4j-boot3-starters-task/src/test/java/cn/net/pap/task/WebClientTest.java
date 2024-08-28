@@ -1,8 +1,12 @@
 package cn.net.pap.task;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
@@ -32,6 +36,28 @@ public class WebClientTest {
                 .bodyValue(objectMapper.writeValueAsString(reqMap))
                 .retrieve().bodyToMono(String.class);
         System.out.println(mono.block());
+    }
+
+    // @Test
+    public void WebClientPostTest2() throws Exception {
+        String jsonStr = "{}";
+        Mono<ClientResponse> mono = WebClient.builder().defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).build()
+                .post()
+                .uri("")
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .body(BodyInserters.fromObject(jsonStr))
+                .exchange();
+        ClientResponse response = mono.block();
+
+        HttpStatusCode statusCode = response.statusCode();
+        ClientResponse.Headers headers = response.headers();
+
+        Mono<String> resultMono = response.bodyToMono(String.class);
+        String body = resultMono.block();
+
+        System.out.println("statusCode：" + statusCode);
+        System.out.println("headers：" + headers.asHttpHeaders());
+        System.out.println("body：" + body);
     }
 
     /**
