@@ -100,10 +100,19 @@ public class WebClientTest {
             // 修改响应体 转大写
             Mono<String> modifiedBody = body.map(str -> str.toUpperCase());
 
+            // 添加额外的响应头信息，应用场景： 可以做一个约定，在遇到响应头信息包含当前信息的时候，直接不再进行重置返回。
+            HttpHeaders additionalHeaders = new HttpHeaders();
+            additionalHeaders.add("pap-retry-code", "NoRetry");
+
             // 构建新的 ClientResponse 包含修改后的响应体
             return modifiedBody.flatMap(modifiedBodyContent -> {
                 ClientResponse newResponse = ClientResponse.create(clientResponse.statusCode())
-                        .headers(headers -> headers.addAll(clientResponse.headers().asHttpHeaders()))
+                        .headers(
+                                headers -> {
+                                    headers.addAll(clientResponse.headers().asHttpHeaders());
+                                    headers.addAll(additionalHeaders);
+                                }
+                        )
                         .body(modifiedBodyContent)
                         .build();
                 return Mono.just(newResponse);
