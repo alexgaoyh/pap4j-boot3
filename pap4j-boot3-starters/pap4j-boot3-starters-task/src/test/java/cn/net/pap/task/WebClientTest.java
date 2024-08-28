@@ -6,14 +6,16 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.ClientResponse;
-import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.*;
 import reactor.core.publisher.Mono;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 public class WebClientTest {
 
@@ -41,7 +43,14 @@ public class WebClientTest {
     // @Test
     public void WebClientPostTest2() throws Exception {
         String jsonStr = "{}";
-        Mono<ClientResponse> mono = WebClient.builder().defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).build()
+        Mono<ClientResponse> mono = WebClient.builder()
+                // add filter basicAuthentication   using  analysisBasicAuthentication() to analysis
+                .filter(ExchangeFilterFunctions.basicAuthentication("alexgaoyh", "pap.net.cn"))
+                // 添加 header traceId
+                .filter(addTraceIdInHeader())
+                // add filter logResponse  to record log
+                .filter(logResponse())
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE).build()
                 .post()
                 .uri("")
                 .contentType(MediaType.APPLICATION_JSON_UTF8)
@@ -62,13 +71,95 @@ public class WebClientTest {
 
     /**
      * 将图片转换成Base64编码
+     *
      * @param imagePath 待处理图片
      * @return
      */
-    private  static String getImgStr(String imagePath) throws Exception {
+    private static String getImgStr(String imagePath) throws Exception {
         byte[] imageBytes = Files.readAllBytes(Paths.get(imagePath));
         String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
         return base64Image;
+    }
+
+    /**
+     * 创建响应拦截器 示例 响应体转大写。
+     *
+     * @return
+     */
+    private static ExchangeFilterFunction logResponse() {
+        return ExchangeFilterFunction.ofResponseProcessor(clientResponse -> {
+            // 获取响应体
+            Mono<String> body = clientResponse.bodyToMono(String.class);
+
+            // 打印响应信息
+//            System.out.println("Status code: " + clientResponse.statusCode());
+//            clientResponse.headers().asHttpHeaders().forEach((name, values) -> {
+//                System.out.println(name + ": " + values);
+//            });
+
+            // 修改响应体 转大写
+            Mono<String> modifiedBody = body.map(str -> str.toUpperCase());
+
+            // 构建新的 ClientResponse 包含修改后的响应体
+            return modifiedBody.flatMap(modifiedBodyContent -> {
+                ClientResponse newResponse = ClientResponse.create(clientResponse.statusCode())
+                        .headers(headers -> headers.addAll(clientResponse.headers().asHttpHeaders()))
+                        .body(modifiedBodyContent)
+                        .build();
+                return Mono.just(newResponse);
+            });
+        });
+    }
+
+    /**
+     * 请求头添加 pap-trace-id 链路ID
+     *
+     * @return
+     */
+    private static ExchangeFilterFunction addTraceIdInHeader() {
+        return new ExchangeFilterFunction() {
+            @Override
+            public Mono<ClientResponse> filter(ClientRequest request, ExchangeFunction next) {
+                String existingTraceId = request.headers().getFirst("pap-trace-id");
+                // traceId from UUID
+                String newTraceId = UUID.randomUUID().toString();
+
+                String combinedTraceId = existingTraceId != null ? existingTraceId + "," + newTraceId : newTraceId;
+
+                ClientRequest modifiedRequest = ClientRequest.from(request)
+                        .headers(headers -> headers.set("pap-trace-id", combinedTraceId))
+                        .build();
+
+                // 继续执行链中的下一个过滤器
+                return next.exchange(modifiedRequest);
+            }
+        };
+    }
+
+    /**
+     * 解析 authorizationHeader
+     * 参数获得方法： String authorizationHeader = request.getHeader("Authorization");
+     * 调用添加filter : WebClient.builder().filter(ExchangeFilterFunctions.basicAuthentication("alexgaoyh", "pap.net.cn"))
+     *
+     * @param authorizationHeader
+     * @return
+     */
+    private static String analysisBasicAuthentication(String authorizationHeader) {
+        if (authorizationHeader != null && authorizationHeader.startsWith("Basic ")) {
+            // 获取Base64编码的用户名和密码
+            String base64Credentials = authorizationHeader.substring("Basic ".length());
+            byte[] credDecoded = Base64.getDecoder().decode(base64Credentials);
+            String credentials = new String(credDecoded, StandardCharsets.UTF_8);
+
+            // 分割用户名和密码
+            final String[] values = credentials.split(":", 2);
+            if (values.length == 2) {
+                String username = values[0];
+                String password = values[1];
+                return username + ":" + password;
+            }
+        }
+        return null;
     }
 
 }
