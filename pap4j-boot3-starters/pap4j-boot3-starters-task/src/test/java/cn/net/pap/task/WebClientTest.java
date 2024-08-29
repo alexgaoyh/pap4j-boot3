@@ -1,17 +1,26 @@
 package cn.net.pap.task;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutException;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.*;
 import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
+import reactor.netty.tcp.TcpClient;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -42,8 +51,19 @@ public class WebClientTest {
 
     // @Test
     public void WebClientPostTest2() throws Exception {
+        // 配置连接超时和读取超时
+        TcpClient tcpClient = TcpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
+                .doOnConnected(connection ->
+                        connection.addHandlerLast(new ReadTimeoutHandler(10))
+                                .addHandlerLast(new WriteTimeoutHandler(10)));
+        HttpClient httpClient = HttpClient.from(tcpClient)
+                .responseTimeout(Duration.ofMillis(10000));
+
         String jsonStr = "{}";
         Mono<ClientResponse> mono = WebClient.builder()
+                // setting timeout
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
                 // add filter basicAuthentication   using  analysisBasicAuthentication() to analysis
                 .filter(ExchangeFilterFunctions.basicAuthentication("alexgaoyh", "pap.net.cn"))
                 // 添加 header traceId
@@ -55,7 +75,21 @@ public class WebClientTest {
                 .uri("")
                 .contentType(MediaType.APPLICATION_JSON_UTF8)
                 .body(BodyInserters.fromObject(jsonStr))
-                .exchange();
+                .exchange()
+                .onErrorResume(WebClientRequestException.class, err -> {
+                    if(err.getCause() instanceof java.net.ConnectException) {
+                        return Mono.just(ClientResponse.create(HttpStatus.GATEWAY_TIMEOUT)
+                                .header("pap-retry-code", "NoRetry")
+                                .body("PAP: 连接超时").build());
+                    } else if (err.getCause() instanceof ReadTimeoutException) {
+                        return Mono.just(ClientResponse.create(HttpStatus.REQUEST_TIMEOUT)
+                                .header("pap-retry-code", "NoRetry")
+                                .body("PAP: 请求超时").build());
+                    } else {
+                        return Mono.just(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .body("PAP: 发生其他错误").build());
+                    }
+                });
         ClientResponse response = mono.block();
 
         HttpStatusCode statusCode = response.statusCode();
