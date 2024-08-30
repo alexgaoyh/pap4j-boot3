@@ -69,7 +69,7 @@ public class RetryCircuitBreaker {
         Exception lastException = null;
 
         while (attempt < maxRetries) {
-            System.out.println(this.toString());
+            // System.out.println(this.toString());
             if (allowRequest()) {
                 try {
                     T result = task.call();
