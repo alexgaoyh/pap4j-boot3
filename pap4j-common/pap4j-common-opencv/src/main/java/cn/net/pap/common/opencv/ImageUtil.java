@@ -224,5 +224,87 @@ public class ImageUtil {
         }
     }
 
+    /**
+     * 水平镜像
+     * @return
+     * @throws Exception
+     */
+    public static boolean horizontalMirror(String inputFilePath, String outputFilePath) throws Exception {
+        try {
+            // 加载原始图像
+            File originalImageFile = new File(inputFilePath);
+            BufferedImage originalImage = ImageIO.read(originalImageFile);
+
+            // 创建一个新的BufferedImage来存放翻转后的图像
+            BufferedImage flippedImage = new BufferedImage(
+                    originalImage.getWidth(),
+                    originalImage.getHeight(),
+                    originalImage.getType()
+            );
+
+            // 创建一个用于绘制的Graphics2D对象
+            Graphics2D g2d = flippedImage.createGraphics();
+
+            // 设置仿射变换以实现水平翻转
+            AffineTransform at = AffineTransform.getScaleInstance(-1, 1);
+            at.translate(-originalImage.getWidth(null), 0);
+            g2d.setTransform(at);
+
+            // 将原始图像绘制到带有仿射变换的Graphics2D对象上，实现水平翻转
+            g2d.drawImage(originalImage, 0, 0, null);
+            g2d.dispose(); // 释放资源
+
+            // 将翻转后的图像保存到文件
+            File flippedImageFile = new File(outputFilePath);
+            ImageIO.write(flippedImage, "jpg", flippedImageFile);
+
+            return true;
+        } catch (Exception e) {
+            e.printStackTrace(); // 打印异常堆栈跟踪信息
+            return false;
+        }
+    }
+
+    /**
+     * 垂直镜像
+     * @param inputFilePath
+     * @param outputFilePath
+     * @return
+     */
+    public static boolean verticalMirror(String inputFilePath, String outputFilePath) {
+        try {
+            // 加载原始图像
+            File originalImageFile = new File(inputFilePath);
+            BufferedImage originalImage = ImageIO.read(originalImageFile);
+
+            // 创建一个新的BufferedImage来存放翻转后的图像
+            BufferedImage flippedImage = new BufferedImage(
+                    originalImage.getWidth(),
+                    originalImage.getHeight(),
+                    originalImage.getType()
+            );
+
+            // 创建一个用于绘制的Graphics2D对象
+            Graphics2D g2d = flippedImage.createGraphics();
+
+            // 设置仿射变换以实现垂直翻转
+            AffineTransform at = AffineTransform.getScaleInstance(1, -1);
+            at.translate(0, -originalImage.getHeight(null));
+            g2d.setTransform(at);
+
+            // 将原始图像绘制到带有仿射变换的Graphics2D对象上，实现垂直翻转
+            g2d.drawImage(originalImage, 0, 0, null);
+            g2d.dispose(); // 释放资源
+
+            // 将翻转后的图像保存到文件
+            File flippedImageFile = new File(outputFilePath);
+            ImageIO.write(flippedImage, "jpg", flippedImageFile);
+
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace(); // 打印异常堆栈跟踪信息
+            return false;
+        }
+    }
 
 }
