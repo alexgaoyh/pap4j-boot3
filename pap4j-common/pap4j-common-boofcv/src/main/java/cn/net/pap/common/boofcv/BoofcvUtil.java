@@ -136,6 +136,47 @@ public class BoofcvUtil {
     }
 
     /**
+     * 同时调整亮度和对比度
+     * @param input
+     * @param brightness brightness 参数可以平滑地控制图像的亮度，从完全变黑（-1）到正常亮度（0），再到完全变白（1）
+     * @param contrast contrast 参数的有效范围应该是 -255 到 255（不包括 259），因为当 contrast 为 -255 时，因子 factor 将变为 0，这将导致图像变黑；而当 contrast 接近 259 时，因子 factor 将趋向于无穷大，这可能导致图像过曝或完全变白。
+     * @return
+     */
+    public static BufferedImage adjustTwo(BufferedImage input, float brightness, float contrast) {
+        Planar<GrayF32> image = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayF32.class);
+        int width = image.width;
+        int height = image.height;
+
+        // 计算调整对比度所需的因子
+        float factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+
+        // 使用并行流来加速处理
+        IntStream.range(0, height).parallel().forEach(y -> {
+            for (int x = 0; x < width; x++) {
+                float[] values = new float[image.getNumBands()];
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    values[band] = image.getBand(band).get(x, y);
+                }
+
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    // 亮度
+                    values[band] += brightness * 255;
+                    // 对比度
+                    values[band] = factor * (values[band] - 128) + 128;
+                    values[band] = Math.max(0, Math.min(values[band], 255));
+                }
+
+                // 设置调整后的像素值
+                for (int band = 0; band < image.getNumBands(); band++) {
+                    image.getBand(band).set(x, y, values[band]);
+                }
+            }
+        });
+
+        return ConvertBufferedImage.convertTo(image, null, true);
+    }
+
+    /**
      * 裁剪
      * @param input
      * @param x

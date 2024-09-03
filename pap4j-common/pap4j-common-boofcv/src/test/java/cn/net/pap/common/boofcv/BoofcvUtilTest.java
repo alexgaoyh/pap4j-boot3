@@ -24,6 +24,15 @@ public class BoofcvUtilTest {
         UtilImageIO.saveImage(contrastedImage, "contrasted_origin.jpg");
     }
 
+    // @Test
+    public void adjustTwoTest() {
+        BufferedImage inputImage = UtilImageIO.loadImage("C:\\Users\\86181\\Desktop\\origin.jpg");
+
+        BufferedImage brightenedImage = BoofcvUtil.adjustTwo(inputImage, 0f, 100f);
+        UtilImageIO.saveImage(brightenedImage, "C:\\Users\\86181\\Desktop\\out.jpg");
+
+    }
+
     @Test
     public void rotateTest() {
         BufferedImage input = UtilImageIO.loadImage(UtilIO.pathExample("input.jpg"));
