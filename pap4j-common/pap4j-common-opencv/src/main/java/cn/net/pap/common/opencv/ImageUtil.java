@@ -7,6 +7,7 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import java.awt.*;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -177,5 +178,51 @@ public class ImageUtil {
 
         return combined;
     }
+
+    /**
+     * 图像旋转
+     * @param inputFilePath
+     * @param outputFilePath
+     * @param angle
+     * @return
+     */
+    public static boolean rotateImage(String inputFilePath, String outputFilePath, double angle) {
+        try {
+            // 读取原始图像
+            BufferedImage originalImage = ImageIO.read(new File(inputFilePath));
+
+            // 计算旋转后的图像的尺寸
+            double radians = Math.toRadians(angle);
+            double sin = Math.abs(Math.sin(radians));
+            double cos = Math.abs(Math.cos(radians));
+            int width = (int) Math.floor(originalImage.getWidth() * cos + originalImage.getHeight() * sin);
+            int height = (int) Math.floor(originalImage.getHeight() * cos + originalImage.getWidth() * sin);
+
+            // 创建一个新的图像缓冲区，用于存储旋转后的图像
+            BufferedImage rotatedImage = new BufferedImage(width, height, originalImage.getType());
+            Graphics2D g2d = rotatedImage.createGraphics();
+            // 填充背景色为白色
+            g2d.setColor(Color.WHITE);
+            g2d.fillRect(0, 0, width, height);
+
+            // 进行旋转变换
+            AffineTransform transform = new AffineTransform();
+            transform.rotate(radians, width / 2.0, height / 2.0);
+            transform.translate((width - originalImage.getWidth()) / 2.0, (height - originalImage.getHeight()) / 2.0);
+
+            // 应用变换到图像上
+            g2d.setTransform(transform);
+            g2d.drawImage(originalImage, 0, 0, null);
+            g2d.dispose();
+
+            // 将旋转后的图像写入到输出文件中
+            boolean result = ImageIO.write(rotatedImage, "jpg", new File(outputFilePath));
+            return result;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
 
 }

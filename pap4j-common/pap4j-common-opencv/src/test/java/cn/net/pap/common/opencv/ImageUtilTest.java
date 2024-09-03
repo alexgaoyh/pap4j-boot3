@@ -47,4 +47,12 @@ public class ImageUtilTest {
         ImageIO.write(bufferedImage, "png", new File("out.png"));
     }
 
+    // @Test
+    public void rotateImageTest() throws Exception {
+        boolean b = ImageUtil.rotateImage("C:\\Users\\86181\\Desktop\\origin.jpg",
+                "C:\\Users\\86181\\Desktop\\123456.jpg",
+                10);
+        System.out.println(b);
+    }
+
 }
