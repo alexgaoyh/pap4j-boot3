@@ -2,10 +2,13 @@ package cn.net.pap.example.proguard.controller;
 
 import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.service.IProguardService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,6 +23,21 @@ public class ProguardController {
 
     @Autowired
     private IProguardService proguardService;
+
+    /**
+     * Set Cache-Control in response
+     * @param request
+     * @param response
+     * @return
+     */
+    @GetMapping("cacheControlTest")
+    public String cacheControlTest(HttpServletRequest request, HttpServletResponse response) {
+        String papCacheHeaderValue = request.getHeader("Pap-Cache-Header");
+        if (!StringUtils.isEmpty(papCacheHeaderValue)) {
+            response.setHeader("Cache-Control", "max-age=" + papCacheHeaderValue);
+        }
+        return "success";
+    }
 
     @GetMapping("/saveAndFlush")
     public Proguard saveAndFlush() {
