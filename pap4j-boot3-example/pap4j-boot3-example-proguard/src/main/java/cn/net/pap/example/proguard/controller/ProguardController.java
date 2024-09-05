@@ -8,11 +8,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.CacheControl;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @RestController
@@ -41,9 +49,30 @@ public class ProguardController {
     public String cacheControlTest(HttpServletRequest request, HttpServletResponse response) {
         String papCacheHeaderValue = request.getHeader("Pap-Cache-Header");
         if (!StringUtils.isEmpty(papCacheHeaderValue)) {
-            response.setHeader("Cache-Control", "max-age=" + papCacheHeaderValue);
+            response.setHeader("Cache-Control", CacheControl.maxAge(Duration.ofMinutes(1)).mustRevalidate().getHeaderValue());
         }
         return "success";
+    }
+
+    /**
+     * LAST_MODIFIED 响应头处理
+     * @return
+     */
+    @GetMapping("/lastModifiedTest")
+    public ResponseEntity<String> lastModifiedTest() {
+
+        if (new Random().nextBoolean()) {
+            // 资源未修改，返回 304 Not Modified
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED).build();
+        }
+
+        // 资源已修改，返回资源内容，并附带 Last-Modified 响应头
+        Instant now = Instant.now();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.LAST_MODIFIED, DateTimeFormatter.RFC_1123_DATE_TIME
+                .withZone(ZoneOffset.UTC).format(now));
+
+        return new ResponseEntity<>("pap.net.cn! " + now.toString(), headers, HttpStatus.OK);
     }
 
     @GetMapping("/saveAndFlush")
