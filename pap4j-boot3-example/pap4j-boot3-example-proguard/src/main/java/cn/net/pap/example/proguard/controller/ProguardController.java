@@ -75,6 +75,22 @@ public class ProguardController {
         return new ResponseEntity<>("pap.net.cn! " + now.toString(), headers, HttpStatus.OK);
     }
 
+    @GetMapping("/eTagTest")
+    public ResponseEntity<String> eTagTest() {
+
+        if (new Random().nextBoolean()) {
+            // 资源未修改，返回 304 Not Modified
+            return ResponseEntity.status(HttpStatus.NOT_MODIFIED).build();
+        }
+
+        Instant now = Instant.now();
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HttpHeaders.ETAG, DateTimeFormatter.RFC_1123_DATE_TIME
+                .withZone(ZoneOffset.UTC).format(now));
+
+        return new ResponseEntity<>("pap.net.cn! " + now.toString(), headers, HttpStatus.OK);
+    }
+
     @GetMapping("/saveAndFlush")
     public Proguard saveAndFlush() {
         Proguard proguard = new Proguard();
