@@ -13,16 +13,23 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 @RestController
 public class ProguardController {
 
     @Autowired
     private IProguardService proguardService;
+
+    /**
+     * Cache Test Interface .
+     * @return
+     */
+    @GetMapping(value = "/print", produces = "application/json;charset=UTF-8")
+    public String print() {
+        System.out.println(new Date().toString());
+        return "pap.net.cn!";
+    }
 
     /**
      * Set Cache-Control in response
