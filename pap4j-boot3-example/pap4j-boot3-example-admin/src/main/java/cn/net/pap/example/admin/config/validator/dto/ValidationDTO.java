@@ -1,5 +1,6 @@
 package cn.net.pap.example.admin.config.validator.dto;
 
+import cn.net.pap.example.admin.config.validator.OrderByEnumValid;
 import cn.net.pap.example.admin.config.validator.ValidationDTOValid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -23,7 +24,8 @@ public class ValidationDTO implements Serializable {
     private String sortBy;
 
     @NotEmpty
-    @Pattern(regexp = "DESC|ASC", message = "排序方式DESC或ASC")
+    // @Pattern(regexp = OrderByEnum.SPLIT, message = "排序方式DESC或ASC")
+    @OrderByEnumValid(message = "排序方式应该为DESC或ASC")
     private String order;
 
     public @Min(value = 1, message = "pageNo大于0") Integer getPageNo() {
@@ -50,11 +52,11 @@ public class ValidationDTO implements Serializable {
         this.sortBy = sortBy;
     }
 
-    public @NotEmpty @Pattern(regexp = "DESC|ASC", message = "排序方式DESC或ASC") String getOrder() {
+    public @NotEmpty String getOrder() {
         return order;
     }
 
-    public void setOrder(@NotEmpty @Pattern(regexp = "DESC|ASC", message = "排序方式DESC或ASC") String order) {
+    public void setOrder(@NotEmpty String order) {
         this.order = order;
     }
 }
