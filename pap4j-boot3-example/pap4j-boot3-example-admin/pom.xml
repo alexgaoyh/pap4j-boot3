@@ -21,6 +21,11 @@
     <dependencies>
 
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>cn.net.pap.example</groupId>
             <artifactId>pap4j-boot3-example-bean</artifactId>
             <version>0.0.1</version>
