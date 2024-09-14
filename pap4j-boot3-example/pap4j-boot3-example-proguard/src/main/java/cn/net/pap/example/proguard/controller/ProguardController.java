@@ -16,9 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -193,6 +191,14 @@ public class ProguardController {
         proguard.setProguardName("update");
         proguardService.saveAndFlush(proguard);
 
+        return proguard;
+    }
+
+    @PostMapping("postSave")
+    @ResponseBody
+    public Proguard postSave(@RequestBody Proguard proguard) {
+        proguard.setProguardId(System.currentTimeMillis());
+        proguardService.saveAndFlush(proguard);
         return proguard;
     }
 
