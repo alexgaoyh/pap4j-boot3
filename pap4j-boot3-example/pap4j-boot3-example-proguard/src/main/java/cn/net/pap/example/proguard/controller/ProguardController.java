@@ -2,6 +2,9 @@ package cn.net.pap.example.proguard.controller;
 
 import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.service.IProguardService;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -108,6 +111,20 @@ public class ProguardController {
         extList.add("C");
         extList.add("D");
         proguard.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+        abstractMap.put("long", 1l);
+        abstractMap.put("float", 1.23f);
+        abstractMap.put("boolean", true);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+
+        proguard.setAbstractList(arrayNode);
 
         return proguardService.saveAndFlush(proguard);
     }

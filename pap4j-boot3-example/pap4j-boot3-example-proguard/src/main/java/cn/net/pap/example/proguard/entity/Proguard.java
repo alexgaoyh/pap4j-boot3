@@ -2,6 +2,7 @@ package cn.net.pap.example.proguard.entity;
 
 import cn.net.pap.example.proguard.convert.JsonTypeConvert;
 import cn.net.pap.example.proguard.listener.TransactionCompletionListener;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.Type;
@@ -32,6 +33,12 @@ public class Proguard {
     @Type(value = JsonTypeConvert.class)
     @Column(nullable = false, columnDefinition = "json")
     private List<String> extList = new ArrayList<>();
+
+    /**
+     * 结构未定的数组 Jackson ArrayNode
+     */
+    @Convert(converter = cn.net.pap.example.proguard.convert.JacksonArrayNodeConverter.class)
+    private ArrayNode abstractList;
 
     @org.hibernate.annotations.TenantId
     private String tenantId;
@@ -68,6 +75,14 @@ public class Proguard {
         this.extList = extList;
     }
 
+    public ArrayNode getAbstractList() {
+        return abstractList;
+    }
+
+    public void setAbstractList(ArrayNode abstractList) {
+        this.abstractList = abstractList;
+    }
+
     public String getTenantId() {
         return tenantId;
     }
@@ -83,6 +98,8 @@ public class Proguard {
                 ", proguardName='" + proguardName + '\'' +
                 ", extMap=" + extMap +
                 ", extList=" + extList +
+                ", abstractList=" + abstractList +
+                ", tenantId='" + tenantId + '\'' +
                 '}';
     }
 }

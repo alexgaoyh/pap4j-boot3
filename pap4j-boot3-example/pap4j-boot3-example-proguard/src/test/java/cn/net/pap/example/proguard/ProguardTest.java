@@ -6,6 +6,9 @@ import cn.net.pap.example.proguard.repository.ProguardRepository;
 import cn.net.pap.example.proguard.service.IProguardService;
 import cn.net.pap.example.proguard.util.SearchUtil;
 import cn.net.pap.example.proguard.util.dto.SearchConditionDTO;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import jakarta.persistence.EntityManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -192,5 +195,39 @@ public class ProguardTest {
         proguardService.deleteAllById(1l);
 
         System.out.println("deleteAllById");
+    }
+
+    @Test
+    public void abstractJsonArrayTest() {
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+
+        Proguard proguard1 = new Proguard();
+        proguard1.setProguardId(1l);
+        proguard1.setProguardName("alexgaoyh");
+        proguard1.setExtMap(extMap);
+        proguard1.setExtList(extList);
+        proguard1.setAbstractList(arrayNode);
+        proguardService.saveAndFlush(proguard1);
+
+        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
+
+        System.out.println(proguardByProguardId);
+
+        proguardService.deleteAllById(1l);
+
+        System.out.println("deleteAllById");
+
     }
 }
