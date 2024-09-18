@@ -39,12 +39,14 @@ public class Proguard {
      * 结构未定的数组 Jackson ArrayNode
      */
     @Convert(converter = cn.net.pap.example.proguard.convert.JacksonArrayNodeConverter.class)
+    @Column(nullable = false, columnDefinition = "json")
     private ArrayNode abstractList;
 
     /**
      * 结构未定的对象 Jackson ObjectNode
      */
     @Convert(converter = cn.net.pap.example.proguard.convert.JacksonObjectNodeConverter.class)
+    @Column(nullable = false, columnDefinition = "json")
     private ObjectNode abstractObj;
 
     @org.hibernate.annotations.TenantId
