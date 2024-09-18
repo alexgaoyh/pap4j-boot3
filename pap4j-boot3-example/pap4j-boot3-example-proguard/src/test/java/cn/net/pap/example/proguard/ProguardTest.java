@@ -9,6 +9,7 @@ import cn.net.pap.example.proguard.util.dto.SearchConditionDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -219,6 +220,10 @@ public class ProguardTest {
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
         proguard1.setAbstractList(arrayNode);
+
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard1.setAbstractObj(objectNode);
+
         proguardService.saveAndFlush(proguard1);
 
         Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
