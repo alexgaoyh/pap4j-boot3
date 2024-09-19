@@ -55,4 +55,10 @@ public class ImageUtilTest {
         System.out.println(b);
     }
 
+    // @Test
+    public void coverTest() throws Exception {
+        BufferedImage originalImage = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\origin.jpg"));
+        BufferedImage targetImage = ImageUtil.cover(originalImage, 100, 100, 100, 100, 0, 0);
+        ImageIO.write(targetImage, "jpg", new File("C:\\Users\\86181\\Desktop\\out.png"));
+    }
 }

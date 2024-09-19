@@ -307,4 +307,27 @@ public class ImageUtil {
         }
     }
 
+    /**
+     * 从一个区域获得信息覆盖到另一个区域
+     * @param originalImage
+     * @param sourceX
+     * @param sourceY
+     * @param sourceWidth
+     * @param sourceHeight
+     * @param targetX
+     * @param targetY
+     * @return
+     */
+    public static BufferedImage cover(BufferedImage originalImage, int sourceX, int sourceY, int sourceWidth, int sourceHeight, int targetX, int targetY) {
+        BufferedImage subImage = originalImage.getSubimage(sourceX, sourceY, sourceWidth, sourceHeight);
+
+        Graphics2D g = originalImage.createGraphics();
+
+        g.drawImage(subImage, targetX, targetY, null);
+
+        g.dispose();
+
+        return originalImage;
+    }
+
 }
