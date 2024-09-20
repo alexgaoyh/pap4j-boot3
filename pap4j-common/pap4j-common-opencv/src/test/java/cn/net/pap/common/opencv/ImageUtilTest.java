@@ -61,4 +61,15 @@ public class ImageUtilTest {
         BufferedImage targetImage = ImageUtil.cover(originalImage, 100, 100, 100, 100, 0, 0);
         ImageIO.write(targetImage, "jpg", new File("C:\\Users\\86181\\Desktop\\out.png"));
     }
+
+    // @Test
+    public void mergeByPointInTwoPicTest() throws Exception {
+        BufferedImage leftImage = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\100.jpg"));
+        BufferedImage rightImage = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\1002.jpg"));
+
+        BufferedImage mergedImage = ImageUtil.mergeByPointInTwoPic(leftImage, 100, 0, 100, 100,
+                rightImage, 0, 0, 0, 100);
+        ImageIO.write(mergedImage, "jpg", new File("C:\\Users\\86181\\Desktop\\out.jpg"));
+
+    }
 }

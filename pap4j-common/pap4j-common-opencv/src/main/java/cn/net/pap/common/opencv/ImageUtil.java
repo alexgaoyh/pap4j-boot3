@@ -330,4 +330,95 @@ public class ImageUtil {
         return originalImage;
     }
 
+    /**
+     * 根据指定坐标合并两张图像
+     *
+     * @param leftImage    左图像
+     * @param leftPoint1X  左图像上边点 X 坐标
+     * @param leftPoint1Y  左图像上边点 Y 坐标
+     * @param leftPoint2X  左图像下边点 X 坐标
+     * @param leftPoint2Y  左图像下边点 Y 坐标
+     * @param rightImage   右图像
+     * @param rightPoint1X 右图像上边点 X 坐标
+     * @param rightPoint1Y 右图像上边点 Y 坐标
+     * @param rightPoint2X 右图像下边点 X 坐标
+     * @param rightPoint2Y 右图像下边点 Y 坐标
+     * @return
+     */
+    public static BufferedImage mergeByPointInTwoPic(BufferedImage leftImage, int leftPoint1X, int leftPoint1Y, int leftPoint2X, int leftPoint2Y,
+                                                     BufferedImage rightImage, int rightPoint1X, int rightPoint1Y, int rightPoint2X, int rightPoint2Y) {
+        Point AP1 = new Point(leftPoint1X, leftPoint1Y);
+        Point AP2 = new Point(leftPoint2X, leftPoint2Y);
+        Point BP1 = new Point(rightPoint1X, rightPoint1Y);
+        Point BP2 = new Point(rightPoint2X, rightPoint2Y);
+
+        // 计算缩放比例
+        double distanceA = AP1.distance(AP2);
+        double distanceB = BP1.distance(BP2);
+        double scale = distanceA / distanceB;
+
+        // 计算旋转角度（夹角）
+        double angleA = Math.atan2(AP2.y - AP1.y, AP2.x - AP1.x);
+        double angleB = Math.atan2(BP2.y - BP1.y, BP2.x - BP1.x);
+        double rotationAngle = angleA - angleB;
+
+        // 对图像B进行缩放和旋转
+        BufferedImage transformedImageB = transformImage(rightImage, scale, rotationAngle);
+
+        // 计算图像B的偏移位置，将其基于BP1绘制在图像A上
+        int offsetX = AP1.x - BP1.x; // 将图像B移动到与AP1对齐的位置
+        int offsetY = AP1.y - BP1.y;
+
+        // 计算合并后的图像的宽度和高度
+        int minX = Math.min(0, offsetX); // 考虑图像B偏移后可能超出左边界
+        int minY = Math.min(0, offsetY); // 考虑图像B偏移后可能超出上边界
+        int maxX = Math.max(leftImage.getWidth(), offsetX + transformedImageB.getWidth());
+        int maxY = Math.max(leftImage.getHeight(), offsetY + transformedImageB.getHeight());
+
+        int mergedWidth = maxX - minX;
+        int mergedHeight = maxY - minY;
+
+        // 创建合并后的图像
+        BufferedImage mergedImage = new BufferedImage(mergedWidth, mergedHeight, BufferedImage.TYPE_INT_RGB);
+
+        // 将图像A绘制到新图像上
+        Graphics2D g2d = mergedImage.createGraphics();
+
+        // 首先绘制图像A
+        g2d.drawImage(leftImage, -minX, -minY, null);
+
+        // 然后绘制变换后的图像B，考虑偏移量
+        g2d.drawImage(transformedImageB, offsetX - minX, offsetY - minY, null);
+
+        g2d.dispose();
+
+        return mergedImage;
+    }
+
+    /**
+     * 缩放和旋转图像
+     *
+     * @param image
+     * @param scale
+     * @param rotationAngle
+     * @return
+     */
+    private static BufferedImage transformImage(BufferedImage image, double scale, double rotationAngle) {
+        int width = image.getWidth();
+        int height = image.getHeight();
+
+        AffineTransform transform = new AffineTransform();
+        transform.scale(scale, scale);
+        transform.rotate(rotationAngle, width / 2.0, height / 2.0);
+
+        BufferedImage transformedImage = new BufferedImage((int) (width * scale), (int) (height * scale), BufferedImage.TYPE_INT_ARGB);
+
+        Graphics2D g2d = transformedImage.createGraphics();
+        g2d.setTransform(transform);
+        g2d.drawImage(image, 0, 0, null);
+        g2d.dispose();
+
+        return transformedImage;
+    }
+
 }
