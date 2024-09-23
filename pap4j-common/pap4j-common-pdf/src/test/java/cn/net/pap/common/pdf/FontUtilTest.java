@@ -1,8 +1,12 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.pdf.dto.TextPointDTO;
+import cn.net.pap.common.pdf.enums.ChineseFont;
+import com.itextpdf.text.pdf.BaseFont;
 import org.junit.jupiter.api.Test;
 
 import java.awt.*;
+import java.util.List;
 
 public class FontUtilTest {
 
@@ -25,5 +29,12 @@ public class FontUtilTest {
                 System.out.println(font.getName() + " : " + bimesion);
             }
         }
+    }
+
+    @Test
+    public void test3() {
+        Font simSunFont = new Font("宋体",0, 24);
+        List<TextPointDTO> textPointDTOS = FontUtil.cutTextInVertical("河南省", 0f, 0f, 100f, 100f, simSunFont);
+        System.out.println(textPointDTOS);
     }
 }

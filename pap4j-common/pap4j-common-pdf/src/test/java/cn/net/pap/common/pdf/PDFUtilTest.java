@@ -2,11 +2,13 @@ package cn.net.pap.common.pdf;
 
 import cn.net.pap.common.pdf.dto.CoordsDTO;
 import cn.net.pap.common.pdf.dto.PointDTO;
+import cn.net.pap.common.pdf.dto.TextPointDTO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 
+import java.awt.*;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -74,6 +76,18 @@ public class PDFUtilTest {
             coordsDTOList.add(new CoordsDTO(100, 300, 40, 40, "打"));
             coordsDTOList.add(new CoordsDTO(100, 200, 50, 50, "杂"));
             coordsDTOList.add(new CoordsDTO(100, 100, 60, 60, "的"));
+            PDFUtil.drawText("output.pdf", coordsDTOList);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    // @Test
+    public void drawTextTest2() {
+        try {
+            Font simSunFont = new Font("宋体",0, 24);
+            List<TextPointDTO> textPointDTOS = FontUtil.cutTextInVertical("河南省", 0f, 10f, 100f, 110f, simSunFont);
+            List<CoordsDTO> coordsDTOList = FontUtil.convertTextPointDTO(textPointDTOS);
             PDFUtil.drawText("output.pdf", coordsDTOList);
         } catch (Exception e) {
             throw new RuntimeException(e);
