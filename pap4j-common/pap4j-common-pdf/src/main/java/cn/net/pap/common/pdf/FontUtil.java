@@ -93,13 +93,21 @@ public class FontUtil {
             Float spaceY = 0f;
             if(height > totalY) {
                 spaceY = (height - totalY) / textPointDTOS.size();
-            }
-            Float beforeY = y;
-            for(int idx = 0; idx < textPointDTOS.size(); idx++) {
-                TextPointDTO textPointDTO = textPointDTOS.get(idx);
-                textPointDTO.setX(newX);
-                textPointDTO.setY(beforeY);
-                beforeY = beforeY + Float.parseFloat(textPointDTO.getCharacterBounds().getHeight() + "") + spaceY;
+                Float beforeY = y;
+                for(int idx = 0; idx < textPointDTOS.size(); idx++) {
+                    TextPointDTO textPointDTO = textPointDTOS.get(idx);
+                    textPointDTO.setX(newX);
+                    textPointDTO.setY(beforeY);
+                    beforeY = beforeY + Float.parseFloat(textPointDTO.getCharacterBounds().getHeight() + "") + spaceY;
+                }
+            } else {
+                // 高度不够,允许重叠
+                float singleTextHeight = height / textPointDTOS.size();
+                for(int idx = 0; idx < textPointDTOS.size(); idx++) {
+                    TextPointDTO textPointDTO = textPointDTOS.get(idx);
+                    textPointDTO.setX(newX);
+                    textPointDTO.setY((idx + 1) * singleTextHeight);
+                }
             }
 
             return textPointDTOS;
