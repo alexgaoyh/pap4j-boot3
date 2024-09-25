@@ -32,6 +32,15 @@ public class FontUtilTest {
     }
 
     @Test
+    public void test22() {
+        // 相同字体信息下，不同汉字的大小.
+        for(char c = '\u4E00'; c <= '\u9FA5'; c++) {
+            Dimension bimesion = FontUtil.getCharacterBounds(String.valueOf(c), new Font("宋体", Font.PLAIN, 24));
+            System.out.println(String.valueOf(c) + " : " + bimesion);
+        }
+    }
+
+    @Test
     public void test3() {
         Font simSunFont = new Font("宋体",0, 24);
         List<TextPointDTO> textPointDTOS = FontUtil.cutTextInVertical("河南省", 0f, 0f, 100f, 100f, simSunFont);
