@@ -38,6 +38,9 @@ public class FontUtilTest {
             Dimension bimesion = FontUtil.getCharacterBounds(String.valueOf(c), new Font("宋体", Font.PLAIN, 24));
             System.out.println(String.valueOf(c) + " : " + bimesion);
         }
+        String quanJiaoKongGeStr = "　";
+        Dimension quanJiaoKongGeDimension = FontUtil.getCharacterBounds(String.valueOf(quanJiaoKongGeStr), new Font("宋体", Font.PLAIN, 24));
+        System.out.println(quanJiaoKongGeStr + " : " + quanJiaoKongGeDimension);
     }
 
     @Test
