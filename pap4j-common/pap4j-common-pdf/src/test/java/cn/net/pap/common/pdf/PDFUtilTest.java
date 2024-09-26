@@ -5,6 +5,11 @@ import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.dto.TextPointDTO;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
+import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
+import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 
@@ -147,6 +152,31 @@ public class PDFUtilTest {
         }
 
         PDFUtil.drawParagraphs("utf16.pdf", paragraphs);
+    }
+
+    // @Test
+    public void drawRect() throws Exception {
+        try (PDDocument document = new PDDocument()) {
+            PDPage page = new PDPage();
+            document.addPage(page);
+
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                contentStream.setLineWidth(2f);
+                contentStream.setStrokingColor(new PDColor(new float[]{1, 0, 0}, PDDeviceRGB.INSTANCE));
+                contentStream.addRect(100, 100, 100, 100);
+                contentStream.stroke(); // 仅描边，不填充
+
+                contentStream.setStrokingColor(new PDColor(new float[]{0, 0, 1}, PDDeviceRGB.INSTANCE));
+                contentStream.setLineWidth(4);
+                contentStream.addRect(200, 200, 100, 100);
+                contentStream.stroke();
+            }
+
+            // 保存新创建的文档
+            document.save("C:\\Users\\86181\\Desktop\\output.pdf");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 }
