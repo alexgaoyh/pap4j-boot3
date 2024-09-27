@@ -3,13 +3,15 @@ package cn.net.pap.common.pdf;
 import cn.net.pap.common.pdf.dto.CoordsDTO;
 import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.dto.TextPointDTO;
+import cn.net.pap.common.pdf.enums.ChineseFont;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
-import org.apache.pdfbox.pdmodel.graphics.state.PDExtendedGraphicsState;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 
@@ -157,19 +159,45 @@ public class PDFUtilTest {
     // @Test
     public void drawRect() throws Exception {
         try (PDDocument document = new PDDocument()) {
-            PDPage page = new PDPage();
+            // 仿宋
+            PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
+
+            PDPage page = new PDPage(new PDRectangle(1100, 1807));
             document.addPage(page);
 
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+
+                // 矩形
                 contentStream.setLineWidth(2f);
                 contentStream.setStrokingColor(new PDColor(new float[]{1, 0, 0}, PDDeviceRGB.INSTANCE));
-                contentStream.addRect(100, 100, 100, 100);
+                contentStream.addRect(40, 40, 1060 - 40, 1767 - 40);
                 contentStream.stroke(); // 仅描边，不填充
 
                 contentStream.setStrokingColor(new PDColor(new float[]{0, 0, 1}, PDDeviceRGB.INSTANCE));
                 contentStream.setLineWidth(4);
-                contentStream.addRect(200, 200, 100, 100);
+                contentStream.addRect(80, 80, 1020 - 80, 1727 - 80);
                 contentStream.stroke();
+
+                // 线
+                contentStream.setLineWidth(1f);
+                contentStream.setStrokingColor(new PDColor(new float[]{0, 0, 0}, PDDeviceRGB.INSTANCE));
+                contentStream.moveTo(232, 80);
+                contentStream.lineTo(232, 1727);
+                contentStream.stroke();
+
+                contentStream.setLineWidth(1f);
+                contentStream.setStrokingColor(new PDColor(new float[]{0, 0, 0}, PDDeviceRGB.INSTANCE));
+                contentStream.moveTo(383, 80);
+                contentStream.lineTo(383, 1727);
+                contentStream.stroke();
+
+                // 字
+                contentStream.setFont(simfangFont, 100);
+                contentStream.setNonStrokingColor(new PDColor(new float[]{1, 0, 0}, PDDeviceRGB.INSTANCE));
+                contentStream.beginText();
+                contentStream.newLineAtOffset(200, 1407);
+                contentStream.showText("指");
+                contentStream.endText();
             }
 
             // 保存新创建的文档
