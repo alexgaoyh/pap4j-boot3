@@ -157,7 +157,7 @@ public class PDFUtilTest {
         PDFUtil.drawParagraphs("utf16.pdf", paragraphs);
     }
 
-    // @Test
+    @Test
     public void drawRect() throws Exception {
         try (PDDocument document = new PDDocument()) {
             // 仿宋
@@ -172,11 +172,11 @@ public class PDFUtilTest {
 
                 // 矩形
                 List<Float> rec1List = Arrays.asList(new Float[]{121f, 1016f, 354f, 1656f});
-                PDColor pdColor1 = new PDColor(new float[]{1, 0, 0}, PDDeviceRGB.INSTANCE);
+                PDColor pdColor1 = hexToPDColor("#FF0000");
                 drawRec(contentStream, pdColor1, 2f, pageHeight, rec1List);
 
                 List<Float> rec2List = Arrays.asList(new Float[]{131f, 1006f, 364f, 1646f});
-                PDColor pdColor2 = new PDColor(new float[]{0, 0, 1}, PDDeviceRGB.INSTANCE);
+                PDColor pdColor2 = hexToPDColor("#0000FF");
                 drawRec(contentStream, pdColor2, 4f, pageHeight, rec2List);
 
                 List<Float> rec3List = Arrays.asList(new Float[]{164f, 257f, 367f, 1639f});
@@ -184,7 +184,7 @@ public class PDFUtilTest {
 
                 // 线
                 List<Float> line1List = Arrays.asList(new Float[]{277f, 277f, 364f, 1646f});
-                PDColor pdColor3 = new PDColor(new float[]{0, 0, 0}, PDDeviceRGB.INSTANCE);
+                PDColor pdColor3 = hexToPDColor("#000000");
                 drawLine(contentStream, pdColor3, 1f, pageHeight, line1List);
 
                 List<Float> line2List = Arrays.asList(new Float[]{423f, 423f, 364f, 1646f});
@@ -268,6 +268,21 @@ public class PDFUtilTest {
         contentStream.newLineAtOffset(x, pageHeight - y);
         contentStream.showText(text);
         contentStream.endText();
+    }
+
+    /**
+     * 颜色转换
+     * @param hex
+     * @return
+     */
+    private static PDColor hexToPDColor(String hex) {
+        if (hex.startsWith("#")) {
+            hex = hex.substring(1);
+        }
+        int r = Integer.parseInt(hex.substring(0, 2), 16);
+        int g = Integer.parseInt(hex.substring(2, 4), 16);
+        int b = Integer.parseInt(hex.substring(4, 6), 16);
+        return new PDColor(new float[]{r / 255f, g / 255f, b / 255f}, PDDeviceRGB.INSTANCE);
     }
 
 }
