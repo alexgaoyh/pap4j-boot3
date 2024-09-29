@@ -5,6 +5,7 @@ import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.dto.TextPointDTO;
 import cn.net.pap.common.pdf.enums.ChineseFont;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
@@ -162,42 +163,50 @@ public class PDFUtilTest {
             // 仿宋
             PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
 
-            PDPage page = new PDPage(new PDRectangle(1100, 1807));
+            Integer pageWidth = 1100;
+            Integer pageHeight = 1807;
+            PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
             document.addPage(page);
 
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
 
                 // 矩形
-                contentStream.setLineWidth(2f);
-                contentStream.setStrokingColor(new PDColor(new float[]{1, 0, 0}, PDDeviceRGB.INSTANCE));
-                contentStream.addRect(40, 40, 1060 - 40, 1767 - 40);
-                contentStream.stroke(); // 仅描边，不填充
+                List<Float> rec1List = Arrays.asList(new Float[]{121f, 1016f, 354f, 1656f});
+                PDColor pdColor1 = new PDColor(new float[]{1, 0, 0}, PDDeviceRGB.INSTANCE);
+                drawRec(contentStream, pdColor1, 2f, pageHeight, rec1List);
 
-                contentStream.setStrokingColor(new PDColor(new float[]{0, 0, 1}, PDDeviceRGB.INSTANCE));
-                contentStream.setLineWidth(4);
-                contentStream.addRect(80, 80, 1020 - 80, 1727 - 80);
-                contentStream.stroke();
+                List<Float> rec2List = Arrays.asList(new Float[]{131f, 1006f, 364f, 1646f});
+                PDColor pdColor2 = new PDColor(new float[]{0, 0, 1}, PDDeviceRGB.INSTANCE);
+                drawRec(contentStream, pdColor2, 4f, pageHeight, rec2List);
+
+                List<Float> rec3List = Arrays.asList(new Float[]{164f, 257f, 367f, 1639f});
+                drawRec(contentStream, pdColor2, 1f, pageHeight, rec3List);
 
                 // 线
-                contentStream.setLineWidth(1f);
-                contentStream.setStrokingColor(new PDColor(new float[]{0, 0, 0}, PDDeviceRGB.INSTANCE));
-                contentStream.moveTo(232, 80);
-                contentStream.lineTo(232, 1727);
-                contentStream.stroke();
+                List<Float> line1List = Arrays.asList(new Float[]{277f, 277f, 364f, 1646f});
+                PDColor pdColor3 = new PDColor(new float[]{0, 0, 0}, PDDeviceRGB.INSTANCE);
+                drawLine(contentStream, pdColor3, 1f, pageHeight, line1List);
 
-                contentStream.setLineWidth(1f);
-                contentStream.setStrokingColor(new PDColor(new float[]{0, 0, 0}, PDDeviceRGB.INSTANCE));
-                contentStream.moveTo(383, 80);
-                contentStream.lineTo(383, 1727);
-                contentStream.stroke();
+                List<Float> line2List = Arrays.asList(new Float[]{423f, 423f, 364f, 1646f});
+                drawLine(contentStream, pdColor3, 1f, pageHeight, line2List);
 
                 // 字
-                contentStream.setFont(simfangFont, 100);
-                contentStream.setNonStrokingColor(new PDColor(new float[]{1, 0, 0}, PDDeviceRGB.INSTANCE));
-                contentStream.beginText();
-                contentStream.newLineAtOffset(200, 1407);
-                contentStream.showText("指");
-                contentStream.endText();
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 1, "张");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 2, "三");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 3, "李");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 4, "四");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 5, "王");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 6, "吴");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 7, "照");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 8, "留");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 9, "词");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 10, "个");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 11, "高");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 12, "和");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 13, "河");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 14, "男");
+                drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 15, "省");
+
             }
 
             // 保存新创建的文档
@@ -205,6 +214,60 @@ public class PDFUtilTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * 画矩形
+     * @param contentStream
+     * @param pdColor
+     * @param lineWidth
+     * @param pageHeight
+     * @param recList   x x' y y'
+     * @throws Exception
+     */
+    private void drawRec(PDPageContentStream contentStream, PDColor pdColor, Float lineWidth , Integer pageHeight, List<Float> recList) throws Exception {
+        contentStream.setLineWidth(lineWidth);
+        contentStream.setStrokingColor(pdColor);
+        contentStream.addRect(recList.get(0), pageHeight - recList.get(3), recList.get(1) - recList.get(0), recList.get(3) - recList.get(2));
+        contentStream.stroke();
+    }
+
+    /**
+     * 画线
+     * @param contentStream
+     * @param pdColor
+     * @param lineWidth
+     * @param pageHeight
+     * @param lineList
+     * @throws Exception
+     */
+    private void drawLine(PDPageContentStream contentStream, PDColor pdColor, Float lineWidth , Integer pageHeight, List<Float> lineList) throws Exception {
+        contentStream.setLineWidth(lineWidth);
+        contentStream.setStrokingColor(pdColor);
+        contentStream.moveTo(lineList.get(0), pageHeight - lineList.get(2));
+        contentStream.lineTo(lineList.get(1), pageHeight - lineList.get(3));
+        contentStream.stroke();
+    }
+
+    /**
+     * 画字
+     * @param contentStream
+     * @param pdColor
+     * @param pdFont
+     * @param fontSize
+     * @param pageHeight
+     * @param x
+     * @param y
+     * @param text
+     * @throws Exception
+     */
+    private void drawFont(PDPageContentStream contentStream, PDColor pdColor, PDFont pdFont, Integer fontSize , Integer pageHeight, Float x, Float y, String text) throws Exception {
+        contentStream.setFont(pdFont, fontSize);
+        contentStream.setNonStrokingColor(pdColor);
+        contentStream.beginText();
+        contentStream.newLineAtOffset(x, pageHeight - y);
+        contentStream.showText(text);
+        contentStream.endText();
     }
 
 }
