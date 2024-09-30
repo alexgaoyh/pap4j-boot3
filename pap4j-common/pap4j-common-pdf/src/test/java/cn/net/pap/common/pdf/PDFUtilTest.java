@@ -13,11 +13,13 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
+import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
 
 import java.awt.*;
 import java.io.*;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -207,6 +209,10 @@ public class PDFUtilTest {
                 drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 14, "男");
                 drawFont(contentStream, pdColor3, simfangFont, 87, pageHeight, 163f, 367f + 84f * 15, "省");
 
+                // image
+                String imageURL = "https://foruda.gitee.com/avatar/1676898910937495644/73661_alexgaoyh_1578916342.png!avatar100";
+                drawImageFromURL(document, contentStream, imageURL, pageHeight, 450f, 400f, 50f, 50f);
+
             }
 
             // 保存新创建的文档
@@ -271,6 +277,25 @@ public class PDFUtilTest {
     }
 
     /**
+     * 从URL中取图并画图
+     * @param document
+     * @param contentStream
+     * @param url
+     * @param pageHeight
+     * @param x
+     * @param y
+     * @param w
+     * @param h
+     * @throws Exception
+     */
+    private void drawImageFromURL(PDDocument document, PDPageContentStream contentStream, String url, Integer pageHeight, Float x, Float y, Float w, Float h) throws Exception {
+        InputStream imageStream = getImageStreamFromUrl(url);
+        byte[] bytes = inputStreamToByteArray(imageStream);
+        PDImageXObject image = PDImageXObject.createFromByteArray(document, bytes, null);
+        contentStream.drawImage(image, x, pageHeight - y, w, h);
+    }
+
+    /**
      * 颜色转换
      * @param hex
      * @return
@@ -283,6 +308,34 @@ public class PDFUtilTest {
         int g = Integer.parseInt(hex.substring(2, 4), 16);
         int b = Integer.parseInt(hex.substring(4, 6), 16);
         return new PDColor(new float[]{r / 255f, g / 255f, b / 255f}, PDDeviceRGB.INSTANCE);
+    }
+
+    /**
+     * 获得图像流
+     * @param imageUrl
+     * @return
+     * @throws Exception
+     */
+    private static InputStream getImageStreamFromUrl(String imageUrl) throws Exception {
+        URL url = new URL(imageUrl);
+        return url.openStream();
+    }
+
+    /**
+     * 类型转换
+     * @param inputStream
+     * @return
+     * @throws IOException
+     */
+    private static byte[] inputStreamToByteArray(InputStream inputStream) throws IOException {
+        try (ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[1024];
+            int bytesRead;
+            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                byteArrayOutputStream.write(buffer, 0, bytesRead);
+            }
+            return byteArrayOutputStream.toByteArray();
+        }
     }
 
 }
