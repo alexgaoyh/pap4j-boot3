@@ -22,6 +22,53 @@ import java.util.UUID;
 public class WebClientUtil {
 
     /**
+     * simple http post request body
+     * @param url
+     * @param objectJSON
+     * @param headers
+     * @param maxByteCount 10*1024*1024代表10MB
+     * @return
+     */
+    public static String postBodyObjectSimple(String url,
+                                              Object objectJSON,
+                                              org.springframework.http.HttpHeaders headers,
+                                              Integer maxByteCount) {
+        // 配置连接超时和读取超时
+        TcpClient tcpClient = TcpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)
+                .doOnConnected(connection ->
+                        connection.addHandlerLast(new ReadTimeoutHandler(10))
+                                .addHandlerLast(new WriteTimeoutHandler(10)));
+
+        HttpClient httpClient = HttpClient.from(tcpClient)
+                .responseTimeout(Duration.ofMillis(10000));
+
+        Mono<ClientResponse> mono = WebClient.builder()
+                .exchangeStrategies(
+                        ExchangeStrategies.builder()
+                            .codecs(configurer -> configurer
+                                .defaultCodecs().maxInMemorySize(maxByteCount)
+                        ).build())
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .defaultHeaders(httpHeaders -> {
+                    if(headers != null && !headers.isEmpty()) {
+                        httpHeaders.addAll(headers);
+                    }
+                })
+                .build()
+                .post()
+                .uri(url)
+                .contentType(MediaType.APPLICATION_JSON_UTF8)
+                .body(BodyInserters.fromObject(objectJSON))
+                .exchange();
+        ClientResponse response = mono.block();
+        Mono<String> resultMono = response.bodyToMono(String.class);
+        String body = resultMono.block();
+        return body;
+    }
+
+    /**
      * WebClient post body json
      * @param url
      * @param bodyJSON

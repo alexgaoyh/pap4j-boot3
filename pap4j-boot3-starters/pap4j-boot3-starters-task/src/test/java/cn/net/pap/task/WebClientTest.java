@@ -55,6 +55,23 @@ public class WebClientTest {
     }
 
     /**
+     * 类似转发操作
+     * @throws Exception
+     */
+    public void postBodyObjectSimpleTest() throws Exception {
+        // spring.codec.max-in-memory-size = 10485760
+
+        //    @PostMapping(value = "forward", produces="application/json;charset=UTF-8")
+        //    @ResponseBody
+        //    public String forward(@RequestBody Object obj) {
+        //        return WebClientUtil.postBodyObjectSimple("forward-url", obj, null, 10*1024*1024);
+        //    }
+
+
+        System.out.println("postBodyObjectSimpleTest");
+    }
+
+    /**
      * 将图片转换成Base64编码
      *
      * @param imagePath 待处理图片
