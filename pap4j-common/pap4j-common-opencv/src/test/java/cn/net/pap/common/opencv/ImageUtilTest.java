@@ -72,4 +72,19 @@ public class ImageUtilTest {
         ImageIO.write(mergedImage, "jpg", new File("C:\\Users\\86181\\Desktop\\out.jpg"));
 
     }
+
+    // @Test
+    public void createImageWithRegionsTest() throws Exception {
+        int width = 5432;
+        int height = 9967;
+
+        int[][] regions = {
+                {0, 0, 200, 200, Color.RED.getRGB()},
+                {0, 200, 200, 200, Color.GREEN.getRGB()}
+        };
+
+        BufferedImage image = ImageUtil.createImageWithRegions(width, height, Color.YELLOW, regions);
+        ImageIO.write(image, "jpg", new File("C:\\Users\\86181\\Desktop\\regions.jpg"));
+
+    }
 }

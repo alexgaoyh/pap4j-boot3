@@ -396,6 +396,38 @@ public class ImageUtil {
     }
 
     /**
+     * 创建一个指定宽高的图像，并在指定区域内添加不同的颜色
+     *
+     * @param width 图像的宽度
+     * @param height 图像的高度
+     * @param regions 一个二维数组，每个子数组包含四个元素：x, y, width, height（区域的左上角坐标和宽高）
+     *                以及第五个元素：颜色值（例如：Color.RED.getRGB()）
+     * @return 创建的BufferedImage对象
+     */
+    public static BufferedImage createImageWithRegions(int width, int height, Color backColor, int[][] regions) {
+        BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g2d = image.createGraphics();
+
+        g2d.setColor(backColor);
+        g2d.fillRect(0, 0, width, height);
+
+        // 填充指定区域的颜色
+        for (int[] region : regions) {
+            int x = region[0];
+            int y = region[1];
+            int regionWidth = region[2];
+            int regionHeight = region[3];
+            int color = region[4];
+
+            g2d.setColor(new Color(color, true));
+            g2d.fillRect(x, y, regionWidth, regionHeight);
+        }
+
+        g2d.dispose();
+        return image;
+    }
+
+    /**
      * 缩放和旋转图像
      *
      * @param image
