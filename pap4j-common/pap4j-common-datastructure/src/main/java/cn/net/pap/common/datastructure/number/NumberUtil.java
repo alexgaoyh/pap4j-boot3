@@ -73,6 +73,24 @@ public class NumberUtil {
         return result.toString();
     }
 
+    /**
+     * 最大子串和
+     * @param inputList
+     * @return
+     */
+    public static Integer maxSubstringSum(Integer[] inputList) {
+        Integer[] dp = new Integer[inputList.length];
+        dp[0] = inputList[0];
+        int max = Integer.MIN_VALUE;
+        for (int i = 1; i < inputList.length; i++) {
+            dp[i] = Math.max(inputList[i], dp[i - 1] + inputList[i]);
+            if(dp[i] > max) {
+                max = dp[i];
+            }
+        }
+        return max;
+    }
+
     private static String formatRange(List<Long> range) {
         if (range.size() == 1) {
             return range.get(0).toString();
