@@ -12,6 +12,8 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.Iterator;
@@ -451,6 +453,22 @@ public class ImageUtil {
         g2d.dispose();
 
         return transformedImage;
+    }
+
+    /**
+     * base64ToImage
+     * @param base64String
+     * @param outputFilePath
+     * @throws IOException
+     */
+    public static void base64ToImage(String base64String, String outputFilePath) throws IOException {
+        String base64Data = base64String;
+        // 移除Base64字符串的前缀（如果有的话）
+        if(base64String.contains(",")) {
+            base64Data = base64String.split(",")[1];
+        }
+        byte[] imageBytes = Base64.getDecoder().decode(base64Data);
+        Files.write(Paths.get(outputFilePath), imageBytes);
     }
 
 }

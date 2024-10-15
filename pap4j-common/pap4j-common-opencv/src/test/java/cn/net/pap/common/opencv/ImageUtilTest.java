@@ -6,6 +6,7 @@ import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -87,4 +88,12 @@ public class ImageUtilTest {
         ImageIO.write(image, "jpg", new File("C:\\Users\\86181\\Desktop\\regions.jpg"));
 
     }
+
+    // @Test
+    public void base64ToImageTest() throws Exception {
+        String content = new String(java.nio.file.Files.readAllBytes(Paths.get("C:\\Users\\86181\\Desktop\\base64.txt")));
+        ImageUtil.base64ToImage(content, "C:\\Users\\86181\\Desktop\\base64.jpg");
+    }
+
+
 }
