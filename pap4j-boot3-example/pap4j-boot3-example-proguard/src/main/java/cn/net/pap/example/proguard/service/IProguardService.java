@@ -59,4 +59,13 @@ public interface IProguardService {
     Boolean executeNaiveSQLBatch(List<String> naiveSQLList, List<List<Object>> paramsList);
 
     void deleteAllById(Long proguardId);
+
+    /**
+     * 批量执行多个SQL
+     * 实现类增加 org.springframework.transaction.annotation.Transactional 注解
+     * @param paramsList
+     * @return
+     */
+    Boolean executeNaiveSQLInsertBatchUsingJDBC(List<String> paramsList);
+
 }

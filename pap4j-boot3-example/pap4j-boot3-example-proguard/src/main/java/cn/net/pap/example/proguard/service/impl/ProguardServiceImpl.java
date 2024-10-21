@@ -6,6 +6,7 @@ import cn.net.pap.example.proguard.service.IProguardService;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.Query;
 import jakarta.persistence.TypedQuery;
+import org.hibernate.Session;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -157,4 +160,40 @@ public class ProguardServiceImpl implements IProguardService {
     public void deleteAllById(Long proguardId) {
         proguardRepository.deleteById(proguardId);
     }
+
+    @Override
+    @Transactional
+    public Boolean executeNaiveSQLInsertBatchUsingJDBC(List<String> paramsList) {
+        try {
+            Session session = entityManager.unwrap(Session.class);
+            return session.doReturningWork(connection -> {
+                // todo 此处未处理 NULL 字段
+                try (PreparedStatement preparedStatement = connection.prepareStatement(
+                        "INSERT INTO proguard (proguard_id, tenant_id) VALUES (?, 1)")) {
+
+                    connection.setAutoCommit(false);
+
+                    for (int idx = 0; idx < paramsList.size(); idx++) {
+                        preparedStatement.setObject(1, paramsList.get(idx));
+                        preparedStatement.addBatch();
+                    }
+                    int[] result = preparedStatement.executeBatch();
+                    connection.commit();
+
+                } catch (SQLException e) {
+                    try {
+                        connection.rollback();
+                    } catch (SQLException rollbackEx) {
+                        rollbackEx.printStackTrace();
+                    }
+                    throw new RuntimeException("Batch insert failed", e);
+                }
+
+                return true;
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("Error during batch insert", e);
+        }
+    }
+
 }
