@@ -68,4 +68,12 @@ public interface IProguardService {
      */
     Boolean executeNaiveSQLInsertBatchUsingJDBC(List<String> paramsList);
 
+    /**
+     * 批量执行多个SQL
+     * 实现类增加 org.springframework.transaction.annotation.Transactional 注解
+     * @param executeSQLList
+     * @return
+     */
+    Boolean executeNaiveSQLBatchUsingJDBC(List<String> executeSQLList);
+
 }

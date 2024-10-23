@@ -235,4 +235,42 @@ public class ProguardTest {
         System.out.println("deleteAllById");
 
     }
+
+    @Test
+    public void executeNaiveSQLBatchUsingJDBCTest() {
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+
+        Proguard proguard1 = new Proguard();
+        proguard1.setProguardId(1l);
+        proguard1.setProguardName("alexgaoyh");
+        proguard1.setExtMap(extMap);
+        proguard1.setExtList(extList);
+        proguard1.setAbstractList(arrayNode);
+
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard1.setAbstractObj(objectNode);
+
+        proguardService.saveAndFlush(proguard1);
+
+        List<String> executeSQLList = new ArrayList<>();
+        executeSQLList.add("UPDATE proguard SET proguard_name = '1' WHERE proguard_id = 1");
+        executeSQLList.add("UPDATE proguard SET proguard_name = '2' WHERE proguard_id = 1");
+        Boolean b = proguardService.executeNaiveSQLBatchUsingJDBC(executeSQLList);
+
+        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
+        System.out.println(proguardByProguardId);
+
+    }
 }

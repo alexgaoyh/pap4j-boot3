@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -193,6 +194,37 @@ public class ProguardServiceImpl implements IProguardService {
             });
         } catch (Exception e) {
             throw new RuntimeException("Error during batch insert", e);
+        }
+    }
+
+    @Override
+    @Transactional
+    public Boolean executeNaiveSQLBatchUsingJDBC(List<String> executeSQLList) {
+        try {
+            Session session = entityManager.unwrap(Session.class);
+            return session.doReturningWork(connection -> {
+                connection.setAutoCommit(false);
+                try (Statement statement = connection.createStatement()) {
+                    for (String executeSQL : executeSQLList) {
+                        statement.addBatch(executeSQL);
+                    }
+
+                    int[] results = statement.executeBatch();
+
+                    connection.commit();
+                    return true;
+
+                } catch (SQLException e) {
+                    try {
+                        connection.rollback();
+                    } catch (SQLException rollbackEx) {
+                        rollbackEx.printStackTrace();
+                    }
+                    throw new RuntimeException("Batch execution failed", e);
+                }
+            });
+        } catch (Exception e) {
+            throw new RuntimeException("Error during batch execution", e);
         }
     }
 
