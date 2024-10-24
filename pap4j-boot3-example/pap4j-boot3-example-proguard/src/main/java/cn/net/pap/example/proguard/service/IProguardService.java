@@ -15,6 +15,8 @@ public interface IProguardService {
 
     Proguard saveAndFlush(Proguard entity);
 
+    Boolean saveAndFlush2(Proguard... entitys);
+
     /**
      * 批量保存，返回值含主键
      * @param proguards

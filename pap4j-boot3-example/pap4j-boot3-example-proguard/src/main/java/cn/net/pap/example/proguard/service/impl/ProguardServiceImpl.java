@@ -53,6 +53,15 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
+    @Transactional
+    public Boolean saveAndFlush2(Proguard... entitys) {
+        for(Proguard proguard : entitys) {
+            proguardRepository.saveAndFlush(proguard);
+        }
+        return true;
+    }
+
+    @Override
     public List<Proguard> saveAllAndFlush(List<Proguard> proguards) {
         return proguardRepository.saveAllAndFlush(proguards);
     }

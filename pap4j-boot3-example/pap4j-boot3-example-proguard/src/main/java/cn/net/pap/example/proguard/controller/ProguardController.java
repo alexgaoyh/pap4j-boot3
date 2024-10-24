@@ -5,6 +5,7 @@ import cn.net.pap.example.proguard.service.IProguardService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -167,6 +168,44 @@ public class ProguardController {
         }
         return proguardService.saveAllAndFlush(proguards);
     }
+
+    @GetMapping("/saveAllAndFlush2")
+    public Boolean saveAllAndFlush2() {
+        Proguard proguard = new Proguard();
+        proguard.setProguardId(1l);
+        proguard.setProguardName(proguard.getProguardId() + "");
+
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        extMap.put("threadId", Thread.currentThread().getName());
+        proguard.setExtMap(extMap);
+
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+        extList.add("B");
+        extList.add("C");
+        extList.add("D");
+        proguard.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+        abstractMap.put("long", 1l);
+        abstractMap.put("float", 1.23f);
+        abstractMap.put("boolean", true);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+        proguard.setAbstractList(arrayNode);
+
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard.setAbstractObj(objectNode);
+
+        return proguardService.saveAndFlush2(proguard, new Proguard());
+    }
+
 
     @GetMapping("/saveAndUpdate")
     public Proguard saveAndUpdate() {
