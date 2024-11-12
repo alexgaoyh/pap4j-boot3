@@ -3,6 +3,7 @@ package cn.net.pap.common.pdf;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itextpdf.awt.geom.Rectangle2D;
 import com.itextpdf.text.Rectangle;
+import com.itextpdf.text.pdf.PdfName;
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.parser.*;
 import com.itextpdf.text.pdf.parser.Vector;
@@ -136,8 +137,8 @@ public class ITextTest {
                 PdfImageObject image = imageRenderInfo.getImage();
                 if (image == null) return;
 
-                int widthPx = image.getBufferedImage().getWidth();
-                int heightPx = image.getBufferedImage().getHeight();
+                float widthPx = Float.parseFloat(imageRenderInfo.getImage().getDictionary().get(PdfName.WIDTH).toString());
+                float heightPx = Float.parseFloat(imageRenderInfo.getImage().getDictionary().get(PdfName.HEIGHT).toString());
 
                 float widthPt = imageRenderInfo.getImageCTM().get(Matrix.I11);
                 float heightPt = imageRenderInfo.getImageCTM().get(Matrix.I22);
@@ -151,8 +152,8 @@ public class ITextTest {
                 Integer dpiXInt = Math.round(dpiX);
                 Integer dpiYInt = Math.round(dpiY);
 
-                if(dpiXInt == dpiYInt) {
-                    imageDPI = dpiXInt;
+                if (dpiXInt.equals(dpiYInt) || Math.abs(dpiXInt - dpiYInt) < 3) {
+                    this.imageDPI = Math.max(dpiXInt, dpiYInt);
                 }
 
             } catch (IOException e) {
