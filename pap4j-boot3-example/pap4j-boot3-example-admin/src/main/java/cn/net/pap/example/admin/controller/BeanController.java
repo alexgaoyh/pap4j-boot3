@@ -9,12 +9,11 @@ import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -98,6 +97,17 @@ public class BeanController {
 
         ObjectMapper objectMapper = new ObjectMapper();
         return objectMapper.writerWithView(JacksonViews.BasicWithMsg.class).writeValueAsString(exampleAdminDTO);
+    }
+
+    /**
+     * /getArray?arrays=1&arrays=2
+     * @param arrays
+     * @return
+     * @throws IOException
+     */
+    @GetMapping("/getArray")
+    public String getArray(@RequestParam(value = "arrays") List<String> arrays) throws IOException {
+        return arrays.toString();
     }
 
 }
