@@ -2,6 +2,7 @@ package cn.net.pap.example.proguard.controller;
 
 import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.service.IProguardService;
+import cn.net.pap.example.proguard.util.SimpleRateLimiter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -30,6 +31,21 @@ public class ProguardController {
 
     @Autowired
     private IProguardService proguardService;
+
+    @GetMapping(value = "/batch", produces = "application/json;charset=UTF-8")
+    public String batch() {
+        try {
+            if(SimpleRateLimiter.tryAcquire("123") <= 1) {
+                System.out.println("1");
+                Thread.sleep(1000);
+            }
+        } catch (Exception e) {
+
+        } finally {
+            SimpleRateLimiter.release("123");
+        }
+        return "pap.net.cn!";
+    }
 
     /**
      * Cache Test Interface .
