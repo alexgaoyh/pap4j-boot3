@@ -48,6 +48,7 @@ https://pap-docs.pap.net.cn/
      ├─pap4j-common-opencv                                  opencv 计算机视觉库
      ├─pap4j-common-pdf                                     PDF 组件
      ├─pap4j-common-spider                                  爬虫 组件
+     ├─pap4j-common-webdav                                  WebDAV 协议
 ```
 
 #### 安装指南
@@ -57,3 +58,7 @@ https://pap-docs.pap.net.cn/
 #### 使用指南
 
 &ensp;&ensp;  项目已上传至中央仓库，[请访问](https://central.sonatype.com/namespace/cn.net.pap)
+
+#### Special thanks to JetBrains for supporting open-source projects
+
+[![](https://resources.jetbrains.com/storage/products/company/brand/logos/jb_beam.svg)](https://gitee.com/alexgaoyh/pap4j-boot3)
