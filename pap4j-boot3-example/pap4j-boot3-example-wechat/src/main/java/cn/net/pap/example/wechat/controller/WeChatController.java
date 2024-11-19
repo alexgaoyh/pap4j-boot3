@@ -21,6 +21,12 @@ public class WeChatController {
         return userInfoResult;
     }
 
+    @GetMapping(value = "/cgi-bin/user/infoUnionID")
+    public Result<Object> userInfoUnionID(String openid) {
+        Result<Object> userInfoResult = weChatService.cgibin_user_info_UnionID(openid);
+        return userInfoResult;
+    }
+
     @GetMapping(value = "/sns/oauth2/access_token")
     public Result<String> snsOauth2AccessToken(String code) {
         Result<String> userInfoResult = weChatService.sns_oauth2_access_token(code);

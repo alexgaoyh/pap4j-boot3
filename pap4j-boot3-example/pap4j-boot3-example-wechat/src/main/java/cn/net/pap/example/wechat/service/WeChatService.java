@@ -109,6 +109,28 @@ public class WeChatService {
     }
 
     /**
+     * https://developers.weixin.qq.com/doc/offiaccount/User_Management/Get_users_basic_information_UnionID.html#UinonId
+     * @param openid
+     * @return
+     */
+    public Result<Object> cgibin_user_info_UnionID(String openid) {
+        try {
+            Result<String> accessTokenResult = getStableAccessToken();
+            String param = "access_token=" + accessTokenResult.getMessage() + "&openid=" + openid;
+            String resultStr = sendGet("https://api.weixin.qq.com/cgi-bin/user/info", param,"UTF-8");
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode jsonNode = objectMapper.readTree(resultStr);
+            if(jsonNode.get("errcode") != null){
+                return Result.error(jsonNode.get("errcode").asText());
+            } else {
+                return Result.successObj(jsonNode);
+            }
+        } catch (JsonProcessingException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
      * https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/Wechat_webpage_authorization.html#3
      * @param code
      * @return
