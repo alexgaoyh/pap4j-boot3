@@ -3,8 +3,7 @@ package cn.net.pap.common.pdf;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itextpdf.awt.geom.Rectangle2D;
 import com.itextpdf.text.Rectangle;
-import com.itextpdf.text.pdf.PdfName;
-import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.parser.*;
 import com.itextpdf.text.pdf.parser.Vector;
 import org.junit.jupiter.api.Test;
@@ -12,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
+import java.io.UnsupportedEncodingException;
 import java.math.BigDecimal;
 import java.util.*;
 
@@ -96,6 +96,11 @@ public class ITextTest {
 
         private float pageHeight = 0.0f;
 
+        /**
+         * 记录使用的字符编码
+         */
+        private Set<String> encodingSet = new HashSet<>();
+
         PapTextExtractionStrategy(float pageWidth, float pageHeight) {
             this.pageWidth = pageWidth;
             this.pageHeight = pageHeight;
@@ -108,13 +113,30 @@ public class ITextTest {
 
         @Override
         public void renderText(TextRenderInfo renderInfo) {
+            if(renderInfo.getFont() != null
+                    && renderInfo.getFont().getEncoding() != null
+                    && !"".equals(renderInfo.getFont().getEncoding())) {
+                encodingSet.add(renderInfo.getFont().getEncoding());
+            }
             List<TextRenderInfo> textRenderInfos = renderInfo.getCharacterRenderInfos();
             for (TextRenderInfo info : textRenderInfos) {
                 LineSegment ascentLine = info.getAscentLine();
                 LineSegment baseline = info.getBaseline();
                 float height = ascentLine.getStartPoint().get(Vector.I2) - baseline.getStartPoint().get(Vector.I2);
                 Rectangle2D rect = info.getDescentLine().getBoundingRectange();
-                withPointString.append(info.getText())
+                String text = info.getText();
+                if(null == text || "".equals(text)) {
+                    try {
+                        if(encodingSet != null && encodingSet.size() > 0 && encodingSet.contains("Cp1252")) {
+                            String tmp = new String(info.getPdfString().toString().getBytes("ISO-8859-1"), "GBK");
+                            if(isChineseByUnicodeBlock(tmp)) {
+                                text = tmp;
+                            }
+                        }
+                    } catch (UnsupportedEncodingException e) {
+                    }
+                }
+                withPointString.append(text)
                         .append("[")
                         // x x' y y'
                         .append(rect.getX()).append(",").append(rect.getX() + rect.getWidth()).append(",").append(pageHeight - rect.getY()).append(",").append(pageHeight - rect.getY() + height)
@@ -186,6 +208,15 @@ public class ITextTest {
     private static Double centerWidth(String point, BigDecimal dpi72ToReal) {
         String[] split = point.split(",");
         return new BigDecimal(split[1]).multiply(dpi72ToReal).subtract(new BigDecimal(split[0]).multiply(dpi72ToReal)).setScale(2, BigDecimal.ROUND_HALF_UP).doubleValue();
+    }
+
+    public static boolean isChineseByUnicodeBlock(String str) {
+        for (char c : str.toCharArray()) {
+            if (Character.UnicodeBlock.of(c) == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS) {
+                return true;
+            }
+        }
+        return false;
     }
 
     class PointTextDTO implements Serializable {
