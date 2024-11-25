@@ -36,7 +36,7 @@ public class ITextTest {
             PdfReader reader = new PdfReader(file.getAbsolutePath());
             Integer pageNum = 1;
             Rectangle pageSize = reader.getPageSize(pageNum);
-            PapTextExtractionStrategy strategy = new PapTextExtractionStrategy(pageSize.getWidth(), pageSize.getHeight());
+            PapTextExtractionStrategy strategy = new PapTextExtractionStrategy(pageSize.getWidth(), pageSize.getHeight(), reader.getPageRotation(pageNum));
             String textWithPoints = PdfTextExtractor.getTextFromPage(reader, pageNum, strategy);
 
             String dpi = textWithPoints.substring(textWithPoints.indexOf("[") + 1, textWithPoints.indexOf("]"));
@@ -97,13 +97,20 @@ public class ITextTest {
         private float pageHeight = 0.0f;
 
         /**
+         * 方向 - 不同 PDF 设置的方向不同，所以可能对应的一系列宽高和坐标就不同
+         * 0:正常 ; 90:顺时针旋转 ; -90:逆时针旋转
+         */
+        private Integer pageRotation;
+
+        /**
          * 记录使用的字符编码
          */
         private Set<String> encodingSet = new HashSet<>();
 
-        PapTextExtractionStrategy(float pageWidth, float pageHeight) {
+        PapTextExtractionStrategy(float pageWidth, float pageHeight, Integer pageRotation) {
             this.pageWidth = pageWidth;
             this.pageHeight = pageHeight;
+            this.pageRotation = pageRotation;
         }
 
         @Override
