@@ -3,6 +3,7 @@ package cn.net.pap.common.opencv;
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Core;
 import org.opencv.core.Mat;
+import org.opencv.core.Point;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 
@@ -120,4 +121,25 @@ public class OpenCVUtilsTest {
         Core.flip(rotated, rotated, 1);
         Imgcodecs.imwrite("out.jpg", rotated);
     }
+
+    // @Test
+    public void stitchImagesByPointTest() {
+        // 读取两张图像
+        Mat imageA = OpenCVUtils.imread("left.jpg");
+        Mat imageB = OpenCVUtils.imread("right.jpg");
+
+        // 定义每张图像的 i 和 j 点
+        Point iA = new Point(100, 0); // 图像 A 的 i 点
+        Point jA = new Point(100, 200); // 图像 A 的 j 点
+        Point iB = new Point(0, 0);   // 图像 B 的 i 点
+        Point jB = new Point(0, 400);  // 图像 B 的 j 点
+
+        // 拼接图像
+        Mat result = OpenCVUtils.stitchImagesByPoint(imageA, imageB, iA, jA, iB, jB);
+
+        // 保存拼接后的图像
+        Imgcodecs.imwrite("stitched_image.jpg", result);
+    }
+
+
 }

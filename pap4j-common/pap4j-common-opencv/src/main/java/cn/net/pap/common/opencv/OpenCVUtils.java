@@ -1241,4 +1241,63 @@ public class OpenCVUtils {
         return null;
     }
 
+    /**
+     * 拼接 两张图像根据坐标点进行拼接.
+     * @param imageA
+     * @param imageB
+     * @param iA
+     * @param jA
+     * @param iB
+     * @param jB
+     * @return
+     */
+    public static Mat stitchImagesByPoint(Mat imageA, Mat imageB, Point iA, Point jA, Point iB, Point jB) {
+        // 计算 A 和 B 图像的旋转角度和缩放比例
+        Mat transformMatrix = calculateTransformation(iA, jA, iB, jB);
+
+        // 先将 B 图像按计算的缩放比例进行缩放
+        double scale = calculateScale(iA, jA, iB, jB);
+        Mat resizedB = new Mat();
+
+        // 使用更高质量的插值方法进行缩放
+        Imgproc.resize(imageB, resizedB, new Size(imageB.cols() * scale, imageB.rows() * scale), 0, 0, Imgproc.INTER_CUBIC);
+
+        // 应用旋转变换
+        Mat transformedB = new Mat();
+        Imgproc.warpAffine(resizedB, transformedB, transformMatrix, resizedB.size(), Imgproc.INTER_CUBIC, BORDER_CONSTANT, new Scalar(255, 255, 255));  // 使用 INTER_CUBIC 插值，并且设置背景色为白色
+
+        // 创建一个足够大的矩阵来容纳拼接后的图像（左右拼接）
+        int width = imageA.cols() + transformedB.cols();  // 水平方向拼接
+        int height = Math.max(imageA.rows(), transformedB.rows());  // 高度取两者的最大值
+        Mat stitchedImage = new Mat(height, width, imageA.type());
+
+        // 将图像 A 和变换后的图像 B 粘贴到拼接图像中
+        imageA.copyTo(stitchedImage.rowRange(0, imageA.rows()).colRange(0, imageA.cols()));
+        transformedB.copyTo(stitchedImage.rowRange(0, transformedB.rows()).colRange(imageA.cols(), width));
+
+        return stitchedImage;
+    }
+
+    private static double calculateScale(Point iA, Point jA, Point iB, Point jB) {
+        // 计算 A 和 B 图像的缩放比例
+        double distanceA = Math.sqrt(Math.pow(jA.x - iA.x, 2) + Math.pow(jA.y - iA.y, 2)); // A 图像上 i 和 j 点的距离
+        double distanceB = Math.sqrt(Math.pow(jB.x - iB.x, 2) + Math.pow(jB.y - iB.y, 2)); // B 图像上 i 和 j 点的距离
+
+        // 计算缩放比例
+        double scale = distanceA / distanceB;
+        return scale;
+    }
+
+    private static Mat calculateTransformation(Point iA, Point jA, Point iB, Point jB) {
+        // 计算 A 和 B 图像的旋转角度差
+        double angleA = Math.atan2(jA.y - iA.y, jA.x - iA.x);
+        double angleB = Math.atan2(jB.y - iB.y, jB.x - iB.x);
+        double angleDiff = angleB - angleA;
+
+        // 计算旋转矩阵
+        Mat rotationMatrix = Imgproc.getRotationMatrix2D(iB, angleDiff * 180 / Math.PI, 1); // 旋转矩阵，缩放比例暂时为 1
+
+        return rotationMatrix;
+    }
+
 }
