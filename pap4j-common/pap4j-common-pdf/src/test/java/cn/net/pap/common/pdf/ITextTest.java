@@ -129,7 +129,7 @@ public class ITextTest {
             for (TextRenderInfo info : textRenderInfos) {
                 LineSegment ascentLine = info.getAscentLine();
                 LineSegment baseline = info.getBaseline();
-                float height = ascentLine.getStartPoint().get(Vector.I2) - baseline.getStartPoint().get(Vector.I2);
+                float height = getHeightByRotation(pageRotation, ascentLine, baseline);
                 Rectangle2D rect = info.getDescentLine().getBoundingRectange();
                 String text = info.getText();
                 if(null == text || "".equals(text)) {
@@ -146,7 +146,7 @@ public class ITextTest {
                 withPointString.append(text)
                         .append("[")
                         // x x' y y'
-                        .append(rect.getX()).append(",").append(rect.getX() + rect.getWidth()).append(",").append(pageHeight - rect.getY()).append(",").append(pageHeight - rect.getY() + height)
+                        .append(getCoorsByRotation(pageRotation, rect, pageWidth, pageHeight, height))
                         .append("]")
                         .append("{").append("").append("}")
                         .append("<").append("").append(",").append("").append(">")
@@ -224,6 +224,44 @@ public class ITextTest {
             }
         }
         return false;
+    }
+
+    /**
+     * 根据 pdf 是否旋转，获得 文本 的高度
+     * 原方向和顺时针90度旋转后的高度取值不同
+     * @param pageRotation
+     * @param ascentLine
+     * @param baseline
+     * @return
+     */
+    public static float getHeightByRotation(Integer pageRotation, LineSegment ascentLine, LineSegment baseline) {
+        if(pageRotation == 0) {
+            return ascentLine.getStartPoint().get(Vector.I2) - baseline.getStartPoint().get(Vector.I2);
+        }
+        if(pageRotation == 90) {
+            return ascentLine.getStartPoint().get(Vector.I1) - baseline.getStartPoint().get(Vector.I1);
+        }
+        throw new RuntimeException("未匹配到合适的旋转方向,请联系开发人员!");
+    }
+
+    /**
+     * 根据 pdf 是否旋转，获得 文本 的坐标
+     * 原方向和顺时针90度旋转后的坐标不同
+     * @param pageRotation
+     * @param rect
+     * @param pageWidth
+     * @param pageHeight
+     * @param widthOrHeight
+     * @return
+     */
+    public static String getCoorsByRotation(Integer pageRotation, Rectangle2D rect, float pageWidth, float pageHeight, float widthOrHeight) {
+        if(pageRotation == 0) {
+            return new StringBuilder(rect.getX() + "").append(",").append(rect.getX() + rect.getWidth()).append(",").append(pageHeight - rect.getY()).append(",").append(pageHeight - rect.getY() + widthOrHeight).toString();
+        }
+        if(pageRotation == 90) {
+            return new StringBuilder(rect.getY() - rect.getWidth() / 2 + "").append(",").append(rect.getY() + rect.getWidth() / 2 + "").append(",").append(rect.getX() + widthOrHeight + "").append(",").append(rect.getX() + "").toString();
+        }
+        throw new RuntimeException("未匹配到合适的旋转方向,请联系开发人员!");
     }
 
     class PointTextDTO implements Serializable {
