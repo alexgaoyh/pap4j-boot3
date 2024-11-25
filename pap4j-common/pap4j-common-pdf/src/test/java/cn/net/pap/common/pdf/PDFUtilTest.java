@@ -159,6 +159,33 @@ public class PDFUtilTest {
         PDFUtil.drawParagraphs("utf16.pdf", paragraphs);
     }
 
+    // @Test
+    public void drawText2() throws Exception {
+        try (PDDocument document = new PDDocument()) {
+            // 仿宋
+            PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
+
+            Integer pageWidth = 842;
+            Integer pageHeight = 595;
+            PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
+            document.addPage(page);
+
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                PDColor pdColor3 = hexToPDColor("#000000");
+
+                // 字
+                drawFont(contentStream, pdColor3, simfangFont, 12, pageHeight, 417.81f, 77.4f + 12f * 1, "海");
+                drawFont(contentStream, pdColor3, simfangFont, 12, pageHeight, 417.81f, 93.24f + 12f * 1, "王");
+
+            }
+
+            // 保存新创建的文档
+            document.save("C:\\Users\\86181\\Desktop\\output.pdf");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     @Test
     public void drawRect() throws Exception {
         try (PDDocument document = new PDDocument()) {
