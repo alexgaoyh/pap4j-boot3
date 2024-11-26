@@ -1,0 +1,1 @@
+insert into doris(id, doris_name) values (1, 'doris');

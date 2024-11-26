@@ -1,4 +1,6 @@
-CREATE TABLE if not exists test.doris
+drop table if exists doris;
+
+CREATE TABLE if not exists doris
 (
     id TINYINT,
     doris_name CHAR(10) COMMENT "doris_name"

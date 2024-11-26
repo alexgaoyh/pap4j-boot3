@@ -14,9 +14,12 @@ public class DorisMapperTest {
     @Autowired
     private DorisMapper dorisMapper;
 
-    // @Test
+    @Test
     public void testSelect() {
         List<Doris> dorisList = dorisMapper.selectList(null);
+        if(dorisList != null && dorisList.size() > 0) {
+            dorisList.forEach(System.out::println);
+        }
     }
 
 }
