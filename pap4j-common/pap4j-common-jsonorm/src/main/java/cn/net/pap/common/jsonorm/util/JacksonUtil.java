@@ -82,7 +82,7 @@ public class JacksonUtil {
             JsonNode fieldValue = entry.getValue();
 
             // 如果目标结构中有该字段，则将其添加到新的JSON节点中
-            if (targetStructure.isObject() && targetStructure.has(fieldName)) {
+            if (targetStructure != null && targetStructure.isObject() && targetStructure.has(fieldName)) {
                 if (fieldValue.isObject()) {
                     // 如果是对象类型，则递归处理
                     newJsonNode.set(fieldName, filterJson(fieldValue, targetStructure.get(fieldName)));
@@ -94,13 +94,13 @@ public class JacksonUtil {
                     newJsonNode.set(fieldName, fieldValue);
                 }
             }
-            if (targetStructure.isArray() && targetStructure.size() > 0 && targetStructure.get(0).has(fieldName)) {
+            if (targetStructure != null && targetStructure.isArray() && targetStructure.size() > 0 && targetStructure.get(0).has(fieldName)) {
                 if (fieldValue.isObject()) {
                     // 如果是对象类型，则递归处理
-                    newJsonNode.set(fieldName, filterJson(fieldValue, targetStructure.get(fieldName)));
+                    newJsonNode.set(fieldName, filterJson(fieldValue, targetStructure.get(0).get(fieldName)));
                 } else if (fieldValue.isArray()) {
                     // 如果是数组类型，则递归处理
-                    newJsonNode.set(fieldName, filterJson(fieldValue, targetStructure.get(fieldName)));
+                    newJsonNode.set(fieldName, filterJson(fieldValue, targetStructure.get(0).get(fieldName)));
                 } else {
                     // 如果是普通字段，直接赋值
                     newJsonNode.set(fieldName, fieldValue);
