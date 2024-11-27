@@ -42,19 +42,23 @@ public class JacksonUtilTest {
      */
     @Test
     public void filterJSONTest() throws Exception {
-        String originalJson = "{\"name\":\"name\",\"age\":\"age\",\"ext\":{\"detail\":{\"dName\":\"dName\",\"dAge\":\"dAge\"}}}";
-
-        String targetStructureJson = "{\"name\":null,\"ext\":{\"detail\":{\"dName\":null}}}";
-
-        // 解析原始JSON和目标结构
         ObjectMapper objectMapper = new ObjectMapper();
+
+        String originalJson = "{\"name\":\"name\",\"age\":\"age\",\"ext\":{\"detail\":{\"dName\":\"dName\",\"dAge\":\"dAge\"}},\"list\":[{\"a\": \"1\",\"b\": \"2\"}, {\"a\": \"3\",\"b\": \"4\"}]}";
+        String targetStructureJson = "{\"name\":null,\"ext\":{\"detail\":{\"dName\":null}},\"list\": [{\"a\":null}]}";
         JsonNode originalNode = objectMapper.readTree(originalJson);
         JsonNode targetStructureNode = objectMapper.readTree(targetStructureJson);
-
-        // 过滤不需要的字段
         JsonNode filteredJson = JacksonUtil.filterJson(originalNode, targetStructureNode);
-        // 输出结果
         System.out.println("Filtered JSON: " + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(filteredJson));
+
+        System.out.println("-------------------------------------------------------------------------");
+
+        String originalJson2 = "{\"name\":\"name\",\"age\":\"age\",\"ext\":{\"detail\":{\"dName\":\"dName\",\"dAge\":\"dAge\"}},\"list\":[{\"a\": \"1\",\"b\": \"2\"}, {\"a\": \"3\",\"b\": \"4\"}]}";
+        String targetStructureJson2 = "{\"name\":null,\"ext\":{\"detail\":{\"dName\":null}}}";
+        JsonNode originalNode2 = objectMapper.readTree(originalJson2);
+        JsonNode targetStructureNode2 = objectMapper.readTree(targetStructureJson2);
+        JsonNode filteredJson2 = JacksonUtil.filterJson(originalNode2, targetStructureNode2);
+        System.out.println("Filtered JSON2: " + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(filteredJson2));
     }
 
     public class JacksonDTO implements Serializable {
