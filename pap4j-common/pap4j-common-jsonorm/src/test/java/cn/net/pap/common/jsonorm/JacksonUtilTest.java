@@ -44,8 +44,8 @@ public class JacksonUtilTest {
     public void filterJSONTest() throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
 
-        String originalJson = "{\"name\":\"name\",\"age\":\"age\",\"ext\":{\"detail\":{\"dName\":\"dName\",\"dAge\":\"dAge\"}},\"list\":[{\"a\":\"1\",\"b\":\"2\",\"ext\":{\"c\":\"12\",\"d\":\"1212\"}},{\"a\":\"3\",\"b\":\"4\",\"ext\":{\"c\":\"34\",\"d\":\"3434\"}}]}";
-        String targetStructureJson = "{\"name\":null,\"ext\":{\"detail\":{\"dName\":null}},\"list\":[{\"a\":null,\"ext\":{\"c\":null}}]}";
+        String originalJson = "{\"name\":\"name\",\"age\":\"age\",\"ext\":{\"detail\":{\"dName\":\"dName\",\"dAge\":\"dAge\",\"dList\":[{\"d1\":\"d1\",\"d2\":\"d2\"},{\"d1\":\"d3\",\"d2\":\"d4\"}]}},\"list\":[{\"a\":\"1\",\"b\":\"2\",\"ext\":{\"c\":\"12\",\"d\":\"1212\"}},{\"a\":\"3\",\"b\":\"4\",\"ext\":{\"c\":\"34\",\"d\":\"3434\"}}]}";
+        String targetStructureJson = "{\"name\":null,\"ext\":{\"detail\":{\"dName\":null,\"dList\":[{\"d1\":null}]}},\"list\":[{\"a\":null,\"ext\":{\"c\":null}}]}";
         JsonNode originalNode = objectMapper.readTree(originalJson);
         JsonNode targetStructureNode = objectMapper.readTree(targetStructureJson);
         JsonNode filteredJson = JacksonUtil.filterJson(originalNode, targetStructureNode);
