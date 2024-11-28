@@ -1,6 +1,7 @@
 package cn.net.pap.common.jsonorm.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonPropertyDescription;
 
 import java.io.Serializable;
 import java.util.Map;
@@ -14,16 +15,19 @@ public class MappingORMDTO implements Serializable {
     /**
      * 业务标识： 唯一键
      */
+    @JsonPropertyDescription("唯一键")
     private String papBussId;
 
     /**
      * 业务标识: 操作方式
      */
+    @JsonPropertyDescription("操作方式")
     private String operator;
 
     /**
      * table mapping 表结构映射关系
      */
+    @JsonPropertyDescription("表结构映射关系")
     private Map<String, MappingTableDTO> mapping;
 
     public String getPapBussId() {
