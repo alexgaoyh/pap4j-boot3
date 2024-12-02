@@ -27,6 +27,7 @@ public class DorisService {
             stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (22, '2-update', '2-update')");
             // 如果过长的话，会统一回退；
             stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (33, 'largelargelargelarge', null)");
+            // 删除操作可以使用 删除状态位 做处理，一方面可以逻辑删除，另一方面可以在事务中。
             stmt.executeBatch();
 
             // int i = 1/0;
