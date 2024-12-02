@@ -11,4 +11,6 @@ public class Doris {
 
     private String dorisName;
 
+    private String dorisRemark;
+
 }

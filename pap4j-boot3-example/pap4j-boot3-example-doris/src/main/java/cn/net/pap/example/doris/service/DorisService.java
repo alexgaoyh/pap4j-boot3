@@ -21,10 +21,10 @@ public class DorisService {
             conn.setAutoCommit(false);
 
             stmt.addBatch("begin");
-            stmt.addBatch("INSERT INTO doris(id, doris_name) VALUES (11, '1')");
-            stmt.addBatch("INSERT INTO doris(id, doris_name) VALUES (22, '2')");
+            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (11, '1', '1')");
+            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (22, '2', '2')");
             // 如果过长的话，会统一回退；
-            stmt.addBatch("INSERT INTO doris(id, doris_name) VALUES (33, 'largelargelargelarge')");
+            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (33, 'largelargelargelarge', null)");
             stmt.executeBatch();
 
             // int i = 1/0;
