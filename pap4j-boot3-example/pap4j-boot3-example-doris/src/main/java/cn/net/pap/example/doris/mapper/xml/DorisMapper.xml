@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.net.pap.example.doris.mapper.DorisMapper">
+
+    <insert id="insertDoris" parameterType="map">
+        INSERT INTO doris(id, doris_name) VALUES (#{id}, #{dorisName})
+    </insert>
+
+</mapper>
