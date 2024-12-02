@@ -53,4 +53,36 @@ public class DorisService {
         return 0;
     }
 
+    /**
+     * 部分字段更新
+     *
+     * @return
+     */
+    public int partFieldUpdateTest() {
+        SqlSession session = sqlSessionFactory.openSession();
+        Connection conn = session.getConnection();
+        try (Statement stmt = conn.createStatement()) {
+
+            stmt.execute("SET enable_unique_key_partial_update=true");
+            stmt.execute("INSERT INTO doris(id, doris_remark) VALUES (33,  'remark')");
+
+            return 1;
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                conn.rollback();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        } finally {
+            try {
+                conn.close();
+                session.close();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+        return 0;
+    }
+
 }

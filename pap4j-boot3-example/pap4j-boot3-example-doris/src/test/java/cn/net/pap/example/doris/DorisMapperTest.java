@@ -3,13 +3,17 @@ package cn.net.pap.example.doris;
 import cn.net.pap.example.doris.entity.Doris;
 import cn.net.pap.example.doris.mapper.DorisMapper;
 import cn.net.pap.example.doris.service.DorisService;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestMethodOrder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.List;
 
 @SpringBootTest
+@TestMethodOrder(org.junit.jupiter.api.MethodOrderer.OrderAnnotation.class)
 public class DorisMapperTest {
 
     @Autowired
@@ -19,13 +23,23 @@ public class DorisMapperTest {
     private DorisService dorisService;
 
     @Test
+    @Order(1)
     public void test1TransactionalTest() {
         dorisService.transactionalTest();
     }
 
     @Test
-    public void test2Select() {
-        List<Doris> dorisList = dorisMapper.selectList(null);
+    @Order(2)
+    public void test2PartFieldUpdateTest() {
+        dorisService.partFieldUpdateTest();
+    }
+
+    @Test
+    @Order(3)
+    public void test3Select() {
+        LambdaQueryWrapper<Doris> wrapper = new LambdaQueryWrapper<>();
+        wrapper.orderByAsc(Doris::getId);
+        List<Doris> dorisList = dorisMapper.selectList(wrapper);
         if(dorisList != null && dorisList.size() > 0) {
             dorisList.forEach(System.out::println);
         }
