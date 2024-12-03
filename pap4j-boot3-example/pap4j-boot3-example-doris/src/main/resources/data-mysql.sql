@@ -1,1 +1,1 @@
-insert into doris(id, doris_name) values (1, 'doris');
+insert into doris(id, doris_name, doris_json) values (1, 'doris', null);

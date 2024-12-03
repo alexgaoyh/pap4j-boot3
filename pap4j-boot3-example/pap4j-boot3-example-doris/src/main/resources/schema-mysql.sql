@@ -4,7 +4,8 @@ CREATE TABLE if not exists doris
 (
     id INT,
     doris_name CHAR(20) COMMENT "doris_name",
-    doris_remark CHAR(20) COMMENT "doris_name"
+    doris_remark CHAR(20) COMMENT "doris_name",
+    doris_json json COMMENT "doris_json"
 )
 UNIQUE KEY(`id`)
 COMMENT "doris"

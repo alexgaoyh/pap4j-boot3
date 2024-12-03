@@ -21,12 +21,12 @@ public class DorisService {
             conn.setAutoCommit(false);
 
             stmt.addBatch("begin");
-            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (11, '1', '1')");
-            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (22, '2', '2')");
+            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark, doris_json) VALUES (11, '1', '1', '{\"name\":\"name11\",\"age\":\"age\",\"ext\":{\"detail\":{\"dName\":\"dName\",\"dAge\":\"dAge\",\"dList\":[{\"d1\":\"d1\",\"d2\":\"d2\"},{\"d1\":\"d3\",\"d2\":\"d4\"}]}},\"list\":[{\"a\":\"1\",\"b\":\"2\",\"ext\":{\"c\":\"12\",\"d\":\"1212\"}},{\"a\":\"3\",\"b\":\"4\",\"ext\":{\"c\":\"34\",\"d\":\"3434\"}}]}')");
+            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark, doris_json) VALUES (22, '2', '2', null)");
             // 使用 insert 完成列数据的更新
-            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (22, '2-update', '2-update')");
+            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark, doris_json) VALUES (22, '2-update', '2-update', null)");
             // 如果过长的话，会统一回退；
-            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark) VALUES (33, 'largelargelargelarge', null)");
+            stmt.addBatch("INSERT INTO doris(id, doris_name, doris_remark, doris_json) VALUES (33, 'largelargelargelarge', null, null)");
             // 删除操作可以使用 删除状态位 做处理，一方面可以逻辑删除，另一方面可以在事务中。
             stmt.executeBatch();
 
@@ -64,7 +64,7 @@ public class DorisService {
         try (Statement stmt = conn.createStatement()) {
 
             stmt.execute("SET enable_unique_key_partial_update=true");
-            stmt.execute("INSERT INTO doris(id, doris_remark) VALUES (33,  'remark')");
+            stmt.execute("INSERT INTO doris(id, doris_remark, doris_json) VALUES (33,  'remark', '{\"name\":\"name33\",\"age\":\"age\",\"ext\":{\"detail\":{\"dName\":\"dName\",\"dAge\":\"dAge\",\"dList\":[{\"d1\":\"d1\",\"d2\":\"d2\"},{\"d1\":\"d3\",\"d2\":\"d4\"}]}},\"list\":[{\"a\":\"1\",\"b\":\"2\",\"ext\":{\"c\":\"12\",\"d\":\"1212\"}},{\"a\":\"3\",\"b\":\"4\",\"ext\":{\"c\":\"34\",\"d\":\"3434\"}}]}')");
 
             return 1;
         } catch (Exception e) {

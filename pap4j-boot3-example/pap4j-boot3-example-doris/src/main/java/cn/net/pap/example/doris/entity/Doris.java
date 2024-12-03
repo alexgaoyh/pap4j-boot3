@@ -13,4 +13,6 @@ public class Doris {
 
     private String dorisRemark;
 
+    private Object dorisJson;
+
 }
