@@ -16,6 +16,8 @@ public class MappingORMDTO implements Serializable {
      * 业务标识： 唯一键
      */
     @JsonPropertyDescription("唯一键")
+    @jakarta.validation.constraints.NotNull
+    @jakarta.validation.constraints.Size(min = 1, max = 32)
     private String papBussId;
 
     /**
