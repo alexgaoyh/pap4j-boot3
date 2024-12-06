@@ -2,6 +2,7 @@ package cn.net.pap.common.jsonorm;
 
 import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.util.JsonSchemaUtil;
+import cn.net.pap.common.jsonorm.util.dto.SchemaDTO;
 import org.junit.jupiter.api.Test;
 
 public class JsonSchemaTest {
@@ -9,6 +10,11 @@ public class JsonSchemaTest {
     @Test
     public void test1() throws Exception {
         System.out.println(JsonSchemaUtil.toSchema(MappingORMDTO.class));
+    }
+
+    @Test
+    public void test2() throws Exception {
+        System.out.println(JsonSchemaUtil.toSchema(SchemaDTO.class));
     }
 
 }
