@@ -30,7 +30,7 @@ public class PageDTO {
     private List<String> pageTextList;
 
     @XmlElement(name = "image_list")
-    private List<String> imageList;
+    private ImageList imageList;
 
     @XmlElement(name = "line_list")
     private List<String> lineList;
@@ -39,7 +39,7 @@ public class PageDTO {
     private List<String> rectangleList;
 
     @XmlElement(name = "reverse_list")
-    private List<String> reverseList;
+    private ReverseList reverseList;
 
     public String getPageId() {
         return pageId;
@@ -97,11 +97,11 @@ public class PageDTO {
         this.pageTextList = pageTextList;
     }
 
-    public List<String> getImageList() {
+    public ImageList getImageList() {
         return imageList;
     }
 
-    public void setImageList(List<String> imageList) {
+    public void setImageList(ImageList imageList) {
         this.imageList = imageList;
     }
 
@@ -121,11 +121,11 @@ public class PageDTO {
         this.rectangleList = rectangleList;
     }
 
-    public List<String> getReverseList() {
+    public ReverseList getReverseList() {
         return reverseList;
     }
 
-    public void setReverseList(List<String> reverseList) {
+    public void setReverseList(ReverseList reverseList) {
         this.reverseList = reverseList;
     }
 
@@ -258,6 +258,122 @@ public class PageDTO {
                 public void setText(String text) {
                     this.text = text;
                 }
+            }
+        }
+    }
+
+    @XmlAccessorType(XmlAccessType.FIELD)
+    public static class ImageList {
+
+        @XmlElement(name = "image")
+        private List<Image> image;
+
+        public List<Image> getImage() {
+            return image;
+        }
+
+        public void setImage(List<Image> image) {
+            this.image = image;
+        }
+
+        @XmlAccessorType(XmlAccessType.FIELD)
+        public static class Image {
+
+            @XmlAttribute(name = "name")
+            private String name;
+
+            @XmlAttribute(name = "region")
+            private String region;
+
+            public String getName() {
+                return name;
+            }
+
+            public void setName(String name) {
+                this.name = name;
+            }
+
+            public String getRegion() {
+                return region;
+            }
+
+            public void setRegion(String region) {
+                this.region = region;
+            }
+        }
+
+    }
+
+    @XmlAccessorType(XmlAccessType.FIELD)
+    public static class ReverseList {
+
+        @XmlElement(name = "reverse")
+        private List<Reverse> reverse;
+
+        public List<Reverse> getReverse() {
+            return reverse;
+        }
+
+        public void setReverse(List<Reverse> reverse) {
+            this.reverse = reverse;
+        }
+
+        @XmlAccessorType(XmlAccessType.FIELD)
+        public static class Reverse {
+
+            @XmlAttribute(name = "type")
+            private String type;
+
+            @XmlAttribute(name = "ids")
+            private String ids;
+
+            @XmlAttribute(name = "variant")
+            private int variant;
+
+            @XmlAttribute(name = "image_name")
+            private String imageName;
+
+            @XmlAttribute(name = "region")
+            private String region;
+
+            public String getType() {
+                return type;
+            }
+
+            public void setType(String type) {
+                this.type = type;
+            }
+
+            public String getIds() {
+                return ids;
+            }
+
+            public void setIds(String ids) {
+                this.ids = ids;
+            }
+
+            public int getVariant() {
+                return variant;
+            }
+
+            public void setVariant(int variant) {
+                this.variant = variant;
+            }
+
+            public String getImageName() {
+                return imageName;
+            }
+
+            public void setImageName(String imageName) {
+                this.imageName = imageName;
+            }
+
+            public String getRegion() {
+                return region;
+            }
+
+            public void setRegion(String region) {
+                this.region = region;
             }
         }
     }
