@@ -249,6 +249,43 @@ public class PDFUtilTest {
         }
     }
 
+    // @Test
+    public void picRectTest() throws Exception {
+        try (PDDocument document = new PDDocument()) {
+            Integer pageWidth = 2412;
+            Integer pageHeight = 4741;
+            PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
+            document.addPage(page);
+
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+
+                PDImageXObject imageXObject = PDImageXObject.createFromFile("C:\\Users\\86181\\Desktop\\0073.jpg", document);
+                float imageWidth = imageXObject.getWidth();
+                float imageHeight = imageXObject.getHeight();
+                contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+
+                // 左上右下  x y x‘ y'
+                String page_middle_area = "262.50,1047.50,2372.00,4306.00";
+                String[] page_middle_area_array = page_middle_area.split(",");
+                List<Float> rec1List = Arrays.asList(new Float[]{
+                        Float.parseFloat(page_middle_area_array[0]),
+                        Float.parseFloat(page_middle_area_array[2]),
+                        Float.parseFloat(page_middle_area_array[1]),
+                        Float.parseFloat(page_middle_area_array[3])
+                });
+                PDColor pdColor1 = hexToPDColor("#FF0000");
+                drawRec(contentStream, pdColor1, 10f, pageHeight, rec1List);
+
+
+            }
+
+            // 保存新创建的文档
+            document.save("C:\\Users\\86181\\Desktop\\picRectTest.pdf");
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
     /**
      * 画矩形
      * @param contentStream
