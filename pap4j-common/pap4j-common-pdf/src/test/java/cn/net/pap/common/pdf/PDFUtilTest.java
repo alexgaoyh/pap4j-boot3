@@ -138,6 +138,21 @@ public class PDFUtilTest {
         PDFUtil.convertPDFToJPG("pdf.pdf", "jpg.jpg", 300);
     }
 
+    // @Test
+    public void getFontTest() throws Exception {
+        String filePath = "CJK-Unified-Ideographs-Extension-A.txt";
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(new FileInputStream(filePath), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                PDType0Font font = PDFUtil.findFont(line.split("\t")[1]);
+                System.out.println(line.split("\t")[1] + " : " + font.getName());
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
 
     @Test
     public void utf16ToPdfTest() throws Exception {

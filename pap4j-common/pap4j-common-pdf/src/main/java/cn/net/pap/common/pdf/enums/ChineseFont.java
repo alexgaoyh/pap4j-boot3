@@ -14,7 +14,9 @@ public enum ChineseFont {
     //宋体&新宋体
     SIMSUM("宋体", "SimSun", "simsun.ttc", "fonts/simsun.ttf"),
     //宋体&新宋体
-    SIMSUMB("宋体ExtB", "SimSunExtB", "simsunb.ttc", "fonts/simsunb.ttf");
+    SIMSUMB("宋体ExtB", "SimSunExtB", "simsunb.ttc", "fonts/simsunb.ttf"),
+    // 扩展A区 https://github.com/Losketch/LorchinSans
+    A_PART("A_PART", "A_PART", "LorchinSansP0.ttf", "fonts/LorchinSansP0.ttf");
 
     /**
      * fontName

@@ -223,6 +223,28 @@ public class PDFUtil {
         }
     }
 
+    /**
+     * 查询可用的字体
+     * @param text
+     * @return
+     */
+    public static PDType0Font findFont(String text) {
+        try (PDDocument document = new PDDocument()) {
+            for(ChineseFont chineseFont : ChineseFont.values()) {
+                PDType0Font tmp = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName())));
+                try {
+                    if(tmp.getStringWidth(String.valueOf(text)) > 0) {
+                        return tmp;
+                    }
+                } catch (Exception e) {
+
+                }
+            }
+        } catch (IOException e) {
+
+        }
+        return null;
+    }
 
     /**
      * 写入段落
