@@ -18,4 +18,13 @@ public class StringUtilTest {
 
     }
 
+    @Test
+    public void indexOf3Test() {
+        String str = "扫地僧\uD85D\uDC64一个扫地僧";
+        StringUtil.print(str);
+        System.out.println();
+        str.chars().mapToObj(c -> (char) c).forEach(System.out::println);
+        System.out.println();
+
+    }
 }

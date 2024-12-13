@@ -3,6 +3,19 @@ package cn.net.pap.common.datastructure.collection;
 public class StringUtil {
 
     /**
+     * print
+     * @param str
+     */
+    public static void print(String str) {
+        for (int strIdx = 0; strIdx < str.length();) {
+            int codePoint = str.codePointAt(strIdx);
+            String c = new String(Character.toChars(codePoint));
+            System.out.print(c);
+            strIdx += Character.charCount(codePoint);
+        }
+    }
+
+    /**
      * 找到字符串A中第一次出现字符串B的位置（考虑扩展区字符，返回字符个数的位置）
      * @param A 原始字符串
      * @param B 要查找的子字符串
