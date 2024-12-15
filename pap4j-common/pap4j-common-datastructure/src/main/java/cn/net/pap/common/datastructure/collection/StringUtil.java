@@ -28,6 +28,7 @@ public class StringUtil {
         List<String> result = new ArrayList<>();
         for (int i = 0; i < input.length();) {
             int codePoint = input.codePointAt(i);
+            String c = new String(Character.toChars(codePoint));
             boolean found = false;
             for (String special : specialStrings) {
                 if (input.startsWith(special, i)) {
@@ -38,7 +39,7 @@ public class StringUtil {
                 }
             }
             if (!found) {
-                result.add(Character.toString(input.charAt(i)));
+                result.add(c);
                 i+= Character.charCount(codePoint);
             }
         }
