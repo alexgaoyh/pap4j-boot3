@@ -26,8 +26,8 @@ public class StringUtil {
      */
     public static List<String> groupSpecialStrings(String input, List<String> specialStrings) {
         List<String> result = new ArrayList<>();
-        int i = 0;
-        while (i < input.length()) {
+        for (int i = 0; i < input.length();) {
+            int codePoint = input.codePointAt(i);
             boolean found = false;
             for (String special : specialStrings) {
                 if (input.startsWith(special, i)) {
@@ -39,7 +39,7 @@ public class StringUtil {
             }
             if (!found) {
                 result.add(Character.toString(input.charAt(i)));
-                i++;
+                i+= Character.charCount(codePoint);
             }
         }
         return result;

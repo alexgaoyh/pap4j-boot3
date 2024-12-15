@@ -33,10 +33,11 @@ public class StringUtilTest {
 
     @Test
     public void groupSpecialStringsTest() {
-        String input = "这是示例文本，包含一二三和五六七等特殊字符串。";
+        String input = "这是示例文本，包含一二三和五六七等特殊字符串。扫地僧\uD85D\uDC64一个扫地僧";
         List<String> specialStrings = new ArrayList<>();
         specialStrings.add("一二三");
         specialStrings.add("五六七");
+        specialStrings.add("僧\uD85D\uDC64一个");
 
         List<String> matchedStrings = StringUtil.groupSpecialStrings(input, specialStrings);
 
