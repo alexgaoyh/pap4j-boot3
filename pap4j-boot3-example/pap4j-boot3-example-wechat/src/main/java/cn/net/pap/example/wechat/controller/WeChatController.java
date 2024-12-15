@@ -1,5 +1,6 @@
 package cn.net.pap.example.wechat.controller;
 
+import cn.net.pap.example.wechat.util.SpringUtils;
 import cn.net.pap.example.wechat.service.WeChatService;
 import cn.net.pap.example.wechat.vo.Result;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,6 +38,18 @@ public class WeChatController {
     public Result<String> updateremark(String openid, String remark) {
         Result<String> updateremark = weChatService.cgibin_user_info_updateremark(openid, remark);
         return updateremark;
+    }
+
+    @GetMapping(value = "/sleep")
+    public Result<String> sleep() {
+        try {
+            Object wechat = SpringUtils.getBean("wechat");
+            SpringUtils.invokeMethod(wechat, "sleep");
+            System.out.println(wechat);
+            return Result.success("finish");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
     }
 
 }

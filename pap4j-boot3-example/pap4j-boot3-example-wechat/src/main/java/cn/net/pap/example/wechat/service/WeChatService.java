@@ -181,6 +181,22 @@ public class WeChatService {
     }
 
     /**
+     * Thread sleep
+     * @return
+     */
+    public Result<String> sleep() {
+        try {
+            System.out.println("enter" + System.currentTimeMillis());
+
+            Thread.sleep(10000);
+
+            return Result.success("finish");
+        } catch (InterruptedException e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    /**
      * 向指定 URL 发送GET方法的请求
      *
      * @param url 发送请求的 URL
