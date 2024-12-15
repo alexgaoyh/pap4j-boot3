@@ -2,6 +2,9 @@ package cn.net.pap.common.datastructure.collection;
 
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class StringUtilTest {
@@ -27,4 +30,19 @@ public class StringUtilTest {
         System.out.println();
 
     }
+
+    @Test
+    public void groupSpecialStringsTest() {
+        String input = "这是示例文本，包含一二三和五六七等特殊字符串。";
+        List<String> specialStrings = new ArrayList<>();
+        specialStrings.add("一二三");
+        specialStrings.add("五六七");
+
+        List<String> matchedStrings = StringUtil.groupSpecialStrings(input, specialStrings);
+
+        for (String match : matchedStrings) {
+            System.out.println(match);
+        }
+    }
+
 }

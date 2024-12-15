@@ -1,5 +1,8 @@
 package cn.net.pap.common.datastructure.collection;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class StringUtil {
 
     /**
@@ -13,6 +16,33 @@ public class StringUtil {
             System.out.print(c);
             strIdx += Character.charCount(codePoint);
         }
+    }
+
+    /**
+     *
+     * @param input
+     * @param specialStrings
+     * @return
+     */
+    public static List<String> groupSpecialStrings(String input, List<String> specialStrings) {
+        List<String> result = new ArrayList<>();
+        int i = 0;
+        while (i < input.length()) {
+            boolean found = false;
+            for (String special : specialStrings) {
+                if (input.startsWith(special, i)) {
+                    result.add(special);
+                    i += special.length();
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                result.add(Character.toString(input.charAt(i)));
+                i++;
+            }
+        }
+        return result;
     }
 
     /**
