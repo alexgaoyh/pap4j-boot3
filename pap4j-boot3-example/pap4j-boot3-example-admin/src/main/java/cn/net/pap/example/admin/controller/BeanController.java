@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
@@ -125,25 +126,27 @@ public class BeanController {
      * @throws IOException
      */
     @GetMapping("/stream-strings")
+    @CrossOrigin
     public void streamStrings(HttpServletResponse response) throws IOException {
-        response.setContentType("text/event-stream");
+        response.setContentType("text/event-stream;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
+        PrintWriter writer = response.getWriter();
 
         try {
             for (int i = 0; i < 10; i++) {
-                String content = "Line " + i + " - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "\n";
-                response.getOutputStream().write(content.getBytes());
-                response.getOutputStream().flush(); // 确保内容被立即发送到客户端
-                Thread.sleep(1000); // 暂停1秒以模拟延迟
+                String content = "Line " + i + " - 中文 - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "\n";
+                writer.write("data: " + content + "\n\n");
+                writer.flush();
+                Thread.sleep(1000);
             }
-        } catch (IOException e) {
-            // 处理可能的IO异常
-            e.printStackTrace();
+            // 发送结束标志
+            writer.write("event: end\n"); // 特定事件名称
+            writer.write("data: [Stream Completed]\n\n");
+            writer.flush();
         } catch (InterruptedException e) {
-            // 处理线程中断异常
             Thread.currentThread().interrupt();
         } finally {
-            response.getWriter().close(); // 关闭输出流，从而关闭连接
+            writer.close();
         }
     }
 
@@ -153,8 +156,9 @@ public class BeanController {
      * @throws IOException
      */
     @GetMapping("/stream-strings-api")
+    @CrossOrigin
     public void streamStringsAPI(HttpServletResponse response) throws IOException {
-        response.setContentType("text/event-stream");
+        response.setContentType("text/event-stream;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
         try {
             RestTemplate restTemplate = new RestTemplate();
@@ -181,5 +185,77 @@ public class BeanController {
             response.getWriter().close(); // 关闭输出流，从而关闭连接
         }
     }
+
+    /*
+    <!DOCTYPE html>
+    <html>
+        <head>
+            <meta charset="utf-8">
+            <title></title>
+        </head>
+        <body>
+            <div id="app">
+                <div>
+                    <textarea type="text" v-model="fullContent" rows="20" cols="100"></textarea>
+                </div>
+            </div>
+        </body>
+        <script src="js/Vue-v2.6.14.js"></script>
+        <script src="js/axios.js"></script>
+        <script>
+            new Vue({
+                el: '#app',
+                data: {
+                    eventSource: null,
+                    fullContent: '',
+                    displayedContent: '',
+                    typingTimer: null,
+                    typingIndex: 0
+                },
+                created() {
+                    this.startStream();
+                },
+                methods: {
+                    startStream() {
+                      const eventSource = new EventSource("http://localhost:8080/stream-strings-api");
+                      eventSource.onmessage = (event) => {
+                        const message = event.data;
+                        this.printCharacters(message);
+                      };
+
+                      // 监听自定义结束事件
+                      eventSource.addEventListener("end", () => {
+                        this.completed = true; // 更新状态为完成
+                        eventSource.close(); // 关闭连接
+                      });
+
+                      eventSource.onerror = () => {
+                        console.error("连接错误，关闭流。");
+                        eventSource.close();
+                      };
+                    },
+                    async printCharacters(message) {
+                        for (const char of message) {
+                            await this.delay(10); // 模拟逐字打印延迟
+                            this.fullContent += char;
+                        }
+                            this.fullContent += "\n"; // 添加换行符，确保每条消息单独显示
+                    },
+                    delay(ms) {
+                      return new Promise((resolve) => setTimeout(resolve, ms));
+                    },
+                },
+                beforeDestroy() {
+                    if (this.eventSource) {
+                        this.eventSource.close();
+                    }
+                    if (this.typingTimer) {
+                        clearInterval(this.typingTimer);
+                    }
+                }
+            });
+        </script>
+    </html>
+     */
 
 }
