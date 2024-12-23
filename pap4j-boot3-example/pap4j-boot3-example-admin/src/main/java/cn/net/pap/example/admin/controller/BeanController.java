@@ -142,6 +142,8 @@ public class BeanController {
         } catch (InterruptedException e) {
             // 处理线程中断异常
             Thread.currentThread().interrupt();
+        } finally {
+            response.getWriter().close(); // 关闭输出流，从而关闭连接
         }
     }
 
@@ -175,6 +177,8 @@ public class BeanController {
         } catch (ResourceAccessException e) {
             // 处理可能的网络异常
             e.printStackTrace();
+        } finally {
+            response.getWriter().close(); // 关闭输出流，从而关闭连接
         }
     }
 
