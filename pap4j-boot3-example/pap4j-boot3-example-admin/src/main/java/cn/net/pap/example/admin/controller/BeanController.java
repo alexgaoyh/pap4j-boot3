@@ -7,6 +7,7 @@ import cn.net.pap.example.bean.config.dto.ExampleBeanDTO;
 import cn.net.pap.example.user.config.dto.ExampleUserDTO;
 import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -118,6 +120,31 @@ public class BeanController {
     @GetMapping("/getArray")
     public String getArray(@RequestParam(value = "arrays") List<String> arrays) throws IOException {
         return arrays.toString();
+    }
+
+    @GetMapping(value = "/test-stream", produces = "text/event-stream")
+    @CrossOrigin
+    public SseEmitter conversation(HttpServletRequest request)  {
+        final SseEmitter emitter = new SseEmitter();
+        new Thread(() -> {
+            try {
+                for (int i = 0; i < 10; i++) {
+                    try {
+                        // 模拟某些耗时操作
+                        Thread.sleep(1000L);
+                        emitter.send("这是第" + i +"次往服务端发送内容");
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                emitter.send(SseEmitter.event().name("end").data("数据发送完毕"));
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            } finally {
+                emitter.complete();
+            }
+        }).start();
+        return emitter;
     }
 
     /**
