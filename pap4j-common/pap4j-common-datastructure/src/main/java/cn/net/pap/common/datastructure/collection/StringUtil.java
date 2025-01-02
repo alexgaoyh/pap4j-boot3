@@ -2,8 +2,13 @@ package cn.net.pap.common.datastructure.collection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Pattern;
 
 public class StringUtil {
+
+    public static String replaceFirst(String str, String regex, String replacement) {
+        return str.replaceFirst(Pattern.quote(regex), replacement);
+    }
 
     /**
      * print

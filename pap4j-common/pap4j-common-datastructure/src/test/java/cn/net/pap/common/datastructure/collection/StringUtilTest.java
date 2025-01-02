@@ -46,4 +46,10 @@ public class StringUtilTest {
         }
     }
 
+    @Test
+    public void replaceFirstTest() {
+        String s = StringUtil.replaceFirst("一二三(四五六)七八九十", ")", "");
+        System.out.println(s);
+    }
+
 }
