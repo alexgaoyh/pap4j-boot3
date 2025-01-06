@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.persistence.AttributeConverter;
 
 /**
@@ -34,6 +35,12 @@ public class JacksonObjectNodeConverter implements AttributeConverter<ObjectNode
             JsonNode jsonNode = objectMapper.readTree(dbData);
             if (jsonNode.isObject()) {
                 return (ObjectNode)jsonNode;
+            } else if(jsonNode instanceof TextNode) {
+                String text = ((TextNode)jsonNode).asText();
+                JsonNode textJsonNode = objectMapper.readTree(text);
+                if(textJsonNode.isObject()) {
+                    return (ObjectNode) textJsonNode;
+                }
             }
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Could not convert JSON to ObjectNode", e);

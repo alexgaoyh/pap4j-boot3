@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import jakarta.persistence.AttributeConverter;
 
 /**
@@ -34,6 +35,12 @@ public class JacksonArrayNodeConverter implements AttributeConverter<ArrayNode, 
             JsonNode jsonNode = objectMapper.readTree(dbData);
             if (jsonNode.isArray()) {
                 return (ArrayNode) jsonNode;
+            } else if(jsonNode instanceof TextNode) {
+                String text = ((TextNode)jsonNode).asText();
+                JsonNode textJsonNode = objectMapper.readTree(text);
+                if(textJsonNode.isArray()) {
+                    return (ArrayNode) textJsonNode;
+                }
             }
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Could not convert JSON to ArrayNode", e);
