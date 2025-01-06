@@ -27,6 +27,10 @@ public class Proguard {
     @Comment(value = "名称")
     private String proguardName;
 
+    @Column(length = 50, nullable = true)
+    @Comment(value = "顺序号")
+    private Integer proguardIdx;
+
     @Type(value = JsonTypeConvert.class)
     @Column(nullable = false, columnDefinition = "json")
     private Map<String, Object> extMap = new HashMap<>();
@@ -66,6 +70,14 @@ public class Proguard {
 
     public void setProguardName(String proguardName) {
         this.proguardName = proguardName;
+    }
+
+    public Integer getProguardIdx() {
+        return proguardIdx;
+    }
+
+    public void setProguardIdx(Integer proguardIdx) {
+        this.proguardIdx = proguardIdx;
     }
 
     public Map<String, Object> getExtMap() {
