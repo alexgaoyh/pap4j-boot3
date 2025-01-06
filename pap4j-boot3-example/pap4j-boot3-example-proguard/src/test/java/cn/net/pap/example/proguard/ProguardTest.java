@@ -21,7 +21,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.*;
+import java.util.concurrent.*;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @RunWith(SpringRunner.class)
@@ -54,6 +56,19 @@ public class ProguardTest {
         extList.add("C");
         extList.add("D");
         proguard.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard.setAbstractObj(objectNode);
+        proguard.setAbstractList(arrayNode);
+
         proguardRepository.saveAndFlush(proguard);
 
         Optional<ProguardDTO> optional = proguardRepository.getProguardByProguardId(proguardId, ProguardDTO.class);
@@ -121,6 +136,19 @@ public class ProguardTest {
         List<String> extList = new ArrayList<>();
         extList.add("A");
         proguard.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard.setAbstractObj(objectNode);
+        proguard.setAbstractList(arrayNode);
+
         proguardRepository.saveAndFlush(proguard);
 
         proguard.setProguardName("update");
@@ -147,6 +175,19 @@ public class ProguardTest {
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard1.setAbstractObj(objectNode);
+        proguard1.setAbstractList(arrayNode);
+
         proguardRepository.saveAndFlush(proguard1);
 
         List<SearchConditionDTO> conditions = new ArrayList<>();
@@ -187,6 +228,19 @@ public class ProguardTest {
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard1.setAbstractObj(objectNode);
+        proguard1.setAbstractList(arrayNode);
+
         proguardService.saveAndFlush(proguard1);
 
         Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
@@ -273,4 +327,75 @@ public class ProguardTest {
         System.out.println(proguardByProguardId);
 
     }
+
+    public Integer get_sync(String seqName, int length) {
+        synchronized (seqName) {
+            Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
+            if(proguardByProguardId == null) {
+                Map<String, Object> extMap = new HashMap<>();
+                extMap.put("timeswap", System.currentTimeMillis());
+                List<String> extList = new ArrayList<>();
+                extList.add("A");
+
+                Map<String, Object> abstractMap = new HashMap<>();
+                abstractMap.put("extMap", extMap);
+                abstractMap.put("extList", extList);
+
+                ObjectMapper mapper = new ObjectMapper();
+                ArrayNode arrayNode = mapper.createArrayNode();
+                JsonNode nestedObject = mapper.valueToTree(abstractMap);
+                arrayNode.add(nestedObject);
+
+                Proguard proguard1 = new Proguard();
+                proguard1.setProguardId(1l);
+                proguard1.setProguardName("alexgaoyh");
+                proguard1.setExtMap(extMap);
+                proguard1.setExtList(extList);
+                proguard1.setAbstractList(arrayNode);
+
+                ObjectNode objectNode = mapper.valueToTree(abstractMap);
+                proguard1.setAbstractObj(objectNode);
+
+                proguard1.setProguardIdx(1);
+
+                proguardService.saveAndFlush(proguard1);
+
+                return proguard1.getProguardIdx();
+            } else {
+                proguardByProguardId.setProguardIdx(proguardByProguardId.getProguardIdx() + 1);
+                proguardService.saveAndFlush(proguardByProguardId);
+                return proguardByProguardId.getProguardIdx();
+            }
+        }
+    }
+
+    // @Test
+    public void updateIdxTest() throws InterruptedException {
+        int numThreads = 10000;
+        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        String seqName = "testSync";
+        CountDownLatch latch = new CountDownLatch(numThreads);
+        List<Future<Integer>> futures1 = new ArrayList<>();
+        for (int i = 0; i < numThreads; i++) {
+            int finalI = i;
+            CountDownLatch finalLatch = latch;
+            futures1.add(executorService.submit(() -> {
+                try {
+                    return get_sync(seqName, finalI);
+                } finally {
+                    finalLatch.countDown();
+                }
+            }));
+        }
+        latch.await();
+        for (int i = 0; i < numThreads; i++) {
+            // assertEquals(String.valueOf(i), futures1.get(i).get());
+        }
+        executorService.shutdown();
+
+        Proguard proguardByProguardId = proguardRepository.getProguardByProguardId(1l);
+        assertEquals(proguardByProguardId.getProguardIdx(), numThreads);
+    }
+
+
 }
