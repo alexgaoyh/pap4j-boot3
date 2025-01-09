@@ -1,17 +1,26 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.pdf.enums.ChineseFont;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itextpdf.awt.geom.Rectangle2D;
 import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.parser.*;
 import com.itextpdf.text.pdf.parser.Vector;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.pdmodel.PDPage;
+import org.apache.pdfbox.pdmodel.PDPageContentStream;
+import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.font.PDType0Font;
+import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
+import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.io.UnsupportedEncodingException;
+import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.*;
 
@@ -81,6 +90,8 @@ public class ITextTest {
             System.out.println(maxWidth);
             System.out.println(objectMapper.writeValueAsString(centerXTextList));
 
+            saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS);
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -120,16 +131,20 @@ public class ITextTest {
 
         @Override
         public void renderText(TextRenderInfo renderInfo) {
+            LineSegment baselineOuter = renderInfo.getBaseline();
             if(renderInfo.getFont() != null
                     && renderInfo.getFont().getEncoding() != null
                     && !"".equals(renderInfo.getFont().getEncoding())) {
                 encodingSet.add(renderInfo.getFont().getEncoding());
             }
             List<TextRenderInfo> textRenderInfos = renderInfo.getCharacterRenderInfos();
-            for (TextRenderInfo info : textRenderInfos) {
+            for (int idx = 0; idx < textRenderInfos.size(); idx++) {
+                TextRenderInfo info = textRenderInfos.get(idx);
+                GraphicsState graphicsState = getGraphicsState(info);
+                float singleSpaceWidth = graphicsState.getCharacterSpacing();
                 LineSegment ascentLine = info.getAscentLine();
-                LineSegment baseline = info.getBaseline();
-                float height = getHeightByRotation(pageRotation, ascentLine, baseline);
+                LineSegment baselineInner = info.getBaseline();
+                float height = getHeightByRotation(pageRotation, ascentLine, baselineOuter, baselineInner);
                 Rectangle2D rect = info.getDescentLine().getBoundingRectange();
                 String text = info.getText();
                 if(null == text || "".equals(text)) {
@@ -146,7 +161,7 @@ public class ITextTest {
                 withPointString.append(text)
                         .append("[")
                         // x x' y y'
-                        .append(getCoorsByRotation(pageRotation, rect, pageWidth, pageHeight, height))
+                        .append(getCoorsByRotation(pageRotation, rect, pageWidth, pageHeight, height, baselineOuter, baselineInner, idx, singleSpaceWidth, graphicsState.getFontSize()))
                         .append("]")
                         .append("{").append("").append("}")
                         .append("<").append("").append(",").append("").append(">")
@@ -183,6 +198,10 @@ public class ITextTest {
 
                 if (dpiXInt.equals(dpiYInt) || Math.abs(dpiXInt - dpiYInt) < 3) {
                     this.imageDPI = Math.max(dpiXInt, dpiYInt);
+                }
+                // 给一个默认的 72
+                if(dpiXInt.equals(dpiYInt) && dpiXInt == Integer.MAX_VALUE && dpiYInt == Integer.MAX_VALUE) {
+                    this.imageDPI = 72;
                 }
 
             } catch (IOException e) {
@@ -231,15 +250,16 @@ public class ITextTest {
      * 原方向和顺时针90度旋转后的高度取值不同
      * @param pageRotation
      * @param ascentLine
-     * @param baseline
+     * @param baselineOuter
+     * @param baselineInner
      * @return
      */
-    public static float getHeightByRotation(Integer pageRotation, LineSegment ascentLine, LineSegment baseline) {
+    public static float getHeightByRotation(Integer pageRotation, LineSegment ascentLine, LineSegment baselineOuter, LineSegment baselineInner) {
         if(pageRotation == 0) {
-            return ascentLine.getStartPoint().get(Vector.I2) - baseline.getStartPoint().get(Vector.I2);
+            return baselineInner.getStartPoint().get(Vector.I2) - baselineInner.getStartPoint().get(Vector.I2);
         }
         if(pageRotation == 90) {
-            return ascentLine.getStartPoint().get(Vector.I1) - baseline.getStartPoint().get(Vector.I1);
+            return baselineInner.getEndPoint().get(Vector.I2) - baselineInner.getStartPoint().get(Vector.I2);
         }
         throw new RuntimeException("未匹配到合适的旋转方向,请联系开发人员!");
     }
@@ -254,14 +274,84 @@ public class ITextTest {
      * @param widthOrHeight
      * @return
      */
-    public static String getCoorsByRotation(Integer pageRotation, Rectangle2D rect, float pageWidth, float pageHeight, float widthOrHeight) {
+    public static String getCoorsByRotation(Integer pageRotation, Rectangle2D rect, float pageWidth, float pageHeight, float widthOrHeight, LineSegment baselineOuter, LineSegment baselineInner, Integer idx, float singleSpaceWidth, float fontSize) {
         if(pageRotation == 0) {
             return new StringBuilder(rect.getX() + "").append(",").append(rect.getX() + rect.getWidth()).append(",").append(pageHeight - rect.getY()).append(",").append(pageHeight - rect.getY() + widthOrHeight).toString();
         }
         if(pageRotation == 90) {
-            return new StringBuilder(rect.getY() - rect.getWidth() / 2 + "").append(",").append(rect.getY() + rect.getWidth() / 2 + "").append(",").append(rect.getX() + widthOrHeight + "").append(",").append(rect.getX() + "").toString();
+            double rectHeight = rect.getHeight();
+            if(rectHeight == 0.0d) {
+                rectHeight = Math.round(Math.abs(widthOrHeight));
+            }
+            if(rectHeight == 0.0d) {
+                rectHeight = fontSize;
+            }
+            Vector startOuter = baselineOuter.getStartPoint();
+            float adjustedX = startOuter.get(1);
+            float adjustedY = pageWidth - baselineOuter.getStartPoint().get(0) - Float.parseFloat(Math.round(rectHeight) + Math.abs(singleSpaceWidth) + "") * (idx + 1);
+
+            return new StringBuilder(adjustedX - Math.round(rectHeight / 2) + "").append(",").append(adjustedX + Math.round(rectHeight / 2) + "").append(",").append(adjustedY + "").append(",").append(adjustedY + "").toString();
         }
         throw new RuntimeException("未匹配到合适的旋转方向,请联系开发人员!");
+    }
+
+    /**
+     * 反射获得 GraphicsState
+     * @param renderInfo
+     * @return
+     */
+    public static GraphicsState getGraphicsState(TextRenderInfo renderInfo) {
+        try {
+            Field graphicsStateField = TextRenderInfo.class.getDeclaredField("gs");
+            graphicsStateField.setAccessible(true);
+            return (GraphicsState) graphicsStateField.get(renderInfo);
+        } catch (NoSuchFieldException | IllegalAccessException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * 保存验证
+     * @param pageSize
+     * @param pointTextDTOS
+     */
+    public static void saveRotation90Chcek(Integer pageRotation, Rectangle pageSize, LinkedHashSet<PointTextDTO> pointTextDTOS) {
+        if(pageRotation == 90) {
+            try (PDDocument document = new PDDocument()) {
+                Integer pageWidth = Math.round(pageSize.getHeight());
+                Integer pageHeight = Math.round(pageSize.getWidth());
+                PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
+                document.addPage(page);
+                try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                    PDColor pdColor = new PDColor(new float[]{0f, 0f, 0f}, PDDeviceRGB.INSTANCE);
+                    Map<String, PDType0Font> fonts = new HashMap<>();
+                    for(ChineseFont chineseFont : ChineseFont.values()) {
+                        PDType0Font tmp = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName())));
+                        fonts.put(chineseFont.getFontName(), tmp);
+                    }
+                    for(PointTextDTO pointTextDTO : pointTextDTOS) {
+                        for(Map.Entry<String, PDType0Font> entry : fonts.entrySet()) {
+                            try {
+                                if(entry.getValue().getStringWidth(String.valueOf(pointTextDTO.getText())) > 0) {
+                                    contentStream.setFont(entry.getValue(), Float.parseFloat(pointTextDTO.getBox().get(1) + "") - Float.parseFloat(pointTextDTO.getBox().get(0) + ""));
+                                    contentStream.setNonStrokingColor(pdColor);
+                                    contentStream.beginText();
+                                    contentStream.newLineAtOffset(Float.parseFloat(pointTextDTO.getBox().get(0) + ""), Float.parseFloat(pointTextDTO.getBox().get(2) + ""));
+                                    contentStream.showText(pointTextDTO.getText());
+                                    contentStream.endText();
+                                    break;
+                                }
+                            } catch (Exception e) {
+                            }
+                        }
+                    }
+                }
+                document.save("C:\\Users\\86181\\Desktop\\123456.pdf");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     class PointTextDTO implements Serializable {
