@@ -23,8 +23,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import java.util.*;
 import java.util.concurrent.*;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
@@ -395,6 +394,32 @@ public class ProguardTest {
 
         Proguard proguardByProguardId = proguardRepository.getProguardByProguardId(1l);
         assertEquals(proguardByProguardId.getProguardIdx(), numThreads);
+    }
+
+    // @Test
+    public void testStringLockFailure() throws InterruptedException {
+        int numThreads = 1000;
+        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        String seqName = "testSync";
+        CountDownLatch latch = new CountDownLatch(numThreads);
+        List<Integer> results = Collections.synchronizedList(new ArrayList<>());
+
+        for (int i = 0; i < numThreads; i++) {
+            int finalI = i;
+            executorService.submit(() -> {
+                try {
+                    Integer syncInt = get_sync(new String(seqName), finalI);
+                    results.add(syncInt);
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        latch.await();
+        executorService.shutdown();
+
+        assertNotEquals(numThreads, results.get(results.size() - 1));
     }
 
 
