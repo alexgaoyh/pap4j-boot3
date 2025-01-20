@@ -90,7 +90,7 @@ public class ITextTest {
             System.out.println(maxWidth);
             System.out.println(objectMapper.writeValueAsString(centerXTextList));
 
-            saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS);
+            saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS, dpi72ToReal);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -316,11 +316,11 @@ public class ITextTest {
      * @param pageSize
      * @param pointTextDTOS
      */
-    public static void saveRotation90Chcek(Integer pageRotation, Rectangle pageSize, LinkedHashSet<PointTextDTO> pointTextDTOS) {
+    public static void saveRotation90Chcek(Integer pageRotation, Rectangle pageSize, LinkedHashSet<PointTextDTO> pointTextDTOS, BigDecimal dpi72ToReal) {
         if(pageRotation == 90) {
             try (PDDocument document = new PDDocument()) {
-                Integer pageWidth = Math.round(pageSize.getHeight());
-                Integer pageHeight = Math.round(pageSize.getWidth());
+                Integer pageWidth = Math.round(pageSize.getHeight() * dpi72ToReal.floatValue());
+                Integer pageHeight = Math.round(pageSize.getWidth() * dpi72ToReal.floatValue());
                 PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
                 document.addPage(page);
                 try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
@@ -334,7 +334,7 @@ public class ITextTest {
                         for(Map.Entry<String, PDType0Font> entry : fonts.entrySet()) {
                             try {
                                 if(entry.getValue().getStringWidth(String.valueOf(pointTextDTO.getText())) > 0) {
-                                    contentStream.setFont(entry.getValue(), Float.parseFloat(pointTextDTO.getBox().get(1) + "") - Float.parseFloat(pointTextDTO.getBox().get(0) + ""));
+                                    contentStream.setFont(entry.getValue(), (Float.parseFloat(pointTextDTO.getBox().get(1) + "") - Float.parseFloat(pointTextDTO.getBox().get(0) + "")) * dpi72ToReal.floatValue());
                                     contentStream.setNonStrokingColor(pdColor);
                                     contentStream.beginText();
                                     contentStream.newLineAtOffset(Float.parseFloat(pointTextDTO.getBox().get(0) + ""), Float.parseFloat(pointTextDTO.getBox().get(2) + ""));
