@@ -9,6 +9,26 @@ import java.io.IOException;
 public class GroovyTest {
 
     /**
+     *         <dependency>
+     *             <groupId>org.codehaus.groovy</groupId>
+     *             <artifactId>groovy</artifactId>
+     *             <version>3.0.23</version>
+     *         </dependency>
+     *
+     *         @PostMapping("groovy")
+     * @param groovy
+     * @param method
+     * @throws Exception
+     */
+    public void controllerMethod(String groovy, String method) throws Exception {
+        GroovyShell groovyShell = new GroovyShell();
+        //装载解析脚本代码
+        Script script = groovyShell.parse(groovy);
+        //执行
+        script.invokeMethod(method, null);
+    }
+
+    /**
      * package cn.net.pap.common.groovy
      *
      * import javax.imageio.ImageIO
