@@ -3,16 +3,58 @@ package cn.net.pap.common.opencv;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.spi.IIORegistry;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ImageUtilTest {
+
+    //@Test
+    public void imageioTest() throws IOException {
+        List<String> formatList = new ArrayList<>();
+        for (String format : ImageIO.getReaderFormatNames()) {
+            formatList.add(format);
+        }
+
+        List<String> mimeList = new ArrayList<>();
+        for (String mime : ImageIO.getReaderMIMETypes()) {
+            String spiClass = "";
+            Iterator<ImageReader> imageReadersByMIMEType = ImageIO.getImageReadersByMIMEType(mime);
+            while (imageReadersByMIMEType.hasNext()) {
+                ImageReader spi = imageReadersByMIMEType.next();
+                spiClass = spiClass + spi.getClass().getName() + " ; ";
+            }
+            mimeList.add(mime + " : " + spiClass);
+        }
+
+        boolean canReadJpeg2000 = false;
+        for (String format : ImageIO.getReaderFormatNames()) {
+            if ("JPEG2000".equalsIgnoreCase(format)) {
+                canReadJpeg2000 = true;
+                break;
+            }
+        }
+        if(canReadJpeg2000 == false) {
+//            com.github.jaiimageio.jpeg2000.impl.J2KImageReaderSpi j2KImageReaderSpi = new com.github.jaiimageio.jpeg2000.impl.J2KImageReaderSpi();
+//            IIORegistry registry = IIORegistry.getDefaultInstance();
+//            registry.registerServiceProvider(j2KImageReaderSpi);
+        }
+        ImageIO.scanForPlugins();
+
+        for (String format : ImageIO.getReaderFormatNames()) {
+            formatList.add(format);
+        }
+
+    }
 
     //@Test
     public void scaleAndGrayTest() {
