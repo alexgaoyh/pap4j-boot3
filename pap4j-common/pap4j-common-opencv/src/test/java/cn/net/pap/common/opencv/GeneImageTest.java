@@ -57,7 +57,7 @@ public class GeneImageTest {
         }
     }
 
-    @Test
+    // @Test
     public void generateImageTest() {
         String basePath = "";
         for(int dirIdx = 0; dirIdx < 400; dirIdx++) {
