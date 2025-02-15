@@ -73,4 +73,19 @@ public class GroovyTest {
         script.invokeMethod("imageio", null);
     }
 
+    @Test
+    public void returnTest() throws IOException {
+        GroovyShell groovyShell = new GroovyShell();
+        Script script = groovyShell.parse(
+    "package cn.net.pap.common.groovy\n" +
+            "\n" +
+            "def returnStr() {\n" +
+            "    return \"alexgaoyh\";\n" +
+            "}\n"
+        );
+        //执行
+        Object returnObj = script.invokeMethod("returnStr", null);
+        System.out.println(returnObj.toString());
+    }
+
 }
