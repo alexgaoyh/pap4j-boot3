@@ -1,6 +1,5 @@
 package cn.net.pap.common.datastructure.stackTrace;
 
-import cn.net.pap.common.datastructure.collection.StringUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,6 +11,19 @@ public class StackTraceUtils {
 
     public static final List<String> DEFAULT_INCLUDES = Arrays.asList("cn.net.pap.");
     public static final List<String> DEFAULT_EXCLUDES = Arrays.asList("java.", "sun.", "javax.", "com.sun.", "org.");
+
+    public static String printFilteredStackTraceStackWalker(Throwable throwable) {
+        StringBuilder builder = new StringBuilder();
+        // 添加异常类型和消息
+        builder.append(throwable.getClass().getName()).append(": ").append(throwable.getMessage()).append("\n");
+        StackWalker walker = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+        walker.forEach(frame -> {
+            if (frame.getClassName().startsWith("cn.net.pap")) {
+                builder.append(frame.getClassName() + ":" + frame.getMethodName() + ":" + frame.getLineNumber()).append("\n");
+            }
+        });
+        return builder.toString();
+    }
 
     public static String getCoreStackTrace(Throwable throwable) {
         return getCoreStackTrace(throwable, DEFAULT_INCLUDES, DEFAULT_EXCLUDES);

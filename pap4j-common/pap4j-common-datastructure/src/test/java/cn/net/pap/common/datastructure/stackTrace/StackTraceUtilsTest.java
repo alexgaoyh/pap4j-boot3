@@ -24,6 +24,8 @@ public class StackTraceUtilsTest {
             System.out.println(StackTraceUtils.getCoreStackTrace(StackTraceUtils.getFullStackTrace(e), element ->
                     element.getClassName().contains("Test")
             ));
+
+            System.out.println(StackTraceUtils.printFilteredStackTraceStackWalker(e));
         }
     }
 
