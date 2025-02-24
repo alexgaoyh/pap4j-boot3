@@ -37,6 +37,23 @@ public class BeanController {
     @Autowired
     private ExampleUserDTO exampleUserDTO;
 
+    @GetMapping(value = "checkFinal", produces="application/json;charset=UTF-8")
+    public String checkFinal() throws Exception {
+        try {
+            ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
+            exampleAdminDTO.setCode(0);
+            exampleAdminDTO.setMsg("field");
+
+            ObjectMapper objectMapper = new ObjectMapper();
+            return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(exampleAdminDTO);
+        } catch (Exception e) {
+            return e.getMessage();
+        } finally {
+            Thread.sleep(2000);
+        }
+
+    }
+
     @PostMapping("validation")
     public Map<String, String> validation(@Valid @RequestBody ValidationDTO validationDTO) {
         Map<String, String> result = new HashMap<>();
