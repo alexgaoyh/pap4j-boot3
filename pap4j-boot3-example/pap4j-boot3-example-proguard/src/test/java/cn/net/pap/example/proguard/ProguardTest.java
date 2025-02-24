@@ -5,6 +5,7 @@ import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.repository.ProguardRepository;
 import cn.net.pap.example.proguard.service.IProguardService;
 import cn.net.pap.example.proguard.util.SearchUtil;
+import cn.net.pap.example.proguard.util.SpringUtils;
 import cn.net.pap.example.proguard.util.dto.SearchConditionDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -19,6 +20,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.*;
 import java.util.concurrent.*;
@@ -37,6 +40,61 @@ public class ProguardTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Test
+    public void transTest() {
+        Long proguardId = System.currentTimeMillis();
+
+        PlatformTransactionManager transactionManager = SpringUtils.getBean(PlatformTransactionManager.class);
+
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.execute(status -> {
+            try {
+                Proguard proguard = new Proguard();
+                proguard.setProguardId(proguardId);
+                proguard.setProguardName(proguardId + "");
+                Map<String, Object> extMap = new HashMap<>();
+                extMap.put("timeswap", System.currentTimeMillis());
+                extMap.put("threadId", Thread.currentThread().getName());
+                proguard.setExtMap(extMap);
+                List<String> extList = new ArrayList<>();
+                extList.add("A");
+                extList.add("B");
+                extList.add("C");
+                extList.add("D");
+                proguard.setExtList(extList);
+
+                Map<String, Object> abstractMap = new HashMap<>();
+                abstractMap.put("extMap", extMap);
+                abstractMap.put("extList", extList);
+
+                ObjectMapper mapper = new ObjectMapper();
+                ArrayNode arrayNode = mapper.createArrayNode();
+                JsonNode nestedObject = mapper.valueToTree(abstractMap);
+                arrayNode.add(nestedObject);
+                ObjectNode objectNode = mapper.valueToTree(abstractMap);
+                proguard.setAbstractObj(objectNode);
+                proguard.setAbstractList(arrayNode);
+                proguardService.saveAndFlush(proguard);
+
+                proguardService.saveAndFlush(new Proguard());
+
+                //status.setRollbackOnly();
+
+                return null;
+            } catch (Exception ex) {
+                status.setRollbackOnly();
+                return null;
+            }
+        });
+        // 是否调用 status.setRollbackOnly(); 的区别
+        Proguard proguardDB = proguardService.getProguardByProguardId(proguardId);
+        if(proguardDB != null) {
+            System.out.println(proguardDB.getProguardId() + " : " + proguardDB.getProguardName());
+        } else {
+            System.out.println("-------------rollback-----------------");
+        }
+    }
 
     @Test
     public void projectionsTest() {
