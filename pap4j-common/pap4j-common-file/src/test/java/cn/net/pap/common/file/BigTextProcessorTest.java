@@ -2,10 +2,7 @@ package cn.net.pap.common.file;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.BufferedReader;
-import java.io.FileInputStream;
-import java.io.IOException;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
@@ -15,11 +12,23 @@ public class BigTextProcessorTest {
     // @Test
     public void testBigText() throws IOException {
         try {
+
+            long totalMemory = Runtime.getRuntime().totalMemory();
+            long freeMemory = Runtime.getRuntime().freeMemory();
+
+            System.out.println("Total Memory: " + totalMemory / (1024 * 1024) + " Mb ; " + "Free Memory: " + freeMemory / (1024 * 1024) + " Mb");
+
             readFile("C:\\Users\\86181\\Desktop\\big.txt", line -> {
                 List<String> words = new ArrayList<>();
                 words.add(line);
                 return words;
             });
+
+            // Files.readAllLines(Paths.get("C:\\Users\\86181\\Desktop\\big.txt"), StandardCharsets.UTF_8);
+
+            long totalMemory2 = Runtime.getRuntime().totalMemory();
+            long freeMemory2 = Runtime.getRuntime().freeMemory();
+            System.out.println("Total Memory2: " + totalMemory2 / (1024 * 1024) + " Mb ; " + "Free Memory2: " + freeMemory2 / (1024 * 1024) + " Mb");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -37,7 +46,7 @@ public class BigTextProcessorTest {
             String line;
             while ((line = reader.readLine()) != null) {
                 List<String> words = lineProcessor.process(line);
-                System.out.println(words);
+                // System.out.println(words);
             }
         }
     }
