@@ -12,6 +12,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
+import org.hibernate.ScrollMode;
+import org.hibernate.ScrollableResults;
+import org.hibernate.Session;
+import org.hibernate.StatelessSession;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -478,6 +482,87 @@ public class ProguardTest {
         executorService.shutdown();
 
         assertNotEquals(numThreads, results.get(results.size() - 1));
+    }
+
+    private Proguard geneEntity() {
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+
+        Proguard proguard1 = new Proguard();
+        proguard1.setProguardName("alexgaoyh");
+        proguard1.setExtMap(extMap);
+        proguard1.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard1.setAbstractObj(objectNode);
+        proguard1.setAbstractList(arrayNode);
+        return proguard1;
+    }
+
+    private long bytesToMB(long bytes) {
+        return bytes / (1024 * 1024);
+    }
+
+    // @Test
+    public void streamTest() throws Exception {
+
+        for(int i = 0; i < 999; i++) {
+            Proguard proguard = geneEntity();
+            proguard.setProguardId(Long.parseLong(i + ""));
+            proguardService.saveAndFlush(proguard);
+        }
+
+        // 初始化内存监控
+        Runtime runtime = Runtime.getRuntime();
+        long initialMemory = runtime.totalMemory() - runtime.freeMemory(); // 初始内存占用
+        long maxMemoryUsed = initialMemory;
+        int batchCount = 0;
+
+        StatelessSession session = entityManager.unwrap(Session.class).getSessionFactory().openStatelessSession();
+        ScrollableResults scroll = session.createQuery("FROM Proguard ORDER BY proguardId", Proguard.class)
+                .setFetchSize(100).scroll(ScrollMode.FORWARD_ONLY);
+
+        try {
+            while (scroll.next()) {
+                // 获取当前内存占用
+                long currentMemory = runtime.totalMemory() - runtime.freeMemory();
+                maxMemoryUsed = Math.max(maxMemoryUsed, currentMemory);
+
+                // 每处理10条记录输出一次内存状态
+                if (batchCount % 10 == 0) {
+                    // 这里可以观察到内存的一个增加 释放 增加 的趋势.
+                    System.out.printf("Processed %d records | Current Memory: %d MB | Max Memory Used: %d MB%n",
+                            batchCount,
+                            bytesToMB(currentMemory),
+                            bytesToMB(maxMemoryUsed));
+                }
+
+                Proguard entity = (Proguard) scroll.get();
+                // System.out.println(entity);
+
+                batchCount++;
+            }
+        } finally {
+            scroll.close();
+            session.close();
+        }
+
+        // 最终内存报告
+        long finalMemory = runtime.totalMemory() - runtime.freeMemory();
+        System.out.printf("Final Memory Usage: %d MB | Peak Memory Usage: %d MB%n",
+                bytesToMB(finalMemory),
+                bytesToMB(maxMemoryUsed));
+
     }
 
 
