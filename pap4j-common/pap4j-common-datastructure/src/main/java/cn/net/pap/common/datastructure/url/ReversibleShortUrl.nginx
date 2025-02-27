@@ -1,0 +1,9 @@
+server {
+    listen 9631;
+    server_name 127.0.0.1;
+
+    location /decode {
+        content_by_lua_file conf/lua/ReversibleShortUrl.lua;
+    }
+
+}
