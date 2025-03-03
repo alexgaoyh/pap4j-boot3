@@ -118,4 +118,42 @@ public class ITextUnicodeTest {
         }
     }
 
+    // @Test
+    public void emoji2PdfTest() {
+        try {
+            BaseFont chineseFont = BaseFont.createFont("C:\\Users\\86181\\Downloads\\NotoSansSC-VariableFont_wght.ttf",
+                    BaseFont.IDENTITY_H,
+                    BaseFont.EMBEDDED
+            );
+            BaseFont emojiFont = BaseFont.createFont("C:\\Users\\86181\\Downloads\\NotoEmoji-VariableFont_wght.ttf",
+                    BaseFont.IDENTITY_H,
+                    BaseFont.EMBEDDED
+            );
+
+            Font chineseStyle = new Font(chineseFont, 12);
+            Font emojiStyle = new Font(emojiFont, 12);
+
+            Document document = new Document();
+            PdfWriter.getInstance(document, new FileOutputStream("C:\\Users\\86181\\Downloads\\emoji_demo.pdf"));
+            document.open();
+
+            // 逐区间遍历Unicode范围
+            for (int start = 0x0000; start <= 0x10FFFF; start += 0x1000) {
+                for (int codePoint = start; codePoint < start + 0x1000 && codePoint <= 0x10FFFF; codePoint++) {
+                    if (emojiFont.charExists(codePoint)) {
+                        Paragraph paragraph = new Paragraph();
+                        paragraph.add(new Chunk(codePoint + " : ", chineseStyle));  // 汉字部分
+                        paragraph.add(new Chunk(new String(Character.toChars(codePoint)), emojiStyle));     // 表情部分
+                        document.add(paragraph);
+                    }
+                }
+            }
+
+            document.close();
+            System.out.println("PDF 生成成功！");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 }
