@@ -4,12 +4,31 @@ import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfWriter;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
 
+import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.List;
 
 public class ITextUnicodeTest {
+
+    // @Test
+    public void resourceTest() {
+        try {
+            // File file = new ClassPathResource("templates/模板.xlsx").getFile();
+            ClassPathResource simfangResource = new ClassPathResource("fonts/simfang.ttf");
+            if(simfangResource.exists()){
+                File file = simfangResource.getFile();
+                System.out.println(file.exists());
+            } else {
+                System.out.println(false);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     /**
      * 加载字体，并且判断字体中是否存在某个 字符
