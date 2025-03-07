@@ -16,6 +16,13 @@ public class AsyncController {
     @Autowired
     private ApplicationContext applicationContext;
 
+    @GetMapping(value = "/direct", produces = "application/json;charset=UTF-8")
+    public String direct() throws Exception {
+        System.out.println(System.currentTimeMillis());
+        Thread.sleep((long)(Math.random() * 10000));
+        return "direct";
+    }
+
     @GetMapping(value = "/async", produces = "application/json;charset=UTF-8")
     public String async() throws Exception {
         String requestParam = "cn.net.pap.example.async";
