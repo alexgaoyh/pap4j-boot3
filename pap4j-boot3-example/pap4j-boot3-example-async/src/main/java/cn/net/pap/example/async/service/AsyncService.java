@@ -14,9 +14,9 @@ public class AsyncService {
         try {
             String param = ContextHolder.get();
             System.out.println("执行异步方法，读取参数：" + param);
-            Thread.sleep(5000);
 
-            return CompletableFuture.completedFuture(param);
+            Thread.sleep(5000);
+            return CompletableFuture.completedFuture(param.toUpperCase());
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }

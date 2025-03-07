@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.lang.reflect.Method;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Future;
 
 @RestController
 public class AsyncController {
@@ -19,17 +18,17 @@ public class AsyncController {
 
     @GetMapping(value = "/async", produces = "application/json;charset=UTF-8")
     public String async() throws Exception {
+        String requestParam = "cn.net.pap.example.async";
 
-        ContextHolder.set("cn.net.pap.example.async");
+        ContextHolder.set(requestParam);
 
-        // 2. 反射调用异步方法
         AsyncService asyncService = applicationContext.getBean(AsyncService.class);
         Method method = AsyncService.class.getMethod("asyncMethod");
         Object obj = method.invoke(asyncService);
-        if(obj instanceof Future) {
+        if(obj instanceof CompletableFuture) {
             CompletableFuture<String> future = (CompletableFuture<String>) obj;
             future.thenAccept(result -> {
-                System.out.println(result);
+                System.out.println("执行异步方法，返回参数：" + result + " ; 传递的参数：" + requestParam);
             }).exceptionally(ex -> {
                 ex.printStackTrace();
                 return null;
