@@ -4,7 +4,9 @@ import cn.net.pap.example.async.config.ContextHolder;
 import cn.net.pap.example.async.service.AsyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.lang.reflect.Method;
@@ -17,9 +19,13 @@ public class AsyncController {
     private ApplicationContext applicationContext;
 
     @GetMapping(value = "/direct", produces = "application/json;charset=UTF-8")
-    public String direct() throws Exception {
-        System.out.println(System.currentTimeMillis());
-        Thread.sleep((long)(Math.random() * 10000));
+    public String direct(@RequestParam(value = "index", required = false) String index) throws Exception {
+        System.out.println(Thread.currentThread().getId() + " : " + System.currentTimeMillis());
+        if(StringUtils.isEmpty(index)) {
+            Thread.sleep((long)(Math.random() * 10000));
+        } else {
+            Thread.sleep(Long.parseLong(index));
+        }
         return "direct";
     }
 

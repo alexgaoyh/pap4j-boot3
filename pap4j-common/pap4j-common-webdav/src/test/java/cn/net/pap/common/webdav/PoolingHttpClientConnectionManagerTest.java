@@ -44,7 +44,7 @@ public class PoolingHttpClientConnectionManagerTest {
         HTTP_CLIENT_CONNECTION_MANAGER.setMaxTotal(MAX_TOTAL_CONNECTIONS);
         HTTP_CLIENT_CONNECTION_MANAGER.setDefaultMaxPerRoute(DEFAULT_MAX_PER_ROUTE);
         HttpRoute specificRoute = new HttpRoute(new HttpHost("127.0.0.1", 8080));
-        HTTP_CLIENT_CONNECTION_MANAGER.setMaxPerRoute(specificRoute, 50);
+        HTTP_CLIENT_CONNECTION_MANAGER.setMaxPerRoute(specificRoute, 256);
 
         REQUEST_CONFIG = RequestConfig.custom().setConnectionRequestTimeout(CONNECTION_REQUEST_TIMEOUT).setConnectTimeout(CONNECT_TIMEOUT).setSocketTimeout(SOCKET_TIMEOUT).build();
 
@@ -132,10 +132,14 @@ public class PoolingHttpClientConnectionManagerTest {
                     HttpGet httpGet = new HttpGet(url);
                     try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
                         int statusCode = response.getStatusLine().getStatusCode();
+                        org.apache.http.HttpEntity entity = response.getEntity();
                         if (statusCode == HttpStatus.SC_OK) {
-                            return EntityUtils.toString(response.getEntity(), "utf-8");
+                            return EntityUtils.toString(entity, "utf-8");
                         } else {
                             logger.error("请求失败，状态码: {}", statusCode);
+                            if (entity != null) {
+                                EntityUtils.consume(entity);
+                            }
                         }
                     }
                 }
@@ -159,19 +163,26 @@ public class PoolingHttpClientConnectionManagerTest {
         }
     }
 
-    // @Test
+    @Test
     public void getBatchTest() {
         ExecutorService executorService = Executors.newFixedThreadPool(100);
-        IntStream.range(0, 1000).forEach(index -> {
+        IntStream.range(5000, 11000).forEach(index -> {
             executorService.submit(() -> {
-                getTest();
+                String url = "http://127.0.0.1:8080/direct?index=" +  index;
+                String response = sendGetRequest(url);
+                if (response != null) {
+                    logger.info("请求成功，响应内容: {}", response);
+                } else {
+                    //System.out.println(1);
+                    logger.error("请求失败，未获取到有效响应");
+                }
             });
         });
 
         // 关闭线程池
         executorService.shutdown();
         try {
-            executorService.awaitTermination(1, TimeUnit.MINUTES);
+            executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.MINUTES);
         } catch (InterruptedException e) {
             logger.error("线程池关闭异常: {}", e.getMessage(), e);
         }
