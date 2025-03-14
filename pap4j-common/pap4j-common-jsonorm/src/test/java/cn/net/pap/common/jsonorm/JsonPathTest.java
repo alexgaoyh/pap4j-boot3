@@ -22,5 +22,23 @@ public class JsonPathTest {
         System.out.println(json2);
     }
 
+    @Test
+    public void jsonPathHideDelTest() {
+        String json = "{\"id\":1,\"name\":\"John Doe\",\"isActive\":true,\"address\":{\"street\":\"123 Main St\",\"city\":\"New York\",\"zipCode\":\"10001\"},\"phoneNumbers\":[{\"type\":\"home\",\"number\":\"123-456-7890\"},{\"type\":\"work\",\"number\":\"987-654-3210\"}],\"orders\":[{\"orderId\":\"A123\",\"items\":[{\"product\":\"Laptop\",\"price\":1200.50},{\"product\":\"Mouse\",\"price\":25.99}]},{\"orderId\":\"B456\",\"items\":[{\"product\":\"Keyboard\",\"price\":45.00}]}]}";
+        // 解析 JSON
+        com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
+
+        // 隐藏 address.street 和 phoneNumbers[*].number 字段的值
+        ctx.set("$.address.street", "***");
+        ctx.set("$.phoneNumbers[*].number", "***");
+
+        // 过滤掉 orders[*].items[*].price 字段
+        ctx.delete("$.orders[*].items[*].price");
+
+        String result = ctx.jsonString();
+        System.out.println(result);
+    }
+
+
 
 }
