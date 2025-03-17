@@ -1,9 +1,11 @@
 package cn.net.pap.common.jsonorm;
 
 import com.jayway.jsonpath.JsonPath;
+import net.minidev.json.JSONArray;
+import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
+import java.util.*;
 
 public class JsonPathTest {
 
@@ -39,6 +41,83 @@ public class JsonPathTest {
         System.out.println(result);
     }
 
+    @Test
+    public void jsonPathInsert1Test() {
+        String json = "{}";
+        com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
+        List<String> values = Arrays.asList("value1", "value2", "value3");
+        ctx.put("$", "arrayNode", values);
+        String result = ctx.jsonString();
+        System.out.println(result);
+    }
+
+    @Test
+    public void jsonPathInsert2Test() {
+        String json = "{}";
+        com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
+
+        ctx.put("$", "arrayNode", new ArrayList<>());
+
+        Map<String, String> mapName1 = new HashMap<>();
+        mapName1.put("name", "1");
+        ctx.add("$.arrayNode", mapName1);
+        Map<String, String> mapName2 = new HashMap<>();
+        mapName2.put("name", "2");
+        ctx.add("$.arrayNode", mapName2);
+
+        String result = ctx.jsonString();
+        System.out.println(result);
+    }
+
+    @Test
+    public void getFieldTest() {
+        String json = "{\"name\":\"John\",\"age\":30,\"address\":{\"city\":\"New York\",\"zip\":\"10001\"},\"hobbies\":[\"reading\",\"traveling\"],\"skills\":{\"programming\":{\"java\":\"advanced\",\"python\":\"intermediate\"},\"languages\":[\"English\",\"Spanish\"]}}";
+
+        // 解析 JSON
+        Object parsedJson = JsonPath.parse(json).json();
+
+        // 获取所有字段名称
+        List<String> fieldNames = new ArrayList<>();
+        getAllFieldNames(parsedJson, "", fieldNames);
+
+        // 打印所有字段名称
+        for (String fieldName : fieldNames) {
+            System.out.println(fieldName);
+        }
+    }
+
+    /**
+     * 递归获取所有字段名称
+     *
+     * @param json       当前 JSON 节点
+     * @param parentPath 父路径
+     * @param fieldNames 存储字段名称的列表
+     */
+    private static void getAllFieldNames(Object json, String parentPath, List<String> fieldNames) {
+        if (json instanceof LinkedHashMap) {
+            LinkedHashMap<String, Object> jsonObject = (LinkedHashMap<String, Object>) json;
+            for (Map.Entry<String, Object> entry : jsonObject.entrySet()) {
+                String currentPath = parentPath.isEmpty() ? entry.getKey() : parentPath + "." + entry.getKey();
+                fieldNames.add(currentPath);
+                getAllFieldNames(entry.getValue(), currentPath, fieldNames);
+            }
+        } else if (json instanceof JSONObject) {
+            JSONObject jsonObject = (JSONObject) json;
+            for (Map.Entry<String, Object> entry : jsonObject.entrySet()) {
+                String currentPath = parentPath.isEmpty() ? entry.getKey() : parentPath + "." + entry.getKey();
+                fieldNames.add(currentPath);
+                getAllFieldNames(entry.getValue(), currentPath, fieldNames);
+            }
+        } else if (json instanceof JSONArray) {
+            JSONArray jsonArray = (JSONArray) json;
+            if (!jsonArray.isEmpty()) {
+                // 使用 * 替换数组索引
+                String arrayPath = parentPath + "[*]";
+                fieldNames.add(arrayPath);
+                getAllFieldNames(jsonArray.get(0), arrayPath, fieldNames);
+            }
+        }
+    }
 
 
 }
