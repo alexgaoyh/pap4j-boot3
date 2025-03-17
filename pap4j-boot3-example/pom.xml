@@ -22,6 +22,7 @@
         <module>pap4j-boot3-example-wechat</module>
         <module>pap4j-boot3-example-doris</module>
         <module>pap4j-boot3-example-async</module>
+        <module>pap4j-boot3-example-testcontainers</module>
     </modules>
 
     <properties>
