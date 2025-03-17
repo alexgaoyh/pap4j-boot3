@@ -78,4 +78,7 @@ public interface IProguardService {
      */
     Boolean executeNaiveSQLBatchUsingJDBC(List<String> executeSQLList);
 
+    Boolean exceptionRandom(String input);
+
+    Boolean checkDeadLock(Long id1, Long id2);
 }

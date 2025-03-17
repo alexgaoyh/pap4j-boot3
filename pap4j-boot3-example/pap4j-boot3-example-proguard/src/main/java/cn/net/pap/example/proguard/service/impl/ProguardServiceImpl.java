@@ -237,4 +237,31 @@ public class ProguardServiceImpl implements IProguardService {
         }
     }
 
+    @Override
+    public Boolean exceptionRandom(String input) {
+        try {
+            if(Math.random() > 0.5) {
+                int i = 1/0;
+            }
+            return true;
+        } catch (Exception e) {
+           return false;
+        }
+    }
+
+    @Override
+    @Transactional
+    public Boolean checkDeadLock(Long id1, Long id2) {
+        Proguard from = proguardRepository.getProguardByProguardIdForUpdate(id1);
+
+        try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+
+        Proguard to = proguardRepository.getProguardByProguardIdForUpdate(id2);
+
+        proguardRepository.save(from);
+        proguardRepository.save(to);
+
+        return true;
+    }
+
 }
