@@ -122,4 +122,10 @@ public class ExcelUtilTest {
         }
     }
 
+    // @Test
+    public void formulaTest() {
+        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList("C:\\Users\\86181\\Desktop\\formula.xlsx", "Sheet2", null);
+        System.out.println(sheet2);
+    }
+
 }
