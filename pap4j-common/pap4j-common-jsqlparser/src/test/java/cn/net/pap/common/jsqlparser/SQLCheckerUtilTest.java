@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsqlparser;
 
+import net.sf.jsqlparser.JSQLParserException;
+import net.sf.jsqlparser.parser.CCJSqlParserUtil;
+import net.sf.jsqlparser.statement.insert.Insert;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -61,6 +64,17 @@ public class SQLCheckerUtilTest {
         String sql3After = SQLCheckerUtil.getTableName(sql3);
         System.out.println(sql3After);
 
+    }
+
+    @Test
+    public void pgSQLCheckTest() {
+        try {
+            String sql1 = "INSERT INTO target(id,c_count) (select id,count(id) num from source GROUP BY id) ON CONFLICT (id) DO UPDATE SET c_count = EXCLUDED.c_count";
+            Insert insertParse = (Insert) CCJSqlParserUtil.parse(sql1);
+            System.out.println(insertParse.getTable());
+        } catch (JSQLParserException e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
