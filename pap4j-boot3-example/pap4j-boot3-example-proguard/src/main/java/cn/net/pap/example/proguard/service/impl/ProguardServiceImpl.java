@@ -9,6 +9,8 @@ import jakarta.persistence.TypedQuery;
 import org.hibernate.Session;
 import org.hibernate.query.NativeQuery;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -28,6 +30,8 @@ import java.util.stream.Stream;
 
 @Service
 public class ProguardServiceImpl implements IProguardService {
+
+    private static final Logger logger = LoggerFactory.getLogger(ProguardServiceImpl.class);
 
     @Autowired
     private ProguardRepository proguardRepository;
@@ -55,7 +59,7 @@ public class ProguardServiceImpl implements IProguardService {
     @Override
     @Transactional
     public Boolean saveAndFlush2(Proguard... entitys) {
-        for(Proguard proguard : entitys) {
+        for (Proguard proguard : entitys) {
             proguardRepository.saveAndFlush(proguard);
         }
         return true;
@@ -111,7 +115,7 @@ public class ProguardServiceImpl implements IProguardService {
     public Page<Proguard> searchAllByNaiveSQL(String naiveSQL, Pageable pageable) {
         Query naiveSQLQuery = entityManager.createNativeQuery(naiveSQL, Proguard.class);
         //设置分页
-        naiveSQLQuery.setFirstResult((int)(pageable.getOffset()));
+        naiveSQLQuery.setFirstResult((int) (pageable.getOffset()));
         naiveSQLQuery.setMaxResults(pageable.getPageSize());
 
         List resultList = naiveSQLQuery.getResultList();
@@ -132,7 +136,7 @@ public class ProguardServiceImpl implements IProguardService {
         naiveSQLQuery.setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
 
         //设置分页
-        naiveSQLQuery.setFirstResult((int)(pageable.getOffset()));
+        naiveSQLQuery.setFirstResult((int) (pageable.getOffset()));
         naiveSQLQuery.setMaxResults(pageable.getPageSize());
 
         List resultList = naiveSQLQuery.getResultList();
@@ -149,12 +153,12 @@ public class ProguardServiceImpl implements IProguardService {
     @Override
     @Transactional
     public Boolean executeNaiveSQLBatch(List<String> naiveSQLList, List<List<Object>> paramsList) {
-        if(naiveSQLList != null && paramsList != null && naiveSQLList.size() == paramsList.size()) {
-            for(int naiveIdx = 0; naiveIdx < naiveSQLList.size(); naiveIdx++) {
+        if (naiveSQLList != null && paramsList != null && naiveSQLList.size() == paramsList.size()) {
+            for (int naiveIdx = 0; naiveIdx < naiveSQLList.size(); naiveIdx++) {
                 String naiveSQL = naiveSQLList.get(naiveIdx);
                 List<Object> params = paramsList.get(naiveIdx);
                 Query query = entityManager.createNativeQuery(naiveSQL);
-                for(int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
+                for (int paramIdx = 0; paramIdx < params.size(); paramIdx++) {
                     query.setParameter(paramIdx + 1, params.get(paramIdx));
                 }
                 int i = query.executeUpdate();
@@ -240,12 +244,15 @@ public class ProguardServiceImpl implements IProguardService {
     @Override
     public Boolean exceptionRandom(String input) {
         try {
-            if(Math.random() > 0.5) {
-                int i = 1/0;
+            if (Math.random() > 0.5) {
+                int i = 1 / 0;
             }
             return true;
         } catch (Exception e) {
-           return false;
+            if(logger.isDebugEnabled()) {
+                logger.debug("exceptionRandom: {}, {}", input, e.getMessage());
+            }
+            return false;
         }
     }
 
@@ -254,7 +261,10 @@ public class ProguardServiceImpl implements IProguardService {
     public Boolean checkDeadLock(Long id1, Long id2) {
         Proguard from = proguardRepository.getProguardByProguardIdForUpdate(id1);
 
-        try { Thread.sleep(100); } catch (InterruptedException ignored) {}
+        try {
+            Thread.sleep(100);
+        } catch (InterruptedException ignored) {
+        }
 
         Proguard to = proguardRepository.getProguardByProguardIdForUpdate(id2);
 

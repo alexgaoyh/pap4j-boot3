@@ -257,4 +257,10 @@ public class ProguardController {
         return proguard;
     }
 
+    @GetMapping(value = "/exceptionRandom", produces = "application/json;charset=UTF-8")
+    public String exceptionRandom() {
+        Boolean b = proguardService.exceptionRandom("alexgaoyh");
+        return b.toString();
+    }
+
 }
