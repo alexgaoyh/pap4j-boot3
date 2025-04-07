@@ -50,7 +50,10 @@ public class PapFileListenerTest {
         while ((key = watchService.take()) != null) {
             // 某些编辑器（如Notepad++、VS Code）在保存文件时可能会先写入临时文件，再替换原文件，导致两次事件。
             for (WatchEvent<?> event : key.pollEvents()) {
-                System.out.println( "Event kind:" + event.kind() + ". File affected: " + event.context() + ".");
+                Path file = path.resolve((Path) event.context());
+                long currentModifiedTime = Files.getLastModifiedTime(file).toMillis();
+
+                System.out.println( "Event kind:" + event.kind() + ". File affected: " + event.context() + ". ModifiedTime : " + currentModifiedTime + ". FilePath : " + file.toString() + ".");
             }
             key.reset();
         }
