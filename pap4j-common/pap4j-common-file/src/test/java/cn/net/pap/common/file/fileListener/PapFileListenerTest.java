@@ -6,6 +6,7 @@ import org.apache.commons.io.monitor.FileAlterationObserver;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.nio.file.*;
 
 public class PapFileListenerTest {
 
@@ -31,6 +32,28 @@ public class PapFileListenerTest {
         monitor.start();
 
         System.in.read();
+    }
+
+    // @Test
+    public void watchService1() throws Exception {
+        WatchService watchService = FileSystems.getDefault().newWatchService();
+
+        java.nio.file.Path path = java.nio.file.Paths.get("C:\\Users\\86181\\Desktop\\");
+
+        path.register(
+                watchService,
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_DELETE,
+                StandardWatchEventKinds.ENTRY_MODIFY);
+
+        WatchKey key;
+        while ((key = watchService.take()) != null) {
+            // 某些编辑器（如Notepad++、VS Code）在保存文件时可能会先写入临时文件，再替换原文件，导致两次事件。
+            for (WatchEvent<?> event : key.pollEvents()) {
+                System.out.println( "Event kind:" + event.kind() + ". File affected: " + event.context() + ".");
+            }
+            key.reset();
+        }
     }
 
 }
