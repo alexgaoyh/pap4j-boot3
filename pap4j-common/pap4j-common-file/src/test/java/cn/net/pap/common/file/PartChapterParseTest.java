@@ -8,6 +8,8 @@ import org.w3c.dom.NodeList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -27,20 +29,53 @@ public class PartChapterParseTest {
         Document document = builder.parse("C:\\Users\\86181\\Desktop\\partc.xml");
 
         Element root = document.getDocumentElement();
+
+        // 递归遍历所有元素，只为指定节点添加顺序号
+        addSequenceNumbersToSpecificNodes(root, new String[]{"part", "chapter"}, "_seq", new BigDecimal("1.0"));
+
         List<ChapterInfo> chapters = parseChapters(root, new ArrayList<>());
 
         for (ChapterInfo info : chapters) {
-            System.out.println("Chapter: " + info.getIdentifier());
-            System.out.println("Type: " + info.getType());
+            System.out.println("Chapter: " + info.getIdentifier() + ", Type: " + info.getType() + ", Seq: " + info.getSeq() + ", Chapter Element: " + info.getChapterElement().getTagName() + " with ID: " + info.getChapterElement().getAttribute("identifier"));
             System.out.println("Part titles: " + info.getPartTitles());
-            System.out.println("Chapter Element: " + info.getChapterElement().getTagName() + " with ID: " + info.getChapterElement().getAttribute("identifier"));
 
             System.out.println("Part Elements hierarchy:");
             for (PartInfo part : info.getPartHierarchy()) {
-                System.out.println("  Part title: " + part.getTitle() + ", Element: " + part.getPartElement().getTagName());
+                System.out.println("  Part title: " + part.getTitle() + ", Element: " + part.getPartElement().getTagName() + ", Seq: " + part.getSeq());
             }
             System.out.println("-------------------");
         }
+    }
+
+    private static BigDecimal addSequenceNumbersToSpecificNodes(Element element, String[] targetNodeNames,
+                                                                String attributeName,BigDecimal currentSequence) {
+        for (String nodeName : targetNodeNames) {
+            if (element.getNodeName().equals(nodeName)) {
+                int decimalPlaces = countDecimalPlaces(currentSequence);
+                String formattedSequence = currentSequence.setScale(decimalPlaces, RoundingMode.HALF_UP).toString();
+                element.setAttribute(attributeName, formattedSequence);
+                BigDecimal increment = BigDecimal.valueOf(Math.pow(10, -decimalPlaces));
+                currentSequence = currentSequence.add(increment);
+                break;
+            }
+        }
+        // 这里是所有的节点，没有层的概念.
+        NodeList childNodes = element.getChildNodes();
+        for (int i = 0; i < childNodes.getLength(); i++) {
+            Node node = childNodes.item(i);
+            if (node.getNodeType() == Node.ELEMENT_NODE) {
+                currentSequence = addSequenceNumbersToSpecificNodes((Element) node, targetNodeNames, attributeName, currentSequence);
+            }
+        }
+        return currentSequence;
+    }
+
+    private static int countDecimalPlaces(BigDecimal number) {
+        String str = number.toString();
+        if (str.contains(".")) {
+            return str.length() - str.indexOf('.') - 1;
+        }
+        return 0; // 没有小数
     }
 
     private static List<ChapterInfo> parseChapters(Node node, List<PartInfo> currentPartHierarchy) {
@@ -56,6 +91,7 @@ public class PartChapterParseTest {
 
                     PartInfo currentPart = new PartInfo();
                     currentPart.setPartElement((Element) child);
+                    currentPart.setSeq(new BigDecimal(((Element) child).getAttribute("_seq")));
 
                     NodeList partChildren = child.getChildNodes();
                     for (int j = 0; j < partChildren.getLength(); j++) {
@@ -73,6 +109,7 @@ public class PartChapterParseTest {
                     ChapterInfo info = new ChapterInfo();
                     info.setChapterElement((Element) child);
                     info.setPartHierarchy(new ArrayList<>(currentPartHierarchy));
+                    info.setSeq(new BigDecimal(((Element) child).getAttribute("_seq")));
                     chapters.add(info);
                 }
             }
@@ -84,6 +121,7 @@ public class PartChapterParseTest {
     static class ChapterInfo {
         private Element chapterElement;
         private List<PartInfo> partHierarchy;
+        private BigDecimal seq;
 
         public String getIdentifier() {
             return chapterElement.getAttribute("identifier");
@@ -116,11 +154,20 @@ public class PartChapterParseTest {
         public void setPartHierarchy(List<PartInfo> partHierarchy) {
             this.partHierarchy = partHierarchy;
         }
+
+        public BigDecimal getSeq() {
+            return seq;
+        }
+
+        public void setSeq(BigDecimal seq) {
+            this.seq = seq;
+        }
     }
 
     static class PartInfo {
         private String title;
         private Element partElement;
+        private BigDecimal seq;
 
         public String getTitle() {
             return title;
@@ -136,6 +183,12 @@ public class PartChapterParseTest {
 
         public void setPartElement(Element partElement) {
             this.partElement = partElement;
+        }
+        public BigDecimal getSeq() {
+            return seq;
+        }
+        public void setSeq(BigDecimal seq) {
+            this.seq = seq;
         }
     }
 
