@@ -23,4 +23,32 @@ public class AsyncService {
 
     }
 
+    public String method1(String param) {
+        try {
+            Thread.sleep(1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return param.toUpperCase();
+    }
+
+    public String method2(String param) {
+        try {
+            Thread.sleep(2000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return param.toLowerCase();
+    }
+
+    public String method3(String param) {
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return param + ":" + System.currentTimeMillis();
+    }
+
+
 }
