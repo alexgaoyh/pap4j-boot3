@@ -2,6 +2,9 @@ package cn.net.pap.common.datastructure.collection;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * 集合工具类
@@ -88,5 +91,21 @@ public class CollectionUtil {
         return String.join(".", levels);
     }
 
+    /**
+     * 将集合按批次处理，并提取对象的某个属性
+     *
+     * @param list              原始集合
+     * @param batchSize         每批大小
+     * @param propertyExtractor 属性提取函数
+     * @return 按属性分批后的结果
+     */
+    public static <T, R> List<List<R>> batchByProperty(List<T> list, int batchSize, Function<T, R> propertyExtractor) {
+        return IntStream.range(0, (list.size() + batchSize - 1) / batchSize)
+                .mapToObj(i -> list.subList(i * batchSize, Math.min(list.size(), (i + 1) * batchSize))
+                        .stream()
+                        .map(propertyExtractor)
+                        .collect(Collectors.toList()))
+                .collect(Collectors.toList());
+    }
 
 }
