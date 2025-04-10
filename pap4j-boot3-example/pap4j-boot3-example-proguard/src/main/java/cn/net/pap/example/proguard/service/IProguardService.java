@@ -26,6 +26,8 @@ public interface IProguardService {
 
     Proguard getProguardByProguardId(Long proguardId);
 
+    List<Proguard> getProguardByProguardIds(List<Long> proguardIds);
+
     Proguard updateProguardByProguardId(Proguard proguard);
 
     /**

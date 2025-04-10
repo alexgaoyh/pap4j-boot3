@@ -29,6 +29,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.stream.Collectors;
+import java.util.stream.LongStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -565,5 +567,40 @@ public class ProguardTest {
 
     }
 
+    // @Test
+    public void eachDBCompareTest() throws Exception {
+
+        final Integer MAX_CHECK_NUMBER = 9999;
+        final Integer BATCH_SIZE = 500;
+
+        for(int i = 0; i < MAX_CHECK_NUMBER; i++) {
+            Proguard proguard = geneEntity();
+            proguard.setProguardId(Long.parseLong(i + ""));
+            proguardService.saveAndFlush(proguard);
+        }
+
+        long start = System.currentTimeMillis();
+
+        List<Proguard> eachResultList = new ArrayList<>();
+        for(int i = 0; i < MAX_CHECK_NUMBER; i++) {
+            Proguard tmp = proguardService.getProguardByProguardId(Long.parseLong(i + ""));
+            eachResultList.add(tmp);
+        }
+
+        long middle = System.currentTimeMillis();
+
+        List<Proguard> batchResultList = new ArrayList<>();
+        for (int i = 0; i < MAX_CHECK_NUMBER; i += BATCH_SIZE) {
+            long endId = Math.min(i + BATCH_SIZE - 1, MAX_CHECK_NUMBER);
+            List<Long> batchIds = LongStream.rangeClosed(i, endId).boxed().collect(Collectors.toList());
+            List<Proguard> tmp = proguardService.getProguardByProguardIds(batchIds);
+            batchResultList.addAll(tmp);
+        }
+
+        long end = System.currentTimeMillis();
+
+        System.out.println(middle - start + " : " + eachResultList.size());
+        System.out.println(end - middle + " : " + batchResultList.size());
+    }
 
 }

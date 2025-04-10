@@ -18,6 +18,9 @@ public interface ProguardRepository extends JpaRepository<Proguard,Long>, JpaSpe
 
     Proguard getProguardByProguardId(@Param("proguardId") Long proguardId);
 
+    @Query("SELECT o FROM Proguard o WHERE o.proguardId IN :proguardIds")
+    List<Proguard> getProguardByProguardIds(@Param("proguardIds") List<Long> proguardIds);
+
     /**
      * 查询指定字段
      * @param proguardId
