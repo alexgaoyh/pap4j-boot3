@@ -1,7 +1,9 @@
 package cn.net.pap.common.datastructure.collection;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -92,20 +94,48 @@ public class CollectionUtil {
     }
 
     /**
-     * 将集合按批次处理，并提取对象的某个属性
-     *
-     * @param list              原始集合
-     * @param batchSize         每批大小
-     * @param propertyExtractor 属性提取函数
-     * @return 按属性分批后的结果
+     * 安全分批处理方法
+     * @param list 原始集合（可为空）
+     * @param batchSize 每批大小（必须大于0）
+     * @param propertyExtractor 属性提取函数（不可为null）
+     * @param <T> 原始元素类型
+     * @param <R> 结果元素类型
+     * @return 分批后的结果列表（永远不会返回null）
+     * @throws IllegalArgumentException 如果参数不合法
      */
-    public static <T, R> List<List<R>> batchByProperty(List<T> list, int batchSize, Function<T, R> propertyExtractor) {
-        return IntStream.range(0, (list.size() + batchSize - 1) / batchSize)
-                .mapToObj(i -> list.subList(i * batchSize, Math.min(list.size(), (i + 1) * batchSize))
-                        .stream()
-                        .map(propertyExtractor)
-                        .collect(Collectors.toList()))
-                .collect(Collectors.toList());
+    public static <T, R> List<List<R>> batchByProperty(List<T> list,int batchSize,Function<T, R> propertyExtractor) {
+        Objects.requireNonNull(propertyExtractor, "Property extractor cannot be null");
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("Batch size must be positive");
+        }
+
+        if (list == null || list.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        final List<T> unmodifiableList = Collections.unmodifiableList(list);
+
+        return IntStream.range(0, (unmodifiableList.size() + batchSize - 1) / batchSize)
+                .mapToObj(i -> {
+                    int start = i * batchSize;
+                    int end = Math.min(unmodifiableList.size(), start + batchSize);
+                    return unmodifiableList.subList(start, end)
+                            .stream()
+                            .map(element -> {
+                                try {
+                                    return propertyExtractor.apply(element);
+                                } catch (Exception e) {
+                                    // 记录日志或处理提取异常
+                                    throw new RuntimeException(e);
+                                }
+                            })
+                            .filter(Objects::nonNull)
+                            .collect(Collectors.toList());
+                })
+                .filter(batch -> !batch.isEmpty())
+                .collect(Collectors.collectingAndThen(
+                        Collectors.toList(),
+                        Collections::unmodifiableList));
     }
 
 }
