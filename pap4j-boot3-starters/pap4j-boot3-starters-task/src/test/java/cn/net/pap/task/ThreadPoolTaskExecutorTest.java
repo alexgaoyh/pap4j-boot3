@@ -1,5 +1,6 @@
 package cn.net.pap.task;
 
+import org.junit.Test;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
@@ -15,7 +16,7 @@ public class ThreadPoolTaskExecutorTest {
 
     private volatile boolean isMonitoring = true;
 
-    // @Test
+    @Test
     public void multiTest() throws Exception {
         long startTime = System.currentTimeMillis();
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -28,10 +29,14 @@ public class ThreadPoolTaskExecutorTest {
             executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
             executor.initialize();
 
+            List<List<Integer>> tasks = List.of(List.of(1000, 2000, 3000), List.of(2000, 2000, 2000), List.of(3000, 3000, 1000), List.of(1000, 2000, 3000), List.of(2000, 2000, 2000), List.of(3000, 3000, 1000), List.of(1000, 2000, 3000), List.of(2000, 2000, 2000), List.of(3000, 3000, 1000));
+
+            CountDownLatch latch = new CountDownLatch(tasks.size());
+
             monitorThread = new Thread(() -> {
                 while (isMonitoring) {
                     try {
-                        printThreadPoolStats(executor);
+                        printThreadPoolStatsAndLatchStats(executor, latch);
                         java.util.concurrent.TimeUnit.SECONDS.sleep(1);
                     } catch (InterruptedException e) {
                         Thread.currentThread().interrupt();
@@ -42,10 +47,6 @@ public class ThreadPoolTaskExecutorTest {
             monitorThread.setDaemon(true);
             monitorThread.start();
 
-            List<List<Integer>> tasks = List.of(List.of(1000, 2000, 3000), List.of(2000, 2000, 2000), List.of(3000, 3000, 1000), List.of(1000, 2000, 3000), List.of(2000, 2000, 2000), List.of(3000, 3000, 1000), List.of(1000, 2000, 3000), List.of(2000, 2000, 2000), List.of(3000, 3000, 1000));
-
-            CountDownLatch latch = new CountDownLatch(tasks.size());
-
             for (List<Integer> delays : tasks) {
                 executor.submit(() -> {
                     processTask(delays, latch);
@@ -54,7 +55,7 @@ public class ThreadPoolTaskExecutorTest {
 
             latch.await();
             // 再打印一次
-            printThreadPoolStats(executor);
+            printThreadPoolStatsAndLatchStats(executor, latch);
             long duration = System.currentTimeMillis() - startTime;
             System.out.printf("所有任务完成，总耗时: %dms%n", duration);
         } finally {
@@ -85,8 +86,9 @@ public class ThreadPoolTaskExecutorTest {
         }
     }
 
-    private void printThreadPoolStats(ThreadPoolTaskExecutor executor) {
+    private void printThreadPoolStatsAndLatchStats(ThreadPoolTaskExecutor executor, CountDownLatch latch) {
         ThreadPoolExecutor threadPoolExecutor = executor.getThreadPoolExecutor();
-        System.out.printf("[线程池状态] 核心线程: %d, 活动线程: %d, 最大线程: %d, 队列大小: %d/%d, 完成任务: %d%n", threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount(), threadPoolExecutor.getMaximumPoolSize(), threadPoolExecutor.getQueue().size(), queueCapacity, threadPoolExecutor.getCompletedTaskCount());
+        System.out.printf("[线程池状态] 核心线程: %d, 活动线程: %d, 最大线程: %d, 队列大小: %d/%d, 完成任务: %d. [CountDownLatch状态] 当前剩余任务: %d%n", threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount(), threadPoolExecutor.getMaximumPoolSize(), threadPoolExecutor.getQueue().size(), queueCapacity, threadPoolExecutor.getCompletedTaskCount(), latch.getCount());
     }
+
 }
