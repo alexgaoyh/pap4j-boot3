@@ -312,6 +312,37 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-enforcer-plugin</artifactId>
+                <version>3.5.0</version>
+                <executions>
+                    <execution>
+                        <id>enforce-logging-dependencies</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <configuration>
+                            <rules>
+                                <bannedDependencies>
+                                    <excludes>
+                                        <exclude>org.apache.logging.log4j:log4j-core</exclude>
+                                        <exclude>log4j:log4j</exclude>
+                                        <exclude>commons-logging:commons-logging</exclude>
+                                        <!-- Java自带日志 -->
+                                        <exclude>java.util.logging:*</exclude>
+                                    </excludes>
+                                    <!-- 特别允许log4j-to-slf4j，因为Spring Boot需要它 -->
+                                    <includes>
+                                        <include>org.apache.logging.log4j:log4j-to-slf4j</include>
+                                    </includes>
+                                    <message>仅允许使用Logback作为日志实现，禁止使用其他日志框架</message>
+                                </bannedDependencies>
+                            </rules>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
