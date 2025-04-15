@@ -1,5 +1,6 @@
 package cn.net.pap.quartz.job;
 
+import cn.net.pap.quartz.constants.QuartzConstants;
 import org.quartz.Job;
 import org.quartz.JobExecutionContext;
 import org.slf4j.Logger;
@@ -11,13 +12,21 @@ public class LongTimeJob implements Job {
 
     @Override
     public void execute(JobExecutionContext context) {
-        logger.info("Job {} is running on thread {}", context.getJobDetail().getKey().getName(), Thread.currentThread().getName());
-        try {
-            // 模拟长时间任务
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
+        // 可以增加信号量的控制
+        if (true || QuartzConstants.semaphoreONE.tryAcquire()) {
+            logger.info("Job {} is running on thread {}", context.getJobDetail().getKey().getName(), Thread.currentThread().getName());
+            try {
+                Thread.sleep(9999);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                QuartzConstants.semaphoreONE.release();
+                logger.info("Task completed: LongTimeJob");
+            }
+        } else {
+            logger.error("No available permits, task LongTimeJob is skipped.");
         }
+
     }
 
 }
