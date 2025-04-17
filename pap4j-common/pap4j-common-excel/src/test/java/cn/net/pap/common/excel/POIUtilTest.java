@@ -23,8 +23,10 @@ public class POIUtilTest {
         List<ImportDTO> importDTOS = readExcelWithImages(excelFilePath);
         for (ImportDTO dto : importDTOS) {
             System.out.println(dto);
-            try (FileOutputStream fos = new FileOutputStream("C:\\Users\\86181\\Desktop\\" + dto.getName() + "." + dto.getImageType())) {
-                fos.write(dto.getPicture());
+            if(dto.getPicture() != null) {
+                try (FileOutputStream fos = new FileOutputStream("C:\\Users\\86181\\Desktop\\" + dto.getName() + "." + dto.getImageType())) {
+                    fos.write(dto.getPicture());
+                }
             }
         }
     }
