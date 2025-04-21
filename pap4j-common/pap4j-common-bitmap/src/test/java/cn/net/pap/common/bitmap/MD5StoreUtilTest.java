@@ -1,8 +1,12 @@
 package cn.net.pap.common.bitmap;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Iterator;
 
@@ -117,4 +121,48 @@ class MD5StoreUtilTest {
         assertTrue(MD5StoreUtil.contains(md5_1));
         assertFalse(MD5StoreUtil.contains(invalidMd5));
     }
+
+    @Test
+    @DisplayName("测试序列化到字节数组和反序列化")
+    void testSerializeToBytesAndBack() throws IOException {
+        String md5_1 = "d41d8cd98f00b204e9800998ecf8427e";
+        MD5StoreUtil.add(md5_1);
+
+        byte[] serializedData = MD5StoreUtil.serializeToBytes();
+        assertNotNull(serializedData);
+        assertTrue(serializedData.length > 0);
+
+        MD5StoreUtil.clear();
+        assertTrue(MD5StoreUtil.isEmpty());
+
+        MD5StoreUtil.deserializeFromBytes(serializedData);
+
+        assertEquals(1, MD5StoreUtil.size());
+        assertTrue(MD5StoreUtil.contains(md5_1));
+    }
+
+    @Test
+    @DisplayName("测试序列化到文件和从文件反序列化")
+    void testSerializeToFileAndBack() throws IOException {
+        String md5_1 = "d41d8cd98f00b204e9800998ecf8427e";
+        MD5StoreUtil.add(md5_1);
+
+        Path tempFile = Files.createTempFile("md5store", ".bin");
+
+        try {
+            MD5StoreUtil.serializeToFile(tempFile.toFile());
+            assertTrue(Files.size(tempFile) > 0);
+
+            MD5StoreUtil.clear();
+            assertTrue(MD5StoreUtil.isEmpty());
+
+            MD5StoreUtil.deserializeFromFile(tempFile.toFile());
+
+            assertEquals(1, MD5StoreUtil.size());
+            assertTrue(MD5StoreUtil.contains(md5_1));
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
 }

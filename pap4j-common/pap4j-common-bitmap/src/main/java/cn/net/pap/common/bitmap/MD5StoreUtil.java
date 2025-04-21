@@ -2,6 +2,7 @@ package cn.net.pap.common.bitmap;
 
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
+import java.io.*;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -232,6 +233,96 @@ public final class MD5StoreUtil {
             };
         } finally {
             INSTANCE.lock.readLock().unlock();
+        }
+    }
+
+    /* ========== 序列化/反序列化方法 ========== */
+
+    /**
+     * 序列化当前存储的MD5数据到输出流
+     * @param outputStream 输出流
+     * @throws IOException 如果发生I/O错误
+     */
+    public static void serialize(OutputStream outputStream) throws IOException {
+        Objects.requireNonNull(outputStream);
+
+        DataOutputStream dos = new DataOutputStream(outputStream);
+        INSTANCE.lock.readLock().lock();
+        try {
+            INSTANCE.highBitsMap.serialize(dos);
+            INSTANCE.lowBitsMap.serialize(dos);
+        } finally {
+            INSTANCE.lock.readLock().unlock();
+            dos.flush();
+        }
+    }
+
+    /**
+     * 从输入流反序列化MD5数据
+     * @param inputStream 输入流
+     * @throws IOException 如果发生I/O错误
+     */
+    public static void deserialize(InputStream inputStream) throws IOException {
+        Objects.requireNonNull(inputStream);
+
+        DataInputStream dis = new DataInputStream(inputStream);
+        INSTANCE.lock.writeLock().lock();
+        try {
+            INSTANCE.highBitsMap.clear();
+            INSTANCE.lowBitsMap.clear();
+
+            INSTANCE.highBitsMap.deserialize(dis);
+            INSTANCE.lowBitsMap.deserialize(dis);
+        } finally {
+            INSTANCE.lock.writeLock().unlock();
+        }
+    }
+
+    /**
+     * 序列化当前存储的MD5数据到字节数组
+     * @return 包含序列化数据的字节数组
+     * @throws IOException 如果发生I/O错误
+     */
+    public static byte[] serializeToBytes() throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        serialize(baos);
+        return baos.toByteArray();
+    }
+
+    /**
+     * 从字节数组反序列化MD5数据
+     * @param bytes 包含序列化数据的字节数组
+     * @throws IOException 如果发生I/O错误
+     */
+    public static void deserializeFromBytes(byte[] bytes) throws IOException {
+        Objects.requireNonNull(bytes);
+        ByteArrayInputStream bais = new ByteArrayInputStream(bytes);
+        deserialize(bais);
+    }
+
+    /**
+     * 序列化当前存储的MD5数据到文件
+     * @param file 目标文件
+     * @throws IOException 如果发生I/O错误
+     */
+    public static void serializeToFile(File file) throws IOException {
+        Objects.requireNonNull(file);
+        try (FileOutputStream fos = new FileOutputStream(file);
+             BufferedOutputStream bos = new BufferedOutputStream(fos)) {
+            serialize(bos);
+        }
+    }
+
+    /**
+     * 从文件反序列化MD5数据
+     * @param file 源文件
+     * @throws IOException 如果发生I/O错误
+     */
+    public static void deserializeFromFile(File file) throws IOException {
+        Objects.requireNonNull(file);
+        try (FileInputStream fis = new FileInputStream(file);
+             BufferedInputStream bis = new BufferedInputStream(fis)) {
+            deserialize(bis);
         }
     }
 
