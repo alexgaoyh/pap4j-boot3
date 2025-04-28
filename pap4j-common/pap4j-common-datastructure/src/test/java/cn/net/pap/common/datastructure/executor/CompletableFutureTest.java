@@ -3,10 +3,7 @@ package cn.net.pap.common.datastructure.executor;
 import cn.net.pap.common.datastructure.cpu.CpuInfoUtil;
 import org.junit.jupiter.api.Test;
 
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
 public class CompletableFutureTest {
@@ -44,6 +41,40 @@ public class CompletableFutureTest {
         IntStream.rangeClosed(1, 10).parallel().forEach(value -> {
             System.out.println(doWork(String.valueOf(value)));
         });
+        long end = System.currentTimeMillis();
+        System.out.println("-----------------------------------");
+        System.out.println(end - start);
+    }
+
+    public static <T> void executeTask(Callable<T> task, TaskCallback<T> callback, CountDownLatch latch) {
+        CompletableFuture.supplyAsync(() -> {
+            try {
+                return task.call();
+            } catch (Exception e) {
+                throw new CompletionException(e);
+            }
+        }, executor).thenAccept(result -> {
+            callback.onComplete(result);
+        }).thenRun(latch::countDown);
+    }
+
+    // @Test
+    public void test2() throws InterruptedException {
+        long start = System.currentTimeMillis();
+
+        CountDownLatch latch = new CountDownLatch(10);
+        for (int i = 0; i < 10; i++) {
+            int finalI = i;
+            executeTask(() -> {
+                int randomNumber = (int) (1000 + Math.random() * 1001);
+                Thread.sleep(randomNumber);
+                return (finalI + "").toUpperCase() + " : " + randomNumber + " : " + CpuInfoUtil.getCurrentCpuCore();
+            }, result -> {
+                System.out.println(result);
+            }, latch);
+        }
+        latch.await();
+
         long end = System.currentTimeMillis();
         System.out.println("-----------------------------------");
         System.out.println(end - start);
