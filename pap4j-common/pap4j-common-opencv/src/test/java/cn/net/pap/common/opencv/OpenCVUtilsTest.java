@@ -141,5 +141,16 @@ public class OpenCVUtilsTest {
         Imgcodecs.imwrite("stitched_image.jpg", result);
     }
 
+    // @Test
+    public void jp2TojpgTest() throws Exception {
+        long start = System.currentTimeMillis();
+        Mat imageJP2 = OpenCVUtils.imread("jp2.jp2");
+        boolean success = Imgcodecs.imwrite("jpg.jpg", imageJP2);
+        System.out.println("" + success + (System.currentTimeMillis() - start));
+    }
+
+
+    // todo 文档透视畸变矫正
+
 
 }
