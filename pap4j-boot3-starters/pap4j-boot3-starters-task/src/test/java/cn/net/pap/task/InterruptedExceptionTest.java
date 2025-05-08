@@ -2,15 +2,17 @@ package cn.net.pap.task;
 
 import org.junit.Test;
 
+import java.util.Map;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 
 public class InterruptedExceptionTest {
 
     // @Test
     public void exceptionTest1() throws InterruptedException {
-        ExecutorService executor = Executors.newFixedThreadPool(1);
+        ExecutorService executor = Executors.newFixedThreadPool(1, new PapNamedThreadFactory("PAP"));
 
         Runnable task = () -> {
             System.out.println("任务开始");
@@ -41,8 +43,32 @@ public class InterruptedExceptionTest {
 
         if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
             System.out.println("线程池没有成功关闭，任务可能没有响应中断。");
+            System.out.println("主线程结束，是否还活着的线程: " + Thread.activeCount());
+            System.out.println("\n=== 当前线程列表 ===");
+            Map<Thread, StackTraceElement[]> allThreads = Thread.getAllStackTraces();
+            for (Thread t : allThreads.keySet()) {
+                System.out.println("线程名: " + t.getName() +
+                        ", 守护线程: " + t.isDaemon() +
+                        ", 状态: " + t.getState());
+            }
         } else {
             System.out.println("线程池关闭成功");
+        }
+    }
+
+    static class PapNamedThreadFactory implements ThreadFactory {
+        private final String baseName;
+        private int count = 1;
+
+        public PapNamedThreadFactory(String baseName) {
+            this.baseName = baseName;
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            Thread t = new Thread(r, baseName + "-thread-" + count++);
+            t.setDaemon(false); // 默认非守护线程
+            return t;
         }
     }
 
