@@ -59,34 +59,83 @@ public class MysqlLargeQueryTest {
     }
 
     private void testQuery(Connection connection, String sql, String testName) throws SQLException {
-        System.out.println("Starting test: " + testName);
-        long totalTime = 0;
+        System.out.println("\n========== Starting test: " + testName + " ==========");
+        long totalQueryTime = 0;
+        long totalNetworkTime = 0;
+        long totalProcessingTime = 0;
+        long totalMappingTime = 0;
+        long totalRowProcessingTime = 0;
+        int rowCount = 0;
+        long totalBytesTransferred = 0;
 
         for (int idx = 0; idx < 100; idx++) {
-            long start = System.currentTimeMillis();
+            // 测量整个查询执行时间
+            long queryStart = System.currentTimeMillis();
 
-            try (PreparedStatement statement = connection.prepareStatement(sql);
-                 ResultSet rs = statement.executeQuery()) {
-                List<Map<String, Object>> resultList = new ArrayList<>();
-                ResultSetMetaData metaData = rs.getMetaData();
-                int columnCount = metaData.getColumnCount();
-                while (rs.next()) {
-                    Map<String, Object> rowMap = new HashMap<>();
+            try (PreparedStatement statement = connection.prepareStatement(sql)) {
+                // 测量网络传输和数据库执行时间
+                long executeStart = System.currentTimeMillis();
+                try (ResultSet rs = statement.executeQuery()) {
+                    long executeEnd = System.currentTimeMillis();
 
-                    for (int i = 1; i <= columnCount; i++) {
-                        String columnName = metaData.getColumnName(i);
-                        Object value = rs.getObject(i);
-                        rowMap.put(columnName, value);
+                    // 测量结果集处理时间
+                    long processingStart = System.currentTimeMillis();
+                    List<Map<String, Object>> resultList = new ArrayList<>();
+                    ResultSetMetaData metaData = rs.getMetaData();
+                    int columnCount = metaData.getColumnCount();
+
+                    while (rs.next()) {
+                        long rowStart = System.currentTimeMillis();
+                        Map<String, Object> rowMap = new HashMap<>();
+
+                        for (int i = 1; i <= columnCount; i++) {
+                            String columnName = metaData.getColumnName(i);
+                            long getValueStart = System.currentTimeMillis();
+                            Object value = rs.getObject(i);
+                            long getValueEnd = System.currentTimeMillis();
+
+                            // 估算传输的数据量(粗略估算)
+                            if (value != null) {
+                                totalBytesTransferred += value.toString().getBytes().length;
+                            }
+
+                            rowMap.put(columnName, value);
+                        }
+
+                        resultList.add(rowMap);
+                        long rowEnd = System.currentTimeMillis();
+                        totalRowProcessingTime += (rowEnd - rowStart);
+                        rowCount++;
                     }
-                    resultList.add(rowMap);
+
+                    long processingEnd = System.currentTimeMillis();
+                    totalProcessingTime += (processingEnd - processingStart);
+                    totalNetworkTime += (executeEnd - executeStart);
                 }
             }
 
-            long duration = System.currentTimeMillis() - start;
-            totalTime += duration;
-            System.out.println("Iteration " + idx + ": " + duration + "ms");
+            long queryEnd = System.currentTimeMillis();
+            totalQueryTime += (queryEnd - queryStart);
+
+            System.out.printf("Iteration %d - Total: %dms | Network/DB: %dms | Processing: %dms | Rows: %d%n",
+                    idx, (queryEnd - queryStart), totalNetworkTime, totalProcessingTime, rowCount);
         }
 
-        System.out.println(testName + " - Average time: " + (totalTime/100) + "ms");
+        // 打印统计信息
+        System.out.println("\n========== Test Results: " + testName + " ==========");
+        System.out.println("Average total time: " + (totalQueryTime / 100) + "ms");
+        System.out.println("Average network/DB time: " + (totalNetworkTime / 100) + "ms");
+        System.out.println("Average processing time: " + (totalProcessingTime / 100) + "ms");
+        System.out.println("Average row processing time: " + (rowCount > 0 ? (totalRowProcessingTime / rowCount) + "ms/row" : "N/A"));
+        System.out.println("Total rows processed: " + rowCount);
+        System.out.println("Estimated total data transferred: " + formatBytes(totalBytesTransferred));
+        System.out.println("Average data per query: " + formatBytes(totalBytesTransferred / 100));
+    }
+
+    private String formatBytes(long bytes) {
+        if (bytes < 1024) return bytes + " B";
+        int exp = (int) (Math.log(bytes) / Math.log(1024));
+        String pre = "KMGTPE".charAt(exp-1) + "B";
+        return String.format("%.1f %s", bytes / Math.pow(1024, exp), pre);
     }
 }
