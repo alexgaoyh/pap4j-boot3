@@ -28,7 +28,7 @@ public class ImageRequestBenchmark {
 
         for (int i = 1; i <= TEST_COUNT; i++) {
             try {
-                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(IMAGE_URL)).timeout(Duration.ofSeconds(15)).build();
+                HttpRequest request = HttpRequest.newBuilder().uri(URI.create(IMAGE_URL)).timeout(Duration.ofSeconds(15)).header("cookie", "alexgaoyh").build();
 
                 long startTime = System.nanoTime();
 
