@@ -149,6 +149,12 @@ public class OpenCVUtilsTest {
         System.out.println("" + success + (System.currentTimeMillis() - start));
     }
 
+    // @Test
+    public void autoCorrectionGetAngle2Test() throws Exception {
+        Double v = OpenCVUtils.autoCorrectionGetAngle2("edges.png");
+        System.out.println(v);
+    }
+
 
     // todo 文档透视畸变矫正
 

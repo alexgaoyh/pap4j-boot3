@@ -872,6 +872,49 @@ public class OpenCVUtils {
         return angleDegrees;
     }
 
+    /**
+     * 这个方法，传入的直接是已经生成边缘的图像
+     * 可以配合 ImageMagick 生成这个边缘图： magick 20.jpg -canny  0x1+10%+30% edges.png
+     * @param inputPath
+     * @return
+     */
+    public static Double autoCorrectionGetAngle2(String inputPath) {
+        // 1. 读取图像
+        Mat src = Imgcodecs.imread(inputPath, Imgcodecs.IMREAD_GRAYSCALE);
+        if (src.empty()) {
+            return null;
+        }
+
+        // 2. 边缘检测（Canny）
+        Mat edges = new Mat();
+        Imgproc.Canny(src, edges, 50, 150);
+
+        // 3. Hough 变换检测直线
+        Mat lines = new Mat();
+        Imgproc.HoughLinesP(edges, lines, 1, Math.PI / 180, 100, 100, 10);
+
+        // 4. 计算所有线段的角度（中值滤波减少噪声影响）
+        List<Double> angles = new ArrayList<>();
+        for (int i = 0; i < lines.rows(); i++) {
+            double[] line = lines.get(i, 0);
+            double x1 = line[0], y1 = line[1], x2 = line[2], y2 = line[3];
+            double angle = Math.toDegrees(Math.atan2(y2 - y1, x2 - x1));
+            // TODO 过滤接近垂直的线（避免90°干扰）, 这个值可以根据实际情况做不同的调整
+            if (Math.abs(angle) < 88) {
+                angles.add(angle);
+            }
+        }
+
+        // 5. 输出倾斜角度（中值）
+        if (!angles.isEmpty()) {
+            angles.sort(Double::compare);
+            double medianAngle = angles.get(angles.size() / 2);
+            return medianAngle;
+        } else {
+            return null;
+        }
+    }
+
     public static Mat imread(String image) {
         return Imgcodecs.imread(image);
     }
