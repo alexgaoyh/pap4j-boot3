@@ -1,5 +1,6 @@
 package cn.net.pap.common.opencv;
 
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,5 +78,19 @@ public class ImageMagickEnvCheckerUtil {
     //     magick input.jpg -crop 2x100%+581+0 +repage right.jpg
     //     magick right.jpg -colorspace gray -format "%[fx:mean]" info:
 
+
+    // @Test
+    public void streamTest() throws IOException {
+        ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
+        try {
+            Process process = processBuilder.start();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line = reader.readLine();
+                log.info("Magick convert result: result={}", line);
+            }
+        } catch (IOException e) {
+            log.warn("Magick command not found", e);
+        }
+    }
 
 }
