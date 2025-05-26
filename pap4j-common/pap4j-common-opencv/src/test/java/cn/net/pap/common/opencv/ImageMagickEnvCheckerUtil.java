@@ -80,16 +80,45 @@ public class ImageMagickEnvCheckerUtil {
 
 
     // @Test
-    public void streamTest() throws IOException {
+    public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
+        Process process = null;
+
         try {
-            Process process = processBuilder.start();
+            process = processBuilder.start();
+
+            StringBuilder errorOutput = new StringBuilder();
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line = reader.readLine();
-                log.info("Magick convert result: result={}", line);
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    errorOutput.append(line).append("\n");
+                }
             }
+
+            int timeout = 30; // 超时时间(秒)
+            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
+
+            if (!finished) {
+                process.destroyForcibly();
+                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
+            }
+
+            int exitCode = process.exitValue();
+
+            if (exitCode != 0) {
+                log.error("Magick convert failed with exit code {}: {}",exitCode, errorOutput.toString().trim());
+                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, errorOutput.toString().trim()));
+            } else {
+                log.info("Magick convert succeeded: {}", errorOutput.toString().trim());
+            }
+
         } catch (IOException e) {
-            log.warn("Magick command not found", e);
+            log.warn("Magick command not found or execution failed", e);
+            throw e;
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly(); // 确保进程被终止
+            }
         }
     }
 
