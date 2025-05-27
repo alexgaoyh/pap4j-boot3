@@ -3,6 +3,7 @@ package cn.net.pap.common.datastructure.collection;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -50,6 +51,21 @@ public class StringUtilTest {
     public void replaceFirstTest() {
         String s = StringUtil.replaceFirst("一二三(四五六)七八九十", ")", "");
         System.out.println(s);
+    }
+
+    @Test
+    public void splitTest() {
+        String input = "苹果、香蕉#西瓜 葡萄,橙子";
+        String delimiters = "、# ,";
+
+        System.out.println("原始字符串: " + input);
+        System.out.println("分隔符: " + delimiters);
+
+        String[] result = StringUtil.split(input, delimiters);
+        System.out.println("拆分结果: " + Arrays.toString(result));
+
+        List<String> filteredResult = StringUtil.splitAndFilter(input, delimiters);
+        System.out.println("拆分并过滤空字符串结果: " + filteredResult);
     }
 
 }
