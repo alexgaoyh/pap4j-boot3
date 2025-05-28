@@ -22,8 +22,8 @@ public class GeneImageTest {
      * @param number
      */
     private static void generateImage(String fileDirPath, int number, String fileNamePrefix) {
-        int width = 10; // 图片宽度
-        int height = 10; // 图片高度
+        int width = 8000; // 图片宽度
+        int height = 8000; // 图片高度
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = image.createGraphics();
 
@@ -33,7 +33,7 @@ public class GeneImageTest {
 
         // 设置文本颜色
         g2d.setColor(Color.WHITE);
-        Font font = new Font("Arial", Font.PLAIN, 5); // 设置字体和大小
+        Font font = new Font("Arial", Font.PLAIN, 3000); // 设置字体和大小
         g2d.setFont(font);
         FontMetrics fm = g2d.getFontMetrics();
         int x = (width - fm.stringWidth(String.valueOf(number))) / 2; // 计算文本的水平位置
@@ -44,7 +44,7 @@ public class GeneImageTest {
 
         try {
             // 将图片写入文件
-            String newFileName = fileNamePrefix + "-" + String.format("%03d", number) + "-00.jpg";
+            String newFileName = fileNamePrefix + "-" + String.format("%04d", number) + "-00.jpg";
 
             JpegDPIProcessor processor = new JpegDPIProcessor();
             byte[] img = processor.setDPI(image, 300);
@@ -59,13 +59,13 @@ public class GeneImageTest {
 
     // @Test
     public void generateImageTest() {
-        String basePath = "";
-        for(int dirIdx = 0; dirIdx < 400; dirIdx++) {
-            String detailPath = "" + String.format("%04d", dirIdx);
+        String basePath = "C:\\Users\\86181\\Desktop\\";
+        for(int dirIdx = 0; dirIdx < 1; dirIdx++) {
+            String detailPath = "tmp\\" + String.format("%04d", dirIdx);
             String basePath2 = basePath + detailPath;
             new File(basePath2).mkdirs();
-            for(int idx = 0; idx < 230; idx++) {
-                generateImage(basePath2 + "\\", idx, detailPath);
+            for(int idx = 0; idx < 60000; idx++) {
+                generateImage(basePath2 + "\\", idx, String.format("%04d", dirIdx));
             }
         }
 
@@ -95,7 +95,7 @@ public class GeneImageTest {
         }
     }
 
-    @Test
+    // @Test
     public void geneAndCheckImageTest() throws Exception {
         createImageWithDPI("C:\\Users\\86181\\Desktop\\geneAndCheckImageTest.jpg", 1, 300);
         Integer dpi = getDPI("C:\\Users\\86181\\Desktop\\geneAndCheckImageTest.jpg");

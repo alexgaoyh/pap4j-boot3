@@ -20,7 +20,7 @@ public class PinsFaceRecognitionVectorTest {
      *
      * 移除  Pedro Alonso180_2138.jpg
      */
-    @Test
+    // @Test
     public void classes_pins_dataset() throws Exception {
         String basePath = "C:\\Users\\86181\\Desktop";
         Stream<Path> topDirStream = Files.list(Paths.get(basePath + File.separator + "Pins Face Recognition\\105_classes_pins_dataset"));
