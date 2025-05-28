@@ -26,12 +26,24 @@ import static org.opencv.imgproc.Imgproc.*;
 public class OpenCVUtils {
 
     static {
-        URL url = ClassLoader.getSystemResource("opencv_java401.dll");
-        if(url != null) {
-            System.load(url.getPath());
-        } else {
-            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+        String osName = System.getProperty("os.name").toLowerCase();
+        if (osName.contains("win")) {
+            URL url = ClassLoader.getSystemResource("opencv_java401.dll");
+            if(url != null) {
+                System.load(url.getPath());
+            } else {
+                System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            }
         }
+        if (osName.contains("linux")) {
+            URL url = ClassLoader.getSystemResource("libopencv_java401.so");
+            if(url != null) {
+                System.load(url.getPath());
+            } else {
+                System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            }
+        }
+
     }
 
     /**
@@ -1319,6 +1331,10 @@ public class OpenCVUtils {
         transformedB.copyTo(stitchedImage.rowRange(0, transformedB.rows()).colRange(imageA.cols(), width));
 
         return stitchedImage;
+    }
+
+    public static Mat eye(int rows, int cols, int type) {
+        return Mat.eye(rows, cols, type);
     }
 
     private static double calculateScale(Point iA, Point jA, Point iB, Point jB) {

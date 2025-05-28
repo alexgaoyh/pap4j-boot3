@@ -2,6 +2,7 @@ package cn.net.pap.common.opencv;
 
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Core;
+import org.opencv.core.CvType;
 import org.opencv.core.Mat;
 import org.opencv.core.Point;
 import org.opencv.imgcodecs.Imgcodecs;
@@ -10,7 +11,21 @@ import org.opencv.imgproc.Imgproc;
 import java.util.Arrays;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.*;
+
 public class OpenCVUtilsTest {
+
+    // @Test
+    void testOpenCVLoaded() {
+        String version = Core.VERSION;
+        System.out.println("OpenCV version: " + version);
+        assertNotNull(version);
+
+        Mat mat = OpenCVUtils.eye(3, 3, CvType.CV_8UC1);
+        assertFalse(mat.empty());
+        assertEquals(3, mat.rows());
+        assertEquals(3, mat.cols());
+    }
 
     // @Test
     public void templateTest() {
