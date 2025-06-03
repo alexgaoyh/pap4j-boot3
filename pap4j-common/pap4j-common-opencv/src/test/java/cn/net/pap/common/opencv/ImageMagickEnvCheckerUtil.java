@@ -78,6 +78,10 @@ public class ImageMagickEnvCheckerUtil {
     //     magick input.jpg -crop 2x100%+581+0 +repage right.jpg
     //     magick right.jpg -colorspace gray -format "%[fx:mean]" info:
 
+    // 在 windows 下，对某一个文件夹下的所有 jpg 文件进行调整 - 瘦身 , PowerShell / Linux
+    // Get-ChildItem -Path "C:\Users\86181\Desktop" -Recurse -Filter "*.jpg" | ForEach-Object { magick -quality 20 $_.FullName $_.FullName }
+    // find /home/ubuntu/image -type f -iname "*.jpg" -exec magick {} -quality 10 {} \;
+
 
     // @Test
     public void streamTest() throws IOException, InterruptedException {
