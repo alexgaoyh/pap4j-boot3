@@ -3,6 +3,8 @@ package cn.net.pap.example.wechat.controller;
 import cn.net.pap.example.wechat.util.SpringUtils;
 import cn.net.pap.example.wechat.service.WeChatService;
 import cn.net.pap.example.wechat.vo.Result;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -11,6 +13,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/wechat/api")
 public class WeChatController {
+
+    private static final Logger logger = LoggerFactory.getLogger(WeChatController.class);
 
     @Autowired
     private WeChatService weChatService;
@@ -46,6 +50,17 @@ public class WeChatController {
             Object wechat = SpringUtils.getBean("wechat");
             SpringUtils.invokeMethod(wechat, "sleep");
             System.out.println(wechat);
+            return Result.success("finish");
+        } catch (Exception e) {
+            return Result.error(e.getMessage());
+        }
+    }
+
+    @GetMapping(value = "/logback")
+    public Result<String> logback() {
+        try {
+            String resultStr = weChatService.sendPostByHttpClient("https://api.weixin.qq.com/cgi-bin/stable_token", "{}");
+            logger.info("logback : {}", resultStr);
             return Result.success("finish");
         } catch (Exception e) {
             return Result.error(e.getMessage());
