@@ -55,6 +55,9 @@ public class ReadTxtToStringUtil {
      * 读取文件内容为 String（自动识别编码）
      */
     public static String readFileContent(File file) throws IOException {
+        if(!file.exists()) {
+            return null;
+        }
         String encoding = detectEncoding(file);
         return Files.readString(file.toPath(), Charset.forName(encoding));
     }
