@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -108,12 +109,27 @@ public class ImageMagickEnvCheckerUtil {
             }
 
             int exitCode = process.exitValue();
+            String stderr = errorOutput.toString().trim();
 
-            if (exitCode != 0) {
-                log.error("Magick convert failed with exit code {}: {}",exitCode, errorOutput.toString().trim());
-                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, errorOutput.toString().trim()));
+            if (exitCode != 0 && !stderr.isEmpty()) {
+                // 仅消费 InputStream 防止阻塞
+                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    while (stdReader.readLine() != null) {
+                        // 不记录输出，只清空流
+                    }
+                }
+                log.error("Magick convert failed with exit code {}: {}", exitCode, stderr);
+                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
             } else {
-                log.info("Magick convert succeeded: {}", errorOutput.toString().trim());
+                // 没有错误输出 → 读取 InputStream 作为有效输出
+                StringBuilder stdOutput = new StringBuilder();
+                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = stdReader.readLine()) != null) {
+                        stdOutput.append(line).append("\n");
+                    }
+                }
+                log.info("Magick convert succeeded: {}", stdOutput.toString().trim());
             }
 
         } catch (IOException e) {
