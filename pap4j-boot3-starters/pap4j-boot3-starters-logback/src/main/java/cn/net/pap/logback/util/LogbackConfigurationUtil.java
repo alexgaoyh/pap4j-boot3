@@ -1,0 +1,171 @@
+package cn.net.pap.logback.util;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.ConsoleAppender;
+import ch.qos.logback.core.rolling.RollingFileAppender;
+import ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy;
+import ch.qos.logback.core.util.FileSize;
+import org.slf4j.LoggerFactory;
+
+import java.util.List;
+
+public class LogbackConfigurationUtil {
+
+    /**
+     * 默认日志格式
+     */
+    private static final String DEFAULT_PATTERN = "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n";
+
+    private static final Integer maxHistory = 30;
+
+    private static final String maxFileSize = "10MB";
+
+    private static final String totalSizeCap = "1GB";
+
+    /**
+     * 默认日志文件路径
+     */
+    private static final String DEFAULT_LOG_DIR = "logs/";
+
+    /**
+     * 初始化共享日志配置
+     *
+     * @param sharedPackages 需要共享日志文件的包路径列表
+     * @param sharedLogName  共享日志文件名(不含扩展名)
+     * @param level          日志级别
+     */
+    public static void initSharedLogConfiguration(List<String> sharedPackages, String sharedLogName, Level level) {
+        LoggerContext context = getLoggerContext();
+
+        // 配置根日志
+        configureRootLogger(context, Level.WARN);
+
+        // 创建共享文件Appender
+        RollingFileAppender<ILoggingEvent> sharedFileAppender = createFileAppender(context, "pap-" + sharedLogName, DEFAULT_LOG_DIR + sharedLogName + ".log", DEFAULT_PATTERN, DEFAULT_LOG_DIR + sharedLogName + ".%d{yyyy-MM-dd}.%i.log", maxHistory, maxFileSize, totalSizeCap);
+
+        // 创建控制台Appender
+        ConsoleAppender<ILoggingEvent> consoleAppender = createConsoleAppender(context, "CONSOLE", DEFAULT_PATTERN);
+
+        // 为每个包配置相同的Appender
+        sharedPackages.forEach(pkg -> configureLogger(context, pkg, level, sharedFileAppender, consoleAppender, false));
+    }
+
+    /**
+     * 获取LoggerContext
+     *
+     * @return LoggerContext实例
+     */
+    public static LoggerContext getLoggerContext() {
+        return (LoggerContext) LoggerFactory.getILoggerFactory();
+    }
+
+    /**
+     * 配置根日志
+     *
+     * @param context LoggerContext
+     * @param level   根日志级别
+     */
+    public static void configureRootLogger(LoggerContext context, Level level) {
+        Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
+        rootLogger.detachAndStopAllAppenders();
+        rootLogger.addAppender(createConsoleAppender(context, "ROOT-CONSOLE", DEFAULT_PATTERN));
+        rootLogger.setLevel(level);
+    }
+
+    /**
+     * 配置指定Logger
+     *
+     * @param context         LoggerContext
+     * @param loggerName      Logger名称(通常是包路径)
+     * @param level           日志级别
+     * @param fileAppender    文件Appender
+     * @param consoleAppender 控制台Appender
+     * @param additive        是否传递给父Logger
+     */
+    public static void configureLogger(LoggerContext context, String loggerName, Level level, RollingFileAppender<ILoggingEvent> fileAppender, ConsoleAppender<ILoggingEvent> consoleAppender, boolean additive) {
+        Logger logger = context.getLogger(loggerName);
+        logger.detachAndStopAllAppenders();
+
+        if (fileAppender != null) {
+            logger.addAppender(fileAppender);
+        }
+
+        if (consoleAppender != null) {
+            logger.addAppender(consoleAppender);
+        }
+
+        logger.setLevel(level);
+        logger.setAdditive(additive);
+    }
+
+    /**
+     * 创建文件Appender
+     *
+     * @param context         LoggerContext
+     * @param appenderName    Appender名称
+     * @param filePath        日志文件路径
+     * @param pattern         日志格式
+     * @param fileNamePattern 滚动日志文件名模式
+     * @param maxHistory      最大保留天数
+     * @param maxFileSize     单个文件最大大小
+     * @param totalSizeCap    所有日志文件总大小限制
+     * @return 配置好的RollingFileAppender
+     */
+    public static RollingFileAppender<ILoggingEvent> createFileAppender(LoggerContext context, String appenderName, String filePath, String pattern, String fileNamePattern, int maxHistory, String maxFileSize, String totalSizeCap) {
+        RollingFileAppender<ILoggingEvent> appender = new RollingFileAppender<>();
+        appender.setContext(context);
+        appender.setName(appenderName);
+        appender.setFile(filePath);
+
+        // 设置编码器
+        PatternLayoutEncoder encoder = new PatternLayoutEncoder();
+        encoder.setContext(context);
+        encoder.setPattern(pattern);
+        encoder.start();
+        appender.setEncoder(encoder);
+
+        // 设置滚动策略
+        SizeAndTimeBasedRollingPolicy<ILoggingEvent> rollingPolicy = new SizeAndTimeBasedRollingPolicy<>();
+        rollingPolicy.setContext(context);
+        rollingPolicy.setParent(appender);
+        rollingPolicy.setFileNamePattern(fileNamePattern);
+        rollingPolicy.setMaxHistory(maxHistory);
+        rollingPolicy.setMaxFileSize(FileSize.valueOf(maxFileSize));
+        rollingPolicy.setTotalSizeCap(FileSize.valueOf(totalSizeCap));
+        rollingPolicy.start();
+
+        appender.setRollingPolicy(rollingPolicy);
+        appender.start();
+
+        return appender;
+    }
+
+    /**
+     * 创建控制台Appender
+     *
+     * @param context      LoggerContext
+     * @param appenderName Appender名称
+     * @param pattern      日志格式
+     * @return 配置好的ConsoleAppender
+     */
+    public static ConsoleAppender<ILoggingEvent> createConsoleAppender(LoggerContext context, String appenderName, String pattern) {
+        ConsoleAppender<ILoggingEvent> appender = new ConsoleAppender<>();
+        appender.setContext(context);
+        appender.setName(appenderName);
+
+        PatternLayoutEncoder encoder = new PatternLayoutEncoder();
+        encoder.setContext(context);
+        encoder.setPattern(pattern);
+        encoder.start();
+
+        appender.setEncoder(encoder);
+        appender.start();
+
+        return appender;
+    }
+
+}
