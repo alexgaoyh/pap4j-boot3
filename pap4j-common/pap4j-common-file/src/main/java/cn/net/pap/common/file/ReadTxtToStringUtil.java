@@ -15,7 +15,7 @@ public class ReadTxtToStringUtil {
      * 检测文件编码，先检测 BOM，如果没有再使用 UniversalDetector
      */
     public static String detectEncoding(File file) throws IOException {
-        try (BufferedInputStream bis = new BufferedInputStream(new FileInputStream(file))) {
+        try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
             bis.mark(4); // 标记当前位置，后续可重置
 
             byte[] bom = new byte[4];
