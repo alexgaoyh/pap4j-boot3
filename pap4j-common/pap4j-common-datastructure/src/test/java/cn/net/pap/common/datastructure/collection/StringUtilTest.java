@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StringUtilTest {
 
@@ -66,6 +67,12 @@ public class StringUtilTest {
 
         List<String> filteredResult = StringUtil.splitAndFilter(input, delimiters);
         System.out.println("拆分并过滤空字符串结果: " + filteredResult);
+    }
+
+    @Test
+    public void emptyTest() {
+        String input = "    ";
+        assertTrue(input.trim().equals(""));
     }
 
 }
