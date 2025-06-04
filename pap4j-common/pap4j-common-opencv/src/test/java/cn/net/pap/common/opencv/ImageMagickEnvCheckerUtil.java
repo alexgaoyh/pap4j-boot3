@@ -81,7 +81,7 @@ public class ImageMagickEnvCheckerUtil {
 
     // 在 windows 下，对某一个文件夹下的所有 jpg 文件进行调整 - 瘦身 , PowerShell / Linux
     // Get-ChildItem -Path "C:\Users\86181\Desktop" -Recurse -Filter "*.jpg" | ForEach-Object { magick -quality 20 $_.FullName $_.FullName }
-    // find /home/ubuntu/image -type f -iname "*.jpg" -exec magick {} -quality 10 {} \;
+    // nohup find /home/ubuntu/image -type f -iname "*.jpg" -printf "Processing: %p\n" -exec magick {} -quality 10 {} \; > /tmp/image_convert.log 2>&1 & echo $! > /tmp/image_convert.pid
 
 
     // @Test
