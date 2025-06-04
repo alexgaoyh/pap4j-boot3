@@ -142,4 +142,62 @@ public class ImageMagickEnvCheckerUtil {
         }
     }
 
+    // @Test
+    public void tiffCompressionTest() throws IOException, InterruptedException {
+        ProcessBuilder processBuilder = new ProcessBuilder("magick", "identify", "-format",  "%[compression]", "C:\\Users\\86181\\Desktop\\input.tif");
+        Process process = null;
+
+        try {
+            process = processBuilder.start();
+
+            StringBuilder errorOutput = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    errorOutput.append(line).append("\n");
+                }
+            }
+
+            int timeout = 30; // 超时时间(秒)
+            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
+
+            if (!finished) {
+                process.destroyForcibly();
+                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
+            }
+
+            int exitCode = process.exitValue();
+            String stderr = errorOutput.toString().trim();
+
+            if (exitCode != 0 && !stderr.isEmpty()) {
+                // 仅消费 InputStream 防止阻塞
+                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    while (stdReader.readLine() != null) {
+                        // 不记录输出，只清空流
+                    }
+                }
+                log.error("Magick identify format failed with exit code {}: {}", exitCode, stderr);
+                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
+            } else {
+                // 没有错误输出 → 读取 InputStream 作为有效输出
+                StringBuilder stdOutput = new StringBuilder();
+                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = stdReader.readLine()) != null) {
+                        stdOutput.append(line).append("\n");
+                    }
+                }
+                log.info("Magick identify format succeeded: {}", stdOutput.toString().trim());
+            }
+
+        } catch (IOException e) {
+            log.warn("Magick command not found or execution failed", e);
+            throw e;
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly(); // 确保进程被终止
+            }
+        }
+    }
+
 }
