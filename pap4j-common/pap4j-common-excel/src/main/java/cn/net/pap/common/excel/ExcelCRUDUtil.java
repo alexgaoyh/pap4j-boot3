@@ -2,7 +2,6 @@ package cn.net.pap.common.excel;
 
 import cn.net.pap.common.excel.dto.PageData;
 import org.apache.poi.hssf.usermodel.HSSFDataFormat;
-import org.apache.poi.hssf.usermodel.HSSFDateUtil;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.NumberToTextConverter;
 import org.apache.poi.util.IOUtils;
@@ -198,7 +197,7 @@ public class ExcelCRUDUtil {
                 ret = formatCell(evaluator.evaluateInCell(cell));
                 break;
             case NUMERIC:
-                if (HSSFDateUtil.isCellDateFormatted(cell)) {// 处理日期格式、时间格式
+                if (DateUtil.isCellDateFormatted(cell)) {// 处理日期格式、时间格式
                     SimpleDateFormat sdf = null;
                     if (cell.getCellStyle().getDataFormat() == HSSFDataFormat.getBuiltinFormat("h:mm")) {
                         sdf = new SimpleDateFormat("HH:mm");
