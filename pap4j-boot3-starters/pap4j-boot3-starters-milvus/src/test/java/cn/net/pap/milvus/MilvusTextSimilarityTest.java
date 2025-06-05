@@ -1,6 +1,6 @@
 package cn.net.pap.milvus;
 
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.JsonObject;
 import io.milvus.client.MilvusClient;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
@@ -110,7 +110,7 @@ public class MilvusTextSimilarityTest {
 
 
         // step
-        List<JSONObject> insertRowsList = insertRows();
+        List<JsonObject> insertRowsList = insertRows();
         InsertParam insertParam = InsertParam.newBuilder()
                 .withCollectionName(COLLECTION_NAME)
                 .withPartitionName(PARTITION_NAME)
@@ -158,8 +158,8 @@ public class MilvusTextSimilarityTest {
     }
 
 
-    private List<JSONObject> insertRows() throws Exception {
-        List<JSONObject> rowsData = new ArrayList<>();
+    private List<JsonObject> insertRows() throws Exception {
+        List<JsonObject> rowsData = new ArrayList<>();
         try {
             File file = new File("C:\\Users\\86181\\Desktop\\dir");
             File[] files = file.listFiles();
@@ -167,9 +167,9 @@ public class MilvusTextSimilarityTest {
             for(File imageAbsPath : files) {
                 float[] vector = convertImageToVector(imageAbsPath.getPath());
                 String name = imageAbsPath.getName();
-                JSONObject row = new JSONObject();
-                row.put("name", name);
-                row.put("vector", convert(vector));
+                JsonObject row = new JsonObject();
+                row.addProperty("name", name);
+                row.add("vector", convert2(vector));
                 rowsData.add(row);
                 if(rowsData.size() > 1000) {
                     break;
@@ -197,6 +197,15 @@ public class MilvusTextSimilarityTest {
             floatList.add(value);
         }
         return floatList;
+    }
+
+    private com.google.gson.JsonArray convert2(float[] vector) {
+        com.google.gson.JsonArray vectorFloatArray = new com.google.gson.JsonArray();
+
+        for (float value : vector) {
+            vectorFloatArray.add(value);
+        }
+        return vectorFloatArray;
     }
 
     private static float[] convertImageToVector(String imagePath) throws Exception {

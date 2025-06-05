@@ -1,7 +1,6 @@
 package cn.net.pap.milvus;
 
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+import com.google.gson.JsonObject;
 import io.milvus.client.MilvusClient;
 import io.milvus.client.MilvusServiceClient;
 import io.milvus.common.clientenum.ConsistencyLevelEnum;
@@ -192,7 +191,7 @@ public class MilvusTest {
                 .build());
         assertTrue(0 == loadResponse.getStatus());
         if (loadResponse.getStatus() == 0) {
-            List<JSONObject> insertRowsList = insertRows();
+            List<JsonObject> insertRowsList = insertRows();
 
             InsertParam insertParam = InsertParam.newBuilder()
                     .withCollectionName(COLLECTION_NAME)
@@ -251,8 +250,8 @@ public class MilvusTest {
      * using PinsFaceRecognitionVectorTest.java to gene 105_classes_pins_dataset_vector.json file
      * @return
      */
-    private List<JSONObject> insertRows() throws Exception {
-        List<JSONObject> rowsData = new ArrayList<>();
+    private List<com.google.gson.JsonObject> insertRows() throws Exception {
+        List<com.google.gson.JsonObject> rowsData = new ArrayList<>();
         try {
             String basePath = "C:\\Users\\86181\\Desktop";
             basePath = basePath + File.separator + "vector";
@@ -260,34 +259,35 @@ public class MilvusTest {
             List<Path> topDirList = topDirStream.collect(Collectors.toList());
             for(Path path : topDirList) {
                 String content = new String(java.nio.file.Files.readAllBytes(path));
-                List<Map> listMap = JSON.parseArray(content, Map.class);
+                com.google.gson.JsonParser parser = new com.google.gson.JsonParser();
+                com.google.gson.JsonArray jsonArray = parser.parse(content).getAsJsonArray();
 
+                for (int i = 0; i < jsonArray.size(); i++) {
+                    com.google.gson.JsonObject row = new com.google.gson.JsonObject();
+                    row.addProperty("age", 35);
 
-                for (int i = 0; i < listMap.size(); i++) {
-                    JSONObject row = new JSONObject();
-                    row.put("age", 35);
-                    row.put("name", listMap.get(i).get("picName"));
+                    com.google.gson.JsonObject item = jsonArray.get(i).getAsJsonObject();
+                    row.addProperty("name", item.get("picName").getAsString());
 
-                    List<Float> vectorFloatList = new ArrayList<>();
-                    Object vectorObj = listMap.get(i).get("vector");
-                    if(vectorObj instanceof com.alibaba.fastjson.JSONArray) {
-                        for (Object o : (com.alibaba.fastjson.JSONArray) vectorObj) {
-                            vectorFloatList.add(Float.parseFloat(new BigDecimal(o.toString()).toPlainString() + ""));
-                        }
+                    com.google.gson.JsonArray vectorArray = item.get("vector").getAsJsonArray();
+                    com.google.gson.JsonArray vectorFloatArray = new com.google.gson.JsonArray();
+
+                    for (com.google.gson.JsonElement element : vectorArray) {
+                        float value = new BigDecimal(element.getAsString()).floatValue();
+                        vectorFloatArray.add(value);
                     }
-                    row.put("vector", vectorFloatList);
+                    row.add("vector", vectorFloatArray);
 
-                    if(vectorFloatList.size() == 16000) {
+                    if (vectorFloatArray.size() == 16000) {
                         rowsData.add(row);
-                        if(i > 5) {
+                        if (i > 5) {
                             break;
                         }
                     }
                 }
             }
-
         } catch (Exception e) {
-
+            e.printStackTrace();
         }
         return rowsData;
     }
