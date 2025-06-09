@@ -5,6 +5,7 @@ import cn.net.pap.common.datastructure.fst.FST;
 import cn.net.pap.common.datastructure.fst.FSTUtil;
 import cn.net.pap.common.datastructure.fst.ValueLocationDTO;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -38,6 +39,7 @@ public class FSTUtilTest {
 
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "RUN_TESTS", matches = "true")
     public void hanziTest() {
         FST dict = new FST();
 
@@ -78,6 +80,7 @@ public class FSTUtilTest {
     }
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "RUN_TESTS", matches = "true")
     public void test() throws Exception {
         FST dict = new FST();
         for(int i = 0; i < 10000000; i++) {

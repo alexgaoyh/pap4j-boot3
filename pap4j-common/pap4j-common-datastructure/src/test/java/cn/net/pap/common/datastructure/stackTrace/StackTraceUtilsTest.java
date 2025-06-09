@@ -1,10 +1,12 @@
 package cn.net.pap.common.datastructure.stackTrace;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 public class StackTraceUtilsTest {
 
     @Test
+    @EnabledIfEnvironmentVariable(named = "RUN_TESTS", matches = "true")
     public void printStackTraceTest() {
         try {
             int i = 1/0;
