@@ -34,7 +34,7 @@
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
             <artifactId>selenium-java</artifactId>
-            <version>4.31.0</version>
+            <version>4.33.0</version>
             <scope>test</scope>
             <exclusions>
                 <exclusion>
@@ -44,11 +44,11 @@
             </exclusions>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.seleniumhq.selenium/selenium-devtools-v135 -->
+        <!-- https://mvnrepository.com/artifact/org.seleniumhq.selenium/selenium-devtools-v137 -->
         <dependency>
             <groupId>org.seleniumhq.selenium</groupId>
-            <artifactId>selenium-devtools-v135</artifactId>
-            <version>4.31.0</version>
+            <artifactId>selenium-devtools-v137</artifactId>
+            <version>4.33.0</version>
         </dependency>
 
         <dependency>
