@@ -6,4 +6,8 @@ server {
         content_by_lua_file conf/lua/ReversibleShortUrl.lua;
     }
 
+    location / {
+        root "D:/knowledge/";
+    }
+
 }

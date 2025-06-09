@@ -13,13 +13,13 @@ public class ReversibleShortUrl {
      * 标准的默认的 Char 数组
      */
     private static final char[] STANDARD_CHARS =
-            new StringBuilder("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_").toString().toCharArray();
+            new StringBuilder("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_=").toString().toCharArray();
 
     /**
      * 翻转一下默认的 Char 数组
      */
     private static final char[] CUSTOM_CHARS =
-            new StringBuilder("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_0123456789").reverse().toString().toCharArray();
+            new StringBuilder("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_=0123456789").reverse().toString().toCharArray();
 
     /**
      * 编码
