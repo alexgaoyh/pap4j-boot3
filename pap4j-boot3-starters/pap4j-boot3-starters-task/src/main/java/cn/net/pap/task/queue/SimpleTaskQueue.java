@@ -41,6 +41,8 @@ public class SimpleTaskQueue {
         consumerThread = new Thread(() -> {
             while (running.get()) {
                 try {
+                    // take 的时候，有可能会抛出 InterruptedException
+                    // 要模拟中断异常，就要让线程在空队列里等待，然后再中断它
                     SimpleTaskQueueDTO task = queue.take();
                     try {
                         log.info("Consumed task: {}", task.toString());
