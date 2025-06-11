@@ -1,10 +1,14 @@
 package cn.net.pap.task.queue;
 
+import cn.net.pap.task.dto.SimpleTaskQueueDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SimpleTaskQueue {
 
@@ -12,7 +16,11 @@ public class SimpleTaskQueue {
 
     private static final SimpleTaskQueue INSTANCE = new SimpleTaskQueue();
 
-    private final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<>();
+    private final BlockingQueue<SimpleTaskQueueDTO> queue = new LinkedBlockingQueue<SimpleTaskQueueDTO>();
+
+    private final AtomicBoolean running = new AtomicBoolean(false);
+
+    private Thread consumerThread;
 
     private SimpleTaskQueue() {}
 
@@ -20,27 +28,60 @@ public class SimpleTaskQueue {
         return INSTANCE;
     }
 
-    public void addTask(Runnable task) {
+    public void addTask(SimpleTaskQueueDTO task) {
         queue.offer(task);
     }
 
-    public void startConsumer() {
-        new Thread(() -> {
-            while (true) {
+    public Thread startConsumer() {
+        if (consumerThread != null && consumerThread.isAlive()) {
+            return consumerThread;
+        }
+
+        running.set(true);
+        consumerThread = new Thread(() -> {
+            while (running.get()) {
                 try {
-                    Runnable task = queue.take();
+                    SimpleTaskQueueDTO task = queue.take();
                     try {
-                        task.run();
+                        log.info("Consumed task: {}", task.toString());
                     } catch (Exception e) {
-                        // todo 比如加到 死信 队列， 或者重试，或者其他
-                        log.error("consumer exception : {}", e.getMessage());
+                        log.error("Consumer Task execution exception: {}", e.getMessage(), e);
                     }
                 } catch (InterruptedException e) {
+                    log.warn("Consumer thread was interrupted. Shutting down...");
+                    running.set(false);
                     Thread.currentThread().interrupt();
-                    break;
                 }
             }
-        }).start();
+        }, "SimpleTaskConsumer");
+
+        consumerThread.start();
+        return consumerThread;
     }
 
+    public List<SimpleTaskQueueDTO> stopConsumerAndReturnUnProcessed() {
+        running.set(false);
+        if (consumerThread != null) {
+            consumerThread.interrupt();
+        }
+        return drainUnprocessedTasks();
+    }
+
+    public boolean isRunning() {
+        return running.get();
+    }
+
+    public Thread getConsumerThread() {
+        return consumerThread;
+    }
+
+    public int getPendingTaskCount() {
+        return queue.size();
+    }
+
+    public List<SimpleTaskQueueDTO> drainUnprocessedTasks() {
+        List<SimpleTaskQueueDTO> remaining = new ArrayList<>();
+        queue.drainTo(remaining);
+        return remaining;
+    }
 }
