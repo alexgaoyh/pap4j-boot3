@@ -83,6 +83,8 @@ public class ImageMagickEnvCheckerUtil {
     // Get-ChildItem -Path "C:\Users\86181\Desktop" -Recurse -Filter "*.jpg" | ForEach-Object { magick -quality 20 $_.FullName $_.FullName }
     // nohup find /home/ubuntu/image -type f -iname "*.jpg" -printf "Processing: %p\n" -exec magick {} -quality 10 {} \; > /tmp/image_convert.log 2>&1 & echo $! > /tmp/image_convert.pid
 
+    // 在 windows 下，对图像添加水印，请注意这里是水印图像放大200%。
+    // magick "input.jpg" ( "watermark.png" -resize 200%x ) -gravity southeast -composite "output.jpg"
 
     // @Test
     public void streamTest() throws IOException, InterruptedException {
