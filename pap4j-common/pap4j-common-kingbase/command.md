@@ -63,4 +63,16 @@ FROM
     jsonb_array_elements ( json1 :: jsonb ) AS elem
 WHERE
     elem -> 'array' @> '["12"]' :: jsonb;
+
+-- 数组内数组的过滤 同时多个array判断
+SELECT 
+    *
+FROM 
+    test
+WHERE EXISTS (
+    SELECT 1 FROM jsonb_array_elements(json1::jsonb) AS obj WHERE (obj->'array')::jsonb @> '["12"]'::jsonb
+)
+  AND EXISTS (
+    SELECT 1 FROM jsonb_array_elements(json1::jsonb) AS obj WHERE (obj->'array')::jsonb @> '["14"]'::jsonb OR (obj->'array')::jsonb @> '["15"]'::jsonb
+);
 ```
