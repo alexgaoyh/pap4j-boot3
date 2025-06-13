@@ -11,11 +11,13 @@ CREATE TABLE "test" (
 
 
 insert into test(id, json1)
-values (1, '[{"title": "张三", "creators": [{"role": "风", "creator": "111134"}, {"role": "火", "creator": "222245"}], "contributors": null}, {"title": "李四", "creators": [{"role": "雷", "creator": "222"}], "contributors": [{"role": "电", "contributor": "3333"}]}]');
+values (1, '[{"title": "张三", "array": ["1", "2", "3"], "creators": [{"role": "风", "creator": "111134"}, {"role": "火", "creator": "222245"}], "contributors": null}, {"title": "李四",  "array": ["4", "5", "6"], "creators": [{"role": "雷", "creator": "222"}], "contributors": [{"role": "电", "contributor": "3333"}]}]');
 insert into test(id, json1)
-values (2, '[{"title": "张三", "creators": [{"role": "风", "creator": "111134"}, {"role": "火", "creator": "222245"}], "contributors": null}, {"title": "李四", "creators": [{"role": "雷", "creator": "222"}], "contributors": null}]');
+values (2, '[{"title": "张三", "array": ["a", "b", "c"], "creators": [{"role": "风", "creator": "111134"}, {"role": "火", "creator": "222245"}], "contributors": null}, {"title": "李四",  "array": ["d", "e", "f"], "creators": [{"role": "雷", "creator": "222"}], "contributors": null}]');
+insert into test(id, json1)
+values (3, '[{"title": "张三", "array": ["11", "12", "13"], "creators": [{"role": "风", "creator": "111134"}, {"role": "火", "creator": "222245"}], "contributors": null}, {"title": "王五",  "array": ["14", "15", "16"], "creators": [{"role": "雷", "creator": "222"}], "contributors": null}]');
 
--- select 
+-- 数组内自定义对象的过滤 兼容 null  
 SELECT
     *
 FROM
@@ -31,6 +33,7 @@ WHERE
         WHERE elem->>'role' = '电') 
     );
 
+-- 数组内自定义对象的过滤 兼容 null
 SELECT
     *
 FROM
@@ -45,5 +48,19 @@ WHERE
         WHERE jsonb_typeof(elem->'contributors') != 'null')
     ) ;
 
+-- 数组内字符串的过滤 string_agg
+SELECT *,
+       ( SELECT string_agg ( elem ->> 'title', '^^^' ) FROM json_array_elements ( json1 ) AS elem ) AS titles_combined
+FROM
+    test
+where ( SELECT string_agg ( elem ->> 'title', '^^^' ) FROM json_array_elements ( json1 ) AS elem )  like '%王%'
 
+-- 数组内数组的过滤 jsonb
+SELECT
+    *
+FROM
+    test,
+    jsonb_array_elements ( json1 :: jsonb ) AS elem
+WHERE
+    elem -> 'array' @> '["12"]' :: jsonb;
 ```
