@@ -40,4 +40,15 @@ public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysql
         return 1;
     }
 
+//    @Transactional // Spring 管理事务
+//    public void updateData() {
+//        try (Connection conn = dataSource.getConnection(); // 由 Spring 管理的连接
+//             Statement stmt = conn.createStatement()) {
+//            stmt.execute("UPDATE doris SET remark = 'test' WHERE id = 1");
+//            // 不需要手动 commit()，@Transactional 会自动处理
+//        } catch (SQLException e) {
+//            throw new RuntimeException(e); // 触发回滚
+//        }
+//    }
+
 }
