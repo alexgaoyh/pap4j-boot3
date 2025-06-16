@@ -3,7 +3,9 @@ package cn.net.pap.example.doris;
 import cn.net.pap.example.doris.entity.Doris;
 import cn.net.pap.example.doris.mapper.DorisMapper;
 import cn.net.pap.example.doris.service.DorisService;
+import cn.net.pap.example.doris.service.IDorisTransServiceInMysqlDB;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
@@ -21,6 +23,9 @@ public class DorisMapperTest {
 
     @Autowired
     private DorisService dorisService;
+
+    @Resource(name = "dorisTransServiceInMysqlDB")
+    private IDorisTransServiceInMysqlDB dorisTransServiceInMysqlDB;
 
     @Test
     @Order(1)
@@ -43,6 +48,18 @@ public class DorisMapperTest {
         if(dorisList != null && dorisList.size() > 0) {
             dorisList.forEach(System.out::println);
         }
+    }
+
+    // @Test
+    @Order(4)
+    public void test4UpdateInMysqlDBMulti() {
+        dorisTransServiceInMysqlDB.updateTestThrowExceptionInMysqlDB();
+    }
+
+    // @Test
+    @Order(5)
+    public void test5UpdateInMysqlDBMulti() {
+        dorisTransServiceInMysqlDB.updateTestNoExceptionInMysqlDB();
     }
 
 }

@@ -4,15 +4,19 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Connection;
-import java.sql.Statement;
+import javax.sql.DataSource;
+import java.sql.*;
 
 @Service("dorisService")
 public class DorisService {
 
     @Autowired
     private SqlSessionFactory sqlSessionFactory;
+
+    @Autowired
+    private DataSource dataSource;
 
     public int transactionalTest() {
         SqlSession session = sqlSessionFactory.openSession(false);
@@ -83,6 +87,51 @@ public class DorisService {
             }
         }
         return 0;
+    }
+
+    /**
+     * 验证如果外部调用者使用 @Transactional 注解控制事务的处理， connection 的获取方式对比
+     * @return
+     */
+    public int updateTestThrowExceptionInMysqlDB() {
+        SqlSession session = sqlSessionFactory.openSession();
+        Connection conn = session.getConnection();
+        try (Statement stmt = conn.createStatement()) {
+            // 获取当前时间戳（格式化为 SQL 可识别的字符串）
+            String currentTime = new Timestamp(System.currentTimeMillis()).toString().substring(0, 20);
+            stmt.execute("UPDATE doris SET doris_remark = '" + currentTime + "' WHERE id = 1");
+            return 1;
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                conn.rollback();
+            } catch (SQLException e1) {
+                e1.printStackTrace();
+            }
+        } finally {
+            try {
+                conn.close();
+                session.close();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
+        }
+        return 0;
+    }
+
+    /**
+     * 验证如果外部调用者使用 @Transactional 注解控制事务的处理， connection 的获取方式对比
+     * @return
+     */
+    public int updateTestNoExceptionInMysqlDB() {
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement("UPDATE doris SET doris_remark = ? WHERE id = 1")) {
+            pstmt.setString(1, new Timestamp(System.currentTimeMillis()).toString().substring(0, 20));
+            pstmt.executeUpdate();
+            return 1;
+        } catch (SQLException e) {
+            throw new RuntimeException("Update failed", e);
+        }
     }
 
 }
