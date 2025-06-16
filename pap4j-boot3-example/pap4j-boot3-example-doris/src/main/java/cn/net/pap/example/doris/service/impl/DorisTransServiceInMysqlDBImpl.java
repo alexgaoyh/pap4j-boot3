@@ -20,6 +20,7 @@ public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysql
     @Transactional
     public int updateTestThrowExceptionInMysqlDB() {
         for(int i = 0; i < 1000; i++) {
+            System.out.println(i);
             dorisService.updateTestThrowExceptionInMysqlDB();
         }
         return 1;
@@ -33,6 +34,7 @@ public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysql
     @Transactional
     public int updateTestNoExceptionInMysqlDB() {
         for(int i = 0; i < 1000; i++) {
+            System.out.println(i);
             dorisService.updateTestNoExceptionInMysqlDB();
         }
         return 1;

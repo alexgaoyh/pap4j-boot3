@@ -124,13 +124,24 @@ public class DorisService {
      * @return
      */
     public int updateTestNoExceptionInMysqlDB() {
-        try (Connection conn = dataSource.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement("UPDATE doris SET doris_remark = ? WHERE id = 1")) {
+        // 为了做对比，后续可以改为 try resources 方式
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        try {
+            conn = dataSource.getConnection();
+            pstmt = conn.prepareStatement("UPDATE doris SET doris_remark = ? WHERE id = 1");
             pstmt.setString(1, new Timestamp(System.currentTimeMillis()).toString().substring(0, 20));
             pstmt.executeUpdate();
             return 1;
         } catch (SQLException e) {
             throw new RuntimeException("Update failed", e);
+        }finally {
+            try {
+                pstmt.close();
+                conn.close();
+            } catch (Exception e1) {
+                e1.printStackTrace();
+            }
         }
     }
 
