@@ -110,7 +110,7 @@ public class ProguardController {
     }
 
     @GetMapping("/saveAndFlush")
-    public Proguard saveAndFlush() {
+    public ResponseEntity<Proguard> saveAndFlush() {
         Proguard proguard = new Proguard();
         proguard.setProguardId(System.currentTimeMillis());
         proguard.setProguardName(proguard.getProguardId() + "");
@@ -139,9 +139,11 @@ public class ProguardController {
         JsonNode nestedObject = mapper.valueToTree(abstractMap);
         arrayNode.add(nestedObject);
 
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard.setAbstractObj(objectNode);
         proguard.setAbstractList(arrayNode);
 
-        return proguardService.saveAndFlush(proguard);
+        return new ResponseEntity<>(proguardService.saveAndFlush(proguard), HttpStatus.OK);
     }
 
     @GetMapping("getProguardByProguardId")
