@@ -64,4 +64,16 @@ public class DorisMapperTest {
         dorisTransServiceInMysqlDB.updateTestNoExceptionInMysqlDB();
     }
 
+    // @Test
+    @Order(6)
+    public void test6UpdateTestTestInMysqlDB1() {
+        dorisTransServiceInMysqlDB.updateTestTestInMysqlDB();
+    }
+
+    // @Test
+    @Order(7)
+    public void test6UpdateTestTestInMysqlDB2() {
+        dorisService.updateTestTestInMysqlDB();
+    }
+
 }

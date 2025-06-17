@@ -5,4 +5,6 @@ public interface IDorisTransServiceInMysqlDB {
     public int updateTestThrowExceptionInMysqlDB();
 
     public int updateTestNoExceptionInMysqlDB();
+
+    public int updateTestTestInMysqlDB();
 }

@@ -40,6 +40,11 @@ public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysql
         return 1;
     }
 
+    @Override
+    public int updateTestTestInMysqlDB() {
+        return dorisService.updateTestTestInMysqlDB();
+    }
+
 //    @Transactional // Spring 管理事务
 //    public void updateData() {
 //        try (Connection conn = dataSource.getConnection(); // 由 Spring 管理的连接

@@ -1,10 +1,16 @@
 package cn.net.pap.example.doris.service;
 
+import cn.net.pap.example.doris.entity.Doris;
+import cn.net.pap.example.doris.mapper.DorisMapper;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.sql.*;
@@ -17,6 +23,12 @@ public class DorisService {
 
     @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private DorisMapper dorisMapper;
+
+    @Autowired
+    private PlatformTransactionManager platformTransactionManager;
 
     public int transactionalTest() {
         SqlSession session = sqlSessionFactory.openSession(false);
@@ -144,5 +156,39 @@ public class DorisService {
             }
         }
     }
+
+    /**
+     * 做事务的控制与验证
+     * @return
+     */
+    public int updateTestTestInMysqlDB() {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(platformTransactionManager);
+        transactionTemplate.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRED);
+        transactionTemplate.setIsolationLevel(TransactionDefinition.ISOLATION_DEFAULT);
+
+        return transactionTemplate.execute(status -> {
+            Connection conn = DataSourceUtils.getConnection(dataSource);
+            try {
+                try (PreparedStatement pstmt = conn.prepareStatement("UPDATE doris SET doris_remark = ? WHERE id = 1")) {
+                    pstmt.setString(1, "PAP");
+                    pstmt.executeUpdate();
+                }
+
+                Doris doris = new Doris();
+                doris.setId(9L);
+                doris.setDorisName("PAP".repeat(10));
+                dorisMapper.insert(doris);
+
+                return 1;
+            } catch (SQLException e) {
+                status.setRollbackOnly();
+                throw new RuntimeException("Update failed", e);
+            } finally {
+                DataSourceUtils.releaseConnection(conn, dataSource);
+            }
+        });
+
+    }
+
 
 }
