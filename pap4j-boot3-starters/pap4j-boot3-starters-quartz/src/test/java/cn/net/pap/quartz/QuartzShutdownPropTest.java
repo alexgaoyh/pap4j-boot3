@@ -8,8 +8,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
+
+import java.util.Random;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {QuartzAutoConfiguration.class, QuartzService.class})
@@ -22,6 +25,9 @@ public class QuartzShutdownPropTest {
     @Autowired
     private QuartzService quartzService;
 
+    @Autowired
+    private ThreadPoolTaskExecutor schedulerThreadPool;
+
     public static class TestBeanJob implements Job {
         private static final Logger logger = LoggerFactory.getLogger(TestBeanJob.class);
         @Override
@@ -31,6 +37,21 @@ public class QuartzShutdownPropTest {
                         .getContext()
                         .get("quartzService");
 
+                ThreadPoolTaskExecutor schedulerThreadPool = (ThreadPoolTaskExecutor) context.getScheduler()
+                        .getContext()
+                        .get("schedulerThreadPool");
+
+                schedulerThreadPool.submit(() -> {
+                    try {
+                        calculatePiUsingMonteCarlo(10_000_000_00L);
+                        quartzService.print();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    } finally {
+                    }
+                    return true;
+                });
+
                 System.out.println(quartzService.print());
             } catch (SchedulerException e) {
                 throw new RuntimeException(e);
@@ -38,9 +59,30 @@ public class QuartzShutdownPropTest {
         }
     }
 
+    /**
+     * 长时间 计算
+     * @param iterations
+     */
+    private static void calculatePiUsingMonteCarlo(long iterations) {
+        Random random = new Random();
+        long insideCircle = 0;
+
+        for (long i = 0; i < iterations; i++) {
+            double x = random.nextDouble();
+            double y = random.nextDouble();
+            if (x * x + y * y <= 1) {
+                insideCircle++;
+            }
+        }
+
+        double pi = 4.0 * insideCircle / iterations;
+        System.out.println("Estimated value of Pi: " + pi);
+    }
+
     // @Test
     public void testJobInjection() throws Exception {
         scheduler.getContext().put("quartzService", quartzService);
+        scheduler.getContext().put("schedulerThreadPool", schedulerThreadPool);
         JobDetail job = JobBuilder.newJob(TestBeanJob.class).build();
         scheduler.scheduleJob(job, TriggerBuilder.newTrigger().startNow().build());
         Thread.sleep(1000);
