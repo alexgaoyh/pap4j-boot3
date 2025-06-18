@@ -140,6 +140,8 @@ public class QuartzAutoConfiguration {
         properties.setProperty("org.quartz.scheduler.instanceId", "pap4j-boot3-starters-quartz");
         properties.setProperty("spring.quartz.job-store-type", "jdbc");
         properties.setProperty("spring.quartz.jdbc.initialize-schema", "always");
+        // spring.quartz.wait-for-jobs-to-complete-on-shutdown=true
+        // spring.quartz.properties.org.quartz.threadPool.threadCount=16
         return properties;
     }
 
