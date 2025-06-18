@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -51,6 +52,12 @@ public class StringUtilTest {
     @Test
     public void replaceFirstTest() {
         String s = StringUtil.replaceFirst("一二三(四五六)七八九十", ")", "");
+        System.out.println(s);
+
+        s = StringUtil.replaceFirst("一二三(四五六)七八九十", ".*", "");
+        System.out.println(s);
+
+        s = "一二三(四五六)七八九十".replaceFirst(".*", "");
         System.out.println(s);
     }
 
