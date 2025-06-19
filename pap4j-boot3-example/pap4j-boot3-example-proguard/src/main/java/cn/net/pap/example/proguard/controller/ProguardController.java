@@ -265,4 +265,14 @@ public class ProguardController {
         return b.toString();
     }
 
+    @GetMapping(value = "/longtime", produces = "application/json;charset=UTF-8")
+    public String longtime() {
+        try {
+            Thread.sleep(10000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+        return "longtime";
+    }
+
 }
