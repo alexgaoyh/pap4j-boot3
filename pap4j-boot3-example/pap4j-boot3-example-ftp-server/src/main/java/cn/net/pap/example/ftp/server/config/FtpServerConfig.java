@@ -27,6 +27,7 @@ public class FtpServerConfig {
     @Value("${ftp.password:123456}")
     private String password;
 
+    // windows 支持映射一个网络驱动器 ，选择驱动器，映射一个文件夹 \\192.168.1.115\knowledge(共享文件夹) 的形式.
     @Value("${ftp.home.dir:d:/knowledge}")
     private String homeDir;
 
