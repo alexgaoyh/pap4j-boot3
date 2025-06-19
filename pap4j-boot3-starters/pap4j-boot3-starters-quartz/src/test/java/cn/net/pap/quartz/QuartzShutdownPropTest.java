@@ -79,6 +79,10 @@ public class QuartzShutdownPropTest {
         System.out.println("Estimated value of Pi: " + pi);
     }
 
+    /**
+     * 业务代码可以将当前单元测试引入并变为api形式，配合 server.shutdown=graceful 等一起验证优雅关闭
+     * @throws Exception
+     */
     // @Test
     public void testJobInjection() throws Exception {
         scheduler.getContext().put("quartzService", quartzService);
