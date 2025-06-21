@@ -76,4 +76,10 @@ public class DorisMapperTest {
         dorisService.updateTestTestInMysqlDB();
     }
 
+    // @Test
+    @Order(8)
+    public void test7UpdateTestTestInMysqlDB2() {
+        dorisService.updateTestTestInMysqlDB2();
+    }
+
 }

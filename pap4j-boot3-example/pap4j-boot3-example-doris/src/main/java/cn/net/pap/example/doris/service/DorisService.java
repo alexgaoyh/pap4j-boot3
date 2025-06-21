@@ -192,5 +192,29 @@ public class DorisService {
 
     }
 
+    @Transactional
+    public int updateTestTestInMysqlDB2() {
+        Connection conn = DataSourceUtils.getConnection(dataSource);
+        try {
+            try (PreparedStatement pstmt = conn.prepareStatement("UPDATE doris SET doris_remark = ? WHERE id = 1")) {
+                pstmt.setString(1, "PAP");
+                pstmt.executeUpdate();
+            }
+
+            Doris doris = new Doris();
+            doris.setId(9L);
+            doris.setDorisName("PAP".repeat(10));
+            dorisMapper.insert(doris);
+
+            dorisMapper.updateBySql("update doris set doris_name = 'pap'");
+
+            return 1;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return -1;
+        } finally {
+            DataSourceUtils.releaseConnection(conn, dataSource);
+        }
+    }
 
 }
