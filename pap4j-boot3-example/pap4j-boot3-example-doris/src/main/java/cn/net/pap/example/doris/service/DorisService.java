@@ -179,6 +179,8 @@ public class DorisService {
                 doris.setDorisName("PAP".repeat(10));
                 dorisMapper.insert(doris);
 
+                dorisMapper.updateBySql("update doris set doris_name = 'pap'");
+
                 return 1;
             } catch (SQLException e) {
                 status.setRollbackOnly();

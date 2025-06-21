@@ -6,4 +6,16 @@
         INSERT INTO doris(id, doris_name) VALUES (#{id}, #{dorisName})
     </insert>
 
+    <select id="getDataBySql" resultType="java.util.HashMap">
+    	<![CDATA[${value}]]>
+	</select>
+
+    <update id="updateBySql" parameterType="String">
+    	<![CDATA[${value}]]>
+	</update>
+
+    <delete id="deleteBySql" parameterType="String">
+    	<![CDATA[${value}]]>
+	</delete>
+
 </mapper>
