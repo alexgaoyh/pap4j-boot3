@@ -101,6 +101,30 @@ public class HttpTest {
         }
     }
 
+    @Test
+    public void removeAttrTest() {
+        String html = "<div>\n" +
+                "    <span style=\"color:red\" class=\"text\">直接子级 span</span>\n" +
+                "    <p>\n" +
+                "        <span data-attr=\"value\" class=\"highlight\">嵌套在 p 里的 span</span>\n" +
+                "    </p>\n" +
+                "    <div>\n" +
+                "        <section>\n" +
+                "            <span id=\"deep\" style=\"font-weight:bold\">深层嵌套的 span</span>\n" +
+                "        </section>\n" +
+                "    </div>\n" +
+                "</div>";
+        Document doc = Jsoup.parse(html);
+        Elements spans = doc.select("span");
+        String[] attributesToRemove = {"style", "data-attr", "class"};
+        for (Element span : spans) {
+            for (String attr : attributesToRemove) {
+                span.removeAttr(attr);
+            }
+        }
+        System.out.println(doc.body().html());
+    }
+
     /**
      * 拆分 html
      * @param html
