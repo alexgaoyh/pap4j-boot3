@@ -6,6 +6,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -113,12 +114,35 @@ public class QuartzAutoConfiguration {
     @Bean
     public SchedulerFactoryBean schedulerFactoryBean() throws Exception {
         SchedulerFactoryBean schedulerFactoryBean = new SchedulerFactoryBean();
-        schedulerFactoryBean.setDataSource(quartzDataSource());
+        // 不调用 setDataSource，因为数据源配置交给 Quartz 自己管理
+        // schedulerFactoryBean.setDataSource(quartzDataSource());
         schedulerFactoryBean.setTaskExecutor(schedulerThreadPool());
         schedulerFactoryBean.setAutoStartup(true);
         schedulerFactoryBean.setOverwriteExistingJobs(true);
         schedulerFactoryBean.setQuartzProperties(quartzProperties());
         return schedulerFactoryBean;
+    }
+
+    @ConditionalOnProperty(name = "cn.net.pap.quartz.scheduler.multi", havingValue = "true")
+    @Bean(name = "scheduler1")
+    public SchedulerFactoryBean scheduler1() throws Exception {
+        SchedulerFactoryBean factory = new SchedulerFactoryBean();
+        factory.setTaskExecutor(schedulerThreadPool());  // 复用同一个线程池bean也可以
+        factory.setQuartzProperties(quartzProperties());
+        factory.setAutoStartup(true);
+        factory.setOverwriteExistingJobs(true);
+        return factory;
+    }
+
+    @ConditionalOnProperty(name = "cn.net.pap.quartz.scheduler.multi", havingValue = "true")
+    @Bean(name = "scheduler2")
+    public SchedulerFactoryBean scheduler2() throws Exception {
+        SchedulerFactoryBean factory = new SchedulerFactoryBean();
+        factory.setTaskExecutor(schedulerThreadPool());
+        factory.setQuartzProperties(quartzProperties());
+        factory.setAutoStartup(true);
+        factory.setOverwriteExistingJobs(true);
+        return factory;
     }
 
     /**
@@ -142,11 +166,25 @@ public class QuartzAutoConfiguration {
      */
     private Properties quartzProperties() {
         Properties properties = new Properties();
-        properties.setProperty("org.quartz.scheduler.instanceId", "pap4j-boot3-starters-quartz");
-        properties.setProperty("spring.quartz.job-store-type", "jdbc");
-        properties.setProperty("spring.quartz.jdbc.initialize-schema", "always");
-        // spring.quartz.wait-for-jobs-to-complete-on-shutdown=true
-        // spring.quartz.properties.org.quartz.threadPool.threadCount=16
+        properties.setProperty("org.quartz.scheduler.instanceName", "pap4j-boot3-starters-quartz");
+        properties.setProperty("org.quartz.scheduler.instanceId", "AUTO");
+        properties.setProperty("org.quartz.jobStore.class", "org.quartz.impl.jdbcjobstore.JobStoreTX");
+        properties.setProperty("org.quartz.jobStore.driverDelegateClass", "org.quartz.impl.jdbcjobstore.StdJDBCDelegate");
+        properties.setProperty("org.quartz.jobStore.isClustered", "true");
+        properties.setProperty("org.quartz.jobStore.tablePrefix", "QRTZ_");
+        properties.setProperty("org.quartz.jobStore.clusterCheckinInterval", "2000");
+        properties.setProperty("org.quartz.jobStore.dataSource", "quartzDs");
+
+        properties.setProperty("org.quartz.dataSource.quartzDs.provider", "hikaricp");
+        properties.setProperty("org.quartz.dataSource.quartzDs.driver", driver);
+        properties.setProperty("org.quartz.dataSource.quartzDs.URL", url);
+        properties.setProperty("org.quartz.dataSource.quartzDs.user", username);
+        properties.setProperty("org.quartz.dataSource.quartzDs.password", password);
+        properties.setProperty("org.quartz.dataSource.quartzDs.maxConnections", "10");
+
+        properties.setProperty("org.quartz.threadPool.class", "org.quartz.simpl.SimpleThreadPool");
+        properties.setProperty("org.quartz.threadPool.threadCount", "10");
+
         return properties;
     }
 
