@@ -10,7 +10,12 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -98,6 +103,27 @@ public class HttpTest {
                 System.out.println("Class: " + className + " - Text: " + text);
             }
             System.out.println();
+        }
+    }
+
+    // @Test
+    public void httpResponseTest() {
+        String url = "http://192.168.1.66:5555/00035_00.jpg";
+        HttpClient httpClient = HttpClient.newBuilder().version(HttpClient.Version.HTTP_1_1).connectTimeout(Duration.ofSeconds(10)).build();
+        HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).header("Origin", "http://127.0.0.1:6060").GET().build();
+        try {
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            System.out.println("Status Code: " + response.statusCode());
+            System.out.println("\nResponse Headers:");
+            response.headers().map().forEach((key, values) -> {
+                System.out.print(key + ": ");
+                for (String value : values) {
+                    System.out.print(value + " ");
+                }
+                System.out.println();
+            });
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
