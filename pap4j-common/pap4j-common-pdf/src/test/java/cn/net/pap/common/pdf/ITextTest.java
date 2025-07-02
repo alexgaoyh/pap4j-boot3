@@ -16,6 +16,9 @@ import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 import org.junit.jupiter.api.Test;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
@@ -23,6 +26,7 @@ import java.io.UnsupportedEncodingException;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.*;
+import java.util.List;
 
 public class ITextTest {
 
@@ -118,6 +122,8 @@ public class ITextTest {
          */
         private Set<String> encodingSet = new HashSet<>();
 
+        private List<ImageRenderInfo> allImages = new ArrayList<>();
+
         PapTextExtractionStrategy(float pageWidth, float pageHeight, Integer pageRotation) {
             this.pageWidth = pageWidth;
             this.pageHeight = pageHeight;
@@ -181,6 +187,8 @@ public class ITextTest {
                 PdfImageObject image = imageRenderInfo.getImage();
                 if (image == null) return;
 
+                allImages.add(imageRenderInfo);
+
                 float widthPx = Float.parseFloat(imageRenderInfo.getImage().getDictionary().get(PdfName.WIDTH).toString());
                 float heightPx = Float.parseFloat(imageRenderInfo.getImage().getDictionary().get(PdfName.HEIGHT).toString());
 
@@ -211,6 +219,16 @@ public class ITextTest {
 
         @Override
         public String getResultantText() {
+            // pdf 内可能存在多张图像，这里可以做一个拼接
+//            List<ImageRenderInfo> allImagesTmp = this.allImages;
+//            if(allImagesTmp != null && allImagesTmp.size() > 0) {
+//                try {
+//                    BufferedImage fullImage = mergeImagesByPosition(allImages, this.pageWidth, this.pageHeight, this.imageDPI);
+//                    ImageIO.write(fullImage, "jpg", new File("C:\\Users\\86181\\Desktop\\0002B.jpg"));
+//                } catch (IOException e) {
+//                    throw new RuntimeException(e);
+//                }
+//            }
             return "[" + imageDPI + "]" + withPointString.toString();
         }
     }
@@ -309,6 +327,46 @@ public class ITextTest {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public static BufferedImage mergeImagesByPosition(List<ImageRenderInfo> imageInfos, float pageWidthPt, float pageHeightPt, int dpi) throws IOException {
+        float scale = dpi / 72f; // 1pt = 1/72 inch
+
+        int canvasWidth = Math.round(pageWidthPt * scale);
+        int canvasHeight = Math.round(pageHeightPt * scale);
+
+        BufferedImage canvas = new BufferedImage(canvasWidth, canvasHeight, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = canvas.createGraphics();
+
+        // 设置白底
+        g.setColor(Color.WHITE);
+        g.fillRect(0, 0, canvasWidth, canvasHeight);
+
+        for (ImageRenderInfo imageInfo : imageInfos) {
+            PdfImageObject imageObject = imageInfo.getImage();
+            if (imageObject == null) continue;
+
+            BufferedImage img = imageObject.getBufferedImage();
+            if (img == null) continue;
+
+            Matrix ctm = imageInfo.getImageCTM();
+
+            float xPt = ctm.get(Matrix.I31);     // X位置 (PDF左下角)
+            float yPt = ctm.get(Matrix.I32);     // Y位置 (PDF左下角)
+            float wPt = ctm.get(Matrix.I11);     // 宽度
+            float hPt = ctm.get(Matrix.I22);     // 高度
+
+            // PDF原点在左下，Java画布在左上 → Y轴需翻转
+            int xPx = Math.round(xPt * scale);
+            int yPx = Math.round((pageHeightPt - yPt - hPt) * scale); // 上翻
+            int wPx = Math.round(wPt * scale);
+            int hPx = Math.round(hPt * scale);
+
+            g.drawImage(img, xPx, yPx, wPx, hPx, null);
+        }
+
+        g.dispose();
+        return canvas;
     }
 
     /**
