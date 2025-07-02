@@ -4,7 +4,9 @@ import com.itextpdf.text.pdf.*;
 import org.junit.jupiter.api.Test;
 
 import java.io.FileInputStream;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 public class ITextResourceExplorerTest {
@@ -30,6 +32,10 @@ public class ITextResourceExplorerTest {
             PdfDictionary xobjects = resources.getAsDict(PdfName.XOBJECT);
             if (xobjects == null) continue;
 
+            // 先缓存所有图像对象，方便之后判断是否被引用为遮罩
+            Map<PdfObject, PdfName> allImageObjects = new HashMap<>();
+
+            // 遍历图像对象
             for (PdfName name : xobjects.getKeys()) {
                 PdfObject obj = xobjects.get(name);
                 PdfDictionary imgDict = null;
@@ -43,6 +49,8 @@ public class ITextResourceExplorerTest {
                 PdfName subtype = imgDict.getAsName(PdfName.SUBTYPE);
                 if (!PdfName.IMAGE.equals(subtype)) continue;
 
+                allImageObjects.put(obj, name); // 记录，用于反查遮罩引用
+
                 System.out.println(" Image: " + name);
 
                 PdfObject filter = imgDict.get(PdfName.FILTER);
@@ -50,6 +58,7 @@ public class ITextResourceExplorerTest {
                 System.out.println("  Filter: " + filter);
                 System.out.println("  DecodeParms: " + decodeParms);
 
+                // 检查是否包含 JBIG2GLOBALS
                 if (decodeParms != null) {
                     if (decodeParms.isDictionary()) {
                         PdfDictionary dpDict = (PdfDictionary) decodeParms;
@@ -70,8 +79,56 @@ public class ITextResourceExplorerTest {
                         }
                     }
                 }
+
+                // 检查是否为遮罩图像
+                boolean isMask = false;
+
+                PdfBoolean imageMask = imgDict.getAsBoolean(PdfName.IMAGEMASK);
+                if (imageMask != null && imageMask.booleanValue()) {
+                    isMask = true;
+                    System.out.println("  >>> ImageMask: true (this image is a stencil mask)");
+                }
+
+                PdfObject mask = imgDict.get(PdfName.MASK);
+                if (mask != null) {
+                    isMask = true;
+                    if (mask.isArray()) {
+                        System.out.println("  >>> Color Mask detected: " + mask);
+                    } else {
+                        System.out.println("  >>> Explicit Mask image: " + mask);
+                    }
+                }
+
+                PdfArray decode = imgDict.getAsArray(PdfName.DECODE);
+                if (decode != null) {
+                    System.out.println("  >>> Decode array: " + decode);
+                }
+
+                PdfDictionary group = imgDict.getAsDict(PdfName.GROUP);
+                if (group != null && PdfName.TRANSPARENCY.equals(group.getAsName(PdfName.S))) {
+                    System.out.println("  >>> Transparency group detected");
+                }
+
+                if (!isMask) {
+                    System.out.println("  >>> No direct mask detected for this image.");
+                }
+
+                System.out.println();
+            }
+
+            // 检查是否被作为其他图像的 SMask
+            for (PdfName name : xobjects.getKeys()) {
+                PdfDictionary dict = xobjects.getAsDict(name);
+                if (dict == null || !PdfName.IMAGE.equals(dict.getAsName(PdfName.SUBTYPE))) continue;
+
+                PdfObject smask = dict.get(PdfName.SMASK);
+                if (smask != null && allImageObjects.containsKey(smask)) {
+                    PdfName maskedImgName = allImageObjects.get(smask);
+                    System.out.println("  >>> Image " + maskedImgName + " is used as SMask for image " + name);
+                }
             }
         }
+
 
     }
 

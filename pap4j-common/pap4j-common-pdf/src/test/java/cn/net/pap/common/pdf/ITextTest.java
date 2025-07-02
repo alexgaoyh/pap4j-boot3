@@ -404,19 +404,25 @@ public class ITextTest {
 
             BufferedImage img = readerJBIG2.read(0);
 
-            // 检查并应用透明掩码 todo 这里需要调整
-            PdfObject smask = imgDict.get(PdfName.SMASK);
-            if (smask != null) {
-                PdfImageObject smaskImage = new PdfImageObject((PRStream) PdfReader.getPdfObject(smask));
-                BufferedImage maskImg = smaskImage.getBufferedImage();
-
-                if (maskImg != null) {
-                    // 将mask作为alpha通道合成
-                    img = applyAlphaMask(img, maskImg);
-                }
+            // 检查并应用透明掩码
+            PdfBoolean imageMask = imgDict.getAsBoolean(PdfName.IMAGEMASK);
+            if (imageMask != null && imageMask.booleanValue()) {
+                // ImageMask = true，做遮罩处理
+                img = convertMaskToAlpha(img);
             } else {
-                // 也可以根据需要做简单的颜色透明处理，比如把白色当透明
-                img = convertWhiteToTransparent(img);
+                PdfObject smask = imgDict.get(PdfName.SMASK);
+                if (smask != null) {
+                    PdfImageObject smaskImage = new PdfImageObject((PRStream) PdfReader.getPdfObject(smask));
+                    BufferedImage maskImg = smaskImage.getBufferedImage();
+
+                    if (maskImg != null) {
+                        // 将mask作为alpha通道合成
+                        img = applyAlphaMask(img, maskImg);
+                    }
+                } else {
+                    // 也可以根据需要做简单的颜色透明处理，比如把白色当透明
+                    img = convertWhiteToTransparent(img);
+                }
             }
 
             return img;
@@ -425,6 +431,21 @@ public class ITextTest {
             e.printStackTrace();
             return null;
         }
+    }
+
+    private static BufferedImage convertMaskToAlpha(BufferedImage maskImg) {
+        int w = maskImg.getWidth();
+        int h = maskImg.getHeight();
+        BufferedImage newImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int rgb = maskImg.getRGB(x, y) & 0xFFFFFF;
+                int alpha = (rgb == 0xFFFFFF) ? 0 : 255; // 白色透明，黑色不透明
+                int argb = (alpha << 24) | 0x000000;     // 黑色前景
+                newImage.setRGB(x, y, argb);
+            }
+        }
+        return newImage;
     }
 
     private static byte[] extractGlobalBytesFromDecodeParms(PdfDictionary decodeParms) throws IOException {
