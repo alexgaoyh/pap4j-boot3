@@ -17,12 +17,11 @@ import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.lang.reflect.Field;
 import java.math.BigDecimal;
 import java.util.*;
@@ -347,6 +346,9 @@ public class ITextTest {
             if (imageObject == null) continue;
 
             BufferedImage img = imageObject.getBufferedImage();
+            if(img == null && imageObject.getFileType().equals("jbig2")) {
+                img = extractJBIG2AsBufferedImageWithTransparency(imageInfo);
+            }
             if (img == null) continue;
 
             Matrix ctm = imageInfo.getImageCTM();
@@ -367,6 +369,119 @@ public class ITextTest {
 
         g.dispose();
         return canvas;
+    }
+
+    /**
+     * jbig2 格式图像的处理，同时处理了透明度
+     * @param renderInfo
+     * @return
+     */
+    public static BufferedImage extractJBIG2AsBufferedImageWithTransparency(ImageRenderInfo renderInfo) {
+        try {
+            PdfImageObject image = renderInfo.getImage();
+            if (image == null) return null;
+
+            byte[] jbig2Bytes = image.getImageAsBytes();
+            if (jbig2Bytes == null) return null;
+
+            PdfDictionary imgDict = image.getDictionary();
+
+            // 取 JBIG2Globals，逻辑同前面（略，复用之前代码）
+            byte[] globalBytes = extractGlobalBytesFromDecodeParms(imgDict.getAsDict(PdfName.DECODEPARMS));
+
+            ByteArrayOutputStream merged = new ByteArrayOutputStream();
+            if (globalBytes != null) merged.write(globalBytes);
+            merged.write(jbig2Bytes);
+
+            ByteArrayInputStream bais = new ByteArrayInputStream(merged.toByteArray());
+            MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais);
+
+            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
+            if (!readers.hasNext()) throw new RuntimeException("No JBIG2 reader found");
+
+            ImageReader readerJBIG2 = readers.next();
+            readerJBIG2.setInput(iis);
+
+            BufferedImage img = readerJBIG2.read(0);
+
+            // 检查并应用透明掩码 todo 这里需要调整
+            PdfObject smask = imgDict.get(PdfName.SMASK);
+            if (smask != null) {
+                PdfImageObject smaskImage = new PdfImageObject((PRStream) PdfReader.getPdfObject(smask));
+                BufferedImage maskImg = smaskImage.getBufferedImage();
+
+                if (maskImg != null) {
+                    // 将mask作为alpha通道合成
+                    img = applyAlphaMask(img, maskImg);
+                }
+            } else {
+                // 也可以根据需要做简单的颜色透明处理，比如把白色当透明
+                img = convertWhiteToTransparent(img);
+            }
+
+            return img;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static byte[] extractGlobalBytesFromDecodeParms(PdfDictionary decodeParms) throws IOException {
+        PdfObject globalObj = decodeParms.get(PdfName.JBIG2GLOBALS);
+        if (globalObj == null) return null;
+
+        if (globalObj instanceof PRStream) {
+            return PdfReader.getStreamBytes((PRStream) globalObj);
+        } else if (globalObj instanceof PdfIndirectReference) {
+            PdfObject indirectGlobal = PdfReader.getPdfObject((PdfIndirectReference) globalObj);
+            if (indirectGlobal instanceof PRStream) {
+                return PdfReader.getStreamBytes((PRStream) indirectGlobal);
+            }
+        }
+        return null;
+    }
+
+    private static BufferedImage applyAlphaMask(BufferedImage img, BufferedImage mask) {
+        int w = Math.min(img.getWidth(), mask.getWidth());
+        int h = Math.min(img.getHeight(), mask.getHeight());
+
+        BufferedImage newImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int rgb = img.getRGB(x, y);
+                int alpha = (mask.getRGB(x, y) & 0xFF); // 用mask的蓝色通道作为alpha值
+
+                // 把 alpha 赋给颜色（扩大到0~255）
+                alpha = 255 - alpha; // 根据mask的定义调整反转逻辑，具体PDF看实际
+                alpha = Math.min(255, Math.max(0, alpha));
+
+                int newArgb = (alpha << 24) | (rgb & 0x00FFFFFF);
+                newImage.setRGB(x, y, newArgb);
+            }
+        }
+        return newImage;
+    }
+
+    private static BufferedImage convertWhiteToTransparent(BufferedImage img) {
+        int w = img.getWidth();
+        int h = img.getHeight();
+        BufferedImage newImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+
+        for (int y = 0; y < h; y++) {
+            for (int x = 0; x < w; x++) {
+                int rgb = img.getRGB(x, y);
+                // 判定白色（或接近白色）
+                if ((rgb & 0x00FFFFFF) == 0x00FFFFFF) {
+                    // 透明
+                    newImage.setRGB(x, y, 0x00FFFFFF & 0x00FFFFFF);
+                } else {
+                    // 不透明，alpha 255
+                    newImage.setRGB(x, y, (0xFF << 24) | (rgb & 0x00FFFFFF));
+                }
+            }
+        }
+        return newImage;
     }
 
     /**
