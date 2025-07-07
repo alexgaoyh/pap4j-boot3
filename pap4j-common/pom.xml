@@ -32,6 +32,7 @@
         <module>pap4j-common-webdav</module>
         <module>pap4j-common-groovy</module>
         <module>pap4j-common-minio</module>
+        <module>pap4j-common-itext7</module>
     </modules>
 
     <properties>
