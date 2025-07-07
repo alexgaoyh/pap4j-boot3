@@ -107,7 +107,7 @@ public class ITextTest {
             System.out.println(maxWidth);
             System.out.println(objectMapper.writeValueAsString(centerXTextList));
 
-            // saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS, dpi72ToReal);
+            // saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS, dpi72ToReal, "C:\\Users\\86181\\Desktop\\123456.pdf");
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -610,7 +610,7 @@ public class ITextTest {
      * @param pointTextDTOS
      */
     public static void saveRotation90Chcek(Integer pageRotation, Rectangle pageSize,
-                                           LinkedHashSet<PointTextDTO> pointTextDTOS, BigDecimal dpi72ToReal) {
+                                           LinkedHashSet<PointTextDTO> pointTextDTOS, BigDecimal dpi72ToReal, String pdfPath) {
         Document document = null;
         PdfWriter writer = null;
 
@@ -627,69 +627,92 @@ public class ITextTest {
 
             // 创建文档
             document = new Document(new Rectangle(pageWidth, pageHeight));
-            writer = PdfWriter.getInstance(document, new FileOutputStream("C:\\Users\\86181\\Desktop\\123456.pdf"));
+            writer = PdfWriter.getInstance(document, new FileOutputStream(pdfPath));
             document.open();
 
+            // 创建文档
+            document.newPage();
             PdfContentByte canvas = writer.getDirectContent();
-            Map<String, BaseFont> fonts = new HashMap<>();
 
-            // 加载字体
-            for(ChineseFont chineseFont : ChineseFont.values()) {
-                BaseFont font = BaseFont.createFont(
-                        ChineseFont.getLocation(chineseFont.getFontName()),
-                        BaseFont.IDENTITY_H,
-                        BaseFont.EMBEDDED
-                );
-                fonts.put(chineseFont.getFontName(), font);
-            }
+            if (pointTextDTOS != null && !pointTextDTOS.isEmpty()) {
+                Map<String, BaseFont> fonts = new HashMap<>();
 
-            // 添加文本内容
-            for(PointTextDTO pointTextDTO : pointTextDTOS) {
-                for(Map.Entry<String, BaseFont> entry : fonts.entrySet()) {
+                // 加载字体
+                for (ChineseFont chineseFont : ChineseFont.values()) {
                     try {
-                        BaseFont font = entry.getValue();
-                        String text = pointTextDTO.getText();
-
-                        // 计算字体大小
-                        float fontSize;
-                        if(pageRotation == 90) {
-                            fontSize = (Float.parseFloat(pointTextDTO.getBox().get(1) + "") -
-                                    Float.parseFloat(pointTextDTO.getBox().get(0) + "")) * dpi72ToReal.floatValue();
-                        } else {
-                            float boxWidth = Float.parseFloat(pointTextDTO.getBox().get(1) - pointTextDTO.getBox().get(0) + "");
-                            float boxHeight = Float.parseFloat(pointTextDTO.getBox().get(3) - pointTextDTO.getBox().get(2) + "");
-                            fontSize = computeFittedFontSize(font, text, boxWidth, boxHeight, 12f);
-                        }
-
-                        // 计算位置
-                        float x = Float.parseFloat(pointTextDTO.getBox().get(0) + "");
-                        float y = (pageRotation == 0) ?
-                                (pageHeight - Float.parseFloat(pointTextDTO.getBox().get(2) + "")) :
-                                Float.parseFloat(pointTextDTO.getBox().get(2) + "");
-
-                        // 绘制文本 - 确保每个beginText()都有对应的endText()
-                        canvas.beginText();
-                        canvas.setFontAndSize(font, fontSize);
-                        canvas.setColorFill(BaseColor.BLACK);
-                        canvas.setTextMatrix(x, y);
-                        canvas.showText(text);
-                        canvas.endText();  // 确保每个beginText()都有对应的endText()
-
-                        break; // 找到可用字体后跳出循环
+                        BaseFont font = BaseFont.createFont(
+                                ChineseFont.getLocation(chineseFont.getFontName()),
+                                BaseFont.IDENTITY_H,
+                                BaseFont.EMBEDDED);
+                        fonts.put(chineseFont.getFontName(), font);
                     } catch (Exception e) {
-                        e.printStackTrace();
-                        // 忽略错误继续尝试下一个字体
+                        System.err.println("Failed to load font: " + chineseFont.getFontName());
+                        // Continue with next font
+                    }
+                }
+
+                // 添加文本内容
+                if (!fonts.isEmpty()) {
+                    for (PointTextDTO pointTextDTO : pointTextDTOS) {
+                        for (Map.Entry<String, BaseFont> entry : fonts.entrySet()) {
+                            try {
+                                BaseFont font = entry.getValue();
+                                String text = pointTextDTO.getText();
+                                if (text == null || text.isEmpty()) {
+                                    continue;
+                                }
+
+                                // 计算字体大小
+                                float fontSize;
+                                if (pageRotation == 90) {
+                                    fontSize = (pointTextDTO.getBox().get(1).floatValue() -
+                                            pointTextDTO.getBox().get(0).floatValue());
+                                } else {
+                                    float boxWidth = pointTextDTO.getBox().get(1).floatValue() -
+                                            pointTextDTO.getBox().get(0).floatValue();
+                                    float boxHeight = pointTextDTO.getBox().get(3).floatValue() -
+                                            pointTextDTO.getBox().get(2).floatValue();
+                                    fontSize = computeFittedFontSize(font, text, boxWidth, boxHeight, 12f);
+                                }
+
+                                // 计算位置
+                                float x = pointTextDTO.getBox().get(0).floatValue();
+                                float y;
+                                if (pageRotation == 0) {
+                                    y = pageHeight - (pointTextDTO.getBox().get(2).floatValue());
+                                } else {
+                                    y = pointTextDTO.getBox().get(2).floatValue();
+                                }
+
+                                // 绘制文本 - 确保每个beginText()都有对应的endText()
+                                canvas.beginText();
+                                canvas.setFontAndSize(font, fontSize);
+                                canvas.setColorFill(BaseColor.BLACK);
+                                canvas.setTextMatrix(x, y);
+                                canvas.showText(text);
+                                canvas.endText();
+
+                                break; // Use first successful font
+                            } catch (Exception e) {
+                                System.err.println("Error processing text element: " + e.getMessage());
+                                // Continue with next font
+                            }
+                        }
                     }
                 }
             }
         } catch (Exception e) {
+            System.err.println("Error in PDF generation: " + e.getMessage());
             e.printStackTrace();
         } finally {
-            if(writer != null) {
-                writer.close();
-            }
-            if(document != null) {
-                document.close();  // 这会自动处理任何未关闭的文本操作
+            if (document != null) {
+                try {
+                    if (document.isOpen()) {
+                        document.close();
+                    }
+                } catch (Exception e) {
+                    System.err.println("Error closing document: " + e.getMessage());
+                }
             }
         }
     }
