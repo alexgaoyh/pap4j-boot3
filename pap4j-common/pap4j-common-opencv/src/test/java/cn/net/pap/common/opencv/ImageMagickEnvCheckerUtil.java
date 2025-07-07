@@ -86,6 +86,9 @@ public class ImageMagickEnvCheckerUtil {
     // 在 windows 下，对图像添加水印，请注意这里是水印图像放大200%。
     // magick "input.jpg" ( "watermark.png" -resize 200%x ) -gravity southeast -composite "output.jpg"
 
+    // 拼接 指定坐标，在特定位置拼接图像
+    // magick -size 2067x3492 xc:white ( 000.jpg -geometry +0+0 ) -composite ( 001.jpg -geometry +0+1656 ) -composite ( 002.jpg -geometry +0+3320 ) -composite ( 003.png -alpha set -channel A -evaluate multiply 1 +channel -geometry +64+104 ) -composite final_output.png
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
