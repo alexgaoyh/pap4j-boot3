@@ -3,17 +3,12 @@ package cn.net.pap.common.pdf;
 import cn.net.pap.common.pdf.enums.ChineseFont;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itextpdf.awt.geom.Rectangle2D;
+import com.itextpdf.text.BaseColor;
+import com.itextpdf.text.Document;
 import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.parser.*;
 import com.itextpdf.text.pdf.parser.Vector;
-import org.apache.pdfbox.pdmodel.PDDocument;
-import org.apache.pdfbox.pdmodel.PDPage;
-import org.apache.pdfbox.pdmodel.PDPageContentStream;
-import org.apache.pdfbox.pdmodel.common.PDRectangle;
-import org.apache.pdfbox.pdmodel.font.PDType0Font;
-import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
-import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.*;
@@ -614,81 +609,87 @@ public class ITextTest {
      * @param pageSize
      * @param pointTextDTOS
      */
-    public static void saveRotation90Chcek(Integer pageRotation, Rectangle pageSize, LinkedHashSet<PointTextDTO> pointTextDTOS, BigDecimal dpi72ToReal) {
-        if(pageRotation == 90) {
-            try (PDDocument document = new PDDocument()) {
-                Integer pageWidth = Math.round(pageSize.getHeight() * dpi72ToReal.floatValue());
-                Integer pageHeight = Math.round(pageSize.getWidth() * dpi72ToReal.floatValue());
-                PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
-                document.addPage(page);
-                try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                    PDColor pdColor = new PDColor(new float[]{0f, 0f, 0f}, PDDeviceRGB.INSTANCE);
-                    Map<String, PDType0Font> fonts = new HashMap<>();
-                    for(ChineseFont chineseFont : ChineseFont.values()) {
-                        PDType0Font tmp = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName())));
-                        fonts.put(chineseFont.getFontName(), tmp);
-                    }
-                    for(PointTextDTO pointTextDTO : pointTextDTOS) {
-                        for(Map.Entry<String, PDType0Font> entry : fonts.entrySet()) {
-                            try {
-                                if(entry.getValue().getStringWidth(String.valueOf(pointTextDTO.getText())) > 0) {
-                                    contentStream.setFont(entry.getValue(), (Float.parseFloat(pointTextDTO.getBox().get(1) + "") - Float.parseFloat(pointTextDTO.getBox().get(0) + "")) * dpi72ToReal.floatValue());
-                                    contentStream.setNonStrokingColor(pdColor);
-                                    contentStream.beginText();
-                                    contentStream.newLineAtOffset(Float.parseFloat(pointTextDTO.getBox().get(0) + ""), Float.parseFloat(pointTextDTO.getBox().get(2) + ""));
-                                    contentStream.showText(pointTextDTO.getText());
-                                    contentStream.endText();
-                                    break;
-                                }
-                            } catch (Exception e) {
-                            }
-                        }
-                    }
-                }
-                document.save("C:\\Users\\86181\\Desktop\\123456.pdf");
-            } catch (IOException e) {
-                e.printStackTrace();
+    public static void saveRotation90Chcek(Integer pageRotation, Rectangle pageSize,
+                                           LinkedHashSet<PointTextDTO> pointTextDTOS, BigDecimal dpi72ToReal) {
+        Document document = null;
+        PdfWriter writer = null;
+
+        try {
+            // 计算页面尺寸
+            float pageWidth, pageHeight;
+            if(pageRotation == 90) {
+                pageWidth = pageSize.getHeight() * dpi72ToReal.floatValue();
+                pageHeight = pageSize.getWidth() * dpi72ToReal.floatValue();
+            } else {
+                pageWidth = pageSize.getWidth() * dpi72ToReal.floatValue();
+                pageHeight = pageSize.getHeight() * dpi72ToReal.floatValue();
             }
-        }
-        if(pageRotation == 0) {
-            try (PDDocument document = new PDDocument()) {
-                Integer pageWidth = Math.round(pageSize.getWidth() * dpi72ToReal.floatValue());
-                Integer pageHeight = Math.round(pageSize.getHeight() * dpi72ToReal.floatValue());
-                PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
-                document.addPage(page);
-                try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
-                    PDColor pdColor = new PDColor(new float[]{0f, 0f, 0f}, PDDeviceRGB.INSTANCE);
-                    Map<String, PDType0Font> fonts = new HashMap<>();
-                    for(ChineseFont chineseFont : ChineseFont.values()) {
-                        PDType0Font tmp = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName())));
-                        fonts.put(chineseFont.getFontName(), tmp);
-                    }
-                    for(PointTextDTO pointTextDTO : pointTextDTOS) {
-                        for(Map.Entry<String, PDType0Font> entry : fonts.entrySet()) {
-                            try {
-                                if(entry.getValue().getStringWidth(String.valueOf(pointTextDTO.getText())) > 0) {
 
-                                    float boxWidth = Float.parseFloat(pointTextDTO.getBox().get(1) - pointTextDTO.getBox().get(0) + "");
-                                    float boxHeight = Float.parseFloat(pointTextDTO.getBox().get(3) - pointTextDTO.getBox().get(2) + "");
+            // 创建文档
+            document = new Document(new Rectangle(pageWidth, pageHeight));
+            writer = PdfWriter.getInstance(document, new FileOutputStream("C:\\Users\\86181\\Desktop\\123456.pdf"));
+            document.open();
 
-                                    float fontSize = computeFittedFontSize(entry.getValue(), pointTextDTO.getText(), boxWidth, boxHeight, 12f);
+            PdfContentByte canvas = writer.getDirectContent();
+            Map<String, BaseFont> fonts = new HashMap<>();
 
-                                    contentStream.setFont(entry.getValue(), fontSize);
-                                    contentStream.setNonStrokingColor(pdColor);
-                                    contentStream.beginText();
-                                    contentStream.newLineAtOffset(Float.parseFloat(pointTextDTO.getBox().get(0) + ""), pageHeight - Float.parseFloat(pointTextDTO.getBox().get(2) + ""));
-                                    contentStream.showText(pointTextDTO.getText());
-                                    contentStream.endText();
-                                    break;
-                                }
-                            } catch (Exception e) {
-                            }
+            // 加载字体
+            for(ChineseFont chineseFont : ChineseFont.values()) {
+                BaseFont font = BaseFont.createFont(
+                        ChineseFont.getLocation(chineseFont.getFontName()),
+                        BaseFont.IDENTITY_H,
+                        BaseFont.EMBEDDED
+                );
+                fonts.put(chineseFont.getFontName(), font);
+            }
+
+            // 添加文本内容
+            for(PointTextDTO pointTextDTO : pointTextDTOS) {
+                for(Map.Entry<String, BaseFont> entry : fonts.entrySet()) {
+                    try {
+                        BaseFont font = entry.getValue();
+                        String text = pointTextDTO.getText();
+
+                        // 计算字体大小
+                        float fontSize;
+                        if(pageRotation == 90) {
+                            fontSize = (Float.parseFloat(pointTextDTO.getBox().get(1) + "") -
+                                    Float.parseFloat(pointTextDTO.getBox().get(0) + "")) * dpi72ToReal.floatValue();
+                        } else {
+                            float boxWidth = Float.parseFloat(pointTextDTO.getBox().get(1) - pointTextDTO.getBox().get(0) + "");
+                            float boxHeight = Float.parseFloat(pointTextDTO.getBox().get(3) - pointTextDTO.getBox().get(2) + "");
+                            fontSize = computeFittedFontSize(font, text, boxWidth, boxHeight, 12f);
                         }
+
+                        // 计算位置
+                        float x = Float.parseFloat(pointTextDTO.getBox().get(0) + "");
+                        float y = (pageRotation == 0) ?
+                                (pageHeight - Float.parseFloat(pointTextDTO.getBox().get(2) + "")) :
+                                Float.parseFloat(pointTextDTO.getBox().get(2) + "");
+
+                        // 绘制文本 - 确保每个beginText()都有对应的endText()
+                        canvas.beginText();
+                        canvas.setFontAndSize(font, fontSize);
+                        canvas.setColorFill(BaseColor.BLACK);
+                        canvas.setTextMatrix(x, y);
+                        canvas.showText(text);
+                        canvas.endText();  // 确保每个beginText()都有对应的endText()
+
+                        break; // 找到可用字体后跳出循环
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                        // 忽略错误继续尝试下一个字体
                     }
                 }
-                document.save("C:\\Users\\86181\\Desktop\\123456.pdf");
-            } catch (IOException e) {
-                e.printStackTrace();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            if(writer != null) {
+                writer.close();
+            }
+            if(document != null) {
+                document.close();  // 这会自动处理任何未关闭的文本操作
             }
         }
     }
@@ -702,15 +703,19 @@ public class ITextTest {
      * @param baseFontSize
      * @return
      */
-    public static float computeFittedFontSize(PDType0Font font, String text, float boxWidth, float boxHeight, float baseFontSize) {
+    public static float computeFittedFontSize(BaseFont font, String text,
+                                              float boxWidth, float boxHeight, float baseFontSize) {
         try {
-            float textWidth = font.getStringWidth(text) / 1000f * baseFontSize;
-            float textHeight = font.getFontDescriptor().getFontBoundingBox().getHeight() / 1000f * baseFontSize;
+            float textWidth = font.getWidthPoint(text, baseFontSize);
+            float textHeight = font.getFontDescriptor(BaseFont.BBOXURY, baseFontSize) -
+                    font.getFontDescriptor(BaseFont.BBOXLLY, baseFontSize);
 
-            float scaleFactor = Math.max(boxWidth / textWidth, boxHeight / textHeight);
+            float scaleFactor = Math.min(boxWidth / textWidth, boxHeight / textHeight);
+            if(scaleFactor == 0.0f) {
+                scaleFactor = Math.max(boxWidth / textWidth, boxHeight / textHeight);
+            }
             return baseFontSize * scaleFactor;
-
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
             return baseFontSize;
         }
