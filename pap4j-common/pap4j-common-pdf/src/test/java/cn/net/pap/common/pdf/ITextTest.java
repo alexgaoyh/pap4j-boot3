@@ -16,8 +16,8 @@ import org.apache.pdfbox.pdmodel.graphics.color.PDColor;
 import org.apache.pdfbox.pdmodel.graphics.color.PDDeviceRGB;
 import org.junit.jupiter.api.Test;
 
-import javax.imageio.ImageIO;
-import javax.imageio.ImageReader;
+import javax.imageio.*;
+import javax.imageio.stream.ImageOutputStream;
 import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -34,6 +34,26 @@ public class ITextTest {
      */
     private static BigDecimal dpi72ToReal = new BigDecimal(300).divide(new BigDecimal(72), 2, BigDecimal.ROUND_HALF_UP);
 
+    // @Test
+    public void dirConvertTest() throws Exception {
+        File[] files = new File("C:\\Users\\86181\\Desktop\\单").listFiles();
+
+        for (File file : files) {
+            if (file.isDirectory()) {
+            } else {
+                String fileName = file.getName().toLowerCase();
+                if (fileName.endsWith(".pdf")) {
+                    PdfReader reader = new PdfReader(file.getAbsolutePath());
+                    Integer pageNum = 1;
+                    Rectangle pageSize = reader.getPageSize(pageNum);
+                    String textWithPoints = SafePdfTextExtractor.extractTextFromPage(reader, pageNum, pageSize.getWidth(), pageSize.getHeight(), reader.getPageRotation(pageNum), file.getPath().replace(".pdf", ".jpg"));
+                    System.out.println(textWithPoints);
+                    System.out.println(fileName);
+                }
+            }
+        }
+    }
+
     @Test
     public void pointTextTest() {
         try {
@@ -48,8 +68,7 @@ public class ITextTest {
             PdfReader reader = new PdfReader(file.getAbsolutePath());
             Integer pageNum = 1;
             Rectangle pageSize = reader.getPageSize(pageNum);
-            PapTextExtractionStrategy strategy = new PapTextExtractionStrategy(pageSize.getWidth(), pageSize.getHeight(), reader.getPageRotation(pageNum));
-            String textWithPoints = PdfTextExtractor.getTextFromPage(reader, pageNum, strategy);
+            String textWithPoints = SafePdfTextExtractor.extractTextFromPage(reader, pageNum, pageSize.getWidth(), pageSize.getHeight(), reader.getPageRotation(pageNum), null);
 
             String dpi = textWithPoints.substring(textWithPoints.indexOf("[") + 1, textWithPoints.indexOf("]"));
             textWithPoints = textWithPoints.substring(textWithPoints.indexOf("]") + 1);
@@ -93,7 +112,7 @@ public class ITextTest {
             System.out.println(maxWidth);
             System.out.println(objectMapper.writeValueAsString(centerXTextList));
 
-            saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS, dpi72ToReal);
+            // saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS, dpi72ToReal);
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -123,10 +142,13 @@ public class ITextTest {
 
         private List<ImageRenderInfo> allImages = new ArrayList<>();
 
-        PapTextExtractionStrategy(float pageWidth, float pageHeight, Integer pageRotation) {
+        private String jpgPath;
+
+        PapTextExtractionStrategy(float pageWidth, float pageHeight, Integer pageRotation, String jpgPath) {
             this.pageWidth = pageWidth;
             this.pageHeight = pageHeight;
             this.pageRotation = pageRotation;
+            this.jpgPath = jpgPath;
         }
 
         @Override
@@ -219,17 +241,99 @@ public class ITextTest {
         @Override
         public String getResultantText() {
             // pdf 内可能存在多张图像，这里可以做一个拼接
-//            List<ImageRenderInfo> allImagesTmp = this.allImages;
-//            if(allImagesTmp != null && allImagesTmp.size() > 0) {
-//                try {
-//                    BufferedImage fullImage = mergeImagesByPosition(allImages, this.pageWidth, this.pageHeight, this.imageDPI);
-//                    ImageIO.write(fullImage, "jpg", new File("C:\\Users\\86181\\Desktop\\0002B.jpg"));
-//                } catch (IOException e) {
-//                    throw new RuntimeException(e);
-//                }
-//            }
+            if(null != this.jpgPath && !"".equals(this.jpgPath)) {
+                List<ImageRenderInfo> allImagesTmp = this.allImages;
+                if(allImagesTmp != null && allImagesTmp.size() > 0) {
+                    try {
+                        BufferedImage fullImage = mergeImagesByPosition(allImages, this.pageWidth, this.pageHeight, this.imageDPI);
+                        // 获取 JPEG ImageWriter
+                        Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
+                        if (!writers.hasNext()) {
+                            throw new IllegalStateException("No JPEG ImageWriter found!");
+                        }
+                        ImageWriter writer = writers.next();
+                        File file = new File(this.jpgPath);
+                        try (ImageOutputStream ios = ImageIO.createImageOutputStream(file)) {
+                            writer.setOutput(ios);
+                            ImageWriteParam param = writer.getDefaultWriteParam();
+                            param.setCompressionMode(ImageWriteParam.MODE_EXPLICIT);
+                            param.setCompressionQuality(0.6f);
+                            writer.write(null, new IIOImage(fullImage, null, null), param);
+                        } finally {
+                            writer.dispose();
+                        }
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
             return "[" + imageDPI + "]" + withPointString.toString();
         }
+    }
+
+    /**
+     * iText5 内部 处理结构化标记内容（Marked Content）时栈未匹配
+     */
+    public static class SafePdfTextExtractor {
+
+        public static String extractTextFromPage(PdfReader reader, int pageNum, float pageWidth, float pageHeight, Integer pageRotation, String jpgPath) throws IOException {
+            PapTextExtractionStrategy strategy = new PapTextExtractionStrategy(pageWidth, pageHeight, pageRotation, jpgPath);
+            SafeProcessor processor = new SafeProcessor(strategy);
+            PdfDictionary pageDic = reader.getPageN(pageNum);
+            PdfDictionary resourcesDic = pageDic.getAsDict(PdfName.RESOURCES);
+
+            PdfContentByte cb = new PdfContentByte(null);
+            byte[] contentBytes = reader.getPageContent(pageNum);
+
+            processor.processContent(contentBytes, resourcesDic);
+            return strategy.getResultantText();
+        }
+
+        static class SafeProcessor extends PdfContentStreamProcessor {
+
+            public SafeProcessor(RenderListener renderListener) {
+                super(renderListener);
+
+                this.registerContentOperator("EMC", new SafeEndMarkedContentOperator());
+
+                this.registerContentOperator("BMC", new SafeBeginMarkedContentOperator());
+            }
+
+            private static Stack<?> getMarkedContentStack(PdfContentStreamProcessor processor) throws Exception {
+                Field field = PdfContentStreamProcessor.class.getDeclaredField("markedContentStack");
+                field.setAccessible(true);
+                return (Stack<?>) field.get(processor);
+            }
+
+            static class SafeEndMarkedContentOperator implements ContentOperator {
+                @Override
+                public void invoke(PdfContentStreamProcessor processor, PdfLiteral operator, ArrayList<PdfObject> operands) {
+                    try {
+                        Stack<?> stack = SafeProcessor.getMarkedContentStack(processor);
+                        if (!stack.isEmpty()) {
+                            stack.pop();
+                        } else {
+                            System.err.println("Skipped unmatched EMC (stack was empty)");
+                        }
+                    } catch (Exception e) {
+                        System.err.println("EMC Error: " + e.getMessage());
+                    }
+                }
+            }
+
+            static class SafeBeginMarkedContentOperator implements ContentOperator {
+                @Override
+                public void invoke(PdfContentStreamProcessor processor, PdfLiteral operator, ArrayList<PdfObject> operands) {
+                    try {
+                        Stack<Object> stack = (Stack<Object>) SafeProcessor.getMarkedContentStack(processor);
+                        stack.push(new Object());
+                    } catch (Exception e) {
+                        System.err.println("BMC Error: " + e.getMessage());
+                    }
+                }
+            }
+        }
+
     }
 
     private static List<Double> string2Box(String point, BigDecimal dpi72ToReal) {
@@ -546,7 +650,72 @@ public class ITextTest {
                 e.printStackTrace();
             }
         }
+        if(pageRotation == 0) {
+            try (PDDocument document = new PDDocument()) {
+                Integer pageWidth = Math.round(pageSize.getWidth() * dpi72ToReal.floatValue());
+                Integer pageHeight = Math.round(pageSize.getHeight() * dpi72ToReal.floatValue());
+                PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
+                document.addPage(page);
+                try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                    PDColor pdColor = new PDColor(new float[]{0f, 0f, 0f}, PDDeviceRGB.INSTANCE);
+                    Map<String, PDType0Font> fonts = new HashMap<>();
+                    for(ChineseFont chineseFont : ChineseFont.values()) {
+                        PDType0Font tmp = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName())));
+                        fonts.put(chineseFont.getFontName(), tmp);
+                    }
+                    for(PointTextDTO pointTextDTO : pointTextDTOS) {
+                        for(Map.Entry<String, PDType0Font> entry : fonts.entrySet()) {
+                            try {
+                                if(entry.getValue().getStringWidth(String.valueOf(pointTextDTO.getText())) > 0) {
+
+                                    float boxWidth = Float.parseFloat(pointTextDTO.getBox().get(1) - pointTextDTO.getBox().get(0) + "");
+                                    float boxHeight = Float.parseFloat(pointTextDTO.getBox().get(3) - pointTextDTO.getBox().get(2) + "");
+
+                                    float fontSize = computeFittedFontSize(entry.getValue(), pointTextDTO.getText(), boxWidth, boxHeight, 12f);
+
+                                    contentStream.setFont(entry.getValue(), fontSize);
+                                    contentStream.setNonStrokingColor(pdColor);
+                                    contentStream.beginText();
+                                    contentStream.newLineAtOffset(Float.parseFloat(pointTextDTO.getBox().get(0) + ""), pageHeight - Float.parseFloat(pointTextDTO.getBox().get(2) + ""));
+                                    contentStream.showText(pointTextDTO.getText());
+                                    contentStream.endText();
+                                    break;
+                                }
+                            } catch (Exception e) {
+                            }
+                        }
+                    }
+                }
+                document.save("C:\\Users\\86181\\Desktop\\123456.pdf");
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
+
+    /**
+     * 字体大小
+     * @param font
+     * @param text
+     * @param boxWidth
+     * @param boxHeight
+     * @param baseFontSize
+     * @return
+     */
+    public static float computeFittedFontSize(PDType0Font font, String text, float boxWidth, float boxHeight, float baseFontSize) {
+        try {
+            float textWidth = font.getStringWidth(text) / 1000f * baseFontSize;
+            float textHeight = font.getFontDescriptor().getFontBoundingBox().getHeight() / 1000f * baseFontSize;
+
+            float scaleFactor = Math.max(boxWidth / textWidth, boxHeight / textHeight);
+            return baseFontSize * scaleFactor;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return baseFontSize;
+        }
+    }
+
 
     class PointTextDTO implements Serializable {
 
