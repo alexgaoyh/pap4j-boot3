@@ -1,5 +1,6 @@
 package cn.net.pap.common.itext7;
 
+import com.itextpdf.io.image.ImageType;
 import com.itextpdf.kernel.geom.Matrix;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.*;
@@ -12,16 +13,12 @@ import com.itextpdf.kernel.pdf.canvas.parser.listener.IEventListener;
 import com.itextpdf.kernel.pdf.xobject.PdfImageXObject;
 import org.junit.jupiter.api.Test;
 
-import javax.imageio.IIOImage;
-import javax.imageio.ImageIO;
-import javax.imageio.ImageWriteParam;
-import javax.imageio.ImageWriter;
+import javax.imageio.*;
 import javax.imageio.stream.ImageOutputStream;
+import javax.imageio.stream.MemoryCacheImageInputStream;
 import java.awt.*;
 import java.awt.image.BufferedImage;
-import java.io.File;
-import java.io.IOException;
-import java.io.UnsupportedEncodingException;
+import java.io.*;
 import java.util.*;
 import java.util.List;
 
@@ -218,6 +215,9 @@ public class ITextTest {
                 if (imageObject == null) continue;
 
                 BufferedImage img = imageObject.getBufferedImage();
+                if(img == null && imageObject.identifyImageType().name().equals(ImageType.JBIG2.name())) {
+                    img = extractJBIG2AsBufferedImageWithTransparency(imageInfo);
+                }
                 if (img == null) continue;
 
                 Matrix ctm = imageInfo.getImageCtm();
@@ -238,6 +238,123 @@ public class ITextTest {
 
             g.dispose();
             return canvas;
+        }
+
+        public static BufferedImage extractJBIG2AsBufferedImageWithTransparency(ImageRenderInfo renderInfo) {
+            try {
+                PdfImageXObject imageXObj = renderInfo.getImage();
+                if (imageXObj == null) return null;
+
+                byte[] jbig2Bytes = imageXObj.getImageBytes(true);  // get filtered bytes
+
+                PdfDictionary imgDict = imageXObj.getPdfObject();
+
+                byte[] globalBytes = extractGlobalBytesFromDecodeParms(imgDict.getAsDictionary(PdfName.DecodeParms));
+
+                ByteArrayOutputStream merged = new ByteArrayOutputStream();
+                if (globalBytes != null) merged.write(globalBytes);
+                merged.write(jbig2Bytes);
+
+                ByteArrayInputStream bais = new ByteArrayInputStream(merged.toByteArray());
+                MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais);
+
+                Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
+                if (!readers.hasNext()) throw new RuntimeException("No JBIG2 ImageReader found. Make sure jbig2-imageio is in classpath.");
+
+                ImageReader reader = readers.next();
+                reader.setInput(iis);
+                BufferedImage image = reader.read(0);
+
+                // Handle /ImageMask
+                PdfBoolean imageMask = imgDict.getAsBoolean(PdfName.ImageMask);
+                if (imageMask != null && imageMask.getValue()) {
+                    image = convertMaskToAlpha(image);
+                } else {
+                    PdfObject smask = imgDict.get(PdfName.SMask);
+                    if (smask instanceof PdfStream) {
+                        PdfStream smaskStream = (PdfStream) smask;
+                        PdfImageXObject smaskXObj = new PdfImageXObject(smaskStream);
+                        BufferedImage smaskImg = smaskXObj.getBufferedImage();
+
+                        if (smaskImg != null) {
+                            image = applyAlphaMask(image, smaskImg);
+                        }
+                    } else {
+                        image = convertWhiteToTransparent(image);
+                    }
+                }
+
+                return image;
+
+            } catch (IOException e) {
+                e.printStackTrace();
+                return null;
+            }
+        }
+
+        private static byte[] extractGlobalBytesFromDecodeParms(PdfDictionary decodeParms) throws IOException {
+            if (decodeParms == null) return null;
+
+            PdfObject globalObj = decodeParms.get(PdfName.JBIG2Globals);
+            if (globalObj == null) return null;
+
+            if (globalObj instanceof PdfStream) {
+                return ((PdfStream) globalObj).getBytes();
+            } else if (globalObj instanceof PdfIndirectReference) {
+                PdfObject indirect = ((PdfIndirectReference) globalObj).getRefersTo();
+                if (indirect instanceof PdfStream) {
+                    return ((PdfStream) indirect).getBytes();
+                }
+            }
+            return null;
+        }
+
+        private static BufferedImage convertMaskToAlpha(BufferedImage maskImg) {
+            int w = maskImg.getWidth();
+            int h = maskImg.getHeight();
+            BufferedImage newImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int rgb = maskImg.getRGB(x, y) & 0xFFFFFF;
+                    int alpha = (rgb == 0xFFFFFF) ? 0 : 255; // 白色透明
+                    int argb = (alpha << 24) | 0x000000; // 黑色前景
+                    newImage.setRGB(x, y, argb);
+                }
+            }
+            return newImage;
+        }
+
+        private static BufferedImage applyAlphaMask(BufferedImage img, BufferedImage mask) {
+            int w = Math.min(img.getWidth(), mask.getWidth());
+            int h = Math.min(img.getHeight(), mask.getHeight());
+            BufferedImage result = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int rgb = img.getRGB(x, y);
+                    int alpha = 255 - (mask.getRGB(x, y) & 0xFF);
+                    alpha = Math.min(255, Math.max(0, alpha));
+                    int newArgb = (alpha << 24) | (rgb & 0x00FFFFFF);
+                    result.setRGB(x, y, newArgb);
+                }
+            }
+            return result;
+        }
+
+        private static BufferedImage convertWhiteToTransparent(BufferedImage img) {
+            int w = img.getWidth();
+            int h = img.getHeight();
+            BufferedImage newImage = new BufferedImage(w, h, BufferedImage.TYPE_INT_ARGB);
+            for (int y = 0; y < h; y++) {
+                for (int x = 0; x < w; x++) {
+                    int rgb = img.getRGB(x, y);
+                    if ((rgb & 0x00FFFFFF) == 0x00FFFFFF) {
+                        newImage.setRGB(x, y, 0x00FFFFFF); // transparent
+                    } else {
+                        newImage.setRGB(x, y, (0xFF << 24) | (rgb & 0x00FFFFFF));
+                    }
+                }
+            }
+            return newImage;
         }
 
     }
