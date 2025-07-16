@@ -13,9 +13,12 @@ public class DiffPic2PDFTest {
 
     // @Test
     public void pic2PDF() throws IOException {
+        FileOutputStream pdfOutputStream = null;
+        Document document = null;
         try {
-            Document document = new Document();
-            PdfWriter.getInstance(document, new FileOutputStream(imagePath + ".pdf"));
+            document = new Document();
+            pdfOutputStream = new FileOutputStream(imagePath + ".pdf");
+            PdfWriter.getInstance(document, pdfOutputStream);
             document.open();
             Image jp2Image = Image.getInstance(imagePath);
             document.add(jp2Image);
@@ -24,6 +27,17 @@ public class DiffPic2PDFTest {
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("错误: " + e.getMessage());
+        } finally {
+            if (document != null && document.isOpen()) {
+                document.close();
+            }
+            if (pdfOutputStream != null) {
+                try {
+                    pdfOutputStream.close();
+                } catch (IOException e) {
+                    System.err.println("关闭文件流时出错: " + e.getMessage());
+                }
+            }
         }
     }
 
