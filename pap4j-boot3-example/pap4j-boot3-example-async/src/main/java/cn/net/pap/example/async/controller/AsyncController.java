@@ -1,9 +1,11 @@
 package cn.net.pap.example.async.controller;
 
 import cn.net.pap.example.async.config.ContextHolder;
+import cn.net.pap.example.async.constant.AsyncConstant;
 import cn.net.pap.example.async.service.AsyncService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -12,8 +14,12 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.context.request.async.WebAsyncTask;
 
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 @RestController
 public class AsyncController {
@@ -92,5 +98,132 @@ public class AsyncController {
 
         return task;
     }
+
+    /**
+     * 组合任务
+     *
+     * @return
+     */
+    @GetMapping("/composite-async")
+    public WebAsyncTask<String> compositeAsyncTask() {
+        // 第一阶段
+        Callable<String> stage1 = () -> {
+            Thread.sleep(1000);
+            return "Stage1-Result";
+        };
+
+        // 第二阶段
+        Callable<String> compositeCallable = () -> {
+            String stage1Result = stage1.call();
+            return stage1Result + "-compositeCallable";
+        };
+
+        WebAsyncTask<String> task = new WebAsyncTask<>(3000, compositeCallable);
+
+        // 回调
+        task.onCompletion(() -> System.out.println("Composite task completed"));
+
+        return task;
+    }
+
+    /**
+     * 启动可取消的异步任务
+     *
+     * @param taskId 任务ID
+     * @return WebAsyncTask 异步任务
+     */
+    @GetMapping("/start-task")
+    public WebAsyncTask<String> startTask(@RequestParam String taskId) {
+        // 初始化取消标志和进度
+        AtomicBoolean cancelled = new AtomicBoolean(false);
+        AtomicInteger progress = new AtomicInteger(0);
+
+        AsyncConstant.cancellationFlags.put(taskId, cancelled);
+        AsyncConstant.taskProgress.put(taskId, progress);
+
+        Callable<String> callable = () -> {
+            try {
+                // 模拟任务执行，10个步骤，每个步骤增加10%进度
+                for (int i = 0; i < 10; i++) {
+                    // 检查是否取消
+                    if (cancelled.get()) {
+                        return "Task " + taskId + " cancelled at " + progress.get() + "%";
+                    }
+                    // 模拟工作单元
+                    Thread.sleep(1000);
+                    // 更新进度
+                    int newProgress = (i + 1) * 10;
+                    progress.set(newProgress);
+                    System.out.println(taskId + " - Progress: " + newProgress + "%");
+                }
+                return "Task " + taskId + " completed successfully";
+            } finally {
+                // 清理资源
+                AsyncConstant.cancellationFlags.remove(taskId);
+                AsyncConstant.taskProgress.remove(taskId);
+            }
+        };
+
+        // 创建异步任务，设置5秒超时
+        WebAsyncTask<String> task = new WebAsyncTask<>(105000, callable);
+        // 超时处理
+        task.onTimeout(() -> {
+            cancelled.set(true);
+            return "Task " + taskId + " timed out at " + progress.get() + "%";
+        });
+        return task;
+    }
+
+    /**
+     * 取消正在执行的任务
+     *
+     * @param taskId 任务ID
+     * @return 取消结果
+     */
+    @GetMapping("/cancel-task")
+    public ResponseEntity<String> cancelTask(@RequestParam String taskId) {
+        AtomicBoolean flag = AsyncConstant.cancellationFlags.get(taskId);
+        if (flag != null) {
+            flag.set(true);
+            int progress = AsyncConstant.taskProgress.getOrDefault(taskId, new AtomicInteger(0)).get();
+            return ResponseEntity.ok("Task " + taskId + " cancellation requested. Progress was: " + progress + "%");
+        }
+        return ResponseEntity.ok("No Task");
+    }
+
+    /**
+     * 查询任务进度
+     *
+     * @param taskId 任务ID
+     * @return 当前进度(0 - 100)
+     */
+    @GetMapping("/progress")
+    public ResponseEntity<Integer> getProgress(@RequestParam String taskId) {
+        AtomicInteger progress = AsyncConstant.taskProgress.get(taskId);
+        if (progress != null) {
+            return ResponseEntity.ok(progress.get());
+        }
+        return ResponseEntity.ok(-1);
+    }
+
+    /**
+     * 查询所有任务状态
+     *
+     * @return 所有活跃任务的状态
+     */
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getAllTaskStatus() {
+        Map<String, Object> statusMap = new HashMap<>();
+
+        AsyncConstant.cancellationFlags.forEach((taskId, flag) -> {
+            Map<String, Object> taskInfo = new HashMap<>();
+            taskInfo.put("cancelled", flag.get());
+            taskInfo.put("progress", AsyncConstant.taskProgress.getOrDefault(taskId, new AtomicInteger(0)).get());
+            statusMap.put(taskId, taskInfo);
+        });
+
+        return ResponseEntity.ok(statusMap);
+    }
+
 
 }
