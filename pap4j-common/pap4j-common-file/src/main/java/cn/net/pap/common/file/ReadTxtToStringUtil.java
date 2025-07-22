@@ -5,6 +5,7 @@ import org.mozilla.universalchardet.UniversalDetector;
 import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 
 public class ReadTxtToStringUtil {
@@ -110,6 +111,25 @@ public class ReadTxtToStringUtil {
     public static List<String> readFileLines(File file) throws IOException {
         String encoding = detectEncoding(file);
         return Files.readAllLines(file.toPath(), Charset.forName(encoding));
+    }
+
+    /**
+     * 文件编码
+     * @param filePath
+     * @return
+     * @throws IOException
+     */
+    public static String detectCharsetUsingICU4J(String filePath) throws IOException {
+        byte[] data = Files.readAllBytes(Paths.get(filePath));
+        com.ibm.icu.text.CharsetDetector detector = new com.ibm.icu.text.CharsetDetector();
+        detector.setText(data);
+        com.ibm.icu.text.CharsetMatch match = detector.detect();
+
+        if (match != null) {
+            return match.getName();
+        } else {
+            return null;
+        }
     }
 
 }

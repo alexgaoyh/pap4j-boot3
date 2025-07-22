@@ -7,6 +7,12 @@ import java.io.*;
 public class ReadTxtToStringUtilTest {
 
     // @Test
+    public void detectCharsetUsingICU4JTest() throws IOException {
+        String e = ReadTxtToStringUtil.detectCharsetUsingICU4J("C:\\Users\\86181\\Desktop\\ftp_426586352426085054.txt");
+        System.out.println(e);
+    }
+
+    // @Test
     public void readTxtToStringTest() throws IOException {
         String utf8 = ReadTxtToStringUtil.readFileContent(new File("utf8.txt"));
         String utf8bom = ReadTxtToStringUtil.readFileContent(new File("utf8bom.txt"));
