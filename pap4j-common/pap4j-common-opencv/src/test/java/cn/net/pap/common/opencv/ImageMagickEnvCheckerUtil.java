@@ -89,6 +89,16 @@ public class ImageMagickEnvCheckerUtil {
     // 拼接 指定坐标，在特定位置拼接图像
     // magick -size 2067x3492 xc:white ( 000.jpg -geometry +0+0 ) -composite ( 001.jpg -geometry +0+1656 ) -composite ( 002.jpg -geometry +0+3320 ) -composite ( 003.png -alpha set -channel A -evaluate multiply 1 +channel -geometry +64+104 ) -composite final_output.png
 
+    // 拼接 指定坐标，两张图像左右指定坐标拼接 右图 (right.jpg) 的坐标点 (50,150) 映射到 左图 (left.jpg) 的 (100,200) 右图 的 (250,150) 映射到 左图 的 (300,400)
+    // magick left.jpg ( right.jpg -virtual-pixel transparent -background none -distort Affine "50,150 100,200  250,150 300,400" -background white -flatten ) +append result.jpg
+
+    // 水平拼接
+    // magick left.jpg ( right.jpg -virtual-pixel transparent -background none -distort Affine "0,0 0,0  621,0 621,0" -background white -flatten ) +append result.jpg
+
+    // 旋转90度并拉伸 图像的尺寸是 641*424
+    // 前两个点你已经提供： 第1对： (0, 0) → (0, 424) 第2对： (0, 424) → (641, 424) 伪造中心点： 源中心点：((0 + 0) / 2, (0 + 424) / 2) = (0, 212) 目标中心点：((0 + 641) / 2, (424 + 424) / 2) = (320.5, 424)
+    // magick left.jpg -background none -set option:distort:viewport 641x424+0+0 -distort Affine "0,0 641,0  0,424 0,0  320.5,0 641,212" output.jpg
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
