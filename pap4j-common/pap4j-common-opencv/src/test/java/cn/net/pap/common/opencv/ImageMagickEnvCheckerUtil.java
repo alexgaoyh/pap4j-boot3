@@ -273,4 +273,61 @@ public class ImageMagickEnvCheckerUtil {
         }
     }
 
+    /**
+     * 假设有一张图像的尺寸是 641*424，
+     * 假设有一条目标线段(图像顶部的水平线)[(0,424),(641,424)]
+     * 假设有一个实际的线段(图像左侧的垂直线)[(0,0), (0, 424)]
+     *  如上的方法，其实是将目标线段进行旋转和缩放处理，得到与实际线段相同效果的一张处理过的图像。    最终实际是图像逆时针旋转90°，然后再进行缩小，可以执行这个 magick 命令看到实际的效果。
+     *
+     * @throws Exception
+     */
+    @Test
+    public void calAngleAndRatioTest() throws Exception {
+        // 目标线段
+        double x1 = 0, y1 = 424;
+        double x2 = 641, y2 = 424;
+
+        // 图像中对应的实际线段
+        double x3 = 0, y3 = 0;
+        double x4 = 0, y4 = 424;
+
+        double angle = computeAngleDifference(x1, y1, x2, y2, x3, y3, x4, y4);
+        double scale = computeScaleRatio(x1, y1, x2, y2, x3, y3, x4, y4);
+
+        System.out.printf("Angle to rotate (degrees): %.2f\n", angle);
+        System.out.printf("Scale ratio: %.4f\n", scale);
+
+        generateImageMagickCommand("right.jpg", "output.jpg", angle, scale);
+    }
+
+    // 计算角度差（单位：度）
+    public static double computeAngleDifference(double x1, double y1, double x2, double y2,
+                                                double x3, double y3, double x4, double y4) {
+        double angle1 = Math.atan2(y2 - y1, x2 - x1); // 目标线段角度
+        double angle2 = Math.atan2(y4 - y3, x4 - x3); // 原始线段角度
+        double angleDiff = Math.toDegrees(angle1 - angle2);
+        return angleDiff;
+    }
+
+    // 计算长度比（缩放因子）
+    public static double computeScaleRatio(double x1, double y1, double x2, double y2,
+                                           double x3, double y3, double x4, double y4) {
+        double len1 = Math.hypot(x2 - x1, y2 - y1); // 目标线段长度
+        double len2 = Math.hypot(x4 - x3, y4 - y3); // 实际线段长度
+        return len2 / len1;  // 修改为实际长度/目标长度
+    }
+
+    // 输出 ImageMagick 命令
+    public static void generateImageMagickCommand(String inputPath, String outputPath,
+                                                  double angle, double scale) {
+        // 使用 %[fx:w/2],%[fx:h/2] 计算图像中心点
+        String command = String.format(
+                "magick %s -virtual-pixel transparent -background none " +
+                        "-distort SRT \"%%[fx:w/2],%%[fx:h/2] %.4f %.2f\" %s",
+                inputPath, scale, angle, outputPath
+        );
+        System.out.println("ImageMagick command:");
+        System.out.println(command);
+    }
+
 }
