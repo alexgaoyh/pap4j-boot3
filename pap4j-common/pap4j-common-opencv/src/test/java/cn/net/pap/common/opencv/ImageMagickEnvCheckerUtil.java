@@ -4,10 +4,10 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -159,7 +159,7 @@ public class ImageMagickEnvCheckerUtil {
 
     // @Test
     public void tiffCompressionTest() throws IOException, InterruptedException {
-        ProcessBuilder processBuilder = new ProcessBuilder("magick", "identify", "-format",  "%[compression]", "C:\\Users\\86181\\Desktop\\input.tif");
+        ProcessBuilder processBuilder = new ProcessBuilder("magick", "identify", "-format", "%[compression]", "C:\\Users\\86181\\Desktop\\input.tif");
         Process process = null;
 
         try {
@@ -277,7 +277,7 @@ public class ImageMagickEnvCheckerUtil {
      * 假设有一张图像的尺寸是 641*424，
      * 假设有一条目标线段(图像顶部的水平线)[(0,424),(641,424)]
      * 假设有一个实际的线段(图像左侧的垂直线)[(0,0), (0, 424)]
-     *  如上的方法，其实是将目标线段进行旋转和缩放处理，得到与实际线段相同效果的一张处理过的图像。    最终实际是图像逆时针旋转90°，然后再进行缩小，可以执行这个 magick 命令看到实际的效果。
+     * 如上的方法，其实是将目标线段进行旋转和缩放处理，得到与实际线段相同效果的一张处理过的图像。    最终实际是图像逆时针旋转90°，然后再进行缩小，可以执行这个 magick 命令看到实际的效果。
      *
      * @throws Exception
      */
@@ -326,8 +326,144 @@ public class ImageMagickEnvCheckerUtil {
                         "-distort SRT \"%%[fx:w/2],%%[fx:h/2] %.4f %.2f\" %s",
                 inputPath, scale, angle, outputPath
         );
+        // 生成命令示例： magick right.jpg -virtual-pixel transparent -background none -distort SRT "%[fx:w/2],%[fx:h/2] 0.6615 -90.00" output.jpg
+        // 如下命令可以裁剪掉多于的黑色的填充区域，重置图像的虚拟画布，确保裁剪后的图像没有多余的偏移信息. -trim +repage
+        // magick right.jpg -virtual-pixel transparent -background none -distort SRT "%[fx:w/2],%[fx:h/2] 0.6615 -90.00" -trim +repage output.jpg
         System.out.println("ImageMagick command:");
         System.out.println(command);
+    }
+
+    @Test
+    public void rotateTest() throws Exception {
+        // 测试(100,50)逆时针旋转90°
+        double[] rotated = rotatePoint(100d, 50d, 90);
+        System.out.printf("旋转后坐标: (%.2f, %.2f)%n", rotated[0], rotated[1]);
+    }
+
+    /**
+     * 旋转点坐标
+     *
+     * @param x     原始x坐标
+     * @param y     原始y坐标
+     * @param angle 旋转角度(度数)    正90表示逆时针旋转90°，右手坐标系
+     * @return 旋转后的坐标点数组 [x', y']
+     */
+    public static double[] rotatePoint(double x, double y, double angle) {
+        double radians = Math.toRadians(angle);
+        double cos = Math.cos(radians);
+        double sin = Math.sin(radians);
+
+        double newX = x * cos - y * sin;
+        double newY = x * sin + y * cos;
+
+        return new double[]{newX, newY};
+    }
+
+    /**
+     * 旋转点坐标(整数版本)
+     *
+     * @param x     原始x坐标
+     * @param y     原始y坐标
+     * @param angle 旋转角度(度数)
+     * @return 旋转后的坐标点数组 [x', y'] (四舍五入取整)
+     */
+    public static int[] rotatePoint(int x, int y, double angle) {
+        double[] result = rotatePoint((double) x, (double) y, angle);
+        return new int[]{
+                (int) Math.round(result[0]),
+                (int) Math.round(result[1])
+        };
+    }
+
+
+    @Test
+    public void transformPointTest() throws Exception {
+        // 原始图像尺寸
+        int originalWidth = 200;
+        int originalHeight = 100;
+
+        // 旋转角度（逆时针）
+        double rotationAngleDegrees = 90;
+
+        // 缩放比例（例如 0.5 表示高度缩小一半）
+        double scale = 0.5;
+
+        // 计算旋转和缩放后的点坐标
+        Point2D.Double originalPoint = new Point2D.Double(200, 100); // 右上角点 (200, 100)
+        Point2D.Double transformedPoint = transformPoint(
+                originalPoint,
+                originalWidth,
+                originalHeight,
+                rotationAngleDegrees,
+                scale
+        );
+
+        System.out.println("原始坐标: (" + originalPoint.x + ", " + originalPoint.y + ")");
+        System.out.println("变换后坐标: (" + transformedPoint.x + ", " + transformedPoint.y + ")");
+    }
+
+    /**
+     * 计算旋转和缩放后的点坐标（新坐标系，原点与原始中心重叠）
+     *
+     * @param point            原始点坐标（相对于图像左上角）
+     * @param originalWidth    原始图像宽度
+     * @param originalHeight   原始图像高度
+     * @param rotationAngleDeg 旋转角度（逆时针，单位：度）
+     * @param scale            缩放比例
+     * @return 变换后的点坐标（新坐标系）
+     */
+    public static Point2D.Double transformPoint(
+            Point2D.Double point,
+            int originalWidth,
+            int originalHeight,
+            double rotationAngleDeg,
+            double scale
+    ) {
+        // 1. 计算图像中心点（保留两位小数）
+        double centerX = formatDouble(originalWidth / 2.0);
+        double centerY = formatDouble(originalHeight / 2.0);
+
+        // 2. 将点转换为相对中心点的坐标（保留两位小数）
+        double relativeX = formatDouble(point.x - centerX);
+        double relativeY = formatDouble(point.y - centerY);
+
+        // 3. 旋转（保留两位小数）
+        double rotationAngleRad = formatDouble(Math.toRadians(rotationAngleDeg));
+        double cosTheta = formatDouble(Math.cos(rotationAngleRad));
+        double sinTheta = formatDouble(Math.sin(rotationAngleRad));
+
+        double rotatedX = formatDouble(relativeX * cosTheta - relativeY * sinTheta);
+        double rotatedY = formatDouble(relativeX * sinTheta + relativeY * cosTheta);
+
+        // 4. 缩放后的坐标（保留两位小数）
+        double scaledX = formatDouble(rotatedX * scale);
+        double scaledY = formatDouble(rotatedY * scale);
+
+        // 5. 计算旋转后的图像尺寸（保留两位小数）
+        double rotatedWidth = formatDouble(Math.abs(originalWidth * cosTheta) + Math.abs(originalHeight * sinTheta));
+        double rotatedHeight = formatDouble(Math.abs(originalWidth * sinTheta) + Math.abs(originalHeight * cosTheta));
+
+        // 6. 缩放后的图像尺寸（保留两位小数）
+        double scaledWidth = formatDouble(rotatedWidth * scale);
+        double scaledHeight = formatDouble(rotatedHeight * scale);
+
+        // 7. 调整坐标系（保留两位小数）
+        double newCenterX = formatDouble(scaledWidth / 2.0);
+        double newCenterY = formatDouble(scaledHeight / 2.0);
+
+        double adjustedX = formatDouble(scaledX + newCenterX);
+        double adjustedY = formatDouble(scaledY + newCenterY);
+
+        return new Point2D.Double(adjustedX, adjustedY);
+    }
+
+    private static final java.text.DecimalFormat df = new java.text.DecimalFormat("0.00");
+
+    /**
+     * 格式化 double 值为两位小数
+     */
+    private static double formatDouble(double value) {
+        return Double.parseDouble(df.format(value));
     }
 
 }
