@@ -264,7 +264,7 @@ public class ImageUtilTest {
         String commandStr = String.join(" ", magickCommand.command());
         System.out.println(commandStr);
 
-        // 一个拼接命令
+        // 一个拼接命令 需要首先计算出来拼接后的图像的大小，然后映射点的话，只取一组映射点的 X坐标，然后设置一个偏移，即可完成拼接. 需要动态算出来图像的尺寸.
         // magick -size 2000x2000 canvas:none ( transformedB.jpg -geometry +0+0 ) -composite ( left.jpg -geometry +600+0 ) -composite output.jpg
 
     }
