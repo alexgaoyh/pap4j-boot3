@@ -4,8 +4,8 @@ import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReader;
-import javax.imageio.spi.IIORegistry;
 import java.awt.*;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -137,5 +137,188 @@ public class ImageUtilTest {
         ImageUtil.base64ToImage(content, "C:\\Users\\86181\\Desktop\\base64.jpg");
     }
 
+    // @Test
+    public void pointTest() {
+        try {
+            // 1. 读取两张图像（替换为你的图像路径）
+            BufferedImage imageA = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\left.jpg"));
+            BufferedImage imageB = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\right.jpg"));
+
+            // 2. 定义对应的点（替换为你的坐标）
+            Point a1 = new Point(641, 0); // 图像A中的点a1
+            Point a2 = new Point(641, 424); // 图像A中的点a2
+            Point b1 = new Point(100, 0);   // 图像B中的点b1
+            Point b2 = new Point(100, 424); // 图像B中的点b2
+
+            // 3. 计算变换参数
+            AffineTransform transform = calculateTransform(a1, a2, b1, b2);
+
+            // 4. 对图像B应用变换
+            BufferedImage transformedB = transformImage(imageB, transform);
+
+            // 5. 拼接图像A和变换后的图像B
+            BufferedImage result = stitchImages(imageA, transformedB);
+
+            // 6. 保存结果
+            ImageIO.write(result, "jpg", new File("C:\\Users\\86181\\Desktop\\result.jpg"));
+            System.out.println("拼接完成！");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    // 计算仿射变换矩阵
+    private static AffineTransform calculateTransform(Point a1, Point a2, Point b1, Point b2) {
+        // 计算向量A和B
+        double vAx = a2.x - a1.x;
+        double vAy = a2.y - a1.y;
+        double vBx = b2.x - b1.x;
+        double vBy = b2.y - b1.y;
+
+        // 计算缩放因子
+        double scale = Math.sqrt(vAx * vAx + vAy * vAy) / Math.sqrt(vBx * vBx + vBy * vBy);
+
+        // 计算旋转角度（弧度）
+        double angleA = Math.atan2(vAy, vAx);
+        double angleB = Math.atan2(vBy, vBx);
+        double angle = angleA - angleB;
+
+        // 构造变换矩阵：先平移b1到原点，再缩放旋转，最后平移到a1
+        AffineTransform transform = new AffineTransform();
+        transform.translate(a1.x, a1.y);      // 平移至a1
+        transform.rotate(angle);               // 旋转
+        transform.scale(scale, scale);        // 缩放
+        transform.translate(-b1.x, -b1.y);     // 平移b1到原点
+
+        return transform;
+    }
+
+    // 对图像应用仿射变换
+    private static BufferedImage transformImage(BufferedImage image, AffineTransform transform) {
+        // 计算变换后的图像边界（可能含负坐标）
+        Rectangle originalBounds = new Rectangle(image.getWidth(), image.getHeight());
+        Rectangle transformedBounds = transform.createTransformedShape(originalBounds).getBounds();
+
+        // 创建目标图像（确保宽度/高度为正）
+        int width = Math.max(1, transformedBounds.width);
+        int height = Math.max(1, transformedBounds.height);
+        BufferedImage transformed = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+
+        // 调整变换矩阵：将图像平移到 (0, 0) 起始点
+        AffineTransform adjustedTransform = new AffineTransform(transform);
+        adjustedTransform.translate(-transformedBounds.x, -transformedBounds.y);
+
+        // 绘制图像
+        Graphics2D g = transformed.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);
+        g.drawImage(image, adjustedTransform, null);
+        g.dispose();
+
+        return transformed;
+    }
+
+    // 拼接两张图像
+    private static BufferedImage stitchImages(BufferedImage imageA, BufferedImage imageB) {
+        // 计算拼接后的总宽度和高度
+        int width = imageA.getWidth() + imageB.getWidth();
+        int height = Math.max(imageA.getHeight(), imageB.getHeight());
+
+        // 创建画布（支持透明度）
+        BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        Graphics2D g = result.createGraphics();
+
+        // 绘制图像A（左侧）
+        g.drawImage(imageA, 0, 0, null);
+
+        // 绘制变换后的图像B（右侧）
+        g.drawImage(imageB, imageA.getWidth(), 0, null);
+        g.dispose();
+
+        return result;
+    }
+
+    /**
+     * ImageMagick 仿射变换
+     */
+    @Test
+    public void magickAffineProjectionTest() {
+        Point a1 = new Point(0, 0);
+        Point a2 = new Point(0, 424);
+        Point a3 = generateThirdPoint(a1, a2);
+
+        Point b1 = new Point(0, 0);
+        Point b2 = new Point(100, 424);
+        Point b3 = generateThirdPoint(b1, b2);
+
+        System.out.println(String.format("\"%d,%d\"", a3.x, a3.y));
+        System.out.println(String.format("\"%d,%d\"", b3.x, b3.y));
+
+        System.out.println(String.format("\"%d,%d %d,%d %d,%d %d,%d %d,%d %d,%d\"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y));
+
+        System.out.println(String.format("\"%d,%d %d,%d %d,%d %d,%d %d,%d %d,%d\"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y));
+
+        ProcessBuilder magickCommand = new ProcessBuilder(
+                "magick", "right.jpg", "-distort", "Affine",
+                String.format("\" %d,%d %d,%d %d,%d %d,%d %d,%d %d,%d \"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y), "transformedB.jpg"
+        );
+        String commandStr = String.join(" ", magickCommand.command());
+        System.out.println(commandStr);
+
+        // 一个拼接命令
+        // magick -size 2000x2000 canvas:none ( transformedB.jpg -geometry +0+0 ) -composite ( left.jpg -geometry +600+0 ) -composite output.jpg
+
+    }
+
+    private static double[] computeAffineMatrix(Point b1, Point b2, Point a1, Point a2) {
+        // 平移量
+        double dx = a1.x - b1.x;
+        double dy = a1.y - b1.y;
+
+        // 向量差
+        double bx = b2.x - b1.x;
+        double by = b2.y - b1.y;
+        double ax = a2.x - a1.x;
+        double ay = a2.y - a1.y;
+
+        // 缩放 + 旋转
+        double scale = Math.hypot(ax, ay) / Math.hypot(bx, by);
+        double angleA = Math.atan2(ay, ax);
+        double angleB = Math.atan2(by, bx);
+        double theta = angleA - angleB;
+
+        double cos = Math.cos(theta) * scale;
+        double sin = Math.sin(theta) * scale;
+
+        // 构造仿射矩阵：[cos -sin dx] [sin cos dy]
+        return new double[]{
+                cos, sin,
+                -sin, cos,
+                a1.x - (cos * b1.x - sin * b1.y),
+                a1.y - (sin * b1.x + cos * b1.y)
+        };
+    }
+
+    // @Test
+    public void generateThirdPointTest() {
+        Point p1 = new Point(100, 100);
+        Point p2 = new Point(300, 100);
+
+        Point p3 = generateThirdPoint(p1, p2);
+
+        System.out.printf("第三个点为：(%d, %d)%n", p3.x, p3.y);
+    }
+
+    /**
+     * 根据两个点生成第三个点，构成仿射三角形
+     * 方向为：从 p1 到 p2 的向量垂直旋转 90°
+     */
+    public static Point generateThirdPoint(Point p1, Point p2) {
+        int dx = p2.x - p1.x;
+        int dy = p2.y - p1.y;
+        // 垂直向量 (逆时针 90° 旋转): (-dy, dx)
+        int x3 = p1.x - dy;
+        int y3 = p1.y + dx;
+        return new Point(x3, y3);
+    }
 
 }
