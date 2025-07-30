@@ -1,16 +1,18 @@
 package cn.net.pap.logback.util;
 
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.LoggerContext;
+import ch.qos.logback.classic.*;
 import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.Appender;
 import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.rolling.RollingFileAppender;
 import ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy;
 import ch.qos.logback.core.util.FileSize;
+import ch.qos.logback.classic.AsyncAppender;
+import cn.net.pap.logback.appender.PapDBAppender;
 import org.slf4j.LoggerFactory;
 
+import javax.sql.DataSource;
 import java.util.List;
 
 public class LogbackConfigurationUtil {
@@ -38,7 +40,7 @@ public class LogbackConfigurationUtil {
      * @param sharedLogName  共享日志文件名(不含扩展名)
      * @param level          日志级别
      */
-    public static void initSharedLogConfiguration(List<String> sharedPackages, String sharedLogName, Level level) {
+    public static void initSharedLogConfiguration(List<String> sharedPackages, String sharedLogName, Level level, DataSource dataSource) {
         LoggerContext context = getLoggerContext();
 
         // 配置根日志
@@ -50,8 +52,14 @@ public class LogbackConfigurationUtil {
         // 创建控制台Appender
         ConsoleAppender<ILoggingEvent> consoleAppender = createConsoleAppender(context, "CONSOLE", DEFAULT_PATTERN);
 
+        PapDBAppender dbAppender = createDBAppender(context, "DB", dataSource);
+        // 异步包装
+        AsyncAppender asyncFile = createAsyncAppender(context, "ASYNC-FILE", sharedFileAppender, 2048, false);
+        AsyncAppender asyncConsole = createAsyncAppender(context, "ASYNC-CONSOLE", consoleAppender, 1024, false);
+        AsyncAppender asyncDb = createAsyncAppender(context, "ASYNC-DB", dbAppender, 4096, false);
+
         // 为每个包配置相同的Appender
-        sharedPackages.forEach(pkg -> configureLogger(context, pkg, level, sharedFileAppender, consoleAppender, false));
+        sharedPackages.forEach(pkg -> configureLogger(context, pkg, level, asyncFile, asyncConsole, asyncDb, false));
     }
 
     /**
@@ -72,7 +80,11 @@ public class LogbackConfigurationUtil {
     public static void configureRootLogger(LoggerContext context, Level level) {
         Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
         rootLogger.detachAndStopAllAppenders();
-        rootLogger.addAppender(createConsoleAppender(context, "ROOT-CONSOLE", DEFAULT_PATTERN));
+
+        ConsoleAppender<ILoggingEvent> consoleAppender = createConsoleAppender(context, "ROOT-CONSOLE", DEFAULT_PATTERN);
+        AsyncAppender asyncConsole = createAsyncAppender(context, "ASYNC-ROOT", consoleAppender, 1024, false);
+
+        rootLogger.addAppender(asyncConsole);
         rootLogger.setLevel(level);
     }
 
@@ -86,7 +98,7 @@ public class LogbackConfigurationUtil {
      * @param consoleAppender 控制台Appender
      * @param additive        是否传递给父Logger
      */
-    public static void configureLogger(LoggerContext context, String loggerName, Level level, RollingFileAppender<ILoggingEvent> fileAppender, ConsoleAppender<ILoggingEvent> consoleAppender, boolean additive) {
+    public static void configureLogger(LoggerContext context, String loggerName, Level level, Appender<ILoggingEvent> fileAppender, Appender<ILoggingEvent> consoleAppender, Appender<ILoggingEvent> dbAppender, boolean additive) {
         Logger logger = context.getLogger(loggerName);
         logger.detachAndStopAllAppenders();
 
@@ -96,6 +108,10 @@ public class LogbackConfigurationUtil {
 
         if (consoleAppender != null) {
             logger.addAppender(consoleAppender);
+        }
+
+        if (loggerName != null && !"".equals(loggerName) && loggerName.equals("dbLogger") && dbAppender != null) {
+            logger.addAppender(dbAppender);
         }
 
         logger.setLevel(level);
@@ -166,6 +182,43 @@ public class LogbackConfigurationUtil {
         appender.start();
 
         return appender;
+    }
+
+    /**
+     * createDBAppender
+     * @param context
+     * @param appenderName
+     * @param dataSource
+     * @return
+     */
+    public static PapDBAppender createDBAppender(LoggerContext context, String appenderName, DataSource dataSource) {
+        PapDBAppender appender = new PapDBAppender(dataSource);
+        appender.setContext(context);
+        appender.setName(appenderName);
+        appender.start();
+        return appender;
+    }
+
+    /**
+     * 异步Appender封装器
+     */
+    public static AsyncAppender createAsyncAppender(LoggerContext context,
+                                                    String asyncName,
+                                                    Appender<ILoggingEvent> targetAppender,
+                                                    int queueSize,
+                                                    boolean includeCallerData) {
+        AsyncAppender asyncAppender = new AsyncAppender();
+        asyncAppender.setContext(context);
+        asyncAppender.setName(asyncName);
+        asyncAppender.setQueueSize(queueSize);
+        asyncAppender.setIncludeCallerData(includeCallerData);
+        asyncAppender.setDiscardingThreshold(0); // 全级别都尽量保留
+        asyncAppender.setNeverBlock(true); // 队列满就丢弃日志，主线程绝不阻塞
+
+        asyncAppender.addAppender(targetAppender);
+        asyncAppender.start();
+
+        return asyncAppender;
     }
 
 }
