@@ -3,6 +3,7 @@ package cn.net.pap.example.admin.controller;
 import cn.net.pap.example.admin.config.jackson.view.JacksonViews;
 import cn.net.pap.example.admin.controller.dto.ExampleAdminDTO;
 import cn.net.pap.example.admin.config.validator.dto.ValidationDTO;
+import cn.net.pap.example.admin.dto.GitCommitInfo;
 import cn.net.pap.example.bean.config.dto.ExampleBeanDTO;
 import cn.net.pap.example.user.config.dto.ExampleUserDTO;
 import com.fasterxml.jackson.annotation.JsonView;
@@ -36,6 +37,20 @@ public class BeanController {
 
     @Autowired
     private ExampleUserDTO exampleUserDTO;
+
+    @GetMapping(value = "gitCommitInfo", produces="application/json;charset=UTF-8")
+    @ResponseBody
+    public GitCommitInfo gitCommitInfo() throws Exception {
+        try {
+            GitCommitInfo gitCommitInfo = GitCommitInfo.loadFromProperties();
+            return gitCommitInfo;
+        } catch (Exception e) {
+            return new GitCommitInfo();
+        } finally {
+            Thread.sleep(2000);
+        }
+
+    }
 
     @GetMapping(value = "checkFinal", produces="application/json;charset=UTF-8")
     public String checkFinal() throws Exception {
