@@ -7,6 +7,7 @@ import javax.sql.DataSource;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.util.Map;
 
 /**
  *    配合 LogbackInitializer.java 类
@@ -19,6 +20,7 @@ import java.sql.SQLException;
  *     @GetMapping("/dbAppender")
  *     public ResponseEntity<String> dbAppender() {
  *         String dateStr = new Date().toString();
+ *         MDC.put("alexgaoyh", "pap.net.cn");
  *         dbLogger.warn(dateStr);
  *         return ResponseEntity.ok(dateStr);
  *     }
@@ -34,6 +36,7 @@ public class PapDBAppender extends AppenderBase<ILoggingEvent> {
     @Override
     protected void append(ILoggingEvent iLoggingEvent) {
         if(dataSource != null) {
+            Map<String, String> mdcPropertyMap = iLoggingEvent.getMDCPropertyMap();
             // maybe batch insert ?
             String sql = """
                 INSERT INTO log(level) VALUES (?)

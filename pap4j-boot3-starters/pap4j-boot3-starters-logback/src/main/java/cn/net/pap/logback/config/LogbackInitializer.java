@@ -1,11 +1,14 @@
 package cn.net.pap.logback.config;
 
+import ch.qos.logback.classic.Level;
+import cn.net.pap.logback.util.LogbackConfigurationUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
 
 import javax.sql.DataSource;
+import java.util.Arrays;
 
 /**
  * Logback配置初始化器
