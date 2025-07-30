@@ -28,13 +28,13 @@
         <dependency>
             <groupId>cn.net.pap.example</groupId>
             <artifactId>pap4j-boot3-example-bean</artifactId>
-            <version>0.0.1</version>
+            <version>${parent.version}</version>
         </dependency>
 
         <dependency>
             <groupId>cn.net.pap.example</groupId>
             <artifactId>pap4j-boot3-example-user</artifactId>
-            <version>0.0.1</version>
+            <version>${parent.version}</version>
         </dependency>
 
         <dependency>
