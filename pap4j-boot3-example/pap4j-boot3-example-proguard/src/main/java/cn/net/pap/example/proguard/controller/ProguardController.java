@@ -1,6 +1,7 @@
 package cn.net.pap.example.proguard.controller;
 
 import cn.net.pap.example.proguard.entity.Proguard;
+import cn.net.pap.example.proguard.properties.DemoProperties;
 import cn.net.pap.example.proguard.service.IProguardService;
 import cn.net.pap.example.proguard.util.SimpleRateLimiter;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -31,6 +32,14 @@ public class ProguardController {
 
     @Autowired
     private IProguardService proguardService;
+
+    @Autowired
+    private DemoProperties demoProperties;
+
+    @GetMapping(value = "/demoProperties", produces = "application/json;charset=UTF-8")
+    public DemoProperties demoProperties() {
+        return demoProperties;
+    }
 
     @GetMapping(value = "/batch", produces = "application/json;charset=UTF-8")
     public String batch() {
