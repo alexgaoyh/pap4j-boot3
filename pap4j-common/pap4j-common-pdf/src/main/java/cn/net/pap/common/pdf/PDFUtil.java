@@ -5,8 +5,14 @@ import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.enums.ChineseFont;
 import cn.net.pap.common.pdf.sign.SignatureInterfaceImpl;
 import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.cos.COSBase;
+import org.apache.pdfbox.cos.COSDictionary;
+import org.apache.pdfbox.cos.COSObject;
 import org.apache.pdfbox.io.IOUtils;
+import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
+import org.apache.pdfbox.multipdf.Splitter;
 import org.apache.pdfbox.pdmodel.*;
+import org.apache.pdfbox.io.RandomAccessRead;
 import org.apache.pdfbox.pdmodel.common.PDMetadata;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
@@ -38,6 +44,26 @@ public class PDFUtil {
     private static final float PDF_VERSION = 1.4f;
     private static final String PDF_PART = "1";
     private static final String PDF_CONFORMANCE = "A";
+
+    /**
+     * 用低内存方式提取 PDF 单页，避免一次性加载整个文件
+     *
+     * @param pdfFilePath PDF 文件路径
+     * @param pageNum     要提取的页码（从1开始）
+     * @return 单页 PDF 的 ByteArrayOutputStream
+     * @throws IOException IO异常或非法页码
+     */
+    public static ByteArrayOutputStream extractPage(String pdfFilePath, int pageNum) throws IOException {
+        try (RandomAccessRead randomAccessRead = new RandomAccessReadBufferedFile(pdfFilePath);
+             PDDocument document = Loader.loadPDF(randomAccessRead)) {
+            try (PDDocument singlePageDoc = new PDDocument()) {
+                singlePageDoc.addPage(document.getPage(pageNum - 1));
+                ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+                singlePageDoc.save(outputStream);
+                return outputStream;
+            }
+        }
+    }
 
     /**
      * 单页 PDF 转换 JPG
