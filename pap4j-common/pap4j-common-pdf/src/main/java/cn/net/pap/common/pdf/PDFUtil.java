@@ -677,7 +677,8 @@ public class PDFUtil {
                     if (COSName.IMAGE.equals(subtype)) {
                         long size = stream.getLength();
                         imageSize += size;
-                        System.out.println("发现图像对象: " + key.getName() + " - 大小: " + size / 1024 + " KB");
+                        String imageType = getImageFilterType(stream);
+                        System.out.println("发现图像对象: " + key.getName() + " - 类型: " + imageType + " - 大小: " + size / 1024 + " KB");
                     } else if (COSName.FORM.equals(subtype)) {
                         long size = stream.getLength();
                         formSize += size;
@@ -736,6 +737,41 @@ public class PDFUtil {
         }
 
         return new ResourceStats(imageSize, fontSize, formSize);
+    }
+
+    /**
+     * 图像类型
+     * @param stream
+     * @return
+     */
+    private static String getImageFilterType(COSStream stream) {
+        COSBase filterObj = stream.getDictionaryObject(COSName.FILTER);
+        if (filterObj == null) return "Unknown";
+
+        List<String> filters = new ArrayList<>();
+        if (filterObj instanceof COSName) {
+            filters.add(((COSName) filterObj).getName());
+        } else if (filterObj instanceof COSArray) {
+            for (int i = 0; i < ((COSArray) filterObj).size(); i++) {
+                COSBase filterEntry = ((COSArray) filterObj).getObject(i);
+                if (filterEntry instanceof COSName) {
+                    filters.add(((COSName) filterEntry).getName());
+                }
+            }
+        }
+
+        return guessImageType(filters);
+    }
+
+    private static String guessImageType(List<String> filters) {
+        // 常见组合分析
+        if (filters.contains("DCTDecode")) return "JPEG";
+        if (filters.contains("JPXDecode")) return "JPEG 2000";
+        if (filters.contains("JBIG2Decode")) return "JBIG2";
+        if (filters.contains("CCITTFaxDecode")) return "TIFF (Fax)";
+        if (filters.contains("FlateDecode") && filters.contains("ASCII85Decode")) return "PNG (可能)";
+        if (filters.contains("FlateDecode")) return "无损图 (可能 PNG)";
+        return "未知";
     }
 
     private static long extractFontStreams(COSBase fontDescBase) {
