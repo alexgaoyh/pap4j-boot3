@@ -99,6 +99,9 @@ public class ImageMagickEnvCheckerUtil {
     // 前两个点你已经提供： 第1对： (0, 0) → (0, 424) 第2对： (0, 424) → (641, 424) 伪造中心点： 源中心点：((0 + 0) / 2, (0 + 424) / 2) = (0, 212) 目标中心点：((0 + 641) / 2, (424 + 424) / 2) = (320.5, 424)
     // magick left.jpg -background none -set option:distort:viewport 641x424+0+0 -distort Affine "0,0 641,0  0,424 0,0  320.5,0 641,212" output.jpg
 
+    // png to jp2
+    // magick "input.png" -quality 35 -define jp2:rate=0.02 "input.jp2"
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
