@@ -2,11 +2,16 @@ package cn.net.pap.common.pdf;
 
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Image;
+import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.PdfWriter;
+import org.junit.jupiter.api.Test;
 
 import java.io.FileOutputStream;
 import java.io.IOException;
 
+/**
+ * 使用 itextpdf ，把 jp2 类型的图像转换为 pdf
+ */
 public class DiffPic2PDFTest {
 
     public static String imagePath = "C:\\Users\\86181\\Desktop\\0.jp2";
@@ -16,11 +21,12 @@ public class DiffPic2PDFTest {
         FileOutputStream pdfOutputStream = null;
         Document document = null;
         try {
-            document = new Document();
+            Image jp2Image = Image.getInstance(imagePath);
+            Rectangle pageSize = new Rectangle(jp2Image.getScaledWidth(), jp2Image.getScaledHeight());
+            document = new Document(pageSize);
             pdfOutputStream = new FileOutputStream(imagePath + ".pdf");
             PdfWriter.getInstance(document, pdfOutputStream);
             document.open();
-            Image jp2Image = Image.getInstance(imagePath);
             document.add(jp2Image);
             document.close();
             System.out.println("PDF 生成成功！");
