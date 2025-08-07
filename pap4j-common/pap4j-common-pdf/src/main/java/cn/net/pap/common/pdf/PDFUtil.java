@@ -5,9 +5,7 @@ import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.enums.ChineseFont;
 import cn.net.pap.common.pdf.sign.SignatureInterfaceImpl;
 import org.apache.pdfbox.Loader;
-import org.apache.pdfbox.cos.COSBase;
-import org.apache.pdfbox.cos.COSDictionary;
-import org.apache.pdfbox.cos.COSObject;
+import org.apache.pdfbox.cos.*;
 import org.apache.pdfbox.io.IOUtils;
 import org.apache.pdfbox.io.RandomAccessReadBufferedFile;
 import org.apache.pdfbox.multipdf.Splitter;
@@ -15,6 +13,7 @@ import org.apache.pdfbox.pdmodel.*;
 import org.apache.pdfbox.io.RandomAccessRead;
 import org.apache.pdfbox.pdmodel.common.PDMetadata;
 import org.apache.pdfbox.pdmodel.common.PDRectangle;
+import org.apache.pdfbox.pdmodel.common.PDStream;
 import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
@@ -34,10 +33,7 @@ import java.nio.file.Files;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Calendar;
-import java.util.List;
+import java.util.*;
 
 public class PDFUtil {
 
@@ -213,7 +209,7 @@ public class PDFUtil {
     public static void drawText(String pdfPath, List<CoordsDTO> coordsDTOList) throws IOException {
         // 创建或加载PDF文档
         try (PDDocument document = new PDDocument()) {
-            // 仿宋
+            // 仿宋 PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
             PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
             // 创建新页面
             PDPage page = new PDPage();
@@ -257,6 +253,7 @@ public class PDFUtil {
     public static PDType0Font findFont(String text) {
         try (PDDocument document = new PDDocument()) {
             for(ChineseFont chineseFont : ChineseFont.values()) {
+                //  PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
                 PDType0Font tmp = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName())));
                 try {
                     if(tmp.getStringWidth(String.valueOf(text)) > 0) {
@@ -280,7 +277,7 @@ public class PDFUtil {
      */
     public static void drawParagraphs(String pdfPath, List<String> paragraphs) throws IOException {
         try (PDDocument document = new PDDocument()) {
-            // 加载字体
+            // 加载字体  PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
             PDType0Font songFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("宋体")));
             PDType0Font songFontExtB = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("宋体ExtB")));
 
@@ -601,6 +598,177 @@ public class PDFUtil {
             catalog.addOutputIntent(outputIntent);
         }
 
+    }
+
+    /**
+     * 分析
+     * @param filePath
+     * @throws IOException
+     */
+    public static void analyzePdf(String filePath) throws IOException {
+        File file = new File(filePath);
+        try (PDDocument document = Loader.loadPDF(file)) {
+            System.out.println("PDF 文件页数: " + document.getNumberOfPages());
+
+            long totalImageSize = 0;
+            long totalFontSize = 0;
+            long totalContentSize = 0;
+            long totalFormXObjectSize = 0;
+
+            Set<String> fontNames = new HashSet<>();
+            int pageNum = 1;
+
+            for (PDPage page : document.getPages()) {
+                COSDictionary pageDict = page.getCOSObject();
+                long pageContentSize = 0;
+
+                for (Iterator<PDStream> it = page.getContentStreams(); it.hasNext(); ) {
+                    PDStream stream = it.next();
+                    pageContentSize += stream.getLength();
+                }
+
+                System.out.println("第 " + pageNum + " 页内容流大小: " + pageContentSize / 1024 + " KB");
+                totalContentSize += pageContentSize;
+
+                ResourceStats stats = analyzeResources(pageDict, fontNames);
+                totalImageSize += stats.imageSize;
+                totalFontSize += stats.fontSize;
+                totalFormXObjectSize += stats.formSize;
+
+                pageNum++;
+            }
+
+            System.out.println("图像总大小: " + totalImageSize / 1024 + " KB");
+            System.out.println("字体数量: " + fontNames.size());
+            System.out.println("字体名: " + fontNames);
+            System.out.println("嵌入字体总大小: " + totalFontSize / 1024 + " KB");
+            System.out.println("内容流总大小: " + totalContentSize / 1024 + " KB");
+            System.out.println("Form XObject 总大小: " + totalFormXObjectSize / 1024 + " KB");
+
+            long totalKnown = totalImageSize + totalFontSize + totalContentSize + totalFormXObjectSize;
+            System.out.println("已知资源总大小: " + totalKnown / 1024 + " KB");
+
+            long fileSize = file.length();
+            System.out.println("实际文件大小: " + fileSize / 1024 + " KB");
+            System.out.println("未解释部分大小: " + (fileSize - totalKnown) / 1024 + " KB");
+        }
+    }
+
+    private static ResourceStats analyzeResources(COSDictionary resourceDict, Set<String> fontNames) {
+        long imageSize = 0;
+        long fontSize = 0;
+        long formSize = 0;
+
+        if (resourceDict == null) return new ResourceStats();
+
+        COSDictionary resources = (COSDictionary) resourceDict.getDictionaryObject(COSName.RESOURCES);
+        if (resources == null) return new ResourceStats();
+
+        // 图像和 Form XObject
+        COSDictionary xObjects = (COSDictionary) resources.getDictionaryObject(COSName.XOBJECT);
+        if (xObjects != null) {
+            for (COSName key : xObjects.keySet()) {
+                COSBase base = xObjects.getDictionaryObject(key);
+                if (base instanceof COSObject) base = ((COSObject) base).getObject();
+
+                if (base instanceof COSStream) {
+                    COSStream stream = (COSStream) base;
+                    COSName subtype = stream.getCOSName(COSName.SUBTYPE);
+                    if (COSName.IMAGE.equals(subtype)) {
+                        long size = stream.getLength();
+                        imageSize += size;
+                        System.out.println("发现图像对象: " + key.getName() + " - 大小: " + size / 1024 + " KB");
+                    } else if (COSName.FORM.equals(subtype)) {
+                        long size = stream.getLength();
+                        formSize += size;
+                        System.out.println("发现 Form XObject: " + key.getName() + " - 大小: " + size / 1024 + " KB");
+
+                        // 递归分析
+                        COSDictionary formResources = (COSDictionary) stream.getDictionaryObject(COSName.RESOURCES);
+                        ResourceStats innerStats = analyzeResources(formResources, fontNames);
+                        imageSize += innerStats.imageSize;
+                        fontSize += innerStats.fontSize;
+                        formSize += innerStats.formSize;
+                    }
+                }
+            }
+        }
+
+        // 字体处理，包括 CIDFont 结构
+        COSDictionary fonts = (COSDictionary) resources.getDictionaryObject(COSName.FONT);
+        if (fonts != null) {
+            for (COSName fontKey : fonts.keySet()) {
+                COSBase fontBase = fonts.getDictionaryObject(fontKey);
+                if (fontBase instanceof COSObject) fontBase = ((COSObject) fontBase).getObject();
+
+                if (fontBase instanceof COSDictionary) {
+                    COSDictionary fontDict = (COSDictionary) fontBase;
+                    COSName baseFont = fontDict.getCOSName(COSName.BASE_FONT);
+                    if (baseFont != null) fontNames.add(baseFont.getName());
+
+                    COSName subType = fontDict.getCOSName(COSName.SUBTYPE);
+                    if (COSName.TYPE0.equals(subType)) {
+                        // CIDFontType0 / CIDFontType2 字体处理
+                        COSArray descendantFonts = (COSArray) fontDict.getDictionaryObject(COSName.DESCENDANT_FONTS);
+                        if (descendantFonts != null) {
+                            for (int i = 0; i < descendantFonts.size(); i++) {
+                                COSBase descFontBase = descendantFonts.getObject(i);
+                                if (descFontBase instanceof COSObject) descFontBase = ((COSObject) descFontBase).getObject();
+
+                                if (descFontBase instanceof COSDictionary) {
+                                    COSDictionary descFontDict = (COSDictionary) descFontBase;
+                                    COSBase descBase = descFontDict.getDictionaryObject(COSName.FONT_DESC);
+                                    if (descBase instanceof COSObject) descBase = ((COSObject) descBase).getObject();
+
+                                    fontSize += extractFontStreams(descBase);
+                                }
+                            }
+                        }
+                    } else {
+                        // 常规字体
+                        COSBase descBase = fontDict.getDictionaryObject(COSName.FONT_DESC);
+                        if (descBase instanceof COSObject) descBase = ((COSObject) descBase).getObject();
+
+                        fontSize += extractFontStreams(descBase);
+                    }
+                }
+            }
+        }
+
+        return new ResourceStats(imageSize, fontSize, formSize);
+    }
+
+    private static long extractFontStreams(COSBase fontDescBase) {
+        long fontSize = 0;
+        if (fontDescBase instanceof COSDictionary) {
+            COSDictionary fontDesc = (COSDictionary) fontDescBase;
+            for (COSName fileName : new COSName[]{COSName.FONT_FILE, COSName.FONT_FILE2, COSName.FONT_FILE3}) {
+                COSBase fileBase = fontDesc.getDictionaryObject(fileName);
+                if (fileBase instanceof COSObject) fileBase = ((COSObject) fileBase).getObject();
+
+                if (fileBase instanceof COSStream) {
+                    COSStream fontStream = (COSStream) fileBase;
+                    long size = fontStream.getLength();
+                    fontSize += size;
+                    System.out.println("发现嵌入字体流: " + fileName.getName() + " - 大小: " + size / 1024 + " KB");
+                }
+            }
+        }
+        return fontSize;
+    }
+
+    private static class ResourceStats {
+        long imageSize;
+        long fontSize;
+        long formSize;
+
+        public ResourceStats() {}
+
+        public ResourceStats(long imageSize, long fontSize, long formSize) {
+            this.imageSize = imageSize;
+            this.fontSize = fontSize;
+            this.formSize = formSize;
+        }
     }
 
 }

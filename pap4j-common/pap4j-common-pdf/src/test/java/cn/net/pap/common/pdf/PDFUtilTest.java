@@ -73,6 +73,15 @@ public class PDFUtilTest {
     }
 
     @Test
+    public void analyzePdfTest() {
+        try {
+            PDFUtil.analyzePdf("C:\\Users\\86181\\Desktop\\origin.pdf");
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
     public void drawTextTest() {
         try {
             List<CoordsDTO> coordsDTOList = new ArrayList<>();
