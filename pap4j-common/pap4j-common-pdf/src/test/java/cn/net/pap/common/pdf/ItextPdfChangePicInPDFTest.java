@@ -99,7 +99,12 @@ public class ItextPdfChangePicInPDFTest {
         File tempInputFile = File.createTempFile("pdf_change_pic_", "." + sourceFormat);
         ImageIO.write(sourceImage, sourceFormat, tempInputFile);
 
-        ProcessBuilder processBuilder = new ProcessBuilder("magick", tempInputFile.getAbsolutePath(), "-quality", "35", tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat));
+        // todo 这里可以做一个判断，如果原始图像的大小够小的话，那么这里 quality 可以大一点，避免更小的图像再次变小造成一些失真(一个空白页的png图像的转换)
+        String defaultQuality = "35";
+        if(tempInputFile.length() < 0.2 * 1024 * 1024) {
+            defaultQuality = "100";
+        }
+        ProcessBuilder processBuilder = new ProcessBuilder("magick", tempInputFile.getAbsolutePath(), "-quality", defaultQuality, tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat));
         Process process = null;
 
         try {
