@@ -41,6 +41,168 @@ public class JsonRecursiveParser {
     }
 
     /**
+     * 根据 JSON Schema 规范化数据列表
+     *
+     * @param dataList   原始数据列表
+     * @param schemaJson JSON Schema 字符串
+     * @return 规范化后的数据列表
+     */
+    public static List<Map<String, Object>> normalize(List<Map<String, Object>> dataList, String schemaJson) throws Exception {
+
+        JsonNode schemaNode = OBJECT_MAPPER.readTree(schemaJson);
+        String schemaType = schemaNode.path("type").asText();
+
+        List<Map<String, Object>> normalizedList = new ArrayList<>();
+
+        if ("array".equals(schemaType)) {
+            // 处理数组 Schema
+            JsonNode itemsSchema = schemaNode.path("items");
+            JsonNode properties = itemsSchema.path("properties");
+            for (Map<String, Object> item : dataList) {
+                normalizedList.add(normalizeItem(item, properties));
+            }
+        } else if ("object".equals(schemaType)) {
+            // 处理对象 Schema
+            JsonNode properties = schemaNode.path("properties");
+            for (Map<String, Object> item : dataList) {
+                normalizedList.add(normalizeItem(item, properties));
+            }
+        } else {
+            throw new IllegalArgumentException("Schema type must be 'object' or 'array'");
+        }
+
+        return normalizedList;
+    }
+
+    /**
+     * 规范化单个数据项
+     */
+    private static Map<String, Object> normalizeItem(Map<String, Object> item, JsonNode schemaProperties) {
+
+        Map<String, Object> normalized = new LinkedHashMap<>();
+        Iterator<Map.Entry<String, JsonNode>> fields = schemaProperties.fields();
+
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            String fieldName = entry.getKey();
+            JsonNode fieldSchema = entry.getValue();
+
+            // 获取字段值（原始数据中可能不存在）
+            Object value = item.get(fieldName);
+
+            // 规范化字段值
+            Object normalizedValue = normalizeValue(value, fieldSchema);
+            normalized.put(fieldName, normalizedValue);
+        }
+        return normalized;
+    }
+
+    /**
+     * 规范化字段值
+     */
+    private static Object normalizeValue(Object value, JsonNode fieldSchema) {
+        // 如果原始值为null，使用schema中的默认值或类型默认值
+        if (value == null) {
+            JsonNode defaultValue = fieldSchema.path("default");
+            if (!defaultValue.isMissingNode()) {
+                return getValueFromJsonNode(defaultValue);
+            }
+            return getTypeDefaultValue(fieldSchema.path("type").asText());
+        }
+
+        // 类型检查与转换
+        String schemaType = fieldSchema.path("type").asText();
+        try {
+            switch (schemaType) {
+                case "string":
+                    return value.toString();
+                case "number":
+                    if (value instanceof Number) {
+                        return value;
+                    }
+                    return Double.parseDouble(value.toString());
+                case "integer":
+                    if (value instanceof Integer) {
+                        return value;
+                    }
+                    return Integer.parseInt(value.toString());
+                case "boolean":
+                    if (value instanceof Boolean) {
+                        return value;
+                    }
+                    return Boolean.parseBoolean(value.toString());
+                case "object":
+                    if (value instanceof Map) {
+                        JsonNode properties = fieldSchema.path("properties");
+                        if (!properties.isMissingNode()) {
+                            return normalizeItem((Map<String, Object>) value, properties);
+                        }
+                    }
+                    return value;
+                case "array":
+                    if (value instanceof List) {
+                        JsonNode itemsSchema = fieldSchema.path("items");
+                        if (!itemsSchema.isMissingNode()) {
+                            return normalizeArray((List<?>) value, itemsSchema);
+                        }
+                    }
+                    return value;
+                default:
+                    return value;
+            }
+        } catch (Exception e) {
+            // 类型转换失败时返回默认值
+            return getTypeDefaultValue(schemaType);
+        }
+    }
+
+    /**
+     * 规范化数组
+     */
+    private static List<Object> normalizeArray(List<?> array, JsonNode itemsSchema) {
+        List<Object> normalizedArray = new ArrayList<>();
+        for (Object item : array) {
+            normalizedArray.add(normalizeValue(item, itemsSchema));
+        }
+        return normalizedArray;
+    }
+
+    /**
+     * 获取类型的默认值
+     */
+    private static Object getTypeDefaultValue(String type) {
+        switch (type) {
+            case "string":
+                return "";
+            case "number":
+                return 0.0;
+            case "integer":
+                return 0;
+            case "boolean":
+                return false;
+            case "object":
+                return new LinkedHashMap<>();
+            case "array":
+                return new ArrayList<>();
+            default:
+                return null;
+        }
+    }
+
+    /**
+     * 从JsonNode获取值
+     */
+    private static Object getValueFromJsonNode(JsonNode node) {
+        if (node.isTextual()) return node.asText();
+        if (node.isNumber()) return node.asDouble();
+        if (node.isBoolean()) return node.asBoolean();
+        if (node.isNull()) return null;
+        if (node.isObject()) return OBJECT_MAPPER.convertValue(node, Map.class);
+        if (node.isArray()) return OBJECT_MAPPER.convertValue(node, List.class);
+        return null;
+    }
+
+    /**
      * 递归解析 JsonNode
      */
     private static List<Map<String, Object>> parseNode(JsonNode node) {
