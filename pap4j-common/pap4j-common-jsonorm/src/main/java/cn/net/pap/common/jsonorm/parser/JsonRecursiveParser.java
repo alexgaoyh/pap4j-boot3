@@ -1,5 +1,6 @@
 package cn.net.pap.common.jsonorm.parser;
 
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -17,6 +18,11 @@ import java.util.*;
 public class JsonRecursiveParser {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    static {
+        // 确保 Jackson 不改变字段顺序（可选）
+        OBJECT_MAPPER.configure(JsonParser.Feature.STRICT_DUPLICATE_DETECTION, true);
+    }
 
     /**
      * 将 JSON 字符串解析为 List<Map<String, Object>>
@@ -47,7 +53,7 @@ public class JsonRecursiveParser {
                     resultList.add(parseObjectNode(arrayElement));
                 } else {
                     // 如果数组元素不是对象，创建一个包含该元素的Map
-                    Map<String, Object> wrapperMap = new HashMap<>();
+                    Map<String, Object> wrapperMap = new LinkedHashMap<>();
                     wrapperMap.put("value", parseValueNode(arrayElement));
                     resultList.add(wrapperMap);
                 }
@@ -57,7 +63,7 @@ public class JsonRecursiveParser {
             resultList.add(parseObjectNode(node));
         } else {
             // 如果是基本类型，包装为List
-            Map<String, Object> wrapperMap = new HashMap<>();
+            Map<String, Object> wrapperMap = new LinkedHashMap<>();
             wrapperMap.put("value", parseValueNode(node));
             resultList.add(wrapperMap);
         }
@@ -69,7 +75,7 @@ public class JsonRecursiveParser {
      * 解析对象节点为Map
      */
     private static Map<String, Object> parseObjectNode(JsonNode node) {
-        Map<String, Object> map = new HashMap<>();
+        Map<String, Object> map = new LinkedHashMap<>();
         Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
 
         while (fields.hasNext()) {
