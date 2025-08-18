@@ -1,3 +1,9 @@
+使用 conda pack 打包环境
+    安装 conda-pack       conda install -c conda-forge conda-pack
+    打包环境：             conda pack -o pdf_processor.tar.gz
+    迁移环境：             本质实际是拷贝到另外一台机器之后，然后使用 python 命令做执行，这个时候可以手动的设置环境变量，达到和 conda 一样的效果
+
+
 ```shell
 conda config --add channels conda-forge
 conda config --set channel_priority strict
