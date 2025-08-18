@@ -8,12 +8,15 @@
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 
-conda create -n pdf_processor python=3.10 -y
+conda create -n pdf_processor python=3.10 -y   (   conda create --prefix D:\miniconda3\envs\pdf_processor  python=3.10 -y  )
 			conda env remove -n pdf_processor
 
+conda install -c conda-forge ghostscript
+conda install -c conda-forge tesseract
+
 pip install flask 
-pip install tesseract
-pip install pcrmypdf
+pip install tesseract 
+pip install ocrmypdf
 
 ```
 
