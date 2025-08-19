@@ -24,8 +24,7 @@ public class ItextPdfChangePicInPDFTest {
 
     // @Test
     public void extractImagesTest() throws Exception {
-        List<BufferedImage> bufferedImages = extractAndConvertImagesToJp2("C:\\Users\\86181\\Desktop\\GBT 9237-2017.pdf", "C:\\Users\\86181\\Desktop\\input-jp2.pdf");
-        System.out.println(bufferedImages.size());
+        extractAndConvertImagesToJp2("C:\\Users\\86181\\Desktop\\GBT 9237-2017.pdf", "C:\\Users\\86181\\Desktop\\input-jp2.pdf");
     }
 
     /**
@@ -34,9 +33,8 @@ public class ItextPdfChangePicInPDFTest {
      * @param outputPdfFile 输出PDF文件路径
      * @return 提取的原始图像列表
      */
-    public static List<BufferedImage> extractAndConvertImagesToJp2(String pdfFile, String outputPdfFile)
+    public static Boolean extractAndConvertImagesToJp2(String pdfFile, String outputPdfFile)
             throws Exception {
-        List<BufferedImage> originalImages = new ArrayList<>();
         PdfReader reader = new PdfReader(pdfFile);
         PdfStamper stamper = new PdfStamper(reader, new FileOutputStream(outputPdfFile));
 
@@ -62,7 +60,6 @@ public class ItextPdfChangePicInPDFTest {
                         PdfImageObject image = new PdfImageObject(stream);
                         BufferedImage bufferedImage = image.getBufferedImage();
                         if (bufferedImage != null) {
-                            originalImages.add(bufferedImage);
 
                             byte[] jp2Data = convert(bufferedImage, image.getFileType(), "jp2");
                             // 3. Update the stream
@@ -91,7 +88,7 @@ public class ItextPdfChangePicInPDFTest {
 
         stamper.close();
         reader.close();
-        return originalImages;
+        return true;
     }
 
     public static byte[] convert(BufferedImage sourceImage, String sourceFormat, String targetFormat) throws Exception {
