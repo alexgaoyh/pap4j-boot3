@@ -444,6 +444,12 @@ public class ITextTest {
             PdfImageObject imageObject = imageInfo.getImage();
             if (imageObject == null) continue;
 
+            // 关键：获取图像的字典而不是流  PdfImageObject 提供了获取图像字典的方法
+            PdfDictionary imageDictionary = imageObject.getDictionary();
+            // 检查这个图像字典是否有遮罩  注意：这里检查的是字典本身，因为 /Mask 和 /SMask 是图像字典的属性
+            PdfObject maskObj = imageDictionary.get(PdfName.MASK);
+            PdfObject sMaskObj = imageDictionary.get(PdfName.SMASK);
+
             BufferedImage img = imageObject.getBufferedImage();
             if(img == null && imageObject.getFileType().equals("jbig2")) {
                 img = extractJBIG2AsBufferedImageWithTransparency(imageInfo);
@@ -463,7 +469,23 @@ public class ITextTest {
             int wPx = Math.round(wPt * scale);
             int hPx = Math.round(hPt * scale);
 
-            g.drawImage(img, xPx, yPx, wPx, hPx, null);
+            // 没有遮罩的话，直接画图
+            if(maskObj == null && sMaskObj == null) {
+                g.drawImage(img, xPx, yPx, wPx, hPx, null);
+            }
+            // 有遮罩的话，需要按需处理
+            // 优先处理软遮罩（SMask）- Alpha通道
+            if (sMaskObj != null) {
+                applySoftMask(g, sMaskObj, xPx, yPx, wPx, hPx, scale);
+            } else {
+                // maybe 需要添加 g.drawImage(img, xPx, yPx, wPx, hPx, null);
+            }
+            // 然后处理硬遮罩（Mask）- 二值透明
+            if (maskObj != null) {
+                applyHardMask(g, imageDictionary, maskObj, xPx, yPx, wPx, hPx, scale);
+            } else {
+                // maybe 需要添加 g.drawImage(img, xPx, yPx, wPx, hPx, null);
+            }
         }
 
         g.dispose();
@@ -800,5 +822,80 @@ public class ITextTest {
                     .toString();
         }
     }
+
+    // 处理软遮罩（Alpha通道）
+    private static void applySoftMask(Graphics2D g, PdfObject maskStream,
+                                      int x, int y, int width, int height, float scale) {
+        System.out.println();
+    }
+
+    // 处理硬遮罩（二值透明）
+    private static void applyHardMask(Graphics2D g, PdfDictionary imageDictionary, PdfObject maskStream,
+                                      int x, int y, int width, int height, float scale) {
+        try {
+            PdfObject resolved = PdfReader.getPdfObject(maskStream);
+            if (!(resolved instanceof PRStream)) {
+                throw new IllegalArgumentException("Mask is not a stream: " + resolved);
+            }
+            PRStream pr = (PRStream) resolved;
+
+            // 解析 Filter
+            PdfObject filterObj = pr.get(PdfName.FILTER);
+            PdfName filter = null;
+            if (filterObj instanceof PdfName) {
+                filter = (PdfName) filterObj;
+            } else if (filterObj instanceof PdfArray) {
+                PdfArray arr = (PdfArray) filterObj;
+                if (arr.size() > 0 && arr.getPdfObject(0) instanceof PdfName) {
+                    filter = (PdfName) arr.getPdfObject(0);
+                }
+            }
+
+            BufferedImage maskImage = null;
+
+            if (PdfName.JBIG2DECODE.equals(filter)) {
+                // --- JBIG2 专门处理 ---
+                byte[] rawBytes = PdfReader.getStreamBytesRaw(pr);
+                try (ByteArrayInputStream bais = new ByteArrayInputStream(rawBytes)) {
+                    MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais);
+                    Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
+                    if (!readers.hasNext()) throw new RuntimeException("No JBIG2 reader found");
+                    ImageReader readerJBIG2 = readers.next();
+                    readerJBIG2.setInput(iis);
+                    maskImage = readerJBIG2.read(0);
+
+                    // 检查并应用透明掩码
+                    PdfBoolean imageMask = imageDictionary.getAsBoolean(PdfName.IMAGEMASK);
+                    if (imageMask != null && imageMask.booleanValue()) {
+                        // ImageMask = true，做遮罩处理
+                        maskImage = convertMaskToAlpha(maskImage);
+                    } else {
+                        PdfObject smask = imageDictionary.get(PdfName.SMASK);
+                        if (smask != null) {
+                            PdfImageObject smaskImage = new PdfImageObject((PRStream) PdfReader.getPdfObject(smask));
+                            BufferedImage maskImg = smaskImage.getBufferedImage();
+
+                            if (maskImg != null) {
+                                // 将mask作为alpha通道合成
+                                maskImage = applyAlphaMask(maskImage, maskImg);
+                            }
+                        } else {
+                            // 也可以根据需要做简单的颜色透明处理，比如把白色当透明
+                            maskImage = convertWhiteToTransparent(maskImage);
+                        }
+                    }
+                }
+            } else {
+                // other handle
+            }
+
+            if (maskImage != null) {
+                g.drawImage(maskImage, x, y, width, height, null);
+            }
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
 
 }
