@@ -102,6 +102,17 @@ public class ImageMagickEnvCheckerUtil {
     // png to jp2
     // magick "input.png" -quality 35 -define jp2:rate=0.02 "input.jp2"
 
+    // 当前图像的主色 （肯定有偏差）
+    // magick input.jpg -resize 1x1! -format "%[hex:u.p{0,0}]" info:
+    // 这里的 colors 可以大一点，如果从结果里面取出来最大的一个值，当做主色
+    // magick input.jpg -colors 100 -format %c histogram:info:
+
+    // 图像上边缘20px的部分，填充白色
+    // magick input.jpg -fill "#FFFFFF" -draw "rectangle 0,0 %[w],20" output.jpg
+
+    // 图像 上下左右 20px 个像素的部分，填充白色
+    // magick input.jpg -fill "#FFFFFF" -draw "rectangle 0,0 %[w],20" -draw "rectangle 0,%[fx:h-20] %[w],%[h]" -draw "rectangle 0,0 20,%[h]" -draw "rectangle %[fx:w-20],0 %[w],%[h]" output.jpg
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
