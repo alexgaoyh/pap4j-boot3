@@ -4,6 +4,7 @@ import org.bytedeco.javacpp.BytePointer;
 import org.bytedeco.javacpp.IntPointer;
 import org.bytedeco.javacpp.Loader;
 import org.bytedeco.leptonica.PIX;
+import org.bytedeco.tesseract.ResultIterator;
 import org.bytedeco.tesseract.TessBaseAPI;
 
 import java.awt.Rectangle;
@@ -241,6 +242,95 @@ public class OCRUtils {
             }
         }
     }
+
+    /**
+     * 获取字级别的 OCR 结果
+     *
+     * @param tessdataPath Tesseract tessdata 路径
+     * @param imagePath 图像文件路径
+     * @param language 语言代码 (如: "eng", "chi_sim", "eng+chi_sim")
+     * @return 包含字级别 OCR 结果的列表
+     * @throws OCRException 如果 OCR 处理失败
+     */
+    public static List<OCRResult> recognizeWithWordCoordinates(String tessdataPath, String imagePath, String language) throws OCRException {
+        List<OCRResult> results = new ArrayList<>();
+        TessBaseAPI api = new TessBaseAPI();
+        PIX image = null;
+
+        try {
+            // 初始化 Tesseract
+            if (api.Init(tessdataPath, language) != 0) {
+                throw new OCRException("无法初始化 Tesseract，请检查语言包: " + language);
+            }
+
+            // 读取图像文件
+            image = pixRead(imagePath);
+            if (image == null) {
+                throw new OCRException("无法读取图像文件: " + imagePath);
+            }
+
+            api.SetImage(image);
+
+            api.Recognize(null);
+
+            // 获取页面迭代器
+            ResultIterator iterator = api.GetIterator();
+            if (iterator == null) {
+                throw new OCRException("无法获取页面迭代器");
+            }
+
+            // 遍历字级别的 OCR 结果
+            iterator.Begin();
+            do {
+                String word = iterator.GetUTF8Text(3).getString();
+                if (word != null && !word.trim().isEmpty()) {
+                    // 获取该字的边界框
+                    Rectangle wordBoundingBox = getWordBoundingBox(iterator);
+
+                    // 获取该字的置信度
+                    float wordConfidence = getWordConfidence(iterator);
+
+                    // 创建 OCRResult 对象并添加到结果列表
+                    results.add(new OCRResult(word, wordBoundingBox, wordConfidence, "WORD"));
+                }
+            } while (iterator.Next(3)); // 继续迭代下一个字
+
+        } catch (Exception e) {
+            if (e instanceof OCRException) {
+                throw (OCRException) e;
+            }
+            throw new OCRException("OCR 处理异常: " + e.getMessage(), e);
+        } finally {
+            // 清理资源
+            cleanUp(api, image);
+        }
+
+        return results;
+    }
+
+    /**
+     * 获取每个字的边界框
+     *
+     * @param iterator 页迭代器
+     * @return 单词的矩形边界框
+     */
+    private static Rectangle getWordBoundingBox(ResultIterator iterator) {
+        int[] x1 = new int[1], y1 = new int[1], x2 = new int[1], y2 = new int[1];
+        iterator.BoundingBox(1, x1, y1, x2, y2); // 1 代表字级别
+        // 返回该单词的边界框
+        return new Rectangle(x1[0], y1[0], x2[0] - x1[0], y2[0] - y1[0]);
+    }
+
+    /**
+     * 获取每个字的置信度
+     *
+     * @param iterator 页迭代器
+     * @return 单词的置信度
+     */
+    private static float getWordConfidence(ResultIterator iterator) {
+        return iterator.Confidence(1); // 1 代表字级别
+    }
+
 
     /**
      * OCR 异常类

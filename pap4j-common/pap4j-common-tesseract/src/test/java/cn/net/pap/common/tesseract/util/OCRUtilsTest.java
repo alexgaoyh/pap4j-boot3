@@ -11,4 +11,11 @@ public class OCRUtilsTest {
         List<OCRUtils.OCRResult> chi = OCRUtils.recognizeWithCoordinates("d:\\tessdata", "C:\\Users\\alexg\\Desktop\\ocr.png", "chi_sim");
         System.out.println(chi);
     }
+
+    @Test
+    public void test2() throws Exception {
+        List<OCRUtils.OCRResult> chi = OCRUtils.recognizeWithWordCoordinates("d:\\tessdata", "C:\\Users\\alexg\\Desktop\\ocr.png", "chi_sim");
+        System.out.println(chi);
+    }
+
 }
