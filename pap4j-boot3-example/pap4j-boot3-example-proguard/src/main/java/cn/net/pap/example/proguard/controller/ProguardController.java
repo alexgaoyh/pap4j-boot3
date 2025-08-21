@@ -21,6 +21,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -39,6 +40,11 @@ public class ProguardController {
     @GetMapping(value = "/demoProperties", produces = "application/json;charset=UTF-8")
     public DemoProperties demoProperties() {
         return demoProperties;
+    }
+
+    @GetMapping(value = "/userDir", produces = "application/json;charset=UTF-8")
+    public String userDir() {
+        return Path.of(System.getProperty("user.dir")).toFile().getAbsolutePath();
     }
 
     @GetMapping(value = "/batch", produces = "application/json;charset=UTF-8")
