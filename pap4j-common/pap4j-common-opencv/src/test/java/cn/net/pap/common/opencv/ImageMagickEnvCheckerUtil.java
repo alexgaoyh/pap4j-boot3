@@ -113,6 +113,9 @@ public class ImageMagickEnvCheckerUtil {
     // 图像 上下左右 20px 个像素的部分，填充白色
     // magick input.jpg -fill "#FFFFFF" -draw "rectangle 0,0 %[w],20" -draw "rectangle 0,%[fx:h-20] %[w],%[h]" -draw "rectangle 0,0 20,%[h]" -draw "rectangle %[fx:w-20],0 %[w],%[h]" output.jpg
 
+    // 图像 预处理，生成黑白二值图像，可以应用到后面的 OCR 的功能上
+    // magick ocr.jpg -colorspace Gray -threshold 70% ocr_ocr.png
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
