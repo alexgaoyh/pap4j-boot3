@@ -475,6 +475,9 @@ public class PDFUtil {
         try {
             for (String imagePath : imagePaths) {
                 PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
+                // todo 后续根据需求，这里做一下调整，避免生成的pdf过大，未完全验证，存在不同的格式，比如 jpg ,还有各种不同压缩方式的tif 等等
+//            BufferedImage image = ImageIO.read(new File(imagePath));
+//            PDImageXObject imageXObject = JPEGFactory.createFromImage(document, image, 0.7f); // 质量70%
 
                 float imageWidth = imageXObject.getWidth();
                 float imageHeight = imageXObject.getHeight();
@@ -519,6 +522,9 @@ public class PDFUtil {
             for (String imagePath : imagePaths) {
 
                 PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
+                // todo 后续根据需求，这里做一下调整，避免生成的pdf过大，未完全验证，存在不同的格式，比如 jpg ,还有各种不同压缩方式的tif 等等
+//            BufferedImage image = ImageIO.read(new File(imagePath));
+//            PDImageXObject imageXObject = JPEGFactory.createFromImage(document, image, 0.7f); // 质量70%
 
                 float imageWidth = imageXObject.getWidth();
                 float imageHeight = imageXObject.getHeight();
