@@ -64,6 +64,14 @@ public class ImageMagickEnvCheckerUtil {
     //
     // Canny边缘检测 : magick 20.jpg -canny  0x1+10%+30% edges.png
     // 临时命令：      magick 20.jpg -deskew 40% -verbose info:
+    // 不太准确的倾斜角度：      magick angle.jpg -deskew 40% -format "%[deskew:angle]" info:
+    // 边缘检测后      magick edges.png -morphology thicken rectangle:3x1+0+0 enhanced_edges.png
+    // houge-lines      magick enhanced_edges.png -hough-lines 100x100 hough_output.png
+    // 尝试通过分析Hough变换后的图像来检测主导角度              magick hough_output.png -rotate -90 -define histogram:unique-colors=true  -format %c histogram:info:
+    // 尝试通过分析Hough变化后的图像来检测主导角度(写入文件)      magick hough_output.png -define histogram:unique-colors=true -format "%c" histogram.txt
+    // 尝试通过分析Hough变化后的图像来检测主导角度(写入文件)      magick hough_output.png -define histogram:unique-colors=true -format "%c" histogram:info.txt
+
+    // 角度输出直线的起止点： magick angle.jpg -canny 0x1+10%+30% +write canny.png -background none -fill red -hough-lines 9x9+300 MVG:-
 
     // 黑框逻辑，不完善. 假设图像的宽高是 597*836 ，  黑色0 -> 白色1 ， 可以使用下面的命令进行分析处理.
     // 上边缘
