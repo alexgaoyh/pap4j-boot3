@@ -2,7 +2,11 @@ package cn.net.pap.common.opencv;
 
 import org.junit.jupiter.api.Test;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
@@ -24,6 +28,12 @@ public class ImageMagickCannyHougeAngleTest {
     public void test1() throws Exception {
         String s = angleInfoStrList("C:\\Users\\86181\\Desktop\\angle.jpg", "C:\\Users\\86181\\Desktop\\angle_canny.jpg", 300);
         System.out.println(getDetailedAnalysis(s));
+    }
+
+    // @Test
+    public void test2() throws Exception {
+        String s = angleInfoStrList("C:\\Users\\86181\\Desktop\\0.jpg", "C:\\Users\\86181\\Desktop\\0_canny.jpg", 300);
+        drawHoughLinesJava("C:\\Users\\86181\\Desktop\\0.jpg", "C:\\Users\\86181\\Desktop\\0_lines.jpg", s, Color.RED, 2f);
     }
 
     public static String angleInfoStrList(String inputPath, String tmpCannyPath, Integer minLength) throws Exception {
@@ -137,6 +147,68 @@ public class ImageMagickCannyHougeAngleTest {
             }
         }
         return angles;
+    }
+
+    /**
+     * 将 Hough 输出的直线画到原图上
+     *
+     * @param inputPath 原图路径
+     * @param outputPath 输出图路径
+     * @param houghOutput ImageMagick Hough MVG 输出内容
+     * @param lineColor 绘制线条颜色
+     * @param lineWidth 绘制线条宽度
+     * @throws IOException
+     */
+    public static void drawHoughLinesJava(String inputPath, String outputPath, String houghOutput,
+                                          Color lineColor, float lineWidth) throws IOException {
+
+        // 读取原图
+        BufferedImage image = ImageIO.read(new File(inputPath));
+        Graphics2D g2d = image.createGraphics();
+
+        // 设置抗锯齿和线条属性
+        g2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+        g2d.setColor(lineColor);
+        g2d.setStroke(new BasicStroke(lineWidth));
+
+        // 解析 Hough 输出
+        List<Double[]> lines = parseHoughLines(houghOutput);
+
+        // 绘制每条直线
+        for (Double[] line : lines) {
+            double x1 = line[0], y1 = line[1], x2 = line[2], y2 = line[3];
+            g2d.drawLine((int) Math.round(x1), (int) Math.round(y1),
+                    (int) Math.round(x2), (int) Math.round(y2));
+        }
+
+        g2d.dispose();
+        // 保存生成的新图
+        ImageIO.write(image, "png", new File(outputPath));
+    }
+
+    private static List<Double[]> parseHoughLines(String houghOutput) {
+        List<Double[]> lines = new java.util.ArrayList<>();
+        String[] outputLines = houghOutput.split("\n");
+        for (String line : outputLines) {
+            line = line.trim();
+            if (line.startsWith("line")) {
+                String[] parts = line.split("\\s+");
+                if (parts.length >= 3) {
+                    try {
+                        String[] p1 = parts[1].split(",");
+                        String[] p2 = parts[2].split(",");
+                        double x1 = Double.parseDouble(p1[0]);
+                        double y1 = Double.parseDouble(p1[1]);
+                        double x2 = Double.parseDouble(p2[0]);
+                        double y2 = Double.parseDouble(p2[1]);
+                        lines.add(new Double[]{x1, y1, x2, y2});
+                    } catch (Exception e) {
+                        System.err.println("解析 Hough 线失败: " + line);
+                    }
+                }
+            }
+        }
+        return lines;
     }
 
     /**
