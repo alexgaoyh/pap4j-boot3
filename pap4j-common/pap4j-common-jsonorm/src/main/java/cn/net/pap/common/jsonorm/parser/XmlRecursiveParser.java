@@ -70,54 +70,31 @@ public class XmlRecursiveParser {
 
         // 处理子节点
         NodeList children = element.getChildNodes();
-        if (children.getLength() == 0) {
-            // 空元素
-            map.put("_value", null);
-        } else {
-            // 处理混合内容
-            Map<String, List<Object>> childrenMap = new LinkedHashMap<>();
-            for (int i = 0; i < children.getLength(); i++) {
-                Node child = children.item(i);
+        List<Object> childList = new ArrayList<>();
 
-                if (child.getNodeType() == Node.ELEMENT_NODE) {
-                    // 子元素
-                    Element childElement = (Element) child;
-                    String childName = childElement.getNodeName();
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
 
-                    if (!childrenMap.containsKey(childName)) {
-                        childrenMap.put(childName, new ArrayList<>());
-                    }
-
-                    childrenMap.get(childName).add(parseElement(childElement));
-                } else if (child.getNodeType() == Node.TEXT_NODE && !child.getNodeValue().trim().isEmpty()) {
-                    // 普通文本节点
-                    handleTextContent(childrenMap, child.getNodeValue().trim(), false);
-                } else if (child.getNodeType() == Node.CDATA_SECTION_NODE) {
-                    // CDATA节点
-                    handleTextContent(childrenMap, child.getNodeValue().trim(), true);
-                }
+            if (child.getNodeType() == Node.ELEMENT_NODE) {
+                childList.add(parseElement((Element) child));
+            } else if (child.getNodeType() == Node.TEXT_NODE && !child.getNodeValue().trim().isEmpty()) {
+                Map<String, Object> textNode = new LinkedHashMap<>();
+                textNode.put("_text", child.getNodeValue().trim());
+                childList.add(textNode);
+            } else if (child.getNodeType() == Node.CDATA_SECTION_NODE) {
+                Map<String, Object> cdataNode = new LinkedHashMap<>();
+                cdataNode.put("_cdata", child.getNodeValue().trim());
+                childList.add(cdataNode);
             }
+        }
 
-            // 处理结果
-            if (childrenMap.isEmpty()) {
-                // 没有子元素或内容
-            } else if (childrenMap.size() == 1) {
-                // 单一子元素或内容
-                String key = childrenMap.keySet().iterator().next();
-                List<Object> values = childrenMap.get(key);
-                if (values.size() == 1) {
-                    map.put(key, values.get(0));
-                } else {
-                    map.put(key, values);
-                }
-            } else {
-                // 混合内容
-                map.putAll(childrenMap);
-            }
+        if (!childList.isEmpty()) {
+            map.put("_children", childList);
         }
 
         return map;
     }
+
 
     /**
      * 处理文本内容（普通文本或CDATA）
