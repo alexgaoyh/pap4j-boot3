@@ -58,5 +58,21 @@ public class XmlRecursiveParserTest {
 
     }
 
+    @Test
+    public void parseTest3() throws Exception {
+        String xml = """
+                <pap>
+                  <details>
+                    <detail page="0001" rec="1,1,1,1">0001</detail>
+                  </details>
+                  <details>
+                    <detail page="0002" rec="2,2,2,2">0002.1<geo>0002.2</geo>0002.3<geo>0002.4</geo><geo>0002.5</geo><personal>0002.6</personal>0002.7</detail>
+                  </details>
+                </pap>
+                """;
+        List<Map<String, Object>> result = XmlRecursiveParser.parseToUniversalList(xml);
+        System.out.println(result);
+    }
+
 
 }
