@@ -12,6 +12,8 @@ import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * 使用 ImageMagick 实现图像的倾斜角度的计算
@@ -34,6 +36,21 @@ public class ImageMagickCannyHougeAngleTest {
     public void test2() throws Exception {
         String s = angleInfoStrList("C:\\Users\\86181\\Desktop\\0.jpg", "C:\\Users\\86181\\Desktop\\0_canny.jpg", 300);
         drawHoughLinesJava("C:\\Users\\86181\\Desktop\\0.jpg", "C:\\Users\\86181\\Desktop\\0_lines.jpg", s, Color.RED, 2f);
+    }
+
+    /**
+     * 文本方向
+     * ImageMagick 配合 Java ， 实现文字方向的检测，这里只检测 水平 / 垂直
+     * 思路： 判断 hough lines 的方向，来作为文字方向的判断依据
+     *
+     * 另外一种思路： 将图像进行水平和垂直的投影，然后判断行与列的起伏，看哪一个起伏大（方差、标准差 大 ），因为会存在字与字之间的空白行，所以会造成起伏大。
+     * @throws Exception
+     */
+    // @Test
+    public void test3() throws Exception {
+        String s = angleInfoStrList("C:\\Users\\86181\\Desktop\\1.jpg", "C:\\Users\\86181\\Desktop\\1_canny.jpg", 300);
+        Direction dir = detectTextDirection(s);
+        System.out.println("文本方向: " + dir.getDesc());
     }
 
     public static String angleInfoStrList(String inputPath, String tmpCannyPath, Integer minLength) throws Exception {
@@ -184,6 +201,82 @@ public class ImageMagickCannyHougeAngleTest {
         g2d.dispose();
         // 保存生成的新图
         ImageIO.write(image, "png", new File(outputPath));
+    }
+
+    public enum Direction {
+        HORIZONTAL("横向"),
+        VERTICAL("纵向"),
+        UNKNOWN("未知");
+
+        private final String desc;
+
+        Direction(String desc) {
+            this.desc = desc;
+        }
+
+        public String getDesc() {
+            return desc;
+        }
+
+        @Override
+        public String toString() {
+            return desc;
+        }
+    }
+
+    // 解析 Hough 输出，返回方向
+    public static Direction detectTextDirection(String houghOutput) {
+        List<Double> angles = parseAngles(houghOutput);
+
+        if (angles.isEmpty()) {
+            return Direction.UNKNOWN;
+        }
+
+        int horizontalCount = 0;
+        int verticalCount = 0;
+
+        for (double angle : angles) {
+            // 标准化到 0~180
+            double a = Math.abs(angle) % 180;
+
+            if (isVertical(a)) {
+                verticalCount++;
+            } else if (isHorizontal(a)) {
+                horizontalCount++;
+            }
+        }
+
+        if (horizontalCount > verticalCount) {
+            return Direction.HORIZONTAL;
+        } else if (verticalCount > horizontalCount) {
+            return Direction.VERTICAL;
+        } else {
+            return Direction.UNKNOWN;
+        }
+    }
+
+    // 解析每一行的 angle 值
+    private static List<Double> parseAngles(String houghOutput) {
+        List<Double> angles = new ArrayList<>();
+        Pattern pattern = Pattern.compile("line\\s+\\d+,\\d+\\s+\\d+,\\d+\\s+#\\s+\\d+\\s+([\\-\\d\\.]+)");
+        Matcher matcher = pattern.matcher(houghOutput);
+
+        while (matcher.find()) {
+            try {
+                angles.add(Double.parseDouble(matcher.group(1)));
+            } catch (NumberFormatException ignored) {}
+        }
+        return angles;
+    }
+
+    // 判断是否是竖直方向 (接近 0° 或 180°)
+    private static boolean isVertical(double angle) {
+        return (angle < 15 || angle > 165);
+    }
+
+    // 判断是否是水平方向 (接近 90°)
+    private static boolean isHorizontal(double angle) {
+        return (angle > 75 && angle < 105);
     }
 
     private static List<Double[]> parseHoughLines(String houghOutput) {
