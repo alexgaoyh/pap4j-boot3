@@ -44,6 +44,11 @@ public class ImageMagickCannyHougeAngleTest {
      * 思路： 判断 hough lines 的方向，来作为文字方向的判断依据
      *
      * 另外一种思路： 将图像进行水平和垂直的投影，然后判断行与列的起伏，看哪一个起伏大（方差、标准差 大 ），因为会存在字与字之间的空白行，所以会造成起伏大。
+     *  如下两个命令，将图像进行水平投影和垂直投影，然后可以判断这个起伏的大小：先生成两张图许，然后做统计分析，最终做出来判断。
+     *  magick edges.png -threshold 50% -negate -resize 1x\! col_projection.png
+     *  magick edges.png -threshold 50% -negate -resize x1\! row_projection.png
+     *  magick row_projection.png -format "%[fx:standard_deviation^2]" info:
+     *  magick col_projection.png -format "%[fx:standard_deviation^2]" info:
      * @throws Exception
      */
     // @Test
