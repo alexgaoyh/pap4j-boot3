@@ -22,6 +22,24 @@ import java.util.List;
 public class ImageUtil {
 
     /**
+     * 创建1x1像素的最小JPEG图像 背景色白色 的 jpg 图像字符串， 可以直接 response.getOutputStream().write(generateEmptyJpeg()); 写入响应流
+     * @return
+     */
+    public static byte[] generateEmptyJpeg() {
+        try {
+            // 创建1x1像素的最小JPEG图像
+            BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+            // 设置背景色（白色）
+            image.setRGB(0, 0, 0xFFFFFF);
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, "jpg", baos);
+            return baos.toByteArray();
+        } catch (IOException e) {
+            return new byte[0];
+        }
+    }
+
+    /**
      * 高效的图像裁剪功能， 指定原始图像路径和裁剪后的图像路径， 指定左上角的x/y 和 宽高 进行高效的裁剪
      * 相比于 ImageIO.read("").getSubimage(x, y, width, height)， 在极端情况下能够提示执行效率10倍以上。
      * 实验过程中一张7.35M大小的JPG图像(分辨率 9007 x 6221)，当前方法执行时间小于1s， ImageIO.read("").getSubimage 执行时间24s.
