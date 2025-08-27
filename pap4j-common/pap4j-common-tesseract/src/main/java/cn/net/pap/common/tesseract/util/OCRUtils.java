@@ -6,6 +6,7 @@ import org.bytedeco.javacpp.Loader;
 import org.bytedeco.leptonica.PIX;
 import org.bytedeco.tesseract.ResultIterator;
 import org.bytedeco.tesseract.TessBaseAPI;
+import org.bytedeco.tesseract.global.tesseract;
 
 import java.awt.Rectangle;
 import java.io.File;
@@ -191,8 +192,8 @@ public class OCRUtils {
                     int height = pixGetHeight(image);
                     Rectangle fullBbox = new Rectangle(0, 0, width, height);
 
-                    results.add(new OCRResult(fullText, fullBbox,
-                            getAverageConfidence(api), "PAGE"));
+                    float pageConf = api.MeanTextConf();
+                    results.add(new OCRResult(fullText, fullBbox, pageConf, "PAGE"));
                 }
             } finally {
                 outText.deallocate();
@@ -204,42 +205,39 @@ public class OCRUtils {
     }
 
     /**
-     * 获取平均置信度
-     */
-    private static float getAverageConfidence(TessBaseAPI api) {
-        IntPointer confs = api.AllWordConfidences();
-        if (confs != null && confs.capacity() > 0) {
-            int sum = 0;
-            for (int i = 0; i < confs.capacity(); i++) {
-                sum += confs.get(i);
-            }
-            return (float) sum / confs.capacity();
-        }
-        return 0.0f;
-    }
-
-    /**
      * 处理行级别结果
      */
-    private static void processComponentLevelResults(TessBaseAPI api, List<OCRResult> results) {
-        // 获取文本行级别的结果
-        BytePointer outText = api.GetUTF8Text();
-        if (outText != null) {
-            try {
-                String text = outText.getString();
-                if (text != null && !text.trim().isEmpty()) {
-                    // 分割文本并获取每行的坐标
-                    String[] lines = text.split("\n");
-                    for (String line : lines) {
-                        if (!line.trim().isEmpty()) {
-                            // 简化处理，实际项目中可以根据需要改进坐标提取
-                            results.add(new OCRResult(line, new Rectangle(0, 0, 100, 20), 90.0f, "LINE"));
-                        }
+    public static void processComponentLevelResults(TessBaseAPI api, List<OCRResult> results) {
+        // 获取结果迭代器
+        ResultIterator ri = api.GetIterator();
+        if (ri == null) {
+            return;
+        }
+
+        try {
+            do {
+                BytePointer textPtr = ri.GetUTF8Text(tesseract.RIL_TEXTLINE);
+                if (textPtr != null) {
+                    String lineText = textPtr.getString();
+                    textPtr.deallocate();
+
+                    if (lineText != null && !lineText.trim().isEmpty()) {
+                        float confidence = ri.Confidence(tesseract.RIL_TEXTLINE);
+
+                        int[] x1 = new int[1], y1 = new int[1], x2 = new int[1], y2 = new int[1];
+                        ri.BoundingBox(tesseract.RIL_TEXTLINE, x1, y1, x2, y2);
+
+                        results.add(new OCRResult(
+                                lineText,
+                                new Rectangle(x1[0], y1[0], x2[0] - x1[0], y2[0] - y1[0]),
+                                confidence,
+                                "LINE"
+                        ));
                     }
                 }
-            } finally {
-                outText.deallocate();
-            }
+            } while (ri.Next(tesseract.RIL_TEXTLINE));
+        } finally {
+            ri.close();
         }
     }
 
