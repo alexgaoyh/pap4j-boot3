@@ -441,4 +441,259 @@ public class ImageMagickCannyHougeAngleTest {
 
         return report.toString();
     }
+
+    /**
+     * 使用 ImageMagick 进行去黑边的完整操作
+     * 输入： 经过Canny边缘检测 magick input.jpg -canny  0x1+10%+30% edges.png 的图像
+     * 返回： 去除黑边的 magick 命令
+     *
+     * 思路： 1、将经过边缘检测后的图像进行 水平 垂直 投影；
+     *       2、对于 投影 后的图像进行分析，水平 垂直 的投影图像都从两头分析，找到白色的像素点，其实就是原图的黑色边框的部分
+     *       3、根据得到的四周的这个边框的信息，封装出来一个 ImageMagick 的命令，将四周的黑色边框进行白色像素填充
+     * @throws Exception
+     */
+    @Test
+    public void getBorderTest() throws Exception {
+        String inputPath = "C:\\Users\\86181\\Desktop\\edges.png";
+        String colPath = "C:\\Users\\86181\\Desktop\\col_projection.png";
+        String rowPath = "C:\\Users\\86181\\Desktop\\row_projection.png";
+        String removedPath = "C:\\Users\\86181\\Desktop\\removed.png";
+
+        // 生成图像
+        geneColProjection(inputPath, colPath, "col");
+        geneColProjection(inputPath, rowPath, "row");
+
+        //
+        BufferedImage colProjImage = ImageIO.read(new File(colPath));
+        BufferedImage rowProjImage = ImageIO.read(new File(rowPath));
+
+        Integer inputPathHeight = colProjImage.getHeight();
+        Integer inputPathWidth = rowProjImage.getWidth();
+
+        // 分析列投影（检测左右边框）
+        BorderInfo leftBorder = analyzeProjectionFromStart(rowProjImage, "左");
+        // 0,1 是从这个点开始，高度为3的像素点，置为白色
+        // magick edges.png -fill red -draw "rectangle 0,0 11,%[h]" left.jpg
+        BorderInfo rightBorder = analyzeProjectionFromEnd(rowProjImage, "右");
+        // borderStart 减去 width
+        // magick left.jpg -fill red -draw "rectangle 581,0 %[w],%[h]" leftright.jpg
+
+        // 分析行投影（检测上下边框）
+        BorderInfo topBorder = analyzeProjectionFromStart(colProjImage, "上");
+        // magick leftright.jpg -fill red -draw "rectangle 0,0 %[w],91" leftrighttop.jpg
+
+        BorderInfo bottomBorder = analyzeProjectionFromEnd(colProjImage, "下");
+        //  borderStart 减去 width
+        // magick leftrighttop.jpg -fill red -draw "rectangle 0,822 592,832" leftrighttopbottom.jpg
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                "magick",
+                inputPath,
+                "-fill", "white",
+                "-draw",
+                "\"",
+                "rectangle", "0,", "0 ", leftBorder.width + "", ",%[h];",
+                "rectangle", rightBorder.borderStart - rightBorder.width + "" , ",0 ", "%[w]", ",%[h];",
+                "rectangle", "0,", "0 ", "%[w],", topBorder.width + "",
+                "rectangle", "0,", bottomBorder.borderStart - bottomBorder.width + "", " ", inputPathWidth + "", ",", inputPathHeight + "",
+                "\"",
+                removedPath
+        );
+        System.out.println(String.join(" ", processBuilder.command()));
+    }
+
+    /**
+     * 生成 水平 垂直 投影 的图像
+     *         // magick edges.png -threshold 50% -negate -resize 1x\! col_projection.png
+     *         // magick edges.png -threshold 50% -negate -resize x1\! row_projection.png
+     * @param inputPath
+     * @param projectionPath
+     * @param type      只能是 col 或者是 row
+     * @throws Exception
+     */
+    public static void geneColProjection(String inputPath, String projectionPath, String type) throws Exception {
+
+        ProcessBuilder processBuilder = new ProcessBuilder(
+                "magick",
+                inputPath,
+                "-threshold", "50%",
+                "-negate", "-resize",
+                (type.equals("col") ? "1x\\!" : "x1\\!"),
+                projectionPath
+        );
+        Process process = null;
+        try {
+            process = processBuilder.start();
+
+            StringBuilder errorOutput = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    errorOutput.append(line).append("\n");
+                }
+            }
+
+            int timeout = 30; // 超时时间(秒)
+            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
+
+            if (!finished) {
+                process.destroyForcibly();
+                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
+            }
+
+            int exitCode = process.exitValue();
+            String stderr = errorOutput.toString().trim();
+
+            if (exitCode != 0 && !stderr.isEmpty()) {
+                // 仅消费 InputStream 防止阻塞
+                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    while (stdReader.readLine() != null) {
+                        // 不记录输出，只清空流
+                    }
+                }
+                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
+            } else {
+                // 没有错误输出 → 读取 InputStream 作为有效输出
+                StringBuilder stdOutput = new StringBuilder();
+                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
+                    String line;
+                    while ((line = stdReader.readLine()) != null) {
+                        stdOutput.append(line).append("\n");
+                    }
+                }
+            }
+
+        } catch (IOException e) {
+            throw e;
+        } finally {
+            if (process != null && process.isAlive()) {
+                process.destroyForcibly(); // 确保进程被终止
+            }
+        }
+    }
+
+    private static final int MIN_BORDER_WIDTH = 1;  // 最小边框宽度
+
+    /**
+     * 从开始端分析投影图像（左边缘或上边缘）
+     */
+    private static BorderInfo analyzeProjectionFromStart(BufferedImage projImage, String edgeName) {
+        int width = projImage.getWidth();
+        int height = projImage.getHeight();
+
+        // 确定是水平投影还是垂直投影
+        boolean isHorizontal = height == 1; // 高度为1是水平投影
+
+        int borderWidth = 0;
+        int borderStart = -1;
+        boolean foundBorderEnd = false;
+
+        // 从开始端扫描
+        int scanLength = isHorizontal ? width : height;
+
+        for (int i = 0; i < scanLength; i++) {
+            int rgb = isHorizontal ?
+                    projImage.getRGB(i, 0) :  // 水平投影：从左到右
+                    projImage.getRGB(0, i);   // 垂直投影：从上到下
+            if(!isProjectionWhite(rgb)) {
+                continue;
+            }
+
+            if (!foundBorderEnd) {
+                if (isProjectionWhite(rgb)) {
+                    if (borderStart == -1) {
+                        borderStart = i; // 记录起始点
+                    }
+                    borderWidth++;
+                } else {
+                    foundBorderEnd = true;
+                    // 如果边框太窄，可能是噪声，重置计数
+                    if (borderWidth < MIN_BORDER_WIDTH) {
+                        borderWidth = 0;
+                        foundBorderEnd = false;
+                    }
+                }
+            }
+
+            // 提前终止：如果已经扫描了足够长的距离且找到了边框结束点
+            if (foundBorderEnd && i > MIN_BORDER_WIDTH * 3) {
+                break;
+            }
+        }
+
+        boolean hasBorder = borderWidth >= MIN_BORDER_WIDTH;
+        return new BorderInfo(edgeName, hasBorder, borderWidth, borderStart);
+    }
+
+    /**
+     * 从结束端分析投影图像（右边缘或下边缘）
+     */
+    private static BorderInfo analyzeProjectionFromEnd(BufferedImage projImage, String edgeName) {
+        int width = projImage.getWidth();
+        int height = projImage.getHeight();
+
+        boolean isHorizontal = height == 1;
+        int borderWidth = 0;
+        int borderStart = -1;
+        boolean foundBorderEnd = false;
+
+        int scanLength = isHorizontal ? width : height;
+
+        // 从结束端向前扫描
+        for (int i = scanLength - 1; i >= 0; i--) {
+            int rgb = isHorizontal ?
+                    projImage.getRGB(i, 0) :  // 水平投影：从右到左
+                    projImage.getRGB(0, i);   // 垂直投影：从下到上
+            if(!isProjectionWhite(rgb)) {
+                continue;
+            }
+
+            if (!foundBorderEnd) {
+                if (isProjectionWhite(rgb)) {
+                    if (borderStart == -1) {
+                        borderStart = i; // 记录起始点
+                    }
+                    borderWidth++;
+                } else {
+                    foundBorderEnd = true;
+                    if (borderWidth < MIN_BORDER_WIDTH) {
+                        borderWidth = 0;
+                        foundBorderEnd = false;
+                    }
+                }
+            }
+
+            if (foundBorderEnd && (scanLength - i) > MIN_BORDER_WIDTH * 3) {
+                break;
+            }
+        }
+
+        boolean hasBorder = borderWidth >= MIN_BORDER_WIDTH;
+        return new BorderInfo(edgeName, hasBorder, borderWidth, borderStart);
+    }
+
+    /**
+     * 针对投影图像的专用白色检测
+     */
+    private static boolean isProjectionWhite(int rgb) {
+        int red = (rgb >> 16) & 0xFF;
+        int green = (rgb >> 8) & 0xFF;
+        int blue = rgb & 0xFF;
+        return (red + green + blue) < 100; // 调整这个阈值
+    }
+
+    static class BorderInfo {
+        final String name;
+        final boolean hasBorder;
+        final int width;
+        final int borderStart;
+
+        public BorderInfo(String name, boolean hasBorder, int width, int borderStart) {
+            this.name = name;
+            this.hasBorder = hasBorder;
+            this.width = width;
+            this.borderStart = borderStart;
+        }
+    }
+
 }
