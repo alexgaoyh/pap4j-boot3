@@ -122,6 +122,9 @@ public class XmlRecursiveParser {
      *
      * @param result   解析后的数据结构
      * @param pathRule 路径规则，如 "$[0].catalog[0].title"
+     *                 路径规则，如 "$[0]._children[0]._attributes.id"
+     *                 路径规则，如 "$[0]._children[0]._children[?@_name=ids]"
+     *                 路径规则，如 "$[0]._children[0]._children[?@_name=names]._children"
      * @return 提取的值
      */
     public static Object extract(List<Map<String, Object>> result, String pathRule) {
@@ -137,6 +140,22 @@ public class XmlRecursiveParser {
                 // 处理数组索引，如 $[0]
                 int index = Integer.parseInt(part.substring(2, part.length() - 1));
                 current = safeGetFromList((List<?>) current, index);
+
+            } else if (part.contains("[?@")) {
+                // 增强功能：处理过滤表达式，如 catalog[?@id=100]  意味着从数组里面取出来属性 id=100 的数据值
+                String key = part.substring(0, part.indexOf("["));
+                String filterExpr = part.substring(part.indexOf("[?@") + 3, part.length() - 1); // id=100
+                String[] kv = filterExpr.split("=", 2);
+                String attrKey = kv[0].trim();
+                String attrVal = kv[1].trim();
+
+                Object listObj = safeGetFromMap((Map<?, ?>) current, key);
+                if (listObj instanceof List) {
+                    current = filterListByAttribute((List<?>) listObj, attrKey, attrVal);
+                } else {
+                    current = null;
+                }
+
             } else if (part.contains("[")) {
                 // 处理带数组的key，如 catalog[0]
                 String key = part.substring(0, part.indexOf("["));
@@ -154,6 +173,19 @@ public class XmlRecursiveParser {
         }
 
         return current;
+    }
+
+    private static Object filterListByAttribute(List<?> list, String attrKey, String attrVal) {
+        if (list == null) return null;
+        for (Object item : list) {
+            if (item instanceof Map) {
+                Object val = ((Map<?, ?>) item).get(attrKey);
+                if (val != null && attrVal.equals(val.toString())) {
+                    return item; // 找到第一个匹配的就返回
+                }
+            }
+        }
+        return null;
     }
 
     // 安全从List获取
