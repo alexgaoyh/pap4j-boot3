@@ -116,6 +116,7 @@ public class ImageMagickEnvCheckerUtil {
     // magick input.jpg -colors 100 -format %c histogram:info:
     // 主色， 像素排序
     // magick input.jpg -format %c histogram:info: | sort /R
+    // magick input.jpg -format %c histogram:info: | sort /R | findstr /n "." | findstr "^[1-5]:"
 
     // 图像上边缘20px的部分，填充白色
     // magick input.jpg -fill "#FFFFFF" -draw "rectangle 0,0 %[w],20" output.jpg
