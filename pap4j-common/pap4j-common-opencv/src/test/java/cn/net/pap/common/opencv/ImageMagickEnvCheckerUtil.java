@@ -114,6 +114,8 @@ public class ImageMagickEnvCheckerUtil {
     // magick input.jpg -resize 1x1! -format "%[hex:u.p{0,0}]" info:
     // 这里的 colors 可以大一点，如果从结果里面取出来最大的一个值，当做主色
     // magick input.jpg -colors 100 -format %c histogram:info:
+    // 主色， 像素排序
+    // magick input.jpg -format %c histogram:info: | sort /R
 
     // 图像上边缘20px的部分，填充白色
     // magick input.jpg -fill "#FFFFFF" -draw "rectangle 0,0 %[w],20" output.jpg
