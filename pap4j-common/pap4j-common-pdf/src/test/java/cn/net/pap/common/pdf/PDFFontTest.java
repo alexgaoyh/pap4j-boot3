@@ -7,37 +7,72 @@ import com.itextpdf.text.pdf.PdfReader;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
-import java.util.Set;
-import java.util.TreeSet;
+import java.util.ArrayList;
+import java.util.List;
 
 public class PDFFontTest {
 
     /**
-     * 获得 PDF 内的字体
+     * 字体信息类，包含字体名称和是否嵌入的标志
+     */
+    public static class FontInfo {
+        private String name;
+        private boolean embedded;
+        private Integer pageNumber;
+
+        public FontInfo(String name, boolean embedded, Integer pageNumber) {
+            this.name = name;
+            this.embedded = embedded;
+            this.pageNumber = pageNumber;
+        }
+
+        public String getName() {
+            return name;
+        }
+
+        public boolean isEmbedded() {
+            return embedded;
+        }
+
+        public Integer getPageNumber() {
+            return pageNumber;
+        }
+
+        @Override
+        public String toString() {
+            return name + " (" + (embedded ? "embedded" : "not embedded") + ")" + " (page: " + pageNumber + ")";
+        }
+    }
+
+    /**
+     * 获得 PDF 内的所有字体信息
+     *
      * @throws IOException
      */
     @Test
     public void pdfTest() throws IOException {
-        Set<String> strings = listFonts("C:\\Users\\86181\\Desktop\\pap.pdf");
-        System.out.println(strings);
+        List<FontInfo> fontInfos = listAllFonts("input.pdf");
+        for (FontInfo fontInfo : fontInfos) {
+            System.out.println(fontInfo);
+        }
     }
 
     /**
-     * Creates a set containing information about the not-embedded fonts within the src PDF file.
+     * Creates a list containing information about all fonts within the src PDF file.
      *
      * @param src the path to a PDF file
      * @throws IOException
      */
-    public Set<String> listFonts(String src) throws IOException {
-        Set<String> set = new TreeSet<String>();
+    public List<FontInfo> listAllFonts(String src) throws IOException {
+        List<FontInfo> fontList = new ArrayList<>();
         PdfReader reader = new PdfReader(src);
         PdfDictionary resources;
         for (int k = 1; k <= reader.getNumberOfPages(); ++k) {
             resources = reader.getPageN(k).getAsDict(PdfName.RESOURCES);
-            processResource(set, resources);
+            processResource(fontList, resources, k);
         }
         reader.close();
-        return set;
+        return fontList;
     }
 
     /**
@@ -47,75 +82,67 @@ public class PDFFontTest {
      * @return true if the name denotes an embedded subset font
      */
     private boolean isEmbeddedSubset(String name) {
-        //name = String.format("%s subset (%s)", name.substring(8), name.substring(1, 7));
         return name != null && name.length() > 8 && name.charAt(7) == '+';
     }
 
-    private void processFont(PdfDictionary font, Set<String> set) {
+    private void processFont(PdfDictionary font, List<FontInfo> fontList, Integer pageNumber) {
         String name = font.getAsName(PdfName.BASEFONT).toString();
+        boolean isEmbedded = false;
+
         if (isEmbeddedSubset(name)) {
-            System.out.println(name + " is embedded subset");
-            return;
-        }
+            isEmbedded = true;
+        } else {
+            PdfDictionary desc = font.getAsDict(PdfName.FONTDESCRIPTOR);
 
-        PdfDictionary desc = font.getAsDict(PdfName.FONTDESCRIPTOR);
-
-        //nofontdescriptor
-        if (desc == null) {
-            PdfArray descendant = font.getAsArray(PdfName.DESCENDANTFONTS);
-
-            if (descendant == null) {
-                set.add(name.substring(1));
+            if (desc == null) {
+                // 检查是否有子字体
+                PdfArray descendant = font.getAsArray(PdfName.DESCENDANTFONTS);
+                if (descendant != null) {
+                    for (int i = 0; i < descendant.size(); i++) {
+                        PdfDictionary dic = descendant.getAsDict(i);
+                        processFont(dic, fontList, pageNumber);
+                    }
+                    return;
+                }
             } else {
-                for (int i = 0; i < descendant.size(); i++) {
-                    PdfDictionary dic = descendant.getAsDict(i);
-                    processFont(dic, set);
+                // 检查是否嵌入
+                if (desc.get(PdfName.FONTFILE) != null ||  // Type 1 embedded
+                        desc.get(PdfName.FONTFILE2) != null || // TrueType embedded
+                        desc.get(PdfName.FONTFILE3) != null) { // Other embedded font types
+                    isEmbedded = true;
                 }
             }
         }
-        /**
-         * (Type 1) embedded
-         */
-        else if (desc.get(PdfName.FONTFILE) != null)
-            ;
-        /**
-         * (TrueType) embedded
-         */
-        else if (desc.get(PdfName.FONTFILE2) != null)
-            ;
-        /**
-         * " (" + font.getAsName(PdfName.SUBTYPE).toString().substring(1) + ") embedded"
-         */
-        else if (desc.get(PdfName.FONTFILE3) != null)
-            ;
-        else {
-            set.add(name.substring(1));
-        }
+
+        // 添加到字体列表
+        fontList.add(new FontInfo(name.substring(1), isEmbedded, pageNumber));
     }
 
     /**
-     * Extracts the names of the not-embedded fonts from page or XObject resources.
+     * Extracts the fonts from page or XObject resources.
      *
-     * @param set      the set with the font names
+     * @param fontList the list to store font information
      * @param resource the resources dictionary
      */
-    public void processResource(Set<String> set, PdfDictionary resource) {
-        if (resource == null)
-            return;
+    public void processResource(List<FontInfo> fontList, PdfDictionary resource, Integer pageNumber) {
+        if (resource == null) return;
+
+        // 处理XObject中的字体
         PdfDictionary xobjects = resource.getAsDict(PdfName.XOBJECT);
         if (xobjects != null) {
             for (PdfName key : xobjects.getKeys()) {
-                processResource(set, xobjects.getAsDict(key));
+                processResource(fontList, xobjects.getAsDict(key), pageNumber);
             }
         }
+
+        // 处理当前资源中的字体
         PdfDictionary fonts = resource.getAsDict(PdfName.FONT);
-        if (fonts == null)
-            return;
+        if (fonts == null) return;
+
         PdfDictionary font;
         for (PdfName key : fonts.getKeys()) {
             font = fonts.getAsDict(key);
-            processFont(font, set);
+            processFont(font, fontList, pageNumber);
         }
     }
-
 }
