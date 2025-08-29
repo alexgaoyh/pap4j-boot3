@@ -159,7 +159,8 @@ public class PDFFontTest {
      *
      * @throws Exception
      */
-    public void reGenePdf() throws Exception {
+    @Test
+    public void reGenePdfTest() throws Exception {
         String src = "C:/Users/86181/Desktop/GBT 9237-2017.pdf";
         String dest = "C:/Users/86181/Desktop/output.pdf";
         String font = "C:/Windows/Fonts/simsun.ttc,0";
