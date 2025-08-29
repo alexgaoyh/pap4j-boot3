@@ -241,6 +241,7 @@ public class ITextTest {
                 if(allImagesTmp != null && allImagesTmp.size() > 0) {
                     try {
                         BufferedImage fullImage = mergeImagesByPosition(allImages, this.pageWidth, this.pageHeight, this.imageDPI);
+                        // todo if(pageRotation == 90) 可以做一下旋转操作
                         // 获取 JPEG ImageWriter
                         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpg");
                         if (!writers.hasNext()) {
@@ -406,6 +407,7 @@ public class ITextTest {
             float adjustedX = startOuter.get(1);
             float adjustedY = pageWidth - baselineOuter.getStartPoint().get(0) - Float.parseFloat(Math.round(rectHeight) + Math.abs(singleSpaceWidth) + "") * (idx + 1);
 
+            // todo 这里可以尝试一下，按照 pageRotation == 0 的结果，然后顺时针旋转90度，得到新的坐标，从而保证整体流程是一致的。
             return new StringBuilder(adjustedX - Math.round(rectHeight / 2) + "").append(",").append(adjustedX + Math.round(rectHeight / 2) + "").append(",").append(adjustedY + "").append(",").append(adjustedY + "").toString();
         }
         throw new RuntimeException("未匹配到合适的旋转方向,请联系开发人员!");
