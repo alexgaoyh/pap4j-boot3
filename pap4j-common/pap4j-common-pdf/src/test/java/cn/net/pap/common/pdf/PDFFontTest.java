@@ -1,15 +1,22 @@
 package cn.net.pap.common.pdf;
 
-import com.itextpdf.text.pdf.PdfArray;
-import com.itextpdf.text.pdf.PdfDictionary;
-import com.itextpdf.text.pdf.PdfName;
-import com.itextpdf.text.pdf.PdfReader;
+import com.itextpdf.text.Document;
+import com.itextpdf.text.Image;
+import com.itextpdf.text.Rectangle;
+import com.itextpdf.text.pdf.*;
+import com.itextpdf.text.pdf.parser.*;
 import org.junit.jupiter.api.Test;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 1、获取某一个 PDF 下的所有字体.
+ * <p>
+ * 2、尝试替换字体，改为嵌入式字体，从而在某些场景下，达到缩小PDF大小的效果.
+ */
 public class PDFFontTest {
 
     /**
@@ -145,4 +152,116 @@ public class PDFFontTest {
             processFont(font, fontList, pageNumber);
         }
     }
+
+    /**
+     * 重新生成 PDF ， 重置字体
+     * 如果原 PDF 中字体是未嵌入，这里重置字体后，因为字体嵌入了，从而可以缩小 PDF 。
+     *
+     * @throws Exception
+     */
+    public void reGenePdf() throws Exception {
+        String src = "C:/Users/86181/Desktop/GBT 9237-2017.pdf";
+        String dest = "C:/Users/86181/Desktop/output.pdf";
+        String font = "C:/Windows/Fonts/simsun.ttc,0";
+
+        PdfReader reader = new PdfReader(src);
+
+        Document document = new Document();
+        PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(dest));
+        document.open();
+
+        final PdfContentByte cb = writer.getDirectContent();
+
+        // 使用本机中文字体；iText 会自动子集化
+        final BaseFont bf = BaseFont.createFont(font, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+
+        for (int page = 1; page <= reader.getNumberOfPages(); page++) {
+            Rectangle ps = reader.getPageSizeWithRotation(page);
+            document.setPageSize(ps);
+            document.newPage();
+
+            // --- 第一步：渲染文字（在图像下层）
+            PdfReaderContentParser parser = new PdfReaderContentParser(reader);
+            parser.processContent(page, new RenderListener() {
+                @Override
+                public void beginTextBlock() {
+                }
+
+                @Override
+                public void endTextBlock() {
+                }
+
+                @Override
+                public void renderImage(ImageRenderInfo renderInfo) { /* 跳过图像 */ }
+
+                @Override
+                public void renderText(TextRenderInfo info) {
+                    try {
+                        String text = info.getText();
+                        if (text == null || text.isEmpty()) return;
+
+                        LineSegment base = info.getBaseline();
+                        Vector s = base.getStartPoint();
+                        Vector e = base.getEndPoint();
+
+                        float x = s.get(Vector.I1);
+                        float y = s.get(Vector.I2);
+
+                        float dx = e.get(Vector.I1) - x;
+                        float dy = e.get(Vector.I2) - y;
+                        double angleRad = Math.atan2(dy, dx);
+                        float cos = (float) Math.cos(angleRad);
+                        float sin = (float) Math.sin(angleRad);
+
+                        float ascentY = info.getAscentLine().getStartPoint().get(Vector.I2);
+                        float descentY = info.getDescentLine().getStartPoint().get(Vector.I2);
+                        float fontSize = Math.max(0.1f, Math.abs(ascentY - descentY));
+
+                        cb.saveState();
+                        cb.beginText();
+                        cb.setFontAndSize(bf, fontSize);
+                        cb.setTextMatrix(cos, sin, -sin, cos, x, y);
+                        cb.showText(text);
+                        cb.endText();
+                        cb.restoreState();
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+
+            // --- 第二步：渲染图像（在文字上层）
+            parser.processContent(page, new RenderListener() {
+                @Override
+                public void beginTextBlock() {
+                }
+
+                @Override
+                public void endTextBlock() {
+                }
+
+                @Override
+                public void renderText(TextRenderInfo info) { /* 跳过文字 */ }
+
+                @Override
+                public void renderImage(ImageRenderInfo renderInfo) {
+                    try {
+                        PdfImageObject image = renderInfo.getImage();
+                        if (image == null) return;
+
+                        Image img = Image.getInstance(image.getImageAsBytes());
+                        Matrix m = renderInfo.getImageCTM();
+
+                        cb.addImage(img, m.get(Matrix.I11), m.get(Matrix.I12), m.get(Matrix.I21), m.get(Matrix.I22), m.get(Matrix.I31), m.get(Matrix.I32));
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                    }
+                }
+            });
+        }
+
+        document.close();
+        reader.close();
+    }
+
 }
