@@ -498,4 +498,95 @@ public class ImageUtil {
         Files.write(Paths.get(outputFilePath), imageBytes);
     }
 
+    /**
+     * 顺时针旋转图像90度并覆盖原图
+     * @param imageFile 图像文件
+     * @throws IOException 如果处理失败
+     */
+    public static void rotate90ClockwiseAndOverwrite(File imageFile) throws IOException {
+        if (imageFile == null || !imageFile.exists()) {
+            throw new IllegalArgumentException("图像文件不存在");
+        }
+        BufferedImage originalImage = null;
+        try {
+            originalImage = ImageIO.read(imageFile);
+            if (originalImage == null) {
+                throw new IOException("无法读取图像文件: " + imageFile.getAbsolutePath());
+            }
+            String formatName = getFormatName(imageFile);
+            BufferedImage rotatedImage = rotate90Clockwise(originalImage);
+            // 释放原图资源
+            originalImage.flush();
+            // 确保输出质量
+            if (!ImageIO.write(rotatedImage, formatName, imageFile)) {
+                throw new IOException("无法写入图像文件，不支持该格式: " + formatName);
+            }
+            // 释放旋转图像资源
+            rotatedImage.flush();
+        } finally {
+            if (originalImage != null) {
+                originalImage.flush();
+            }
+        }
+    }
+
+    /**
+     * 顺时针旋转图像90度
+     * @param originalImage 原始图像
+     * @return 旋转后的图像
+     */
+    private static BufferedImage rotate90Clockwise(BufferedImage originalImage) {
+        int width = originalImage.getWidth();
+        int height = originalImage.getHeight();
+
+        // 使用更高效的图像类型
+        int imageType = originalImage.getType();
+        if (imageType == BufferedImage.TYPE_CUSTOM) {
+            imageType = BufferedImage.TYPE_INT_ARGB;
+        }
+
+        BufferedImage rotatedImage = new BufferedImage(height, width, imageType);
+
+        // 使用像素级操作，性能更好
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                int rgb = originalImage.getRGB(x, y);
+                rotatedImage.setRGB(height - 1 - y, x, rgb);
+            }
+        }
+
+        return rotatedImage;
+    }
+
+    /**
+     * 获取图像文件的格式
+     * @param imageFile 图像文件
+     * @return 格式名称
+     */
+    private static String getFormatName(File imageFile) throws IOException {
+        try (ImageInputStream iis = ImageIO.createImageInputStream(imageFile)) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+            if (readers.hasNext()) {
+                ImageReader reader = readers.next();
+                String formatName = reader.getFormatName();
+                return formatName.toLowerCase();
+            }
+        }
+        // 后备方案：使用文件扩展名
+        String fileName = imageFile.getName().toLowerCase();
+        if (fileName.endsWith(".jpg") || fileName.endsWith(".jpeg")) {
+            return "jpeg";
+        } else if (fileName.endsWith(".png")) {
+            return "png";
+        } else if (fileName.endsWith(".gif")) {
+            return "gif";
+        } else if (fileName.endsWith(".bmp")) {
+            return "bmp";
+        } else if (fileName.endsWith(".jp2")) {
+            return "jp2";
+        }
+        throw new IOException("无法确定图像格式: " + imageFile.getAbsolutePath());
+    }
+
+
 }

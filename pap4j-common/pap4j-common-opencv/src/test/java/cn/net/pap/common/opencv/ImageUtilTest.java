@@ -138,6 +138,11 @@ public class ImageUtilTest {
     }
 
     // @Test
+    public void rotate90ClockwiseAndOverwriteTest() throws Exception {
+        ImageUtil.rotate90ClockwiseAndOverwrite(new File("C:\\Users\\86181\\Desktop\\0.jpg"));
+    }
+
+    // @Test
     public void pointTest() {
         try {
             // 1. 读取两张图像（替换为你的图像路径）
