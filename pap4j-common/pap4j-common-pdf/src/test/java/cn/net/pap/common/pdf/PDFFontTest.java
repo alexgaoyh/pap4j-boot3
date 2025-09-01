@@ -178,7 +178,11 @@ public class PDFFontTest {
 
         for (int page = 1; page <= reader.getNumberOfPages(); page++) {
             Rectangle ps = reader.getPageSizeWithRotation(page);
-            document.setPageSize(ps);
+            float width = ps.getWidth();
+            float height = ps.getHeight();
+            float maxSize = 14400f; // 如果超出 14400，就缩小比例
+            float scale = Math.min(maxSize / width, maxSize / height);
+            document.setPageSize(new Rectangle(width * scale, height * scale));
             document.newPage();
 
             // --- 第一步：渲染文字（在图像下层）
