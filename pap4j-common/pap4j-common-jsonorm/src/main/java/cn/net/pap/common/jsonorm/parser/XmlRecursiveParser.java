@@ -95,6 +95,87 @@ public class XmlRecursiveParser {
         return map;
     }
 
+    /**
+     * 解析过的结果，重新转换为 xml 字符串
+     * @param parsedData
+     * @return
+     */
+    public static String convertToXmlString(List<Map<String, Object>> parsedData) {
+        if (parsedData == null || parsedData.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder xmlBuilder = new StringBuilder();
+        // xmlBuilder.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>");
+
+        for (Map<String, Object> element : parsedData) {
+            buildXml(element, xmlBuilder);
+        }
+
+        return xmlBuilder.toString();
+    }
+
+    private static void buildXml(Map<String, Object> element, StringBuilder xmlBuilder) {
+        String elementName = (String) element.get("_name");
+
+        // 开始标签
+        xmlBuilder.append("<").append(elementName);
+
+        // 添加属性
+        @SuppressWarnings("unchecked")
+        Map<String, String> attributes = (Map<String, String>) element.get("_attributes");
+        if (attributes != null && !attributes.isEmpty()) {
+            for (Map.Entry<String, String> attr : attributes.entrySet()) {
+                xmlBuilder.append(" ")
+                        .append(attr.getKey())
+                        .append("=\"")
+                        .append(escapeXml(attr.getValue()))
+                        .append("\"");
+            }
+        }
+        xmlBuilder.append(">");
+
+        // 处理子节点
+        @SuppressWarnings("unchecked")
+        List<Object> children = (List<Object>) element.get("_children");
+        if (children != null && !children.isEmpty()) {
+            for (Object child : children) {
+                if (child instanceof Map) {
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> childMap = (Map<String, Object>) child;
+
+                    if (childMap.containsKey("_text")) {
+                        // 文本节点
+                        String text = (String) childMap.get("_text");
+                        xmlBuilder.append(escapeXml(text));
+                    } else if (childMap.containsKey("_cdata")) {
+                        // CDATA节点
+                        String cdata = (String) childMap.get("_cdata");
+                        xmlBuilder.append("<![CDATA[").append(cdata).append("]]>");
+                    } else {
+                        // 元素节点
+                        buildXml(childMap, xmlBuilder);
+                    }
+                }
+            }
+        }
+
+        // 结束标签
+        xmlBuilder.append("</").append(elementName).append(">");
+    }
+
+    private static String escapeXml(String input) {
+        if (input == null) {
+            return "";
+        }
+
+        return input.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
+    }
+
 
     /**
      * 处理文本内容（普通文本或CDATA）

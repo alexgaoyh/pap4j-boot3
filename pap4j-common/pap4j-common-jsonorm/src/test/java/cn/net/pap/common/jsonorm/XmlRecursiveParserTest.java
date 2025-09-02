@@ -66,12 +66,22 @@ public class XmlRecursiveParserTest {
                     <detail page="0001" rec="1,1,1,1">0001</detail>
                   </details>
                   <details>
-                    <detail page="0002" rec="2,2,2,2">0002.1<geo>0002.2</geo>0002.3<geo>0002.4</geo><geo>0002.5</geo><personal>0002.6</personal>0002.7</detail>
+                    <detail page="0002" rec="2,2,2,2">0002.1<geo id="0002.2">0002.2</geo>0002.3<geo>0002.4</geo><geo>0002.5</geo><personal>0002.6</personal>0002.7</detail>
                   </details>
                 </pap>
                 """;
         List<Map<String, Object>> result = XmlRecursiveParser.parseToUniversalList(xml);
         System.out.println(result);
+
+        // 把解析过得集合重新还原为xml
+        String reconstructedXml = XmlRecursiveParser.convertToXmlString(result);
+        System.out.println(reconstructedXml);
+
+        // 取特定节点下的数据，然后还原为xml
+        List<Map<String, Object>> details2List = (List<Map<String, Object>>)XmlRecursiveParser.extract(result, "$[0]._children[1]._children");
+        String reconstructedXml2 = XmlRecursiveParser.convertToXmlString(details2List);
+        System.out.println(reconstructedXml2);
+
     }
 
 
