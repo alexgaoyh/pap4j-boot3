@@ -1,10 +1,15 @@
 package cn.net.pap.common.jsonorm;
 
+import cn.net.pap.common.jsonorm.dto.HeadDTO;
 import cn.net.pap.common.jsonorm.util.JacksonUtil;
+import cn.net.pap.common.jsonorm.util.JsonORMUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.List;
@@ -116,4 +121,15 @@ public class JacksonUtilTest {
             this.dAge = dAge;
         }
     }
+
+    // @Test
+    public void jsonToListMapTest() throws Exception {
+        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        ObjectMapper objectMapper = new ObjectMapper();
+        objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        List<HeadDTO> result = objectMapper.readValue(json, new TypeReference<List<HeadDTO>>() {});
+        System.out.println(result.size());
+    }
+
+
 }

@@ -1,0 +1,19 @@
+package cn.net.pap.common.jsonorm.dto;
+
+import com.fasterxml.jackson.annotation.JsonAlias;
+
+import java.io.Serializable;
+
+public class ChildDTO implements Serializable {
+
+    @JsonAlias({"id", "序号"})
+    private String id;
+
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
+    }
+}
