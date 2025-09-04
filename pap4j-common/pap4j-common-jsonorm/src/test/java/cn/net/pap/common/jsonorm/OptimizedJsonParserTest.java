@@ -3,6 +3,7 @@ package cn.net.pap.common.jsonorm;
 import cn.net.pap.common.jsonorm.dto.JsonDTO;
 import cn.net.pap.common.jsonorm.parser.OptimizedJsonParser;
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -10,6 +11,8 @@ import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
 
 import java.io.File;
+import java.util.List;
+import java.util.Map;
 
 public class OptimizedJsonParserTest {
 
@@ -55,6 +58,14 @@ public class OptimizedJsonParserTest {
         System.out.println(GraphLayout.parseInstance(jsonDTO).toFootprint());
         System.out.println("Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
 
+    }
+
+    // @Test
+    public void jsonToListMapTest() throws Exception {
+        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        ObjectMapper objectMapper = new ObjectMapper();
+        List<Map<String, Object>> result = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
+        System.out.println(result.size());
     }
 
 }
