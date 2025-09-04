@@ -148,4 +148,24 @@ public class ExcelUtilTest {
         System.out.println(sheet2);
     }
 
+    // @Test
+    public void gerRowListTest() throws Exception {
+        String excelAbsolutePath = "C:\\Users\\86181\\Desktop\\input.xlsx";
+
+        List<CompareDTO> compareDTOS = new ArrayList<>();
+        compareDTOS.add(new CompareDTO("标识号", "標識號"));
+
+        /**
+         * 两个Excel ，封装合并为一个数据集合，关联的字段如上配置所示
+         */
+        List<Map<String, Object>> oneToManyRowList = ExcelUtil.getOneToManyRowList(excelAbsolutePath, "Sheet1",
+                excelAbsolutePath, "Sheet2",
+                compareDTOS,
+                null,
+                "_children");
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        System.out.println(objectMapper.writeValueAsString(oneToManyRowList));
+    }
+
 }
