@@ -130,6 +130,9 @@ public class ImageMagickEnvCheckerUtil {
     // 在将图像转换为 JPEG 格式时，自动调整压缩质量参数（Q），使得最终生成的 JPEG 文件大小尽可能接近你指定的大小（这里是 1000KB）。基于目标大小的自适应 JPEG 压缩
     // magick input.jpg -density 300 -units PixelsPerInch -define jpeg:extent=1000KB output.jpg
 
+    // 图像的信息，这里大概是可以看到一些参数，比如 Quality
+    // identify -verbose input.jpg
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
