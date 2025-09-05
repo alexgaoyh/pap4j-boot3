@@ -127,6 +127,9 @@ public class ImageMagickEnvCheckerUtil {
     // 图像 预处理，生成黑白二值图像，可以应用到后面的 OCR 的功能上
     // magick ocr.jpg -colorspace Gray -threshold 70% ocr_ocr.png
 
+    // 在将图像转换为 JPEG 格式时，自动调整压缩质量参数（Q），使得最终生成的 JPEG 文件大小尽可能接近你指定的大小（这里是 1000KB）。基于目标大小的自适应 JPEG 压缩
+    // magick input.jpg -density 300 -units PixelsPerInch -define jpeg:extent=1000KB output.jpg
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
