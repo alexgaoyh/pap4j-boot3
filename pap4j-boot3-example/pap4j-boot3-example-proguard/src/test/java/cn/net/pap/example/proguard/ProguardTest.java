@@ -603,4 +603,16 @@ public class ProguardTest {
         System.out.println(end - middle + " : " + batchResultList.size());
     }
 
+    /**
+     * connection leak detection check throw exception
+     * @throws Exception
+     */
+    // @Test
+    public void timeMSTest() throws Exception {
+        // spring.datasource.hikari.leak-detection-threshold=3000
+        // logging.level.com.zaxxer.hikari.pool.ProxyLeakTask: WARN
+        Proguard sleep = proguardService.sleep(9000l);
+        assertEquals(sleep, null);
+    }
+
 }

@@ -83,4 +83,6 @@ public interface IProguardService {
     Boolean exceptionRandom(String input);
 
     Boolean checkDeadLock(Long id1, Long id2);
+
+    Proguard sleep(Long timeMS);
 }

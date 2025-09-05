@@ -279,4 +279,14 @@ public class ProguardServiceImpl implements IProguardService {
         return true;
     }
 
+    @Override
+    @Transactional
+    public Proguard sleep(Long timeMS) {
+        try {
+            Thread.sleep(timeMS);
+        } catch (InterruptedException ignored) {
+        }
+        return null;
+    }
+
 }
