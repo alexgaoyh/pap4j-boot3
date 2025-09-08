@@ -14,9 +14,10 @@ package cn.net.pap.common.datastructure.frequency;
  * limitations under the License.
  */
 
+import java.io.BufferedReader;
+import java.io.FileReader;
 import java.io.IOException;
-import java.util.Random;
-import java.util.TreeSet;
+import java.util.*;
 
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +25,44 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.util.AssertionErrors.assertTrue;
 
 public class CountMinSketchTest {
+
+    // @Test
+    public void readTxtTest() throws IOException {
+        // 创建 Count-Min Sketch
+        CountMinSketch cms = new CountMinSketch(0.0001, 0.9999, 1234567890);
+        String filePath = "input.txt";  // 替换成你的 txt 路径
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                for (char c : line.toCharArray()) {
+                    // 过滤掉换行/空格，可以按需保留
+                    if (Character.isWhitespace(c)) continue;
+                    // 每个字符作为 key
+                    cms.add(String.valueOf(c), 1);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // ====== 分析部分 ======
+        // 假设要看 A-Z 以及常见字符的频率
+        List<String> charsToCheck = new ArrayList<>();
+        for (char c = 'a'; c <= 'z'; c++) charsToCheck.add(String.valueOf(c));
+        for (char c = 'A'; c <= 'Z'; c++) charsToCheck.add(String.valueOf(c));
+        charsToCheck.addAll(Arrays.asList("你", "我", "他", "的", "，", "。")); // 也可以加入中文常见字符
+
+        System.out.println("=== 字符频率估计 (Count-Min Sketch) ===");
+        for (String c : charsToCheck) {
+            long est = cms.estimateCount(c);
+            if (est > 0) {
+                System.out.println("'" + c + "' ≈ " + est);
+            }
+        }
+        System.out.println("总字符数 ≈ " + cms.size());
+        System.out.println("误差上限 = " + cms.getRelativeError());
+        System.out.println("置信度 = " + cms.getConfidence());
+    }
 
     @Test
     public void negativeSize() {
