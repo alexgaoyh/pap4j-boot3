@@ -10,25 +10,37 @@ import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 
+/**
+ * 使用 Apache DataSketches + Count-Min Sketch 实现近似 TF-IDF
+ */
 public class TfIdfDataSketchesUtil {
 
-    // 使用 ItemsSketch 来估计文档频率 (DF)
+    // 用 ItemsSketch 来估计文档频率 (DF)
     private ItemsSketch<String> dfSketch;
 
-    // 存储每个文档的词频 (TF)
-    private final List<Map<String, Integer>> documentTfMaps;
+    // 存储每个文档的词频 (近似 TF)
+    private final List<DocumentTfSketch> documentTfSketches;
 
     // 总文档数
     private final AtomicLong totalDocuments;
 
-    // 配置参数
+    // CMS 配置参数
+    private final int cmsWidth;
+    private final int cmsDepth;
+    private final int seed;
+
+    // ItemsSketch 配置
     private final int mapSize;
 
-    public TfIdfDataSketchesUtil(int mapSize) {
+    public TfIdfDataSketchesUtil(int mapSize, int cmsWidth, int cmsDepth, int seed) {
         this.mapSize = mapSize;
-        this.dfSketch = new ItemsSketch<String>(mapSize);
-        this.documentTfMaps = new ArrayList<>();
+        this.dfSketch = new ItemsSketch<>(mapSize);
+        this.documentTfSketches = new ArrayList<>();
         this.totalDocuments = new AtomicLong(0);
+
+        this.cmsWidth = cmsWidth;
+        this.cmsDepth = cmsDepth;
+        this.seed = seed;
     }
 
     /**
@@ -39,7 +51,7 @@ public class TfIdfDataSketchesUtil {
             return new String[0];
         }
 
-        return text.toLowerCase().replaceAll("[^a-z0-9\\s]", " ").replaceAll("\\s+", " ").trim().split("\\s+");
+        return text.split("");
     }
 
     /**
@@ -71,20 +83,21 @@ public class TfIdfDataSketchesUtil {
             return;
         }
 
-        Map<String, Integer> tfMap = new HashMap<>();
+        DocumentTfSketch tfSketch = new DocumentTfSketch(cmsWidth, cmsDepth, seed);
 
-        // 统计当前文档的词频 (TF)
+        // 统计当前文档的词频 (近似 TF)
+        Set<String> uniqueWords = new HashSet<>();
         for (String word : words) {
-            if (word.length() < 2) continue;
-            tfMap.put(word, tfMap.getOrDefault(word, 0) + 1);
+            tfSketch.add(word);
+            uniqueWords.add(word);
         }
 
         // 更新文档频率 (DF) - 每个词在文档中出现就记一次
-        for (String uniqueWord : tfMap.keySet()) {
+        for (String uniqueWord : uniqueWords) {
             dfSketch.update(uniqueWord);
         }
 
-        documentTfMaps.add(tfMap);
+        documentTfSketches.add(tfSketch);
         totalDocuments.incrementAndGet();
     }
 
@@ -92,21 +105,19 @@ public class TfIdfDataSketchesUtil {
      * 计算单个词的 TF-IDF 值
      */
     public double calculateTfIdf(String word, int documentIndex) {
-        if (documentIndex < 0 || documentIndex >= documentTfMaps.size()) {
+        if (documentIndex < 0 || documentIndex >= documentTfSketches.size()) {
             throw new IllegalArgumentException("Document index out of bounds: " + documentIndex);
         }
 
-        Map<String, Integer> tfMap = documentTfMaps.get(documentIndex);
+        DocumentTfSketch tfSketch = documentTfSketches.get(documentIndex);
 
         // 获取词频 (TF)
-        Integer termFrequency = tfMap.get(word);
-        if (termFrequency == null || termFrequency == 0) {
+        long termFrequency = tfSketch.getCount(word);
+        if (termFrequency == 0) {
             return 0.0;
         }
 
-        // 计算 TF (词频比例)
-        int totalWordsInDoc = tfMap.values().stream().mapToInt(Integer::intValue).sum();
-        double tf = (double) termFrequency / totalWordsInDoc;
+        double tf = (double) termFrequency / tfSketch.getTotalWords();
 
         // 获取文档频率 (DF) 的估计值
         long documentFrequency = dfSketch.getEstimate(word);
@@ -118,18 +129,27 @@ public class TfIdfDataSketchesUtil {
     }
 
     /**
-     * 获取文档中所有词的 TF-IDF 分数
+     * 获取文档中所有词的 TF-IDF 分数（注意：CMS 无法直接枚举所有词）
+     * 这里建议结合 dfSketch 的 frequent items 作为候选
      */
-    public Map<String, Double> getDocumentTfIdfScores(int documentIndex) {
-        if (documentIndex < 0 || documentIndex >= documentTfMaps.size()) {
+    public Map<String, Double> getDocumentTfIdfScores(int documentIndex, int topCandidateWords) {
+        if (documentIndex < 0 || documentIndex >= documentTfSketches.size()) {
             throw new IllegalArgumentException("Document index out of bounds: " + documentIndex);
         }
 
         Map<String, Double> scores = new HashMap<>();
-        Map<String, Integer> tfMap = documentTfMaps.get(documentIndex);
 
-        for (String word : tfMap.keySet()) {
-            scores.put(word, calculateTfIdf(word, documentIndex));
+        // 候选词来自全局高频词（避免扫描整个 CMS）
+        ItemsSketch.Row<String>[] rows = dfSketch.getFrequentItems(ErrorType.NO_FALSE_NEGATIVES);
+        Arrays.sort(rows, Comparator.comparingLong(ItemsSketch.Row<String>::getEstimate).reversed());
+
+        int limit = Math.min(topCandidateWords, rows.length);
+        for (int i = 0; i < limit; i++) {
+            String word = rows[i].getItem();
+            double score = calculateTfIdf(word, documentIndex);
+            if (score > 0) {
+                scores.put(word, score);
+            }
         }
 
         return scores;
@@ -139,8 +159,8 @@ public class TfIdfDataSketchesUtil {
      * 获取所有文档中某个词的 TF-IDF 向量
      */
     public double[] getTfIdfVector(String word) {
-        double[] vector = new double[documentTfMaps.size()];
-        for (int i = 0; i < documentTfMaps.size(); i++) {
+        double[] vector = new double[documentTfSketches.size()];
+        for (int i = 0; i < documentTfSketches.size(); i++) {
             vector[i] = calculateTfIdf(word, i);
         }
         return vector;
@@ -151,7 +171,7 @@ public class TfIdfDataSketchesUtil {
      */
     public List<String> getFrequentWords(int topN) {
         // 返回满足默认阈值（max error）的频繁项
-        ItemsSketch.Row<String>[] rows = dfSketch.getFrequentItems(ErrorType.NO_FALSE_POSITIVES);
+        ItemsSketch.Row<String>[] rows = dfSketch.getFrequentItems(ErrorType.NO_FALSE_NEGATIVES);
 
         // 按估计频次降序
         Arrays.sort(rows, Comparator.comparingLong(ItemsSketch.Row<String>::getEstimate).reversed());
@@ -169,7 +189,7 @@ public class TfIdfDataSketchesUtil {
      */
     public void merge(TfIdfDataSketchesUtil other) {
         this.dfSketch.merge(other.dfSketch);
-        this.documentTfMaps.addAll(other.documentTfMaps);
+        this.documentTfSketches.addAll(other.documentTfSketches);
         this.totalDocuments.addAndGet(other.totalDocuments.get());
     }
 
@@ -201,5 +221,54 @@ public class TfIdfDataSketchesUtil {
             System.out.printf("  %s: %d documents%n", word, freq);
         }
     }
-}
 
+    /**
+     * 单个文档的 TF 存储结构 (基于 Count-Min Sketch)
+     */
+    static class DocumentTfSketch {
+        private final long[][] table;
+        private final long[] hashA;
+        private final int width;
+        private final int depth;
+        private final int prime = 2_147_483_647; // 大素数
+        private int totalWords = 0;
+
+        DocumentTfSketch(int width, int depth, int seed) {
+            this.width = width;
+            this.depth = depth;
+            this.table = new long[depth][width];
+            this.hashA = new long[depth];
+            Random r = new Random(seed);
+            for (int i = 0; i < depth; i++) {
+                hashA[i] = r.nextInt(prime - 1) + 1;
+            }
+        }
+
+        private int hash(String key, int i) {
+            long h = hashA[i] * key.hashCode();
+            h = (h % prime + prime) % prime;
+            return (int) (h % width);
+        }
+
+        public void add(String key) {
+            for (int i = 0; i < depth; i++) {
+                int idx = hash(key, i);
+                table[i][idx]++;
+            }
+            totalWords++;
+        }
+
+        public long getCount(String key) {
+            long min = Long.MAX_VALUE;
+            for (int i = 0; i < depth; i++) {
+                int idx = hash(key, i);
+                min = Math.min(min, table[i][idx]);
+            }
+            return min;
+        }
+
+        public int getTotalWords() {
+            return totalWords;
+        }
+    }
+}
