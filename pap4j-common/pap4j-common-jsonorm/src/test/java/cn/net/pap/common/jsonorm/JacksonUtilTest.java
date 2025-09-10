@@ -7,6 +7,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.PropertyNamingStrategy;
+import com.fasterxml.jackson.databind.cfg.MapperConfig;
+import com.fasterxml.jackson.databind.introspect.AnnotatedMethod;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -129,6 +132,28 @@ public class JacksonUtilTest {
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         List<HeadDTO> result = objectMapper.readValue(json, new TypeReference<List<HeadDTO>>() {});
         System.out.println(result.size());
+
+        ObjectMapper objectMapper2 = new ObjectMapper();
+        // 自定义命名策略
+        objectMapper2.setPropertyNamingStrategy(new PropertyNamingStrategy() {
+            @Override
+            public String nameForSetterMethod(MapperConfig<?> config,
+                                              AnnotatedMethod method,
+                                              String defaultName) {
+                // todo 这里在反序列的时候，增加自定义的命令策略，比如如下是将json中定义的 ‘备注’ 转换为 'remark'；  json中定义的 '语种' 转换为 ’language‘ .
+                if(defaultName.equals("remark")) {
+                    return "备注";
+                } else if (defaultName.equals("language")) {
+                    return "语种";
+                } else {
+                    return super.nameForSetterMethod(config, method, defaultName);
+                }
+            }
+        });
+        objectMapper2.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+        List<HeadDTO> result2 = objectMapper2.readValue(json, new TypeReference<List<HeadDTO>>() {});
+        System.out.println(result2.size());
+
     }
 
 
