@@ -3,6 +3,10 @@ package cn.net.pap.common.jsonorm;
 import cn.net.pap.common.jsonorm.parser.JsonRecursiveParser;
 import org.junit.jupiter.api.Test;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -111,18 +115,47 @@ public class JsonRecursiveParserTest {
     public void parseTest2() throws Exception {
         Integer childrenAllLength = 0;
         Map<String, Integer> checkNumberMap = new TreeMap<String, Integer>();
+        String sourceIdKey = "";
+        String volumeKey = "";
+        String jpgCountKey = "";
 
         String inputStr = Files.readString(Paths.get("C:\\Users\\86181\\Desktop\\input.json"));
         List<Map<String, Object>> maps = JsonRecursiveParser.parseToUniversalList(inputStr);
         for(Map<String, Object> map : maps) {
             assertTrue(map.size() == 21);
             if(map.containsKey("_children") && map.get("_children") != null && map.get("_children") instanceof List) {
-                List<Map<String, Object>> _childrenList = (List<Map<String, Object>>)map.get("_children");
-                childrenAllLength = childrenAllLength + _childrenList.size();
+                List<Map<String, Object>> _childrenMapList = (List<Map<String, Object>>)map.get("_children");
+                childrenAllLength = childrenAllLength + _childrenMapList.size();
+                for(Map<String, Object> _childrenMap : _childrenMapList) {
+                    String sourceId = _childrenMap.get(sourceIdKey).toString();
+                    String volume = _childrenMap.get(volumeKey).toString();
+                    String jpgCount = _childrenMap.get(jpgCountKey).toString();
+                    String parentPath = "d:\\knowledge\\";
+                    for(Integer idx = 0; idx < Integer.parseInt(jpgCount); idx++) {
+                        generateEmptyJpeg(parentPath + File.separator + sourceId + File.separator +
+                                String.format("%04d", Integer.parseInt(volume)) + File.separator + "JPG" + File.separator +
+                                String.format("%04d", (idx + 1)) + ".jpg");
+                    }
+                }
             }
         }
 
         assertTrue(childrenAllLength == 1125);
+    }
+
+    public static void generateEmptyJpeg(String outputPath) {
+        try {
+            BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+            image.setRGB(0, 0, 0xFFFFFF);
+            File outputFile = new File(outputPath);
+            File parentDir = outputFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+            ImageIO.write(image, "jpg", outputFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
 
