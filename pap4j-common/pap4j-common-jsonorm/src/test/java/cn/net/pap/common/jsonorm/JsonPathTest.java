@@ -1,10 +1,12 @@
 package cn.net.pap.common.jsonorm;
 
+import cn.net.pap.common.jsonorm.util.JsonORMUtil;
 import com.jayway.jsonpath.JsonPath;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.util.*;
 
 public class JsonPathTest {
@@ -67,6 +69,16 @@ public class JsonPathTest {
 
         String result = ctx.jsonString();
         System.out.println(result);
+    }
+
+    // @Test
+    public void jsonToListMapTest() throws Exception {
+        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
+        for(int idx = 0; idx < Integer.parseInt(ctx.read("$.length()").toString()); idx++) {
+            Map<String, Object> itemMap = (Map<String, Object>)ctx.read("$[" + idx + "]");
+            System.out.println(itemMap);
+        }
     }
 
     @Test
