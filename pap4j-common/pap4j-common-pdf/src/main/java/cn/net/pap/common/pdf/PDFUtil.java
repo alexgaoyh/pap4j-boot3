@@ -210,7 +210,7 @@ public class PDFUtil {
         // 创建或加载PDF文档
         try (PDDocument document = new PDDocument()) {
             // 仿宋 PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
-            PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
+            // PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
             // 创建新页面
             PDPage page = new PDPage();
             document.addPage(page);
@@ -225,15 +225,17 @@ public class PDFUtil {
                     float width = coordsDTO.getWidth();
                     float height = coordsDTO.getHeight();
 
+                    PDType0Font font = findFont(text);
+
                     // 计算文字宽度
-                    float textWidth = simfangFont.getStringWidth(text) / 1000 * 12;
+                    float textWidth = font.getStringWidth(text) / 1000 * 12;
                     // 计算文字高度
-                    float textHeight = simfangFont.getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * 12;
+                    float textHeight = font.getFontDescriptor().getFontBoundingBox().getHeight() / 1000 * 12;
                     // 计算缩放比例，确保文字填充至整个矩形区域
                     float scalingFactor = Math.min(width / textWidth, height / textHeight);
 
                     contentStream.beginText();
-                    contentStream.setFont(simfangFont, 12 * scalingFactor);
+                    contentStream.setFont(font, 12 * scalingFactor);
                     contentStream.newLineAtOffset(x, y);
                     contentStream.showText(text);
                     contentStream.endText();
