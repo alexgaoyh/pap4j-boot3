@@ -154,6 +154,27 @@ public class JacksonUtilTest {
         List<HeadDTO> result2 = objectMapper2.readValue(json, new TypeReference<List<HeadDTO>>() {});
         System.out.println(result2.size());
 
+        ObjectMapper objectMapper3 = new ObjectMapper();
+        objectMapper3.setPropertyNamingStrategy(new PropertyNamingStrategy() {
+            @Override
+            public String nameForGetterMethod(MapperConfig<?> config,
+                                              AnnotatedMethod method,
+                                              String defaultName) {
+                if(defaultName.equals("remark")) {
+                    return "备注备注";
+                } else if (defaultName.equals("language")) {
+                    return "语种语种";
+                } else if (defaultName.equals("id")) {
+                    return "序号序号";
+                } else if (defaultName.equals("_children")) {
+                    return "明细";
+                } else {
+                    return super.nameForGetterMethod(config, method, defaultName);
+                }
+            }
+        });
+        String s = objectMapper3.writeValueAsString(result2);
+        System.out.println(s);
     }
 
 
