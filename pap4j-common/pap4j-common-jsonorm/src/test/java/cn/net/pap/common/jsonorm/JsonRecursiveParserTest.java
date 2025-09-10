@@ -3,8 +3,13 @@ package cn.net.pap.common.jsonorm;
 import cn.net.pap.common.jsonorm.parser.JsonRecursiveParser;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
+
+import static org.junit.Assert.assertTrue;
 
 public class JsonRecursiveParserTest {
 
@@ -100,6 +105,24 @@ public class JsonRecursiveParserTest {
 
         System.out.println("");
 
+    }
+
+    // @Test
+    public void parseTest2() throws Exception {
+        Integer childrenAllLength = 0;
+        Map<String, Integer> checkNumberMap = new TreeMap<String, Integer>();
+
+        String inputStr = Files.readString(Paths.get("C:\\Users\\86181\\Desktop\\input.json"));
+        List<Map<String, Object>> maps = JsonRecursiveParser.parseToUniversalList(inputStr);
+        for(Map<String, Object> map : maps) {
+            assertTrue(map.size() == 21);
+            if(map.containsKey("_children") && map.get("_children") != null && map.get("_children") instanceof List) {
+                List<Map<String, Object>> _childrenList = (List<Map<String, Object>>)map.get("_children");
+                childrenAllLength = childrenAllLength + _childrenList.size();
+            }
+        }
+
+        assertTrue(childrenAllLength == 1125);
     }
 
 
