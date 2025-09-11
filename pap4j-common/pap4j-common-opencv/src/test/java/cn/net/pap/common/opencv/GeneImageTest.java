@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.util.List;
 
 public class GeneImageTest {
 
@@ -69,6 +70,30 @@ public class GeneImageTest {
             }
         }
 
+    }
+
+    // @Test
+    public void generateImageTest2() throws IOException {
+        String basePath = "D:\\knowledge\\";
+        List<String> paths = Files.readAllLines(Paths.get("C:\\Users\\86181\\Desktop\\filename.txt"));
+        for(String path : paths) {
+            generateEmptyJpeg(basePath + path);
+        }
+    }
+
+    public static void generateEmptyJpeg(String outputPath) {
+        try {
+            BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
+            image.setRGB(0, 0, 0xFFFFFF);
+            File outputFile = new File(outputPath);
+            File parentDir = outputFile.getParentFile();
+            if (parentDir != null && !parentDir.exists()) {
+                parentDir.mkdirs();
+            }
+            ImageIO.write(image, "jpg", outputFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     // @Test
