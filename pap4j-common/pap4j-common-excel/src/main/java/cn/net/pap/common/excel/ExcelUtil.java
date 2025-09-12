@@ -11,7 +11,14 @@ import com.alibaba.excel.enums.CellExtraTypeEnum;
 import com.alibaba.excel.metadata.CellExtra;
 import com.alibaba.excel.read.metadata.ReadSheet;
 import com.alibaba.excel.util.StringUtils;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.ss.usermodel.WorkbookFactory;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -176,6 +183,48 @@ public class ExcelUtil {
 
         return returnTripleList;
     }
+
+    /**
+     * 隐藏行 查找指定sheet中所有隐藏的行号
+     * @param sourceFileAbsolutePath
+     * @param sourceSheetName
+     * @return
+     * @throws IOException
+     */
+    public static List<Integer> findHiddenRows(String sourceFileAbsolutePath, String sourceSheetName) {
+        List<Integer> hiddenRows = new ArrayList<>();
+
+        try (FileInputStream fis = new FileInputStream(sourceFileAbsolutePath);
+             Workbook sourceWorkbook = WorkbookFactory.create(fis)) {
+
+            Sheet sheet = sourceWorkbook.getSheet(sourceSheetName);
+            if (sheet == null) {
+                throw new IllegalArgumentException("Sheet '" + sourceSheetName + "' not found");
+            }
+
+            // 使用物理行数而不是逻辑行数范围
+            int firstRowNum = sheet.getFirstRowNum();
+            int lastRowNum = sheet.getLastRowNum();
+
+            for (int rowNum = firstRowNum; rowNum <= lastRowNum; rowNum++) {
+                Row row = sheet.getRow(rowNum);
+                // 检查行是否存在且被隐藏
+                if (row != null && row.getZeroHeight()) {
+                    hiddenRows.add(rowNum);
+                }
+            }
+
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException("File not found: " + sourceFileAbsolutePath, e);
+        } catch (IOException e) {
+            throw new RuntimeException("Error reading file: " + sourceFileAbsolutePath, e);
+        } catch (Exception e) {
+            throw new RuntimeException("Unexpected error while processing Excel file", e);
+        }
+
+        return hiddenRows;
+    }
+
 
     public static Map<String, List<Map<String, Object>>> groupByField(List<Map<String, Object>> sourceRowList, List<String> sourceFieldList) {
         return sourceRowList.parallelStream()

@@ -168,4 +168,10 @@ public class ExcelUtilTest {
         System.out.println(objectMapper.writeValueAsString(oneToManyRowList));
     }
 
+    // @Test
+    public void findHiddenRowsTest() {
+        List<Integer> hiddenRows = ExcelUtil.findHiddenRows("C:\\Users\\86181\\Desktop\\扫描清单(1).xlsx", "Sheet1");
+        System.out.println(hiddenRows);
+    }
+
 }
