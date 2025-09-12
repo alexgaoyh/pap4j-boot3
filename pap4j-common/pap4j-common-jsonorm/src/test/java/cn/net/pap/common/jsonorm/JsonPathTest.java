@@ -81,6 +81,17 @@ public class JsonPathTest {
         }
     }
 
+    // @Test
+    public void jsonToListMapTest2() throws Exception {
+        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
+        JSONArray allChildren = ctx.read("$.._children[*]");
+        for (Object child : allChildren) {
+            Map<String, Object> childMap = (Map<String, Object>) child;
+            System.out.println(childMap.toString());
+        }
+    }
+
     @Test
     public void getFieldTest() {
         String json = "{\"name\":\"John\",\"age\":30,\"address\":{\"city\":\"New York\",\"zip\":\"10001\"},\"hobbies\":[\"reading\",\"traveling\"],\"skills\":{\"programming\":{\"java\":\"advanced\",\"python\":\"intermediate\"},\"languages\":[\"English\",\"Spanish\"]}}";
