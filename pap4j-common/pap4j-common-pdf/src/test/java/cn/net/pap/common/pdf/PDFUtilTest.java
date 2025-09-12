@@ -84,9 +84,11 @@ public class PDFUtilTest {
     @Test
     public void drawTextTest() {
         try {
+            // 这里的字体调整一下， 不要多次引入。 不太好看。
+            // 能不能  java 获得某一个字体下的 字 。
             List<CoordsDTO> coordsDTOList = new ArrayList<>();
-            coordsDTOList.add(new CoordsDTO(300, 500, 20, 20, "许"));
-            coordsDTOList.add(new CoordsDTO(300, 400, 30, 30, "昌"));
+            coordsDTOList.add(new CoordsDTO(300, 500, 20, 20, "¥"));
+            coordsDTOList.add(new CoordsDTO(300, 400, 30, 30, "ϕ"));
             coordsDTOList.add(new CoordsDTO(300, 300, 40, 40, "魏"));
             coordsDTOList.add(new CoordsDTO(300, 200, 50, 50, "都"));
             coordsDTOList.add(new CoordsDTO(300, 100, 60, 60, "区"));

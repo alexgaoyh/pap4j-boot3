@@ -34,6 +34,7 @@ import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class PDFUtil {
 
@@ -210,10 +211,16 @@ public class PDFUtil {
         // 创建或加载PDF文档
         try (PDDocument document = new PDDocument()) {
             // 仿宋 PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
-            // PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
+            PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
             // 创建新页面
             PDPage page = new PDPage();
             document.addPage(page);
+
+            List<Map<String, Object>> loadedFontMaps = new ArrayList<>();
+            Map<String, Object> simfangFontMap = new HashMap<>();
+            simfangFontMap.put("fontName", "仿宋");
+            simfangFontMap.put("PDType0Font", simfangFont);
+            loadedFontMaps.add(simfangFontMap);
 
             // 获取页面内容流
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
@@ -225,7 +232,10 @@ public class PDFUtil {
                     float width = coordsDTO.getWidth();
                     float height = coordsDTO.getHeight();
 
-                    PDType0Font font = findFont(text);
+                    PDType0Font font = findFont(text, loadedFontMaps);
+                    if(font == null) {
+                        throw new RuntimeException("不匹配 ：" + text);
+                    }
 
                     // 计算文字宽度
                     float textWidth = font.getStringWidth(text) / 1000 * 12;
@@ -264,6 +274,56 @@ public class PDFUtil {
                 } catch (Exception e) {
 
                 }
+            }
+        } catch (IOException e) {
+
+        }
+        return null;
+    }
+
+    /**
+     * 查询可用的字体
+     * @param text
+     * @return
+     */
+    public static PDType0Font findFont(String text, List<Map<String, Object>> loadedFonts) {
+        try (PDDocument document = new PDDocument()) {
+            try {
+                for(Map<String, Object> fontMap : loadedFonts) {
+                    if(((PDType0Font)fontMap.get("PDType0Font")).getStringWidth(String.valueOf(text)) > 0) {
+                        return (PDType0Font)fontMap.get("PDType0Font");
+                    }
+                }
+            } catch (Exception e) {
+
+            }
+
+            for(ChineseFont chineseFont : ChineseFont.values()) {
+                if(loadedFonts.stream().map(e->e.get("fontName").toString()).collect(Collectors.joining()).contains(chineseFont.getFontName())) {
+                   continue;
+                }
+                //  PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
+                InputStream resourceAsStream = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName()));
+                if(resourceAsStream == null) {
+                    resourceAsStream = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName()).substring(1));
+                }
+                if(resourceAsStream != null) {
+                    try {
+                        PDType0Font tmp = PDType0Font.load(document, resourceAsStream);
+                        Map<String, Object> tmpFontMap = new HashMap<>();
+                        tmpFontMap.put("fontName", chineseFont.getFontName());
+                        tmpFontMap.put("PDType0Font", tmp);
+                        loadedFonts.add(tmpFontMap);
+                        if(tmp.getStringWidth(String.valueOf(text)) > 0) {
+                            return tmp;
+                        }
+                    } catch (Exception e) {
+
+                    } finally {
+                        resourceAsStream.close();
+                    }
+                }
+
             }
         } catch (IOException e) {
 
