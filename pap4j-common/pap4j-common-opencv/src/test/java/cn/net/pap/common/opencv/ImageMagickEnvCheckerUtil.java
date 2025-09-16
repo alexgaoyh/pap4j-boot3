@@ -136,6 +136,11 @@ public class ImageMagickEnvCheckerUtil {
     // 图像的信息，这里大概是可以看到一些参数，比如 Quality
     // identify -verbose input.jpg
 
+    // 只修改图像文件中的元数据（metadata），而不会改变图像的实际像素尺寸，命令不会对图像进行重采样（resample）。它只改变嵌入在文件中的 DPI 标签。图像的像素总量完全不变，只是操作系统和打印软件在读取这个文件时，会按照新的 DPI 值来计算它的建议打印尺寸。
+    // magick input.jpg -density 300 output.jpg
+    // 同时修改像素尺寸（重采样）：如果你希望同时改变 DPI 和像素尺寸（即真正地重新采样图像），你需要使用 -resample 选项，它会在更改分辨率的同时，自动按比例调整图像的像素尺寸，以保持相同的打印尺寸。
+    // magick input.jpg -resample 300 output.jpg
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
