@@ -7,6 +7,7 @@ import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 public class FilesTest {
@@ -41,6 +42,27 @@ public class FilesTest {
         Collections.sort(fileNames);
 
         Files.write( Paths.get("C:\\Users\\86181\\Desktop\\file_names_out.txt"), fileNames, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+    }
+
+    /**
+     * 读取文件并按行排序（自定义排序器）
+     * @param inputFilePath 输入文件路径
+     * @param outputFilePath 输出文件路径
+     * @param comparator 自定义比较器 不确定可传递默认： Comparator.naturalOrder()
+     * @throws IOException 如果文件读写失败
+     */
+    public static void sortFileLinesWithComparator(String inputFilePath, String outputFilePath,
+                                                   java.util.Comparator<String> comparator) throws IOException {
+        List<String> lines = Files.readAllLines(Paths.get(inputFilePath));
+        lines.sort(comparator);
+        Files.write(Paths.get(outputFilePath), lines);
+    }
+
+    // @Test
+    public void sortFileLinesWithComparatorTest() throws IOException {
+        sortFileLinesWithComparator("C:\\Users\\86181\\Desktop\\sort.txt",
+                "C:\\Users\\86181\\Desktop\\sort_out.txt",
+                Comparator.naturalOrder());
     }
 
 }
