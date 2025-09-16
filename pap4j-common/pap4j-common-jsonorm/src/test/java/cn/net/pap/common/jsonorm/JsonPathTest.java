@@ -84,7 +84,9 @@ public class JsonPathTest {
     // @Test
     public void jsonToListMapTest2() throws Exception {
         String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        // 读取的时候，有可能会读取出来 utf8-bom 的头，要提前做处理
         com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
+        // ctx.read("$..Chars[*].Code");
         JSONArray allChildren = ctx.read("$.._children[*]");
         for (Object child : allChildren) {
             Map<String, Object> childMap = (Map<String, Object>) child;
