@@ -103,3 +103,113 @@ echo ========================================
 
 pause
 ```
+
+```shell
+#!/bin/bash
+# ============================================================================
+# 文件名称: count_files.sh
+# 功能描述: Linux 递归统计指定文件夹及其所有子文件夹中的文件数量
+#            显示每个目录的文件数量，并汇总文件夹总数和文件总数
+#            可以使用 > 来重定向输出到指定文件 base count_files.sh /mnt/bj -f > mnt_bj_count_files.out
+# 使用语法: count_files.sh [文件夹路径] [-f | --filter-empty]
+#            如果不提供参数，会提示输入文件夹路径
+#            -f 或 --filter-empty 参数：只显示包含文件的文件夹
+# ============================================================================
+
+echo ""
+echo "=== Directory File Counter ==="
+echo ""
+
+# 初始化参数
+root_folder=""
+filter_empty=0
+
+# 解析参数
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        -f|--filter-empty)
+            filter_empty=1
+            shift
+            ;;
+        *)
+            if [[ -z "$root_folder" ]]; then
+                root_folder="$1"
+            else
+                echo "Warning: Unknown parameter '$1'"
+            fi
+            shift
+            ;;
+    esac
+done
+
+# 如果没有提供文件夹路径，提示输入
+if [[ -z "$root_folder" ]]; then
+    read -p "Enter root folder path: " root_folder
+fi
+
+# 移除可能的引号
+root_folder="${root_folder//\"/}"
+
+# 检查文件夹是否存在
+if [[ ! -d "$root_folder" ]]; then
+    echo "Error: Folder does not exist - '$root_folder'"
+    exit 1
+fi
+
+echo "Scanning: $root_folder"
+if [[ $filter_empty -eq 1 ]]; then
+    echo "Mode: Display only folders with files"
+else
+    echo "Mode: Display all folders"
+fi
+echo "Please wait..."
+echo ""
+
+total_files=0
+folder_count=0
+
+# 统计根目录的文件
+root_count=0
+if [[ -d "$root_folder" ]]; then
+    # 使用 find 命令统计文件，排除目录本身
+    while IFS= read -r -d '' file; do
+        ((root_count++))
+        ((total_files++))
+    done < <(find "$root_folder" -maxdepth 1 -type f -print0 2>/dev/null)
+fi
+
+# 显示根目录（根据filter_empty设置）
+if [[ $filter_empty -eq 0 ]] || [[ $root_count -gt 0 ]]; then
+    echo "[ROOT] $root_folder : $root_count files"
+fi
+((folder_count++))
+
+echo "----------------------------------------"
+
+# 统计所有子目录的文件
+while IFS= read -r -d '' dir; do
+    count=0
+    # 统计当前目录中的文件数量
+    while IFS= read -r -d '' file; do
+        ((count++))
+        ((total_files++))
+    done < <(find "$dir" -maxdepth 1 -type f -print0 2>/dev/null)
+    
+    # 根据filter_empty设置决定是否显示
+    if [[ $filter_empty -eq 0 ]] || [[ $count -gt 0 ]]; then
+        echo "$dir : $count files"
+    fi
+    ((folder_count++))
+done < <(find "$root_folder" -type d -print0 2>/dev/null | tail -z -n +2) # 跳过根目录
+
+echo "========================================"
+echo "SUMMARY:"
+echo "Total Folders: $folder_count"
+echo "Total Files: $total_files"
+if [[ $filter_empty -eq 1 ]]; then
+    echo "Note: Only folders with files are displayed"
+fi
+echo "========================================"
+
+read -p "Press Enter to continue..."
+```
