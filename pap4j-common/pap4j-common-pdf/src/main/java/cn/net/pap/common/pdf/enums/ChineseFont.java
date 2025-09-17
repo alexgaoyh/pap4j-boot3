@@ -15,10 +15,14 @@ public enum ChineseFont {
     SIMSUM("宋体", "SimSun", "simsun.ttc", "fonts/simsun.ttf"),
     //宋体&新宋体
     SIMSUMB("宋体ExtB", "SimSunExtB", "simsunb.ttc", "fonts/simsunb.ttf"),
+    // SIMSUMG
+    SIMSUMG("宋体ExtG", "SimsunExtG", "SimsunExtG.ttf", "fonts/SimsunExtG.ttf"),
+    // seguisym
+    seguisym("seguisym", "seguisym", "seguisym.ttf", "fonts/seguisym.ttf");
     // 扩展A区 https://github.com/Losketch/LorchinSans
-    A_PART("A_PART", "A_PART", "LorchinSansP0.ttf", "fonts/LorchinSansP0.ttf"),
-    // 专门为学术出版设计的字体家族： https://github.com/stipub/stixfonts
-    STIXTwoTextRegular("STIXTwoText-Regular", "STIXTwoText-Regular", "STIXTwoText-Regular.ttf", "fonts/STIXTwoText-Regular.ttf");
+//    A_PART("A_PART", "A_PART", "LorchinSansP0.ttf", "fonts/LorchinSansP0.ttf"),
+//    // 专门为学术出版设计的字体家族： https://github.com/stipub/stixfonts
+//    STIXTwoTextRegular("STIXTwoText-Regular", "STIXTwoText-Regular", "STIXTwoText-Regular.ttf", "fonts/STIXTwoText-Regular.ttf");
 
     /**
      * fontName
