@@ -56,19 +56,8 @@ public class AES256CBCUtilTest {
 
     @Test
     public void test1() throws Exception {
-        String text = """
-                SELECT dd.DICT_ID, dd.DICT_CODE, dd.DICT_NAME,
-                    JSON_ARRAYAGG(
-                        JSON_OBJECT(
-                            'DICT__DETAIL_ID', ddd.DICT__DETAIL_ID,
-                            'DICT__DETAIL_CODE', ddd.DICT__DETAIL_CODE,
-                            'DICT__DETAIL_NAME', ddd.DICT__DETAIL_NAME
-                        )
-                    ) AS details
-                FROM t_data_dict dd
-                LEFT JOIN t_data_dict_detail ddd ON dd.DICT_ID = ddd.DICT_ID
-                GROUP BY dd.DICT_ID, dd.DICT_CODE, dd.DICT_NAME;
-                """;
+        // 建议手动先处理一下换行等信息，比如 /r /n 这些，从而保证不同编程语言下都可用。
+        String text = "SELECT dd.DICT_ID, dd.DICT_CODE, dd.DICT_NAME, JSON_ARRAYAGG( JSON_OBJECT( 'DICT__DETAIL_ID', ddd.DICT__DETAIL_ID, 'DICT__DETAIL_CODE', ddd.DICT__DETAIL_CODE,  'DICT__DETAIL_NAME', ddd.DICT__DETAIL_NAME  ) ) AS details FROM t_data_dict dd LEFT JOIN t_data_dict_detail ddd ON dd.DICT_ID = ddd.DICT_ID GROUP BY dd.DICT_ID, dd.DICT_CODE, dd.DICT_NAME;";
         text = text.replace("\n", " ");
         String enc = encrypt(text);
         String dec = decrypt(enc);
