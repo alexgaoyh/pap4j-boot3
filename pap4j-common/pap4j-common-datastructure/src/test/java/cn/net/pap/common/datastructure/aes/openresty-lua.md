@@ -1,69 +1,74 @@
 ```html
 server {
-		listen 9878;
-        server_name  127.0.0.1;
+    listen 9878;
+    server_name 127.0.0.1;
 
-		# 加密接口: 127.0.0.1:9878/encrypt?text=alexgaoyh
-		location /encrypt {
-			content_by_lua_block {
-				local mycrypto = require "conf/lua/crypto"
-				local cjson = require "cjson.safe"
+    # 加密接口: POST 127.0.0.1:9878/encrypt
+    # 请求体: {"text":"alexgaoyh"}
+    location /encrypt {
+        content_by_lua_block {
+            local mycrypto = require "conf/lua/crypto"
+            local cjson = require "cjson.safe"
 
-				local args = ngx.req.get_uri_args()
-				local text = args.text or "default text"
+            ngx.req.read_body()
+            local body = ngx.req.get_body_data()
+            local json = cjson.decode(body or "{}") or {}
 
-				local encrypted = mycrypto.encrypt(text)
+            local text = json.text or "default text"
+            local encrypted = mycrypto.encrypt(text)
 
-				ngx.header.content_type = "application/json; charset=utf-8"
-				ngx.say(cjson.encode({
-					success = true,
-					action  = "encrypt",
-					input   = text,
-					output  = encrypted
-				}))
-			}
-		}
+            ngx.header.content_type = "application/json; charset=utf-8"
+            ngx.say(cjson.encode({
+                success = true,
+                action  = "encrypt",
+                input   = text,
+                output  = encrypted
+            }))
+        }
+    }
 
-		# 解密接口: 127.0.0.1:9878/decrypt?data=LOteFgO22MXi7b0YhmlG9Q==
-		location /decrypt {
-			content_by_lua_block {
-				local mycrypto = require "conf/lua/crypto"
-				local cjson = require "cjson.safe"
+    # 解密接口: POST 127.0.0.1:9878/decrypt
+    # 请求体: {"data":"LOteFgO22MXi7b0YhmlG9Q=="}
+    location /decrypt {
+        content_by_lua_block {
+            local mycrypto = require "conf/lua/crypto"
+            local cjson = require "cjson.safe"
 
-				local args = ngx.req.get_uri_args()
-				local data = args.data
+            ngx.req.read_body()
+            local body = ngx.req.get_body_data()
+            local json = cjson.decode(body or "{}") or {}
 
-				if not data then
-					ngx.header.content_type = "application/json; charset=utf-8"
-					ngx.say(cjson.encode({
-						success = false,
-						error   = "缺少参数: ?data=xxx(base64)"
-					}))
-					return
-				end
+            local data = json.data
+            ngx.header.content_type = "application/json; charset=utf-8"
 
-				local decrypted, err = mycrypto.decrypt(data)
-				ngx.header.content_type = "application/json; charset=utf-8"
+            if not data then
+                ngx.say(cjson.encode({
+                    success = false,
+                    error   = "缺少参数: data(base64)"
+                }))
+                return
+            end
 
-				if not decrypted then
-					ngx.say(cjson.encode({
-						success = false,
-						action  = "decrypt",
-						input   = data,
-						error   = err
-					}))
-					return
-				end
+            local decrypted, err = mycrypto.decrypt(data)
+            if not decrypted then
+                ngx.say(cjson.encode({
+                    success = false,
+                    action  = "decrypt",
+                    input   = data,
+                    error   = err
+                }))
+                return
+            end
 
-				ngx.say(cjson.encode({
-					success = true,
-					action  = "decrypt",
-					input   = data,
-					output  = decrypted
-				}))
-			}
-		}
-	}
+            ngx.say(cjson.encode({
+                success = true,
+                action  = "decrypt",
+                input   = data,
+                output  = decrypted
+            }))
+        }
+    }
+}
 ```
 
 
