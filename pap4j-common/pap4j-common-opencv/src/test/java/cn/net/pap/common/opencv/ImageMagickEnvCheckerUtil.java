@@ -141,6 +141,9 @@ public class ImageMagickEnvCheckerUtil {
     // 同时修改像素尺寸（重采样）：如果你希望同时改变 DPI 和像素尺寸（即真正地重新采样图像），你需要使用 -resample 选项，它会在更改分辨率的同时，自动按比例调整图像的像素尺寸，以保持相同的打印尺寸。
     // magick input.jpg -resample 300 output.jpg
 
+    // 实现将大图分割成小块，方便在网页上分块加载和展示，比如如下命令 把 input.jpg 切割成多个 256x256 像素的小图，并命名为 input_000.jpg, input_001.jpg 等。
+    // magick input.jpg -crop 256x256 +repage +adjoin input_%03d.jpg
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
