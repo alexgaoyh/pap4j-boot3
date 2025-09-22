@@ -3,6 +3,7 @@ package cn.net.pap.common.pdf;
 import cn.net.pap.common.pdf.dto.CoordsDTO;
 import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.enums.ChineseFont;
+import cn.net.pap.common.pdf.jpg.JpegDPIProcessor;
 import cn.net.pap.common.pdf.sign.SignatureInterfaceImpl;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.*;
@@ -18,10 +19,13 @@ import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.graphics.color.PDOutputIntent;
+import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
+import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.ExternalSigningSupport;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
+import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
 import javax.imageio.ImageIO;
@@ -903,6 +907,104 @@ public class PDFUtil {
                     newDocument.save(outputFilePath);
                 }
             }
+        }
+    }
+
+    /**
+     * 从PDF中提取图像并保存为JPG，支持自定义起始页码编号
+     * @param inputFilePath 输入PDF文件路径
+     * @param outputPattern 输出文件模式
+     * @param dpi 图像分辨率
+     * @param startNumber 起始编号
+     * @throws IOException 如果文件操作失败
+     */
+    public static void extractImagesToJPG(String inputFilePath, String outputPattern, int dpi,
+                                          int startNumber) throws IOException {
+        File inputFile = new File(inputFilePath);
+        if (!inputFile.exists()) {
+            throw new IOException("输入文件不存在: " + inputFilePath);
+        }
+
+        try (PDDocument document = Loader.loadPDF(inputFile)) {
+            PDFRenderer renderer = new PDFRenderer(document);
+            int totalPages = document.getNumberOfPages();
+
+            for (int i = 0; i < totalPages; i++) {
+                BufferedImage image = renderer.renderImageWithDPI(i, dpi, ImageType.RGB);
+                JpegDPIProcessor processor = new JpegDPIProcessor();
+                byte[] img = processor.setDPI(image, dpi);
+
+                // 使用自定义起始编号
+                String outputFilePath = String.format(outputPattern, startNumber + i);
+                Path outputPath = Paths.get(outputFilePath);
+                Files.createDirectories(outputPath.getParent());
+                try (FileOutputStream outputStream = new FileOutputStream(String.valueOf(outputPath));){
+                    outputStream.write(img);
+                }
+            }
+        }
+    }
+
+    /**
+     * 将文件夹下的 图像文件， 转换为一个 多页pdf
+     * @param inputFolderPath
+     * @param outputFilePath
+     * @throws IOException
+     */
+    public static void convertImagesToPDF(String inputFolderPath, String outputFilePath) throws IOException {
+        File inputFolder = new File(inputFolderPath);
+        if (!inputFolder.exists() || !inputFolder.isDirectory()) {
+            throw new IOException("输入文件夹不存在或不是目录: " + inputFolderPath);
+        }
+
+        // 获取文件夹中的所有图像文件并按字典序排序
+        File[] imageFiles = inputFolder.listFiles((dir, name) -> {
+            String lowerName = name.toLowerCase();
+            return lowerName.endsWith(".jpg");
+        });
+
+        if (imageFiles == null || imageFiles.length == 0) {
+            throw new IOException("文件夹中没有找到图像文件: " + inputFolderPath);
+        }
+
+        // 按文件名字典序排序
+        Arrays.sort(imageFiles, Comparator.comparing(File::getName));
+
+        try (PDDocument document = new PDDocument()) {
+            for (File imageFile : imageFiles) {
+                try {
+                    // 读取图像
+                    BufferedImage image = ImageIO.read(imageFile);
+                    if (image == null) {
+                        System.err.println("无法读取图像文件: " + imageFile.getName());
+                        continue;
+                    }
+
+                    // 创建PDF页面，大小与图像相同
+                    PDPage page = new PDPage(new PDRectangle(image.getWidth(), image.getHeight()));
+                    document.addPage(page);
+
+                    // 将图像转换为PDImageXObject
+                    // 无损压缩
+                    // PDImageXObject pdImage = LosslessFactory.createFromImage(document, image);
+                    // 有损压缩
+                    PDImageXObject pdImage = JPEGFactory.createFromImage(document, image, 0.7f);
+
+                    // 将图像添加到页面
+                    try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                        contentStream.drawImage(pdImage, 0, 0, image.getWidth(), image.getHeight());
+                    }
+                } catch (IOException e) {
+                    System.err.println("处理文件时出错: " + imageFile.getName() + " - " + e.getMessage());
+                }
+            }
+
+            // 确保输出目录存在
+            Path outputPath = Paths.get(outputFilePath);
+            Files.createDirectories(outputPath.getParent());
+
+            // 保存PDF
+            document.save(outputFilePath);
         }
     }
 
