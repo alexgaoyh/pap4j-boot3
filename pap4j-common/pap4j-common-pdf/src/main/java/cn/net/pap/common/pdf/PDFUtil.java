@@ -30,6 +30,8 @@ import java.io.*;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
@@ -872,6 +874,35 @@ public class PDFUtil {
             this.imageSize = imageSize;
             this.fontSize = fontSize;
             this.formSize = formSize;
+        }
+    }
+
+    /**
+     * 拆分PDF文件为单页PDF，支持自定义起始页码
+     * @param inputFilePath 输入PDF文件路径
+     * @param outputPattern 输出文件模式
+     * @param startPage 起始页码（从1开始）
+     * @throws IOException 如果文件操作失败
+     */
+    public static void splitPDF(String inputFilePath, String outputPattern, int startPage) throws IOException {
+        File inputFile = new File(inputFilePath);
+        if (!inputFile.exists()) {
+            throw new IOException("输入文件不存在: " + inputFilePath);
+        }
+        try (PDDocument document = Loader.loadPDF(inputFile)) {
+            PDPageTree pages = document.getPages();
+            int totalPages = pages.getCount();
+
+            for (int i = 0; i < totalPages; i++) {
+                try (PDDocument newDocument = new PDDocument()) {
+                    PDPage importedPage = newDocument.importPage(pages.get(i));
+                    // 使用自定义起始页码
+                    String outputFilePath = String.format(outputPattern, startPage + i);
+                    Path outputPath = Paths.get(outputFilePath);
+                    Files.createDirectories(outputPath.getParent());
+                    newDocument.save(outputFilePath);
+                }
+            }
         }
     }
 

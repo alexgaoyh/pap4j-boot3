@@ -312,6 +312,17 @@ public class PDFUtilTest {
         }
     }
 
+    // @Test
+    public void splitPDFTest() {
+        try {
+            String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
+            PDFUtil.splitPDF(desktop + "input.pdf", desktop + "input_%03d.pdf", 1);
+        } catch (IOException e) {
+            System.err.println("处理PDF时发生错误: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     /**
      * 画矩形
      * @param contentStream
