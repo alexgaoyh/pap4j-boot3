@@ -94,15 +94,16 @@ public class PDFUtilTest {
             List<CoordsDTO> coordsDTOList = new ArrayList<>();
             coordsDTOList.add(new CoordsDTO(300, 500, 20, 20, "¥"));
             coordsDTOList.add(new CoordsDTO(300, 400, 30, 30, "ϕ"));
-            coordsDTOList.add(new CoordsDTO(300, 300, 40, 40, "魏"));
-            coordsDTOList.add(new CoordsDTO(300, 200, 50, 50, "都"));
+            coordsDTOList.add(new CoordsDTO(300, 300, 40, 40, "嘂"));
+            coordsDTOList.add(new CoordsDTO(300, 200, 50, 50, "☃"));
             coordsDTOList.add(new CoordsDTO(300, 100, 60, 60, "区"));
             coordsDTOList.add(new CoordsDTO(100, 500, 20, 20, "一"));
             coordsDTOList.add(new CoordsDTO(100, 400, 30, 30, "个"));
             coordsDTOList.add(new CoordsDTO(100, 300, 40, 40, "打"));
             coordsDTOList.add(new CoordsDTO(100, 200, 50, 50, "杂"));
             coordsDTOList.add(new CoordsDTO(100, 100, 60, 60, "的"));
-            PDFUtil.drawText("output.pdf", coordsDTOList);
+            String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
+            PDFUtil.drawText(desktop + "output.pdf", coordsDTOList);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

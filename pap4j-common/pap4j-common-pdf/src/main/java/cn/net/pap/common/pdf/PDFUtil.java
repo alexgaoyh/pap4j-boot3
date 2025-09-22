@@ -240,7 +240,10 @@ public class PDFUtil {
 
                     PDType0Font font = findFont(text, loadedFontMaps);
                     if(font == null) {
-                        throw new RuntimeException("不匹配 ：" + text);
+                        // todo maybe throw exception
+                        System.out.println("不匹配 ：" + text);
+                        text = "=";
+                        font = simfangFont;
                     }
 
                     // 计算文字宽度
