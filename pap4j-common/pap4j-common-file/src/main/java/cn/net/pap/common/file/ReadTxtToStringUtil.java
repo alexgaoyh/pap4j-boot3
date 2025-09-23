@@ -145,13 +145,18 @@ public class ReadTxtToStringUtil {
         com.ibm.icu.text.CharsetMatch match = detector.detect();
 
         if (match != null) {
-            return match.getName();
+            String name = match.getName();
+            if(name != null && "ISO-8859-1".equals(name)) {
+                return guessEncoding(data);
+            } else {
+                return name;
+            }
         } else {
             return null;
         }
     }
 
-    private static String guessEncoding(byte[] data) throws Exception {
+    private static String guessEncoding(byte[] data) throws IOException {
         Charset gb2312 = Charset.forName("GB2312");
         Charset big5   = Charset.forName("Big5");
 
@@ -161,7 +166,7 @@ public class ReadTxtToStringUtil {
         return scoreGb2312 >= scoreBig5 ? "GB2312" : "Big5";
     }
 
-    private static int scoreDecode(byte[] data, Charset charset) throws Exception {
+    private static int scoreDecode(byte[] data, Charset charset) throws IOException {
         CharsetDecoder decoder = charset.newDecoder();
         decoder.onMalformedInput(CodingErrorAction.REPLACE);
         decoder.onUnmappableCharacter(CodingErrorAction.REPLACE);
