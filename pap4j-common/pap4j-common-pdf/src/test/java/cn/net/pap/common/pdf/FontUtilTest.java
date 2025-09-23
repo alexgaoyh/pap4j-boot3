@@ -6,7 +6,13 @@ import com.itextpdf.text.pdf.BaseFont;
 import org.junit.jupiter.api.Test;
 
 import java.awt.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStream;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FontUtilTest {
 
@@ -49,4 +55,30 @@ public class FontUtilTest {
         List<TextPointDTO> textPointDTOS = FontUtil.cutTextInVertical("河南省", 0f, 0f, 100f, 100f, simSunFont);
         System.out.println(textPointDTOS);
     }
+
+    @Test
+    void test4ScanSystemFontDirectories() throws Exception {
+        List<File> fontFiles = FontUtil.findSystemFontFiles();
+
+        assertFalse(fontFiles.isEmpty(), "应该找到系统字体文件");
+
+        System.out.println("找到 " + fontFiles.size() + " 个字体文件");
+
+        for (int i = 0; i < Math.min(Integer.MAX_VALUE, fontFiles.size()); i++) {
+            File fontFile = fontFiles.get(i);
+            try (InputStream is = new FileInputStream(fontFile)) {
+                byte[] buffer = new byte[1024];
+                int bytesRead = is.read(buffer);
+
+                assertTrue(bytesRead > 0, "字体文件应该可读");
+                assertTrue(fontFile.length() > 0, "字体文件大小应该大于0");
+
+                System.out.printf("字体文件: %s, 大小: %d bytes, 格式: %s%n",
+                        fontFile.getName(),
+                        fontFile.length(),
+                        FontUtil.detectFontFormat(buffer));
+            }
+        }
+    }
+
 }

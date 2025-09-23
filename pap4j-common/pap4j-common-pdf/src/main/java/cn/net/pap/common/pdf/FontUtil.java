@@ -5,6 +5,10 @@ import cn.net.pap.common.pdf.dto.TextPointDTO;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -135,6 +139,99 @@ public class FontUtil {
             }
         }
         return coordsDTOS;
+    }
+
+    /**
+     * 读取操作系统下的字体
+     * @return
+     */
+    public static List<File> findSystemFontFiles() {
+        List<File> fontFiles = new ArrayList<>();
+        String[] fontDirectories = getSystemFontDirectories();
+
+        for (String directory : fontDirectories) {
+            Path dirPath = Paths.get(directory);
+            if (Files.exists(dirPath) && Files.isDirectory(dirPath)) {
+                try {
+                    Files.walk(dirPath)
+                            .filter(path -> isFontFile(path.toString()))
+                            .forEach(path -> fontFiles.add(path.toFile()));
+                } catch (Exception e) {
+                    System.out.println("扫描目录失败: " + directory + ", 错误: " + e.getMessage());
+                }
+            }
+        }
+
+        return fontFiles;
+    }
+
+    /**
+     * 字体目录
+     * @return
+     */
+    public static String[] getSystemFontDirectories() {
+        String os = System.getProperty("os.name").toLowerCase();
+
+        if (os.contains("win")) {
+            return new String[]{
+                    "C:\\Windows\\Fonts",
+                    System.getenv("LOCALAPPDATA") + "\\Microsoft\\Windows\\Fonts"
+            };
+        } else if (os.contains("mac")) {
+            return new String[]{
+                    "/Library/Fonts",
+                    "/System/Library/Fonts",
+                    System.getProperty("user.home") + "/Library/Fonts"
+            };
+        } else { // Linux/Unix
+            return new String[]{
+                    "/usr/share/fonts",
+                    "/usr/local/share/fonts",
+                    System.getProperty("user.home") + "/.fonts"
+            };
+        }
+    }
+
+    /**
+     * 根据后缀判断是否是字体文件
+     * @param filename
+     * @return
+     */
+    public static boolean isFontFile(String filename) {
+        String lower = filename.toLowerCase();
+        // todo 或者有其他后缀
+        return lower.endsWith(".ttf");
+    }
+
+    /**
+     * 字体格式校验
+     * @param header
+     * @return
+     */
+    public static String detectFontFormat(byte[] header) {
+        if (header.length < 4) return "Unknown";
+
+        // 检查TTF/OTF签名 (0x00010000 or "OTTO")
+        if ((header[0] == 0x00 && header[1] == 0x01 &&
+                header[2] == 0x00 && header[3] == 0x00) ||
+                (header[0] == 'O' && header[1] == 'T' &&
+                        header[2] == 'T' && header[3] == 'O')) {
+            return "TrueType/OpenType";
+        }
+
+        // 检查WOFF签名 ("wOFF")
+        if (header[0] == 'w' && header[1] == 'O' &&
+                header[2] == 'F' && header[3] == 'F') {
+            return "WOFF";
+        }
+
+        // 检查WOFF2签名 ("wOF2")
+        if (header[0] == 'w' && header[1] == 'O' &&
+                header[2] == 'F' && header[3] == '2') {
+            return "WOFF2";
+        }
+
+        return "Unknown";
     }
 
 }
