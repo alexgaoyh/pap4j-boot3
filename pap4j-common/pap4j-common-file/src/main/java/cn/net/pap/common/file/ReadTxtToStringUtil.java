@@ -3,7 +3,10 @@ package cn.net.pap.common.file;
 import org.mozilla.universalchardet.UniversalDetector;
 
 import java.io.*;
+import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
+import java.nio.charset.CharsetDecoder;
+import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
@@ -34,14 +37,6 @@ public class ReadTxtToStringUtil {
                 }
             }
 
-            // 无BOM的情况，先进行ANSI编码判断
-            if (read >= 2) {
-                String ansiEncoding = detectANSICoding(bom, read);
-                if (ansiEncoding != null) {
-                    return ansiEncoding;
-                }
-            }
-
             // 无 BOM，使用通用检测器
             UniversalDetector detector = new UniversalDetector(null);
             byte[] buf = new byte[4096];
@@ -52,6 +47,14 @@ public class ReadTxtToStringUtil {
             detector.dataEnd();
             String encoding = detector.getDetectedCharset();
             detector.reset();
+
+            if(encoding == null) {
+                try {
+                    String s = guessEncoding(buf);
+                    encoding = s;
+                } catch (Exception e) {
+                }
+            }
 
             return encoding != null ? encoding : Charset.defaultCharset().name();
         }
@@ -87,14 +90,6 @@ public class ReadTxtToStringUtil {
                 }
             }
 
-            // 无BOM的情况，先进行ANSI编码判断
-            if (read >= 2) {
-                String ansiEncoding = detectANSICoding(bom, read);
-                if (ansiEncoding != null) {
-                    return ansiEncoding;
-                }
-            }
-
             // 无 BOM，使用通用检测器
             UniversalDetector detector = new UniversalDetector(null);
             byte[] buf = new byte[4096];
@@ -105,6 +100,14 @@ public class ReadTxtToStringUtil {
             detector.dataEnd();
             String encoding = detector.getDetectedCharset();
             detector.reset();
+
+            if(encoding == null) {
+                try {
+                    String s = guessEncoding(buf);
+                    encoding = s;
+                } catch (Exception e) {
+                }
+            }
 
             return encoding != null ? encoding : Charset.defaultCharset().name();
         }
@@ -148,136 +151,28 @@ public class ReadTxtToStringUtil {
         }
     }
 
-    /**
-     * 通过BOM字节判断可能的ANSI编码
-     */
-    private static String detectANSICoding(byte[] bom, int read) {
-        // ANSI编码通常没有BOM，但我们可以通过字节模式进行初步判断
+    private static String guessEncoding(byte[] data) throws Exception {
+        Charset gb2312 = Charset.forName("GB2312");
+        Charset big5   = Charset.forName("Big5");
 
-        // 检查是否为可能的GBK/Big5编码（中文字符的字节特征）
-        if (read >= 2) {
-            // GBK/Big5中文字符的第一个字节通常在高位(0x81-0xFE)
-            byte firstByte = bom[0];
-            byte secondByte = bom[1];
+        int scoreGb2312 = scoreDecode(data, gb2312);
+        int scoreBig5   = scoreDecode(data, big5);
 
-            int first = firstByte & 0xFF;
-            int second = secondByte & 0xFF;
-
-            // GBK/Big5编码特征：第一个字节在0x81-0xFE，第二个字节在0x40-0xFE
-            if (first >= 0x81 && first <= 0xFE) {
-                if (second >= 0x40 && second <= 0xFE && second != 0x7F) {
-                    // 进一步区分GBK和Big5
-                    return distinguishGBKvsBig5(bom, read);
-                }
-            }
-
-            // 检查西欧ANSI编码（Windows-1252）的特征
-            if (isLikelyWindows1252(bom, read)) {
-                return "Windows-1252";
-            }
-        }
-
-        return null;
+        return scoreGb2312 >= scoreBig5 ? "GB2312" : "Big5";
     }
 
-    /**
-     * 区分GBK和Big5编码
-     */
-    private static String distinguishGBKvsBig5(byte[] bom, int read) {
-        if (read < 2) return "GBK"; // 默认返回GBK
+    private static int scoreDecode(byte[] data, Charset charset) throws Exception {
+        CharsetDecoder decoder = charset.newDecoder();
+        decoder.onMalformedInput(CodingErrorAction.REPLACE);
+        decoder.onUnmappableCharacter(CodingErrorAction.REPLACE);
 
-        int first = bom[0] & 0xFF;
-        int second = bom[1] & 0xFF;
-
-        // Big5编码范围判断
-        if (first >= 0xA1 && first <= 0xF9) {
-            if ((second >= 0x40 && second <= 0x7E) || (second >= 0xA1 && second <= 0xFE)) {
-                // 符合Big5编码范围特征
-                if (read >= 4) {
-                    // 如果有更多字节，可以进一步验证
-                    if (hasBig5SpecificPatterns(bom, read)) {
-                        return "Big5";
-                    }
-                }
-                return "Big5"; // 可能是Big5
-            }
+        String decoded = decoder.decode(ByteBuffer.wrap(data)).toString();
+        int score = 0;
+        for (char c : decoded.toCharArray()) {
+            // 简单判断：如果是常见中文字符则加分
+            if (c >= 0x4E00 && c <= 0x9FFF) score++;
         }
-
-        // GBK编码范围更广，默认返回GBK
-        return "GBK";
-    }
-
-    /**
-     * 检查Big5特定模式
-     */
-    private static boolean hasBig5SpecificPatterns(byte[] bom, int read) {
-        // Big5有一些特定的字符编码模式
-        for (int i = 0; i < read - 1; i += 2) {
-            int high = bom[i] & 0xFF;
-            int low = bom[i + 1] & 0xFF;
-
-            // Big5的特定范围
-            if (high >= 0xA4 && high <= 0xC6) {
-                // 常见Big5字符范围
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * 判断是否为Windows-1252编码
-     */
-    private static boolean isLikelyWindows1252(byte[] bom, int read) {
-        // Windows-1252编码的字节通常在0x00-0xFF范围内
-        // 主要检查是否为常见的西欧文本模式
-        int latinCount = 0;
-        int totalCount = 0;
-
-        for (int i = 0; i < read; i++) {
-            int b = bom[i] & 0xFF;
-
-            // 常见的西欧字符范围
-            if ((b >= 0x20 && b <= 0x7E) ||  // ASCII可打印字符
-                    (b >= 0xA0 && b <= 0xFF) ||  // 扩展拉丁字符
-                    b == 0x0A || b == 0x0D ||    // 换行符
-                    b == 0x09) {                 // 制表符
-                latinCount++;
-            }
-            totalCount++;
-        }
-
-        // 如果大部分字节都在西欧字符范围内
-        return totalCount > 0 && (latinCount * 100 / totalCount) > 80;
-    }
-
-    /**
-     * 快速ANSI编码检测（基于前几个字节）
-     */
-    private static String quickANSIDetection(byte[] content) {
-        if (content == null || content.length < 2) {
-            return Charset.defaultCharset().name();
-        }
-
-        // 检查前几个字节的模式
-        for (int i = 0; i < Math.min(content.length - 1, 100); i += 2) {
-            int high = content[i] & 0xFF;
-            int low = content[i + 1] & 0xFF;
-
-            // 中文字符特征判断
-            if (high >= 0x81 && high <= 0xFE) {
-                if (low >= 0x40 && low <= 0xFE && low != 0x7F) {
-                    // 进一步判断是GBK还是Big5
-                    if (high >= 0xA1 && high <= 0xF9 &&
-                            ((low >= 0x40 && low <= 0x7E) || (low >= 0xA1 && low <= 0xFE))) {
-                        return "Big5";
-                    }
-                    return "GBK";
-                }
-            }
-        }
-
-        return null;
+        return score;
     }
 
 }
