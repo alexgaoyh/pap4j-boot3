@@ -4,6 +4,9 @@ import cn.net.pap.common.pdf.dto.CoordsDTO;
 import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.dto.TextPointDTO;
 import cn.net.pap.common.pdf.enums.ChineseFont;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.font.PDFont;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
@@ -116,6 +119,31 @@ public class PDFUtilTest {
             List<TextPointDTO> textPointDTOS = FontUtil.cutTextInVertical("河南省", 0f, 10f, 100f, 110f, simSunFont);
             List<CoordsDTO> coordsDTOList = FontUtil.convertTextPointDTO(textPointDTOS);
             PDFUtil.drawText("output.pdf", coordsDTOList);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    public void drawTextTest3() {
+        try {
+            List<CoordsDTO> coordsDTOList = new ArrayList<>();
+
+            String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
+            String jsonStr = Files.readString(Paths.get(desktop + "input.json"));
+            ObjectMapper objectMapper = new ObjectMapper();
+            JsonNode jsonNode = objectMapper.readTree(jsonStr);
+            for (JsonNode chars : (ArrayNode) jsonNode.get("chars")) {
+                ArrayNode boxArrayNode = (ArrayNode)chars.get("box");
+                coordsDTOList.add(
+                        new CoordsDTO(
+                                Float.parseFloat(boxArrayNode.get(0).toString()),
+                                Float.parseFloat(boxArrayNode.get(2).toString()),
+                         Float.parseFloat(boxArrayNode.get(1).toString()) - Float.parseFloat(boxArrayNode.get(0).toString()),
+                                Float.parseFloat(boxArrayNode.get(3).toString()) - Float.parseFloat(boxArrayNode.get(2).toString()),
+                                chars.get("text").asText()));
+            }
+            PDFUtil.drawText(desktop + "output.pdf", coordsDTOList, 2365, 4598);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

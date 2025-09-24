@@ -213,13 +213,18 @@ public class PDFUtil {
      * @param coordsDTOList
      * @throws IOException
      */
-    public static void drawText(String pdfPath, List<CoordsDTO> coordsDTOList) throws IOException {
+    public static void drawText(String pdfPath, List<CoordsDTO> coordsDTOList, Integer... widthAndHeight) throws IOException {
         // 创建或加载PDF文档
         try (PDDocument document = new PDDocument()) {
             // 仿宋 PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
             PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
             // 创建新页面
-            PDPage page = new PDPage();
+            PDPage page = null;
+            if(widthAndHeight != null && widthAndHeight.length == 2) {
+                page = new PDPage(new PDRectangle(widthAndHeight[0],	widthAndHeight[1]));
+            } else {
+                page = new PDPage();
+            }
             document.addPage(page);
 
             List<Map<String, Object>> loadedFontMaps = new ArrayList<>();
