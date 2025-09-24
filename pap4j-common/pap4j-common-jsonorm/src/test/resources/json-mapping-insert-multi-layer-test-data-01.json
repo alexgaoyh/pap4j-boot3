@@ -1,0 +1,38 @@
+{
+  "order": {
+    "customer": "Alice",
+    "total": 249.4,
+    "items": [
+      {
+        "product": "Book Set",
+        "quantity": 2,
+        "price": 99.7,
+        "sub_items": [
+          {
+            "sub_product": "Book A",
+            "sub_price": 49.7
+          },
+          {
+            "sub_product": "Book B",
+            "sub_price": 50.0
+          }
+        ]
+      },
+      {
+        "product": "Pen Set",
+        "quantity": 3,
+        "price": 16.7,
+        "sub_items": [
+          {
+            "sub_product": "Pen Red",
+            "sub_price": 5.0
+          },
+          {
+            "sub_product": "Pen Blue",
+            "sub_price": 5.5
+          }
+        ]
+      }
+    ]
+  }
+}

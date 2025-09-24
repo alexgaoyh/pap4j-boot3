@@ -5,6 +5,7 @@ import com.jayway.jsonpath.JsonPath;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.Test;
+import org.springframework.util.ResourceUtils;
 
 import java.io.File;
 import java.util.*;
@@ -75,8 +76,8 @@ public class JsonPathTest {
     public void jsonToListMapTest() throws Exception {
         String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
         com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
-        for(int idx = 0; idx < Integer.parseInt(ctx.read("$.length()").toString()); idx++) {
-            Map<String, Object> itemMap = (Map<String, Object>)ctx.read("$[" + idx + "]");
+        for (int idx = 0; idx < Integer.parseInt(ctx.read("$.length()").toString()); idx++) {
+            Map<String, Object> itemMap = (Map<String, Object>) ctx.read("$[" + idx + "]");
             System.out.println(itemMap);
         }
     }
@@ -93,6 +94,180 @@ public class JsonPathTest {
             System.out.println(childMap.toString());
         }
     }
+
+    /**
+     * 定义  mappings.json 和 data.json
+     * 前者是 格式化SQL 的定义，后者是 业务数据
+     * 做数据的匹配，生成可执行SQL
+     *
+     * @throws Exception
+     */
+    @Test
+    public void reGeneTest1() throws Exception {
+        File mappingFile = ResourceUtils.getFile("classpath:json-mapping-insert-multi-layer-test-mapping-01.json");
+        String mappingJSON = JsonORMUtil.readFileToString(mappingFile);
+
+        File dataFile = ResourceUtils.getFile("classpath:json-mapping-insert-multi-layer-test-data-01.json");
+        String dataJSON = JsonORMUtil.readFileToString(dataFile);
+
+        com.jayway.jsonpath.DocumentContext mappingCtx = JsonPath.parse(mappingJSON);
+        com.jayway.jsonpath.DocumentContext dataCtx = JsonPath.parse(dataJSON);
+
+        // 第一步， 拿着 gene_key 的定义，重新生成一个 data.json 的数据
+        Object mappingGeneKeyArrayObj = mappingCtx.read("$.mappings[*].gene_key");
+        if (mappingGeneKeyArrayObj != null && mappingGeneKeyArrayObj instanceof JSONArray) {
+            JSONArray mappingGeneKeyArray = (JSONArray) mappingGeneKeyArrayObj;
+            for (int i = 0; i < mappingGeneKeyArray.size(); i++) {
+                Object mappingGeneKeyObj = mappingGeneKeyArray.get(i);
+                if (mappingGeneKeyObj != null && mappingGeneKeyObj instanceof HashMap<?, ?>) {
+                    HashMap<String, Object> mappingGeneKeyMap = (HashMap<String, Object>) mappingGeneKeyObj;
+                    String path = mappingGeneKeyMap.get("path").toString();
+                    setValueRecursive(dataCtx, path);
+                }
+            }
+        }
+        System.out.println(dataCtx.jsonString());
+
+        // 第二步， 一步一步的执行预定义的 SQL， 得到可执行的SQL
+        Object mappingsObjs = mappingCtx.read("$.mappings[*]");
+        if (mappingsObjs != null && mappingsObjs instanceof JSONArray) {
+            JSONArray mappingsArray = (JSONArray) mappingsObjs;
+            for (Object mappingsObj : mappingsArray) {
+                if (mappingsObj != null && mappingsObj instanceof HashMap<?, ?>) {
+                    HashMap<String, Object> mappingsObjMap = (HashMap<String, Object>) mappingsObj;
+                    String sqlTemplate = (String) mappingsObjMap.get("sql");
+                    List<String> params = (List<String>) mappingsObjMap.get("params");
+                    // 渲染 SQL
+                    List<String> renderedSqls = renderSqls(sqlTemplate, params, dataCtx);
+                    System.out.println(renderedSqls);
+                }
+            }
+        }
+    }
+
+    /**
+     * JsonPath 的节点 递归处理，进行添加节点操作.
+     *
+     * @param ctx
+     * @param path
+     */
+    private static void setValueRecursive(com.jayway.jsonpath.DocumentContext ctx, String path) {
+        if (!path.contains("[*]")) {
+            int index = path.lastIndexOf(".");
+            String parentPath = path.substring(0, index); // 路径到对象
+            String key = path.substring(index + 1);       // 属性名
+            ctx.put(parentPath, key, UUID.randomUUID().toString().replace("-", ""));
+            return;
+        }
+
+        // 找到第一个 [*] 的位置
+        int idx = path.indexOf("[*]");
+        String prefix = path.substring(0, idx + 3); // 包含[*]
+        String suffix = path.substring(idx + 3); // 剩余路径
+
+        List<Object> arrayElements = ctx.read(prefix);
+
+        for (int i = 0; i < arrayElements.size(); i++) {
+            // 构造当前元素路径
+            String currentPath = prefix.replace("[*]", "[" + i + "]") + suffix;
+            // 递归处理剩余路径
+            setValueRecursive(ctx, currentPath);
+        }
+    }
+
+    /**
+     * 格式化 SQL
+     *
+     * @param sqlTemplate
+     * @param params
+     * @param ctx
+     * @return
+     */
+    private static List<String> renderSqls(String sqlTemplate, List<String> params, com.jayway.jsonpath.DocumentContext ctx) {
+        List<String> results = new ArrayList<>();
+        renderRecursive(sqlTemplate, params, ctx, results, "");
+        return results;
+    }
+
+    private static void renderRecursive(String sqlTemplate, List<String> params, com.jayway.jsonpath.DocumentContext ctx,
+                                        List<String> results, String basePath) {
+
+        // 找出当前层第一个包含 [*] 的路径
+        int starIndex = -1;
+        String arrayPath = null;
+        for (String path : params) {
+            if (path.contains("[*]")) {
+                starIndex = params.indexOf(path);
+                arrayPath = path;
+                break;
+            }
+        }
+
+        if (arrayPath == null) {
+            // 没有 [*]，直接替换
+            String sql = sqlTemplate;
+            for (String path : params) {
+                Object value = safeRead(ctx, path);
+                sql = sql.replaceFirst("\\?", value == null ? "null" : String.valueOf(value));
+            }
+            results.add(sql);
+            return;
+        }
+
+        // 计算当前数组路径
+        if (!basePath.isEmpty() && !arrayPath.startsWith(basePath)) {
+            if (arrayPath.startsWith("$")) {
+                arrayPath = basePath + arrayPath.substring(1);
+            } else {
+                arrayPath = basePath + "." + arrayPath;
+            }
+        }
+
+        int idx = arrayPath.indexOf("[*]");
+        String prefix = arrayPath.substring(0, idx + 3); // 包含 [*]
+        String suffix = arrayPath.substring(idx + 3);
+
+        List<Object> arrayElements = safeReadArray(ctx, prefix);
+
+        for (int i = 0; i < arrayElements.size(); i++) {
+            String currentBasePath = prefix.replace("[*]", "[" + i + "]");
+
+            // 替换当前层所有参数的 [*]
+            List<String> newParams = new ArrayList<>();
+            for (String path : params) {
+                if (path.contains("[*]") && path.startsWith(prefix.substring(0, idx))) {
+                    newParams.add(path.replaceFirst("\\[\\*\\]", "[" + i + "]"));
+                } else {
+                    newParams.add(path);
+                }
+            }
+
+            // 递归处理下一层
+            renderRecursive(sqlTemplate, newParams, ctx, results, currentBasePath);
+        }
+    }
+
+    private static Object safeRead(com.jayway.jsonpath.DocumentContext ctx, String path) {
+        try {
+            return ctx.read(path);
+        } catch (Exception ex) {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Object> safeReadArray(com.jayway.jsonpath.DocumentContext ctx, String path) {
+        try {
+            Object val = ctx.read(path);
+            if (val instanceof List) {
+                return (List<Object>) val;
+            }
+            return Collections.emptyList();
+        } catch (Exception ex) {
+            return Collections.emptyList();
+        }
+    }
+
 
     @Test
     public void getFieldTest() {
