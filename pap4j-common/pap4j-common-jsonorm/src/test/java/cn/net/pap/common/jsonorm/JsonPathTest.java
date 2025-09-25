@@ -1,6 +1,9 @@
 package cn.net.pap.common.jsonorm;
 
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.jayway.jsonpath.JsonPath;
 import com.jayway.jsonpath.TypeRef;
 import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
@@ -96,6 +99,58 @@ public class JsonPathTest {
         for (Object child : allChildren) {
             Map<String, Object> childMap = (Map<String, Object>) child;
             System.out.println(childMap.toString());
+        }
+    }
+
+    // @Test
+    public void jsonPathTest2() throws Exception {
+        // 如下 json ，数据来源是 count_file.md 文件中的 Export-DirectoryTree.ps1 部分的输出。
+        // 同样的的，也可以是 linux 下 tree -J -f 的输出， 但是两者的结果会有不同，当前仅做数据的解析与输出，具体业务需要额外进行逻辑添加。
+        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\test_tree.json"));
+        com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
+        // .. 表示递归下降，搜索所有层级的属性，如下命令是找到 Type 属性的值为 File 的部分。
+        List<Object> fileNodes = JsonPath.read(json, "$..[?(@.Type == 'File' || @.type == 'file')]");
+        for (Object fileNode : fileNodes) {
+            Map<String, Object> fileNodeMap = (Map<String, Object>) fileNode;
+            System.out.println(fileNodeMap.toString());
+        }
+    }
+
+    // @Test
+    public void jsonHandleTest3() throws Exception {
+        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\test_tree.json"));
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode root = (ArrayNode) mapper.readTree(json);
+        addPathRecursive(root, "");
+
+        System.out.println(mapper.writeValueAsString(root));
+    }
+
+    private static void addPathRecursive(ArrayNode array, String parentPath) {
+        for (int i = 0; i < array.size(); i++) {
+            if (array.get(i).isObject()) {
+                ObjectNode node = (ObjectNode) array.get(i);
+                String type = node.get("type").asText();
+
+                if ("report".equals(type)) {
+                    continue; // 跳过report节点
+                }
+
+                String name = node.get("name").asText();
+                String typeText = node.get("type").asText();
+                String currentPath = parentPath.isEmpty() ? name : parentPath + (parentPath.endsWith("/") ? "" : "/") + name;
+                if(typeText.equals("directory") && !currentPath.endsWith("/")) {
+                    currentPath = currentPath + "/";
+                }
+
+                node.put("path", currentPath);
+
+                // 递归处理子节点
+                if (node.has("contents") && node.get("contents").isArray()) {
+                    addPathRecursive((ArrayNode) node.get("contents"), currentPath);
+                }
+            }
         }
     }
 
