@@ -213,3 +213,72 @@ echo "========================================"
 
 read -p "Press Enter to continue..."
 ```
+
+## 此脚本递归扫描指定文件夹，生成保持完整层级关系的目录树结构，并输出为 JSON 文件。
+```shell
+# 使用方式： .\Export-DirectoryTree.ps1 -Path "D:\\knowledge\\OUTPUT" -OutputFile "test_tree.json"
+param(
+    [string]$Path = ".",
+    [string]$OutputFile = "directory_tree.json",
+    [int]$MaxDepth = 10
+)
+
+# 定义函数
+function Get-DirectoryTree {
+    param(
+        [string]$RootPath,
+        [int]$MaxDepth = 10,
+        [int]$CurrentDepth = 0
+    )
+    
+    $directory = Get-Item $RootPath
+    $result = @{
+        Name = $directory.Name
+        FullName = $directory.FullName
+        Type = "Directory"
+        Children = @()
+    }
+    
+    if ($CurrentDepth -ge $MaxDepth) {
+        $result.Note = "已达到最大深度 $MaxDepth"
+        return $result
+    }
+    
+    try {
+        $children = Get-ChildItem -Path $RootPath -ErrorAction SilentlyContinue
+        $subDirectories = $children | Where-Object { $_.PSIsContainer }
+        $files = $children | Where-Object { -not $_.PSIsContainer }
+        
+        foreach ($dir in $subDirectories) {
+            $childNode = Get-DirectoryTree -RootPath $dir.FullName -MaxDepth $MaxDepth -CurrentDepth ($CurrentDepth + 1)
+            $result.Children += $childNode
+        }
+        
+        foreach ($file in $files) {
+            $fileNode = @{
+                Name = $file.Name
+                FullName = $file.FullName
+                Type = "File"
+                Extension = $file.Extension
+                Size = $file.Length
+            }
+            $result.Children += $fileNode
+        }
+        
+    } catch {
+        $result.Error = $_.Exception.Message
+    }
+    
+    return $result
+}
+
+# 主程序
+Write-Host "正在扫描目录: $Path" -ForegroundColor Green
+$tree = Get-DirectoryTree -RootPath $Path -MaxDepth $MaxDepth
+$jsonOutput = $tree | ConvertTo-Json -Depth 20
+
+# 保存到文件
+$jsonOutput | Out-File $OutputFile -Encoding UTF8
+Write-Host "目录树已导出到: $OutputFile" -ForegroundColor Green
+Write-Host "扫描深度: $MaxDepth" -ForegroundColor Cyan
+```
