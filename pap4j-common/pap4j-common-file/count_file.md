@@ -282,3 +282,7 @@ $jsonOutput | Out-File $OutputFile -Encoding UTF8
 Write-Host "目录树已导出到: $OutputFile" -ForegroundColor Green
 Write-Host "扫描深度: $MaxDepth" -ForegroundColor Cyan
 ```
+
+```shell
+# 在 linux 环境下，可以使用 tree 命令，达到相同的效果，比如 tree -J 的使用，同样输出 json 格式.
+```
