@@ -2,6 +2,8 @@ package cn.net.pap.common.jsonorm;
 
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
 import com.jayway.jsonpath.JsonPath;
+import com.jayway.jsonpath.TypeRef;
+import com.jayway.jsonpath.spi.mapper.JacksonMappingProvider;
 import net.minidev.json.JSONArray;
 import net.minidev.json.JSONObject;
 import org.junit.jupiter.api.Test;
@@ -9,6 +11,8 @@ import org.springframework.util.ResourceUtils;
 
 import java.io.File;
 import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JsonPathTest {
 
@@ -93,6 +97,31 @@ public class JsonPathTest {
             Map<String, Object> childMap = (Map<String, Object>) child;
             System.out.println(childMap.toString());
         }
+    }
+
+    @Test
+    public void shownPathTest1() throws Exception {
+        File dataFile = ResourceUtils.getFile("classpath:json-mapping-insert-multi-layer-test-data-01.json");
+        String dataJSON = JsonORMUtil.readFileToString(dataFile);
+        // 配置以返回路径信息
+        com.jayway.jsonpath.Configuration config = com.jayway.jsonpath.Configuration.builder().options(com.jayway.jsonpath.Option.AS_PATH_LIST).build();
+        // 获取所有sub_items的路径
+        List<String> paths = JsonPath.using(config).parse(dataJSON).read("$..sub_items[*]");
+        System.out.println(paths);
+    }
+
+
+    @Test
+    public void jsonPathTest1() throws Exception {
+        File dataFile = ResourceUtils.getFile("classpath:json-mapping-insert-multi-layer-test-data-01.json");
+        String dataJSON = JsonORMUtil.readFileToString(dataFile);
+
+        com.jayway.jsonpath.Configuration config = com.jayway.jsonpath.Configuration.builder().mappingProvider(new JacksonMappingProvider()).build();
+
+        List<Integer> quantitys = JsonPath.using(config).parse(dataJSON).read("$.order.items[*].quantity", new TypeRef<List<Integer>>() {});
+        Double total = JsonPath.using(config).parse(dataJSON).read("$.order.total", Double.class);
+
+        assertTrue(true);
     }
 
     /**
