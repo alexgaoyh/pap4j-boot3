@@ -14,6 +14,7 @@ import org.springframework.util.ResourceUtils;
 
 import java.io.File;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -163,6 +164,20 @@ public class JsonPathTest {
         // 获取所有sub_items的路径
         List<String> paths = JsonPath.using(config).parse(dataJSON).read("$..sub_items[*]");
         System.out.println(paths);
+
+        // 所有路径
+        List<String> alls = JsonPath.using(config).parse(dataJSON).read("$..*");
+        System.out.println(alls);
+
+        // 筛选出最"深"的路径（通常是叶子节点）
+        List<String> leafPaths = alls.stream()
+                .filter(path -> {
+                    // 如果一个路径是另一个路径的前缀，说明它是中间节点
+                    return alls.stream()
+                            .noneMatch(otherPath -> !otherPath.equals(path) && otherPath.startsWith(path));
+                })
+                .collect(Collectors.toList());
+        System.out.println(leafPaths);
     }
 
 
