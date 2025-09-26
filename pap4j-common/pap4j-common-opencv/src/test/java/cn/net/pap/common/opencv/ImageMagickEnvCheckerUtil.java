@@ -144,6 +144,8 @@ public class ImageMagickEnvCheckerUtil {
     // 实现将大图分割成小块，方便在网页上分块加载和展示，比如如下命令 把 input.jpg 切割成多个 256x256 像素的小图，并命名为 input_000.jpg, input_001.jpg 等。
     // magick input.jpg -crop 256x256 +repage +adjoin input_%03d.jpg
 
+    // jpg 转换的时候，需要区分 基线JPEG 和 渐进式JPEG(magick input.jpg -interlace Plane output.jpg)
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
