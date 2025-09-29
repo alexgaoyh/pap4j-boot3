@@ -10,30 +10,35 @@
           "sql": "order_id = ?",
           "operator": "equal",
           "type": "number",
+          "logic": "and",
           "param_paths": ["query.order_id"]
         },
         {
           "sql": "customer LIKE ?",
           "operator": "like",
           "type": "varchar",
+          "logic": "and",
           "param_paths": ["query.customer"]
         },
         {
           "sql": "total_amount BETWEEN ? AND ?",
           "operator": "equal",
           "type": "number",
+          "logic": "and",
           "param_paths": ["query.min_amount", "query.max_amount"]
         },
         {
           "sql": "(customer LIKE ? OR customer LIKE ? OR customer LIKE ?)",
           "operator": "like",
           "type": "varchar",
+          "logic": "and",
           "param_paths": ["query.keyword1", "query.keyword2", "query.keyword3"]
         },
         {
           "sql": "order_id IN (?)",
           "operator": "in",
           "type": "number",
+          "logic": "and",
           "param_paths": ["query.order_ids"]
         }
       ]

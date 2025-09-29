@@ -270,6 +270,7 @@ public class JsonPathTest {
                             String where_sql = (String) where_condition.get("sql");
                             String operator = (String) where_condition.get("operator");
                             String type = (String) where_condition.get("type");
+                            String logic = (String) where_condition.get("logic");
                             List<String> param_paths = (List<String>) where_condition.get("param_paths");
                             if(param_paths != null && param_paths.size() > 0) {
                                 for (String param_path : param_paths) {
@@ -317,11 +318,11 @@ public class JsonPathTest {
                                     where_sql = where_sql.replaceFirst("\\?", valueStr);
                                 }
                             }
-                            render_where_sqls.add(where_sql);
+                            render_where_sqls.add(" " + logic + " " + where_sql);
                         }
                     }
                     if(render_where_sqls.size() > 0) {
-                        sqlTemplate = sqlTemplate + " WHERE " + String.join(" AND ", render_where_sqls);
+                        sqlTemplate = sqlTemplate + " WHERE 1=1 " + String.join(" ", render_where_sqls);
                     }
                     System.out.println(sqlTemplate);
                 }
