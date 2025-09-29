@@ -1,11 +1,16 @@
 package cn.net.pap.common.datastructure.icu4j;
 
+import com.ibm.icu.text.*;
+import com.ibm.icu.util.ULocale;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StringUtilIcu4jTest {
 
@@ -137,5 +142,94 @@ public class StringUtilIcu4jTest {
         assertEquals("𠀀abc", StringUtilIcu4j.uncapitalize("𠀀abc"));
         assertEquals("😊abc", StringUtilIcu4j.uncapitalize("😊abc"));
     }
+
+    @Test
+    public void test1() throws Exception {
+        // 使用 MessageFormat 处理复杂消息
+        MessageFormat fmt = new MessageFormat("{0,choice,0#No files|1#One file|1<{0,number} files} found", Locale.US);
+        Object[] args = {5};
+        String result = fmt.format(args);
+        assertTrue(result.equals("5 files found"));
+
+        // 创建自定义排序规则
+        RuleBasedCollator collator = new RuleBasedCollator("& a < b < c < 'ch' < d");
+        String[] words = {"apple", "dog", "cat", "chair"};
+        Arrays.sort(words, collator);
+        assertTrue("[apple, cat, chair, dog]".equals(Arrays.toString(words)));
+
+        // 使用 RuleBasedNumberFormat 进行规则基础的数字格式化
+        RuleBasedNumberFormat rbnf = new RuleBasedNumberFormat(Locale.US, RuleBasedNumberFormat.SPELLOUT);
+        assertTrue("twelve thousand three hundred forty-five".equals(rbnf.format(12345)));
+
+        // 货币
+        NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(new ULocale("en_US@currency=JPY"));
+        assertTrue("¥1,000".equals(currencyFormat.format(1000)));
+
+    }
+
+    @Test
+    public void testDiffSegment() {
+        // 这些字符串能明显展示差异
+        String[] testTexts = {
+                "测试𠮷字",                    // CJK扩展B字符
+                "Hello👋世界",                  // 简单emoji
+                "家庭👨‍👩‍👧‍👦幸福",              // 零宽连接符emoji
+                "符号∀∃∈",                     // 数学符号
+                "𠀀𠀁𠀂",                      // CJK扩展A字符
+                "emoji🎉测试🔥",                // 多个emoji
+                "古字𪚥𪚦𪚧",                  // CJK扩展C字符
+                "混合𠮷emoji🎉文字"             // 混合所有类型
+        };
+
+        for (String text : testTexts) {
+            System.out.println();
+
+            List<String> icuSegments = segmentWithICU(text);
+            List<String> stdSegments = segmentWithStandard(text);
+
+            // 检查差异
+            if (!icuSegments.equals(stdSegments)) {
+                System.out.println("\n测试文本: " + text + "❌ 发现差异！");
+                System.out.println(icuSegments);
+                System.out.println(stdSegments);
+            }
+        }
+
+    }
+
+    private List<String> segmentWithICU(String text) {
+        com.ibm.icu.text.BreakIterator iterator = com.ibm.icu.text.BreakIterator.getCharacterInstance();
+        iterator.setText(text);
+
+        List<String> segments = new ArrayList<>();
+        int start = iterator.first();
+        for (int end = iterator.next();
+             end != BreakIterator.DONE;
+             start = end, end = iterator.next()) {
+            String segment = text.substring(start, end).trim();
+            if (!segment.isEmpty()) {
+                segments.add(segment);
+            }
+        }
+        return segments;
+    }
+
+    private List<String> segmentWithStandard(String text) {
+        java.text.BreakIterator iterator = java.text.BreakIterator.getCharacterInstance();
+        iterator.setText(text);
+
+        List<String> segments = new ArrayList<>();
+        int start = iterator.first();
+        for (int end = iterator.next();
+             end != BreakIterator.DONE;
+             start = end, end = iterator.next()) {
+            String segment = text.substring(start, end).trim();
+            if (!segment.isEmpty()) {
+                segments.add(segment);
+            }
+        }
+        return segments;
+    }
+
 }
 
