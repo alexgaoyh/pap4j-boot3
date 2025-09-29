@@ -244,6 +244,91 @@ public class JsonPathTest {
         }
     }
 
+    @Test
+    public void reGeneTest2() throws Exception {
+        File mappingFile = ResourceUtils.getFile("classpath:json-mapping-select-multi-layer-test-mapping-01.json");
+        String mappingJSON = JsonORMUtil.readFileToString(mappingFile);
+
+        File dataFile = ResourceUtils.getFile("classpath:json-mapping-select-multi-layer-test-data-01.json");
+        String dataJSON = JsonORMUtil.readFileToString(dataFile);
+
+        com.jayway.jsonpath.DocumentContext mappingCtx = JsonPath.parse(mappingJSON);
+        com.jayway.jsonpath.DocumentContext dataCtx = JsonPath.parse(dataJSON);
+
+        Object mappingsObjs = mappingCtx.read("$.mappings[*]");
+        if (mappingsObjs != null && mappingsObjs instanceof JSONArray) {
+            JSONArray mappingsArray = (JSONArray) mappingsObjs;
+            for (Object mappingsObj : mappingsArray) {
+                if (mappingsObj != null && mappingsObj instanceof HashMap<?, ?>) {
+                    HashMap<String, Object> mappingsObjMap = (HashMap<String, Object>) mappingsObj;
+                    String sqlTemplate = (String) mappingsObjMap.get("sql");
+                    List<Map<String, Object>> where_conditions = (List<Map<String, Object>>) mappingsObjMap.get("where_conditions");
+                    // 渲染 SQL
+                    List<String> render_where_sqls = new ArrayList<>();
+                    if(where_conditions != null && where_conditions.size() > 0) {
+                        for (Map<String, Object> where_condition : where_conditions) {
+                            String where_sql = (String) where_condition.get("sql");
+                            String operator = (String) where_condition.get("operator");
+                            String type = (String) where_condition.get("type");
+                            List<String> param_paths = (List<String>) where_condition.get("param_paths");
+                            if(param_paths != null && param_paths.size() > 0) {
+                                for (String param_path : param_paths) {
+                                    Object rawValue = null;
+                                    try {
+                                        rawValue = dataCtx.read(param_path);
+                                    } catch (Exception e) {
+                                        rawValue = null;
+                                    }
+                                    String valueStr;
+                                    if (rawValue == null) {
+                                        valueStr = "null";
+                                    } else {
+                                        // 根据类型处理
+                                        switch (type.toLowerCase()) {
+                                            case "number":
+                                                valueStr = rawValue.toString();
+                                                break;
+                                            case "varchar":
+                                                valueStr = "'" + rawValue.toString().replace("'", "''") + "'";
+                                                break;
+                                            default:
+                                                valueStr = "'" + rawValue.toString().replace("'", "''") + "'";
+                                                break;
+                                        }
+                                        // 根据 operator 处理特殊逻辑
+                                        if ("like".equalsIgnoreCase(operator)) {
+                                            valueStr = "'%" + rawValue.toString().replace("'", "''") + "%'";
+                                        } else if ("in".equalsIgnoreCase(operator)) {
+                                            // 假设是逗号分隔或者数组
+                                            if (rawValue instanceof Collection) {
+                                                valueStr = ((Collection<?>) rawValue).stream()
+                                                        .map(v -> type.equalsIgnoreCase("number") ? v.toString() : "'" + v.toString().replace("'", "''") + "'")
+                                                        .collect(Collectors.joining(", "));
+                                            } else {
+                                                // 字符串用逗号分隔
+                                                String[] arr = rawValue.toString().split(",");
+                                                valueStr = Arrays.stream(arr)
+                                                        .map(v -> type.equalsIgnoreCase("number") ? v.trim() : "'" + v.trim().replace("'", "''") + "'")
+                                                        .collect(Collectors.joining(", "));
+                                            }
+                                        }
+                                    }
+                                    // 替换 SQL 里的 ?
+                                    where_sql = where_sql.replaceFirst("\\?", valueStr);
+                                }
+                            }
+                            render_where_sqls.add(where_sql);
+                        }
+                    }
+                    if(render_where_sqls.size() > 0) {
+                        sqlTemplate = sqlTemplate + " WHERE " + String.join(" AND ", render_where_sqls);
+                    }
+                    System.out.println(sqlTemplate);
+                }
+            }
+        }
+    }
+
     /**
      * JsonPath 的节点 递归处理，进行添加节点操作.
      *

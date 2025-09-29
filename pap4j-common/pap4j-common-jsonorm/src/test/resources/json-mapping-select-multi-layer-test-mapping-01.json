@@ -1,0 +1,42 @@
+{
+  "mappings": [
+    {
+      "name": "order_header",
+      "sql": "SELECT order_id, customer, total_amount FROM order_header",
+      "params": [
+      ],
+      "where_conditions": [
+        {
+          "sql": "order_id = ?",
+          "operator": "equal",
+          "type": "number",
+          "param_paths": ["query.order_id"]
+        },
+        {
+          "sql": "customer LIKE ?",
+          "operator": "like",
+          "type": "varchar",
+          "param_paths": ["query.customer"]
+        },
+        {
+          "sql": "total_amount BETWEEN ? AND ?",
+          "operator": "equal",
+          "type": "number",
+          "param_paths": ["query.min_amount", "query.max_amount"]
+        },
+        {
+          "sql": "(customer LIKE ? OR customer LIKE ? OR customer LIKE ?)",
+          "operator": "like",
+          "type": "varchar",
+          "param_paths": ["query.keyword1", "query.keyword2", "query.keyword3"]
+        },
+        {
+          "sql": "order_id IN (?)",
+          "operator": "in",
+          "type": "number",
+          "param_paths": ["query.order_ids"]
+        }
+      ]
+    }
+  ]
+}
