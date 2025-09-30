@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm.util;
 
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -7,9 +10,10 @@ import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.io.File;
+import java.io.IOException;
+import java.util.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class JacksonUtil {
@@ -134,6 +138,112 @@ public class JacksonUtil {
         }
 
         return newArrayNode;
+    }
+
+    private static final int BATCH_SIZE = 9999;
+
+    /**
+     * 批量处理大JSON数组，避免内存溢出
+     * JacksonUtil.parseLargeJsonInBatches(filename, batch -> {
+     *      System.out.println("Processing batch with " + batch.size() + " items");
+     * });
+     */
+    public static void parseLargeJsonInBatches(String filePath,
+                                               Consumer<List<Map<String, Object>>> batchProcessor)
+            throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonFactory factory = mapper.getFactory();
+
+        try (JsonParser parser = factory.createParser(new File(filePath))) {
+            // 定位到数组开始
+            while (parser.nextToken() != JsonToken.START_ARRAY) {
+                // 跳过直到数组开始
+            }
+
+            List<Map<String, Object>> currentBatch = new ArrayList<>(BATCH_SIZE);
+            int totalCount = 0;
+
+            while (parser.nextToken() != JsonToken.END_ARRAY) {
+                Map<String, Object> map = parseObjectToMap(parser);
+                if (map != null) {
+                    currentBatch.add(map);
+                    totalCount++;
+
+                    // 达到批次大小时处理并清空
+                    if (currentBatch.size() >= BATCH_SIZE) {
+                        batchProcessor.accept(currentBatch);
+                        currentBatch = new ArrayList<>(BATCH_SIZE);
+                        System.out.println("Processed " + totalCount + " records");
+                    }
+                }
+            }
+
+            // 处理最后一批
+            if (!currentBatch.isEmpty()) {
+                batchProcessor.accept(currentBatch);
+                System.out.println("Total processed: " + totalCount + " records");
+            }
+        }
+    }
+
+    private static Map<String, Object> parseObjectToMap(JsonParser parser) throws IOException {
+        if (parser.getCurrentToken() != JsonToken.START_OBJECT) {
+            parser.skipChildren();
+            return null;
+        }
+
+        Map<String, Object> map = new LinkedHashMap<>();
+
+        while (parser.nextToken() != JsonToken.END_OBJECT) {
+            String fieldName = parser.getCurrentName();
+            parser.nextToken(); // 移动到值
+
+            Object value = parseValue(parser);
+            map.put(fieldName, value);
+        }
+
+        return map;
+    }
+
+    private static Object parseValue(JsonParser parser) throws IOException {
+        JsonToken token = parser.getCurrentToken();
+        switch (token) {
+            case VALUE_STRING:
+                return parser.getText();
+            case VALUE_NUMBER_INT:
+                // 根据数值大小返回合适的类型
+                if (parser.getNumberType() == JsonParser.NumberType.INT) {
+                    return parser.getIntValue();
+                } else {
+                    return parser.getLongValue();
+                }
+            case VALUE_NUMBER_FLOAT:
+                return parser.getDoubleValue();
+            case VALUE_TRUE:
+                return true;
+            case VALUE_FALSE:
+                return false;
+            case VALUE_NULL:
+                return null;
+            case START_OBJECT:
+                return parseObjectToMap(parser);
+            case START_ARRAY:
+                return parseArrayToList(parser);
+            default:
+                parser.skipChildren();
+                return null;
+        }
+    }
+
+    private static List<Object> parseArrayToList(JsonParser parser) throws IOException {
+        List<Object> list = new ArrayList<>();
+
+        while (parser.nextToken() != JsonToken.END_ARRAY) {
+            Object value = parseValue(parser);
+            list.add(value);
+        }
+
+        return list;
     }
 
 }
