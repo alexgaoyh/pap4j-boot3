@@ -49,6 +49,35 @@ public class AsyncFileChunkReader implements AutoCloseable {
     }
 
     /**
+     * 异步读取指定位置的数据块
+     */
+    public CompletableFuture<byte[]> readChunkAsync(long position, int size) {
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
+        ByteBuffer buffer = ByteBuffer.allocate(size);
+
+        channel.read(buffer, position, null, new CompletionHandler<Integer, Void>() {
+            @Override
+            public void completed(Integer bytesRead, Void attachment) {
+                if (bytesRead == -1) {
+                    future.complete(new byte[0]); // EOF
+                    return;
+                }
+                buffer.flip();
+                byte[] chunk = new byte[bytesRead];
+                buffer.get(chunk);
+                future.complete(chunk);
+            }
+
+            @Override
+            public void failed(Throwable exc, Void attachment) {
+                future.completeExceptionally(exc);
+            }
+        });
+
+        return future;
+    }
+
+    /**
      * 同步封装（可选）
      */
     public byte[] readChunkBlocking(long offset, int length) throws IOException {
