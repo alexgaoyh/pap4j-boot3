@@ -2,18 +2,15 @@ package cn.net.pap.common.datastructure.comment;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.github.javaparser.StaticJavaParser;
-import com.github.javaparser.ast.CompilationUnit;
-import com.github.javaparser.ast.body.FieldDeclaration;
-import com.github.javaparser.ast.body.TypeDeclaration;
-import com.github.javaparser.ast.type.ClassOrInterfaceType;
+import com.fasterxml.jackson.databind.node.*;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.util.HashSet;
-import java.util.Set;
+import java.lang.reflect.*;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.*;
 
 /**
  * 解析 实体类，返回 JSON 格式，含 comment 注释部分 javadoc.
@@ -23,101 +20,120 @@ public class JsonWithCommentsTest {
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
-    void testEntityToJsonWithComments() throws Exception {
-        File sourceFile = new File("D:\\ideaprojects\\pap4j-boot3\\pap4j-common\\pap4j-common-datastructure\\src\\main\\java\\cn\\net\\pap\\common\\datastructure\\catalog\\dto\\CatalogTreeDTO.java");
-
-        CompilationUnit cu = StaticJavaParser.parse(sourceFile);
-        TypeDeclaration<?> clazz = cu.getType(0);
-
-        Set<String> processing = new HashSet<>();
-        ObjectNode jsonNode = buildJsonForClass(clazz, sourceFile.getParentFile(), processing);
-        System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(jsonNode));
-
+    public void testGenerateJson() throws Exception {
+        String className = "cn.net.pap.common.datastructure.catalog.dto.CatalogTreeDTO";
+        ObjectNode json = generateJsonFromClass(Class.forName(className), new HashSet<>(), 0);
+        System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
     }
 
-    private ObjectNode buildJsonForClass(TypeDeclaration<?> clazz, File sourceDir, Set<String> processing) throws Exception {
-        String className = clazz.getNameAsString();
-
-        // 避免自关联无限递归
-        if (processing.contains(className)) {
-            return mapper.createObjectNode(); // 或者返回 null / 空对象
-        }
-
-        processing.add(className);
-
+    /**
+     * @param clazz   要处理的类
+     * @param visited 已访问过的类
+     * @param depth   当前递归深度
+     */
+    private ObjectNode generateJsonFromClass(Class<?> clazz, Set<Class<?>> visited, int depth) {
         ObjectNode rootNode = mapper.createObjectNode();
         ObjectNode commentNode = mapper.createObjectNode();
 
-        for (FieldDeclaration field : clazz.getFields()) {
-            String fieldName = field.getVariable(0).getNameAsString();
-            field.getJavadoc().ifPresent(javadoc -> commentNode.put(fieldName, javadoc.getDescription().toText()));
+        visited.add(clazz);
 
-            rootNode.set(fieldName, defaultValueForType(field.getVariable(0).getType(), sourceDir, processing));
+        for (Field field : clazz.getDeclaredFields()) {
+            field.setAccessible(true);
+            String fieldName = field.getName();
+            Class<?> fieldType = field.getType();
+            Type genericType = field.getGenericType();
+
+            JsonNode valueNode;
+            if (visited.contains(fieldType)) {
+                // 自关联，只显示一次结构，不递归
+                if (Collection.class.isAssignableFrom(fieldType)) {
+                    valueNode = mapper.createArrayNode(); // 集合类型显示空
+                } else {
+                    valueNode = mapper.createObjectNode(); // 对象类型显示空对象
+                }
+            } else {
+                valueNode = generateDefaultValue(fieldType, genericType, visited, depth + 1);
+            }
+
+            rootNode.set(fieldName, valueNode);
+            commentNode.put(fieldName, fieldName);
         }
 
         rootNode.set("@comment", commentNode);
-        processing.remove(className);
+        visited.remove(clazz);
         return rootNode;
     }
 
-    private JsonNode defaultValueForType(com.github.javaparser.ast.type.Type type, File sourceDir, Set<String> processing) throws Exception {
-        String typeName = type.asString();
+    private JsonNode generateDefaultValue(Class<?> type, Type genericType, Set<Class<?>> visited, int depth) {
+        if (type.isPrimitive() || type == String.class || Number.class.isAssignableFrom(type) || type == Boolean.class || type == Character.class) {
+            return defaultPrimitive(type);
+        }
 
-        switch (typeName) {
-            case "String" -> {
-                return mapper.getNodeFactory().textNode("");
+        if (type.isEnum()) {
+            ArrayNode arrayNode = mapper.createArrayNode();
+            for (Object constant : type.getEnumConstants()) {
+                arrayNode.add(constant.toString());
             }
-            case "int", "Integer", "short", "Short", "byte", "Byte", "long", "Long" -> {
-                return mapper.getNodeFactory().numberNode(0);
-            }
-            case "float", "Float", "double", "Double" -> {
-                return mapper.getNodeFactory().numberNode(0.0);
-            }
-            case "boolean", "Boolean" -> {
-                return mapper.getNodeFactory().booleanNode(false);
-            }
-            case "LocalDate", "LocalDateTime", "Date" -> {
-                return mapper.getNodeFactory().textNode("1970-01-01T00:00:00");
-            }
-            case "BigDecimal", "BigInteger" -> {
-                return mapper.getNodeFactory().numberNode(0);
-            }
-            default -> {
-                if (type.isClassOrInterfaceType()) {
-                    ClassOrInterfaceType ciType = type.asClassOrInterfaceType();
-                    String name = ciType.getNameAsString();
+            return arrayNode;
+        }
 
-                    // 集合类型
-                    if (name.equals("List") || name.equals("Set")) {
-                        ArrayNode arrayNode = mapper.createArrayNode();
-                        if (!ciType.getTypeArguments().isEmpty()) {
-                            com.github.javaparser.ast.type.Type genericType = ciType.getTypeArguments().get().get(0);
-                            arrayNode.add(defaultValueForType(genericType, sourceDir, processing));
-                        }
-                        return arrayNode;
-                    } else if (name.equals("Map")) {
-                        ObjectNode mapNode = mapper.createObjectNode();
-                        if (!ciType.getTypeArguments().isEmpty()) {
-                            com.github.javaparser.ast.type.Type valueType = ciType.getTypeArguments().get().get(1);
-                            mapNode.set("key", defaultValueForType(valueType, sourceDir, processing));
-                        }
-                        return mapNode;
+        if (Collection.class.isAssignableFrom(type)) {
+            ArrayNode arrayNode = mapper.createArrayNode();
+            if (genericType instanceof ParameterizedType pType) {
+                Type elementType = pType.getActualTypeArguments()[0];
+                Class<?> elementClass = getClassFromType(elementType);
+                if (elementClass != null) {
+                    if (visited.contains(elementClass)) {
+                        // 自关联集合，显示一次空对象
+                        arrayNode.add(mapper.createObjectNode());
                     } else {
-                        // 自定义对象类型
-                        File classFile = new File(sourceDir, name + ".java");
-                        if (classFile.exists()) {
-                            CompilationUnit cu = StaticJavaParser.parse(classFile);
-                            TypeDeclaration<?> clazz = cu.getType(0);
-                            return buildJsonForClass(clazz, sourceDir, processing);
-                        } else {
-                            return mapper.getNodeFactory().textNode("");
-                        }
+                        arrayNode.add(generateJsonFromClass(elementClass, visited, depth + 1));
                     }
-                } else {
-                    return mapper.getNodeFactory().textNode("");
                 }
             }
+            return arrayNode;
         }
+
+        if (Map.class.isAssignableFrom(type)) {
+            ObjectNode mapNode = mapper.createObjectNode();
+            mapNode.put("key", "value");
+            return mapNode;
+        }
+
+        if (type == LocalDate.class || type == LocalDateTime.class || type == Date.class) {
+            return new TextNode("1970-01-01T00:00:00");
+        }
+
+        if (type == BigDecimal.class || type == BigInteger.class) {
+            return new DoubleNode(0.0);
+        }
+
+        // 自定义对象
+        if (visited.contains(type)) {
+            // 自关联对象只显示一次
+            return mapper.createObjectNode();
+        }
+        return generateJsonFromClass(type, visited, depth + 1);
+    }
+
+    private Class<?> getClassFromType(Type type) {
+        if (type instanceof Class<?> clazz) return clazz;
+        if (type instanceof ParameterizedType pType) return getClassFromType(pType.getRawType());
+        if (type instanceof WildcardType wType) {
+            Type[] bounds = wType.getUpperBounds();
+            if (bounds.length > 0) return getClassFromType(bounds[0]);
+        }
+        if (type instanceof TypeVariable<?> tv) {
+            Type[] bounds = tv.getBounds();
+            if (bounds.length > 0) return getClassFromType(bounds[0]);
+        }
+        return null;
+    }
+
+    private JsonNode defaultPrimitive(Class<?> type) {
+        if (type == boolean.class || type == Boolean.class) return BooleanNode.FALSE;
+        if (Number.class.isAssignableFrom(type) || type.isPrimitive()) return new IntNode(0);
+        return new TextNode("");
     }
 
 }
