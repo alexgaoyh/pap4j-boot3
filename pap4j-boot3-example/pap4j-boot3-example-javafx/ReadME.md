@@ -25,3 +25,13 @@ sudo vim /etc/default/locale
     LC_MEASUREMENT="zh_CN.UTF-8"
 
 ```
+
+```shell
+# windows
+jpackage --input . --name example-javafx-0.0.1 --main-jar pap4j-boot3-example-javafx-0.0.1.jar --module-path "D:\.jdks\jdk-17.0.16+8\bin\jmods" --add-modules java.base,java.desktop,java.rmi,java.scripting,java.sql,java.naming,java.xml,jdk.unsupported --java-options "--add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED" --java-options "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED" --java-options "--add-opens=java.base/java.io=ALL-UNNAMED" --java-options "--add-opens=java.base/java.util=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.prism=ALL-UNNAMED" --java-options "-Dfile.encoding=UTF-8" --win-dir-chooser --win-menu --win-shortcut
+
+# windows 依赖调整
+jpackage --input . --name example-javafx-0.0.1 --main-jar pap4j-boot3-example-javafx-0.0.1.jar --runtime-image "D:\.jdks\jdk-17.0.16+8" --java-options "--add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED" --java-options "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED" --java-options "--add-opens=java.base/java.io=ALL-UNNAMED" --java-options "--add-opens=java.base/java.util=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.prism=ALL-UNNAMED" --java-options "-Dfile.encoding=UTF-8" --win-dir-chooser --win-menu --win-shortcut
+
+# 在 Windows 下配置 WiX 3 环境变量 从 GitHub 下载：https://github.com/wixtoolset/wix3/releases 下载 wix3xx-binaries.zip 并解压，之后配置环境变量 PATH 部分，增加此文件夹
+```
