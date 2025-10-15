@@ -246,4 +246,47 @@ public class JacksonUtil {
         return list;
     }
 
+    /**
+     * 从大 JSON 文件中提取指定 key 的值，返回 Map
+     *
+     * @param jsonFilePath JSON 文件路径
+     * @param keysToExtract 要提取的 key 集合
+     * @return Map<key, value>
+     * @throws IOException
+     */
+    public static Map<String, String> extractKeys(String jsonFilePath, Set<String> keysToExtract) throws IOException {
+        Map<String, String> resultMap = new HashMap<>();
+        JsonFactory factory = new JsonFactory();
+
+        try (JsonParser parser = factory.createParser(new File(jsonFilePath))) {
+            while (!parser.isClosed()) {
+                JsonToken token = parser.nextToken();
+                if (token == null) break;
+
+                if (JsonToken.FIELD_NAME.equals(token)) {
+                    String currentName = parser.getCurrentName();
+
+                    // 如果是目标 key
+                    if (keysToExtract.contains(currentName)) {
+                        parser.nextToken(); // 移动到值
+                        if (parser.currentToken().isScalarValue()) {
+                            resultMap.put(currentName, parser.getValueAsString());
+                        } else {
+                            // 对象或数组，序列化为字符串
+                            resultMap.put(currentName, parser.readValueAsTree().toString());
+                        }
+                    } else {
+                        // 跳过不关心的子树
+                        parser.nextToken();
+                        if (parser.currentToken() == JsonToken.START_OBJECT || parser.currentToken() == JsonToken.START_ARRAY) {
+                            parser.skipChildren();
+                        }
+                    }
+                }
+            }
+        }
+
+        return resultMap;
+    }
+
 }

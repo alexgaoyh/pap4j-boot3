@@ -14,9 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class JacksonUtilTest {
 
@@ -175,6 +173,18 @@ public class JacksonUtilTest {
         });
         String s = objectMapper3.writeValueAsString(result2);
         System.out.println(s);
+    }
+
+    // @Test
+    public void extractKeysTest() throws Exception {
+        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
+
+        Set<String> keys = new HashSet<>();
+        keys.add("target_key");
+
+        Map<String, String> extracted = JacksonUtil.extractKeys(desktop + File.separator + "large.json", keys);
+        extracted.forEach((k, v) -> System.out.println(k + " : " + v));
+
     }
 
 
