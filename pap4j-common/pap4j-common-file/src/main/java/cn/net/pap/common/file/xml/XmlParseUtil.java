@@ -1,14 +1,16 @@
 package cn.net.pap.common.file.xml;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
+import org.w3c.dom.*;
 
+import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.xpath.XPath;
-import javax.xml.xpath.XPathConstants;
-import javax.xml.xpath.XPathFactory;
+import javax.xml.transform.OutputKeys;
+import javax.xml.transform.Transformer;
+import javax.xml.transform.TransformerFactory;
+import javax.xml.transform.dom.DOMSource;
+import javax.xml.transform.stream.StreamResult;
+import javax.xml.xpath.*;
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -334,6 +336,80 @@ public final class XmlParseUtil {
             if (!levelIndentMap.containsKey(level + 1)) {
                 levelIndentMap.put(level + 1, indent + "│   ");
             }
+        }
+    }
+
+    /**
+     * 使用XPath修改XML文件中的节点属性或文本内容
+     * @param filePath XML文件的绝对路径
+     * @param updates 要修改的XPath表达式和值的映射
+     *                key: XPath表达式 (如: "//server/@port", "//title/text()")
+     *                value: 新的值
+     * @throws Exception 如果操作失败
+     */
+    public static void updateXmlByXPath(String filePath, Map<String, String> updates) throws Exception {
+        if (updates == null || updates.isEmpty()) {
+            return;
+        }
+
+        // 创建DocumentBuilderFactory并配置安全特性
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+
+        // 解析XML文件
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document document = builder.parse(new File(filePath));
+
+        // 创建XPath对象
+        XPathFactory xPathFactory = XPathFactory.newInstance();
+        XPath xpath = xPathFactory.newXPath();
+
+        boolean hasChanges = false;
+
+        // 遍历所有要修改的XPath表达式
+        for (Map.Entry<String, String> entry : updates.entrySet()) {
+            String xpathExpression = entry.getKey();
+            String newValue = entry.getValue();
+
+            try {
+                // 执行XPath查询
+                XPathExpression expr = xpath.compile(xpathExpression);
+                NodeList nodeList = (NodeList) expr.evaluate(document, XPathConstants.NODESET);
+
+                // 更新所有匹配的节点
+                for (int i = 0; i < nodeList.getLength(); i++) {
+                    Node node = nodeList.item(i);
+
+                    if (node instanceof Attr) {
+                        // 属性节点
+                        ((Attr) node).setValue(newValue);
+                    } else if (node instanceof Text) {
+                        // 文本节点
+                        node.setNodeValue(newValue);
+                    } else if (node instanceof Element) {
+                        // 元素节点 - 设置文本内容
+                        ((Element) node).setTextContent(newValue);
+                    }
+                    hasChanges = true;
+                }
+            } catch (XPathExpressionException e) {
+                throw new RuntimeException("XPath表达式错误: " + xpathExpression, e);
+            }
+        }
+
+        // 如果有修改，则保存文件
+        if (hasChanges) {
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+            transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+            transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+            transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+
+            DOMSource source = new DOMSource(document);
+            StreamResult result = new StreamResult(new File(filePath));
+            transformer.transform(source, result);
         }
     }
 
