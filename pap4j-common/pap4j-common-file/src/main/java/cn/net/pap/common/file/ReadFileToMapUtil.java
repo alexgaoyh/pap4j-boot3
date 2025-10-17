@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
@@ -12,6 +15,8 @@ import java.util.concurrent.RecursiveAction;
  * 从文件中读取行信息并存储到 map 中，
  */
 public class ReadFileToMapUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(ReadFileToMapUtil.class);
 
     /**
      * 从文本中，按行读取，每行使用 separator 进行分割，存储数据到 ConcurrentHashMap 中返回.
@@ -33,7 +38,7 @@ public class ReadFileToMapUtil {
             pool.invoke(new ParseTask(buffer, 0, (int) fileSize, separator, lineMap));
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("toMap", e);
         }
 
         return lineMap;
@@ -173,7 +178,7 @@ public class ReadFileToMapUtil {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("toMap1", e);
         }
 
         return lineMap;

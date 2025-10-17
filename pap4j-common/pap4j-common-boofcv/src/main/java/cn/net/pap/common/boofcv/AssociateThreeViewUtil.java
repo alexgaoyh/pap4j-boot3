@@ -20,6 +20,8 @@ import cn.net.pap.common.boofcv.dto.AssociatedTripleDTO;
 import georegression.struct.point.Point2D_F64;
 import org.ddogleg.struct.DogArray;
 import org.ddogleg.struct.DogArray_I32;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -37,6 +39,8 @@ import java.util.stream.Collectors;
  * 仿照 https://github.com/lessthanoptimal/BoofCV/blob/v1.1.4/examples/src/main/java/boofcv/examples/features/ExampleAssociateThreeView.java
  */
 public class AssociateThreeViewUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(AssociateThreeViewUtil.class);
 
     /**
      * 合并两周图像
@@ -100,7 +104,7 @@ public class AssociateThreeViewUtil {
             boolean jpg = ImageIO.write(mergedImage, "jpg", new File(outputPath));
             System.out.println(jpg);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("mergeImages", e);
         }
     }
 

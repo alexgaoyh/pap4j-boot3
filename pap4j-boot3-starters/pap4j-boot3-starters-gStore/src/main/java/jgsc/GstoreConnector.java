@@ -6,6 +6,9 @@
 */
 package jgsc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.net.URL;
 import java.net.URLConnection;
@@ -14,6 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 public class GstoreConnector {
+
+    private static final Logger log = LoggerFactory.getLogger(GstoreConnector.class);
 
     public static final String defaultServerIP = "127.0.0.1";
     public static final int defaultServerPort = 9000;
@@ -75,7 +80,7 @@ public class GstoreConnector {
             }
         } catch (Exception e) {
             System.out.println("error in get request: " + e);
-            e.printStackTrace();
+            log.error("sendGet", e);
         }
 
         // use finally to close the input stream
@@ -86,6 +91,7 @@ public class GstoreConnector {
                 }
             } catch (Exception e2) {
                 e2.printStackTrace();
+                log.error("sendGet", e2);
             }
         }
         return result.toString();
@@ -132,7 +138,7 @@ public class GstoreConnector {
             }
         } catch (Exception e) {
             System.out.println("error in post request: " + e);
-            e.printStackTrace();
+            log.error("sendPost", e);
         }
 
         // use finally to close the input stream
@@ -145,7 +151,7 @@ public class GstoreConnector {
                     in.close();
                 }
             } catch (IOException ex) {
-                ex.printStackTrace();
+                log.error("sendPost", ex);
             }
         }
         return result.toString();
@@ -198,7 +204,7 @@ public class GstoreConnector {
             }
         } catch (Exception e) {
             System.out.println("error in get request: " + e);
-            e.printStackTrace();
+            log.error("sendGet", e);
         }
 
         // use finally to close the input stream
@@ -211,7 +217,7 @@ public class GstoreConnector {
                     fw.close();
                 }
             } catch (Exception e2) {
-                e2.printStackTrace();
+                log.error("sendGet", e2);
             }
         }
         return;
@@ -270,7 +276,7 @@ public class GstoreConnector {
             }
         } catch (Exception e) {
             System.out.println("error in post request: " + e);
-            e.printStackTrace();
+            log.error("sendPost", e);
         }
 
         // use finally to close the input stream
@@ -286,7 +292,7 @@ public class GstoreConnector {
                     fw.close();
                 }
             } catch (IOException ex) {
-                ex.printStackTrace();
+                log.error("sendPost", ex);
             }
         }
         return;
@@ -686,7 +692,7 @@ public class GstoreConnector {
             data_context = _msg.getBytes("utf-8");
         } catch (UnsupportedEncodingException e) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            log.error("packageMsgData", e);
             System.err.println("utf-8 charset is unsupported.");
             data_context = _msg.getBytes();
         }

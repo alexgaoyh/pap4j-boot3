@@ -2,6 +2,8 @@ package cn.net.pap.neo4j.config.initializer;
 
 import cn.net.pap.neo4j.entity.HLMEntity;
 import cn.net.pap.neo4j.repository.HLMRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -16,6 +18,8 @@ import java.io.InputStreamReader;
 @Component
 @ConditionalOnExpression("${neo4j.setup.init.data.HLM:true}")
 public class HLMDataInitializer implements CommandLineRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(HLMDataInitializer.class);
 
     @Autowired
     private HLMRepository hlmRepository;
@@ -41,7 +45,7 @@ public class HLMDataInitializer implements CommandLineRunner {
                 hlmRepository.save(sNode);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("run", e);
         } finally {
             try {
                 if (br != null) {
@@ -51,7 +55,7 @@ public class HLMDataInitializer implements CommandLineRunner {
                     isr.close();
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error("run", e);
             }
         }
     }

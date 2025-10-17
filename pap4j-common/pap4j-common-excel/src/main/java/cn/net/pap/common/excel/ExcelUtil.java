@@ -15,6 +15,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -23,6 +25,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class ExcelUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(ExcelUtil.class);
 
     /**
      * 获得表头信息
@@ -51,7 +55,7 @@ public class ExcelUtil {
             }
             excelReader.finish();
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("getHeadMap", e);
         }
         return resultData;
     }

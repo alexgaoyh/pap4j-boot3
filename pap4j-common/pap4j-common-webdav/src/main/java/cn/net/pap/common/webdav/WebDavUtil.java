@@ -27,11 +27,15 @@ import org.apache.jackrabbit.webdav.client.methods.HttpMkcol;
 import org.apache.jackrabbit.webdav.client.methods.HttpPropfind;
 import org.apache.jackrabbit.webdav.property.DavPropertyNameSet;
 import org.apache.jackrabbit.webdav.version.DeltaVConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URI;
 
 public class WebDavUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(WebDavUtil.class);
 
     private String username, password;
     private URI uri;
@@ -115,7 +119,7 @@ public class WebDavUtil {
             responses = multistatus.getResponses();
         } catch (DavException e) {
             // TODO Auto-generated catch block
-            e.printStackTrace();
+            log.error("propfind", e);
         }
         return responses;
     }

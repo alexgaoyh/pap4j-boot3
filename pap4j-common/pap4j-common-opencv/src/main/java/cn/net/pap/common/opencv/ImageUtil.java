@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
@@ -20,6 +23,8 @@ import java.util.Iterator;
 import java.util.List;
 
 public class ImageUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(ImageUtil.class);
 
     /**
      * generateEmptyJpeg() 的返回值
@@ -132,7 +137,7 @@ public class ImageUtil {
                 reader.dispose();
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("cropImageCutList", e);
         }
 
         return base64Images;
@@ -176,7 +181,7 @@ public class ImageUtil {
             ImageIO.write(grayImage, "jpg", new File(outputPath));
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("scaleAndGray", e);
             return false;
         }
     }
@@ -248,7 +253,7 @@ public class ImageUtil {
             boolean result = ImageIO.write(rotatedImage, "jpg", new File(outputFilePath));
             return result;
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("rotateImage", e);
             return false;
         }
     }
@@ -289,7 +294,7 @@ public class ImageUtil {
 
             return true;
         } catch (Exception e) {
-            e.printStackTrace(); // 打印异常堆栈跟踪信息
+            log.error("horizontalMirror", e);
             return false;
         }
     }
@@ -331,7 +336,7 @@ public class ImageUtil {
 
             return true;
         } catch (IOException e) {
-            e.printStackTrace(); // 打印异常堆栈跟踪信息
+            log.error("verticalMirror", e);
             return false;
         }
     }

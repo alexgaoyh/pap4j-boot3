@@ -9,6 +9,8 @@ import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFRow;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.text.ParseException;
@@ -18,6 +20,8 @@ import java.util.Date;
 import java.util.List;
 
 public class ExcelCRUDUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(ExcelCRUDUtil.class);
 
     public static void createXlsx(String path, String sheetName) {
         new File(path).delete();
@@ -29,7 +33,7 @@ public class ExcelCRUDUtil {
             fileOut.close();
             workbook.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("createXlsx", e);
         }
     }
 
@@ -179,7 +183,7 @@ public class ExcelCRUDUtil {
             XSSFWorkbook workbook = new XSSFWorkbook(byteArrayInputStream);
             return workbook;
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("getExcelByPath", e);
         }
         return null;
     }

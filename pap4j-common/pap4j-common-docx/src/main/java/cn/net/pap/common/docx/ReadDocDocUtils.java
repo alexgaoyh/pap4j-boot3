@@ -4,12 +4,16 @@ import org.apache.poi.hwpf.HWPFDocument;
 import org.apache.poi.hwpf.extractor.WordExtractor;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.List;
 
 public class ReadDocDocUtils {
+
+    private static final Logger log = LoggerFactory.getLogger(ReadDocDocUtils.class);
 
     public static String readWord(String filePath) {
         if (filePath == null || (!filePath.endsWith(".doc") && !filePath.endsWith(".docx"))) {
@@ -37,7 +41,7 @@ public class ReadDocDocUtils {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("readWord", e);
         }
 
         return "";

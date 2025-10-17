@@ -11,6 +11,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.ClientHttpResponse;
@@ -31,6 +33,8 @@ import java.util.Map;
 
 @RestController
 public class BeanController {
+
+    private static final Logger log = LoggerFactory.getLogger(BeanController.class);
 
     @Autowired
     private ExampleBeanDTO exampleBeanDTO;
@@ -239,7 +243,7 @@ public class BeanController {
             );
         } catch (ResourceAccessException e) {
             // 处理可能的网络异常
-            e.printStackTrace();
+            log.error("streamStringsAPI", e);
         } finally {
             response.getWriter().close(); // 关闭输出流，从而关闭连接
         }

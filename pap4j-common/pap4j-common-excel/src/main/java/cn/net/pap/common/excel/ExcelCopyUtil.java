@@ -2,6 +2,8 @@ package cn.net.pap.common.excel;
 
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -9,6 +11,7 @@ import java.io.IOException;
 
 public class ExcelCopyUtil {
 
+    private static final Logger log = LoggerFactory.getLogger(ExcelCopyUtil.class);
 
     /**
      * 指定 源excel、目标excel、目标excel的sheet名称，将 小于 offset 偏移量的行全部复制，接下来制定行数 withinGroupLength 的数据当成一组，复制为 numberOfGroup 组。
@@ -52,7 +55,7 @@ public class ExcelCopyUtil {
             sourceWorkbook.close();
             destWorkbook.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("copyRowWithStyle", e);
         }
     }
 
@@ -126,7 +129,7 @@ public class ExcelCopyUtil {
             sourceWorkbook.close();
             destWorkbook.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("copyRowWithStyleInGroup", e);
         }
     }
 

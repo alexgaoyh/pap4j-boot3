@@ -6,6 +6,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.HttpURLConnection;
@@ -13,6 +15,8 @@ import java.net.URL;
 import java.util.Base64;
 
 public class Html2DocxUtils {
+
+    private static final Logger log = LoggerFactory.getLogger(Html2DocxUtils.class);
 
     private static final StringBuffer htmlHeader = new StringBuffer("<html><head><meta charset=\"utf-8\"><title></title></head><body>");
 
@@ -38,20 +42,20 @@ public class Html2DocxUtils {
 
             return true;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("html2docx2UsingPOI", e);
         } finally {
             if (outputStream != null) {
                 try {
                     outputStream.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error("html2docx2UsingPOI", e);
                 }
             }
             if (bais != null) {
                 try {
                     bais.close();
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error("html2docx2UsingPOI", e);
                 }
             }
         }

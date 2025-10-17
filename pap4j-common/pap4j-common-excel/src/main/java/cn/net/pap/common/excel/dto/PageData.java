@@ -1,5 +1,8 @@
 package cn.net.pap.common.excel.dto;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.Serializable;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
@@ -7,6 +10,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class PageData extends LinkedHashMap implements Map, Serializable {
+
+    private static final Logger log = LoggerFactory.getLogger(PageData.class);
 
     private static final long serialVersionUID = 1L;
 
@@ -58,7 +63,7 @@ public class PageData extends LinkedHashMap implements Map, Serializable {
                 returnMap.put(key, value);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("PageData", e);
         }
         map = returnMap;
     }

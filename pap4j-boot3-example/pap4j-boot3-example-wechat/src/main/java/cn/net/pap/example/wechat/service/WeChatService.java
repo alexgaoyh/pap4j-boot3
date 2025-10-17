@@ -298,7 +298,7 @@ public class WeChatService {
                     httpClient.close();
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error("sendPostByHttpClient", e);
             }
         }
         return result;

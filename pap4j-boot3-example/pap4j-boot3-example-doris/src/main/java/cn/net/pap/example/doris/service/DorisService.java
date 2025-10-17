@@ -4,6 +4,8 @@ import cn.net.pap.example.doris.entity.Doris;
 import cn.net.pap.example.doris.mapper.DorisMapper;
 import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,8 @@ import java.sql.*;
 
 @Service("dorisService")
 public class DorisService {
+
+    private static final Logger log = LoggerFactory.getLogger(DorisService.class);
 
     @Autowired
     private SqlSessionFactory sqlSessionFactory;
@@ -52,18 +56,18 @@ public class DorisService {
 
             return 1;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("transactionalTest", e);
             try {
                 conn.rollback();
             } catch (Exception e1) {
-                e1.printStackTrace();
+                log.error("transactionalTest", e1);
             }
         } finally {
             try {
                 conn.close();
                 session.close();
             } catch (Exception e1) {
-                e1.printStackTrace();
+                log.error("transactionalTest", e1);
             }
         }
         return 0;
@@ -84,18 +88,18 @@ public class DorisService {
 
             return 1;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("partFieldUpdateTest", e);
             try {
                 conn.rollback();
             } catch (Exception e1) {
-                e1.printStackTrace();
+                log.error("partFieldUpdateTest", e1);
             }
         } finally {
             try {
                 conn.close();
                 session.close();
             } catch (Exception e1) {
-                e1.printStackTrace();
+                log.error("partFieldUpdateTest", e1);
             }
         }
         return 0;
@@ -114,18 +118,18 @@ public class DorisService {
             stmt.execute("UPDATE doris SET doris_remark = '" + currentTime + "' WHERE id = 1");
             return 1;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("updateTestThrowExceptionInMysqlDB", e);
             try {
                 conn.rollback();
             } catch (SQLException e1) {
-                e1.printStackTrace();
+                log.error("updateTestThrowExceptionInMysqlDB", e1);
             }
         } finally {
             try {
                 conn.close();
                 session.close();
             } catch (Exception e1) {
-                e1.printStackTrace();
+                log.error("updateTestThrowExceptionInMysqlDB", e1);
             }
         }
         return 0;
@@ -152,7 +156,7 @@ public class DorisService {
                 pstmt.close();
                 conn.close();
             } catch (Exception e1) {
-                e1.printStackTrace();
+                log.error("updateTestNoExceptionInMysqlDB", e1);
             }
         }
     }
@@ -210,7 +214,7 @@ public class DorisService {
 
             return 1;
         } catch (SQLException e) {
-            e.printStackTrace();
+            log.error("updateTestTestInMysqlDB2", e);
             return -1;
         } finally {
             DataSourceUtils.releaseConnection(conn, dataSource);
