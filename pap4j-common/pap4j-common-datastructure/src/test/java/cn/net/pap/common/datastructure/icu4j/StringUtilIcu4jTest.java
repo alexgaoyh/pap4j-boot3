@@ -168,6 +168,34 @@ public class StringUtilIcu4jTest {
     }
 
     @Test
+    public void chineseWordBreakTest1() {
+        String[] testTexts = {
+                "测试𠮷字",
+                "A-B-C-D-123-456"
+        };
+
+        for (String chineseText : testTexts) {
+            // 中文分词
+            BreakIterator wordIterator = BreakIterator.getWordInstance(Locale.CHINA);
+            wordIterator.setText(chineseText);
+
+            System.out.println("中文分词结果:");
+            int start = wordIterator.first();
+            int end = wordIterator.next();
+
+            while (end != BreakIterator.DONE) {
+                String word = chineseText.substring(start, end);
+                if (!word.trim().isEmpty()) {
+                    System.out.println("'" + word + "'");
+                }
+                start = end;
+                end = wordIterator.next();
+            }
+        }
+
+    }
+
+    @Test
     public void testDiffSegment() {
         // 这些字符串能明显展示差异
         String[] testTexts = {
