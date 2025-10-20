@@ -16,6 +16,10 @@ public class H2ServerManager {
 
     private static String dbPath = "jdbc:h2:file:./h2db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE";
 
+    private static String user = "sa";
+
+    private static String password = "";
+
     private static final int MAX_PORT_ATTEMPTS = 10;
 
     public static void startH2Servers() throws SQLException {
@@ -26,9 +30,24 @@ public class H2ServerManager {
         // 启动 Web 控制台（自动处理端口占用）
         webServer = startWebServer();
 
+        // 测试数据库连接，确保数据库文件被创建
+        testDatabaseConnection();
+
         System.out.println("H2 TCP Server started on port: " + tcpServer.getPort());
         System.out.println("H2 Web Console started on port: " + webServer.getPort());
         System.out.println("管理界面URL: http://localhost:" + webServer.getPort());
+    }
+
+    private static void testDatabaseConnection() {
+        // 测试连接以确保数据库文件被创建
+        try (java.sql.Connection conn = java.sql.DriverManager.getConnection(dbPath, user, password);
+             java.sql.Statement stmt = conn.createStatement()) {
+            // 执行一个简单的查询来初始化数据库
+            stmt.execute("SELECT 1 FROM DUAL");
+            System.out.println("数据库连接测试成功，数据库文件已创建");
+        } catch (SQLException e) {
+            System.err.println("数据库连接测试失败: " + e.getMessage());
+        }
     }
 
     private static Server startTcpServer() throws SQLException {
