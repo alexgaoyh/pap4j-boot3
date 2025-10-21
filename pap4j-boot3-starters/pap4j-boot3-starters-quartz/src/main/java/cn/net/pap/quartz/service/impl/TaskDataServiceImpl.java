@@ -228,4 +228,10 @@ public class TaskDataServiceImpl implements ITaskDataService {
         taskDataRepository.deleteAll();
     }
 
+    @Override
+    public void callNptException(Long inputLong) {
+        TaskData taskData = new TaskData();
+        taskData.getDataContent().length();
+    }
+
 }

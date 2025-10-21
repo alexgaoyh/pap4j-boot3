@@ -35,4 +35,6 @@ public interface ITaskDataService {
     public void saveAll(List<TaskData> taskDataList);
 
     public void deleteAll();
+
+    public void callNptException(Long inputLong);
 }

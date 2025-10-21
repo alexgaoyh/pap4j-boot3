@@ -1,11 +1,15 @@
 package cn.net.pap.quartz;
 
+import cn.net.pap.quartz.util.BeanMethodInvoker;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import cn.net.pap.quartz.entity.TaskData;
 import cn.net.pap.quartz.service.ITaskDataService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
@@ -15,11 +19,11 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @RunWith(SpringRunner.class)
@@ -27,8 +31,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestPropertySource("classpath:application.properties")
 public class TaskDataTest {
 
+    private static final Logger logger = LoggerFactory.getLogger(TaskDataTest.class);
+
     @Autowired
     private ITaskDataService taskDataService;
+
+    @Autowired
+    private ApplicationContext applicationContext;
 
     private ExecutorService executorService = Executors.newFixedThreadPool(20);
 
@@ -104,5 +113,18 @@ public class TaskDataTest {
                 })
                 .collect(Collectors.toList());
     }
+
+    @Test
+    public void callNptExceptionTest() throws Exception {
+        String inputStr = "taskDataServiceImpl.callNptException(123L)";
+        Exception exception = assertThrows(java.lang.RuntimeException.class, () -> {
+            BeanMethodInvoker.invokeMethodCall(applicationContext, inputStr);
+        });
+        // 还可以进一步验证异常信息
+        assertEquals("Failed to invoke method call: taskDataServiceImpl.callNptException(123L)", exception.getMessage());
+        logger.error("callNptExceptionTest", exception);
+    }
+
+
 
 }
