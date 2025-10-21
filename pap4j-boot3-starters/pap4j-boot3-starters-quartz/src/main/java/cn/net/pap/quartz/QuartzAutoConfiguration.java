@@ -2,20 +2,30 @@ package cn.net.pap.quartz;
 
 import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
+import jakarta.persistence.EntityManagerFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.event.ContextClosedEvent;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.datasource.init.DataSourceInitializer;
 import org.springframework.jdbc.datasource.init.DatabasePopulator;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
 
 import javax.sql.DataSource;
 import java.sql.SQLException;
@@ -29,6 +39,10 @@ import java.util.concurrent.TimeUnit;
  */
 @Configuration
 @ConditionalOnClass(HikariDataSource.class)
+@EnableJpaRepositories(basePackages = "cn.net.pap.quartz.repository")
+@EntityScan(basePackages = "cn.net.pap.quartz.entity")
+@ComponentScan(basePackages = "cn.net.pap.quartz.service")
+@EnableTransactionManagement
 public class QuartzAutoConfiguration {
 
     private static final Logger logger = LoggerFactory.getLogger(QuartzAutoConfiguration.class);
@@ -230,4 +244,34 @@ public class QuartzAutoConfiguration {
             }
         };
     }
+
+    /**
+     * 自定义 EntityManagerFactory
+     * @param dataSource
+     * @return
+     */
+    @Bean
+    @Primary
+    public LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
+        LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
+        em.setDataSource(dataSource);
+        em.setPackagesToScan("cn.net.pap.quartz.entity");
+
+        HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        em.setJpaVendorAdapter(vendorAdapter);
+
+        Properties properties = new Properties();
+        properties.put("hibernate.hbm2ddl.auto", "update");
+        properties.put("hibernate.show_sql", "true");
+        em.setJpaProperties(properties);
+
+        return em;
+    }
+
+    @Bean
+    @Primary
+    public PlatformTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+        return new JpaTransactionManager(entityManagerFactory);
+    }
+
 }
