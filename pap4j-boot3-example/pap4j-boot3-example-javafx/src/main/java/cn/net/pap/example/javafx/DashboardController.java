@@ -18,7 +18,9 @@ public class DashboardController implements Initializable {
     private Button exitButton;
 
     public void setWelcomeMessage(String message) {
-        welcomeLabel.setText(message);
+        if(welcomeLabel != null) {
+            welcomeLabel.setText(message);
+        }
     }
 
     @FXML
@@ -29,8 +31,12 @@ public class DashboardController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        welcomeLabel.setText("欢迎:");
-        exitButton.setText("退出");
+        if(welcomeLabel != null) {
+            welcomeLabel.setText("欢迎:");
+        }
+        if(exitButton != null) {
+            exitButton.setText("退出");
+        }
     }
 
 }

@@ -38,7 +38,9 @@ public class LoginController implements Initializable {
             Parent root = loader.load();
 
             DashboardController controller = loader.getController();
-            controller.setWelcomeMessage("欢迎回来，" + username + "！");
+            if(controller != null) {
+                controller.setWelcomeMessage("欢迎回来，" + username + "！");
+            }
 
             Stage stage = (Stage) ((Button) event.getSource()).getScene().getWindow();
             stage.setScene(new Scene(root));
