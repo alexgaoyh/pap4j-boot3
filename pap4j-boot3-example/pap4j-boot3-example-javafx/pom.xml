@@ -79,6 +79,11 @@
                 </configuration>
             </plugin>
 
+            <!--
+                Application 启动配置说明： 需要添加以下 VM 参数：  注意实际命令的部分，两行转一行，并且前面增加 两个横线 '-'
+                • module-path "D:\.jdks\javafx-sdk-17.0.17\lib"
+                • add-modules javafx.controls,javafx.fxml
+            -->
             <!-- 执行 mvn compile exec:java -Dexec.mainClass=cn.net.pap.example.javafx.MainApp -Dexec.args= -Dmaven.test.skip=true , 可以开启调试  -->
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
