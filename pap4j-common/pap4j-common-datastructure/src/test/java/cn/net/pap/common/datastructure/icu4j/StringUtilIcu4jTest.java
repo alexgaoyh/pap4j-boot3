@@ -79,6 +79,15 @@ public class StringUtilIcu4jTest {
     }
 
     @Test
+    public void testLengthAndSubString() {
+        assertEquals(3, StringUtilIcu4j.length("a𠀀b"));
+        assertEquals("𠀀b", StringUtilIcu4j.substring("a𠀀b", 1));
+        assertEquals("𠀀b", StringUtilIcu4j.substring("a𠀀b", 1, StringUtilIcu4j.length("a𠀀b")));
+        assertEquals("a", StringUtilIcu4j.substring("a𠀀b", 0,1));
+    }
+
+
+    @Test
     public void testLastIndexOfCharacter() {
         assertEquals(3, StringUtilIcu4j.lastIndexOfCharacter("a𠀀b𠀀", "𠀀"));
         assertEquals(0, StringUtilIcu4j.lastIndexOfCharacter("hello", "h"));

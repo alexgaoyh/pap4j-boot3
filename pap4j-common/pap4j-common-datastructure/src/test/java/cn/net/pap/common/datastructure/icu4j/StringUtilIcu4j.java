@@ -131,6 +131,42 @@ public class StringUtilIcu4j {
         return UCharacter.foldCase(input, true).contains(UCharacter.foldCase(searchStr, true));
     }
 
+    public static int length(String input) {
+        return charCount(input);
+    }
+
+    /**
+     * 根据“可视字符”索引截取字符串（仿照 String.substring(beginIndex, endIndex)）
+     */
+    public static String substring(String input, int beginIndex, int endIndex) {
+        if (input == null) return null;
+        if (beginIndex < 0 || endIndex < 0) throw new IndexOutOfBoundsException("Negative index");
+        if (beginIndex > endIndex) throw new IndexOutOfBoundsException("beginIndex > endIndex");
+
+        BreakIterator it = BreakIterator.getCharacterInstance();
+        it.setText(input);
+
+        int startOffset = boundaryIndex(it, beginIndex);
+        int endOffset = boundaryIndex(it, endIndex);
+
+        return input.substring(startOffset, endOffset);
+    }
+
+    /**
+     * 重载方法：只传入 beginIndex，截取到末尾
+     */
+    public static String substring(String input, int beginIndex) {
+        if (input == null) return null;
+        if (beginIndex < 0) throw new IndexOutOfBoundsException("Negative index");
+
+        BreakIterator it = BreakIterator.getCharacterInstance();
+        it.setText(input);
+
+        int startOffset = boundaryIndex(it, beginIndex);
+        return input.substring(startOffset);
+    }
+
+
     /**
      * ------------------- 字符串分割与连接 -------------------
      */
