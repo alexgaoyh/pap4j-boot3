@@ -16,6 +16,7 @@ public class IntervalSelector {
     public static class Interval {
         public int start;
         public int end;
+        public List<Interval> details = new ArrayList<>();
 
         public Interval(int start, int end) {
             this.start = start;
@@ -24,7 +25,7 @@ public class IntervalSelector {
 
         @Override
         public String toString() {
-            return "[" + start + "," + end + "]";
+            return "[" + start + "," + end +  "," + details + "]";
         }
     }
 
@@ -58,5 +59,58 @@ public class IntervalSelector {
         return result;
     }
 
+    /**
+     * 过滤算法：inner 区间必须完全位于 outer 区间集合的任意一个区间内
+     *
+     * @param outer 外层区间集合
+     * @param inner 内层区间集合
+     * @return 所有被 outer 区间完全包裹的 inner 区间
+     */
+    public static List<Interval> selectContainedIntervals(List<Interval> outer, List<Interval> inner) {
+        List<Interval> result = new ArrayList<>();
+        if (outer == null || inner == null || outer.isEmpty() || inner.isEmpty()) {
+            return result;
+        }
+
+        List<Interval> outerCopy = new ArrayList<>(outer);
+        List<Interval> innerCopy = new ArrayList<>(inner);
+
+        outerCopy.sort(Comparator.comparingInt(i -> i.start));
+        innerCopy.sort(Comparator.comparingInt(i -> i.start));
+
+        for (Interval in : innerCopy) {
+            boolean contained = false;
+            for (Interval out : outerCopy) {
+                if (in.start >= out.start && in.end <= out.end) {
+                    contained = true;
+                    break;
+                }
+            }
+            if (contained) {
+                result.add(in);
+            }
+        }
+        return result;
+    }
+
+    public static List<Interval> selectContainedIntervals2(List<Interval> outer, List<Interval> inner) {
+        List<Interval> outerCopy = new ArrayList<>(outer);
+        List<Interval> innerCopy = new ArrayList<>(inner);
+
+        outerCopy.sort(Comparator.comparingInt(i -> i.start));
+        innerCopy.sort(Comparator.comparingInt(i -> i.start));
+
+        // 遍历每个 inner 区间，找到它属于哪个 outer 区间
+        for (Interval in : innerCopy) {
+            for (Interval out : outerCopy) {
+                if (in.start >= out.start && in.end <= out.end) {
+                    out.details.add(in);
+                    break;
+                }
+            }
+        }
+
+        return outerCopy;
+    }
 }
 
