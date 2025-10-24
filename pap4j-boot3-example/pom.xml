@@ -26,6 +26,7 @@
         <module>pap4j-boot3-example-ftp-server</module>
         <module>pap4j-boot3-example-webflux</module>
         <module>pap4j-boot3-example-javafx</module>
+        <module>pap4j-boot3-example-webhook</module>
     </modules>
 
     <properties>
