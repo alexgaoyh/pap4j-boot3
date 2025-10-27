@@ -47,6 +47,10 @@ public class ProcessExecUtils {
         // 中文乱码校验
         ExecResult r4 = execWithShell("echo 中文!", null, null, 2000);
         System.out.println("r4: " + r4.getStdout());
+
+        ExecResult r6 = execWithShell("dir /b", null, new File("d:\\"), 2000);
+        System.out.println("r6: " + r6.getStdout());
+
     }
 
     private static Map<String, String> mergeEnv(Map<String, String> extra) {
