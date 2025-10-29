@@ -161,7 +161,7 @@ public class ProguardController {
         return new ResponseEntity<>(proguardService.saveAndFlush(proguard), HttpStatus.OK);
     }
 
-    @GetMapping("getProguardByProguardId")
+    @GetMapping("/getProguardByProguardId")
     public Proguard getProguardByProguardId(@RequestParam(name = "proguardId") Long proguardId) {
         return proguardService.getProguardByProguardId(proguardId);
     }
