@@ -88,6 +88,7 @@ public class ConcurrentLockAspect {
 
     /**
      * 清理无效锁对象的方法（可选）
+     * 用定时任务或异步线程周期性清理, 比如 @Scheduled 周期性的调用当前方法。
      */
     public static void cleanUnusedLocks() {
         LOCK_MAP.entrySet().removeIf(entry -> !entry.getValue().isLocked() && entry.getValue().getQueueLength() == 0);
