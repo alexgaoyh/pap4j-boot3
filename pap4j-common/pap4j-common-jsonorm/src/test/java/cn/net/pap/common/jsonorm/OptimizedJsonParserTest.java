@@ -6,14 +6,18 @@ import cn.net.pap.common.jsonorm.util.JsonORMUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.ObjectWriter;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInstance;
 import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+@TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class OptimizedJsonParserTest {
 
     //@Test
@@ -66,6 +70,61 @@ public class OptimizedJsonParserTest {
         ObjectMapper objectMapper = new ObjectMapper();
         List<Map<String, Object>> result = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
         System.out.println(result.size());
+    }
+
+    @Test
+    public void benchmarkSerializationTest1() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        List<JsonDTO.CharDTO> charDTOS = new ArrayList<>();
+        for(int idx = 0; idx < 100; idx++) {
+            JsonDTO.CharDTO charDTO = new JsonDTO.CharDTO();
+            charDTO.setText(idx + "");
+            charDTO.setBox(List.of(Double.parseDouble(idx + ""), Double.parseDouble(idx + ""), Double.parseDouble(idx + ""), Double.parseDouble(idx + "")));
+            charDTO.setCoords(List.of(Double.parseDouble(idx + ""), Double.parseDouble(idx + ""), Double.parseDouble(idx + ""), Double.parseDouble(idx + "")));
+            charDTO.setDistance(idx);
+            charDTOS.add(charDTO);
+        }
+        JsonDTO jsonDTO2 = new JsonDTO();
+        jsonDTO2.setChars(charDTOS);
+
+        long start = System.nanoTime();
+        for (int i = 0; i < 10000; i++) {
+            mapper.writeValueAsString(jsonDTO2);
+        }
+        long end = System.nanoTime();
+
+        System.out.println("Time per serialization: " +
+                (end - start) / 10000 / 1_000 + "μs");
+    }
+
+    @Test
+    public void benchmarkSerializationTest2() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+//        mapper.disable(SerializationFeature.FAIL_ON_EMPTY_BEANS);
+//        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+//        mapper.disable(SerializationFeature.INDENT_OUTPUT);
+//        mapper.configure(MapperFeature.SORT_PROPERTIES_ALPHABETICALLY, false);
+        ObjectWriter writer = mapper.writerFor(JsonDTO.class);
+        List<JsonDTO.CharDTO> charDTOS = new ArrayList<>();
+        for(int idx = 0; idx < 100; idx++) {
+            JsonDTO.CharDTO charDTO = new JsonDTO.CharDTO();
+            charDTO.setText(idx + "");
+            charDTO.setBox(List.of(Double.parseDouble(idx + ""), Double.parseDouble(idx + ""), Double.parseDouble(idx + ""), Double.parseDouble(idx + "")));
+            charDTO.setCoords(List.of(Double.parseDouble(idx + ""), Double.parseDouble(idx + ""), Double.parseDouble(idx + ""), Double.parseDouble(idx + "")));
+            charDTO.setDistance(idx);
+            charDTOS.add(charDTO);
+        }
+        JsonDTO jsonDTO2 = new JsonDTO();
+        jsonDTO2.setChars(charDTOS);
+
+        long start = System.nanoTime();
+        for (int i = 0; i < 10000; i++) {
+            writer.writeValueAsString(jsonDTO2);
+        }
+        long end = System.nanoTime();
+
+        System.out.println("Time per serialization: " +
+                (end - start) / 10000 / 1_000 + "μs");
     }
 
 }
