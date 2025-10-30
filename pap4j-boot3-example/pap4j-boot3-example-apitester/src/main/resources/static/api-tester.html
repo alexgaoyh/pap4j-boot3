@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>API Tester</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            margin: 30px;
+            max-width: 900px;
+        }
+
+        input, select, textarea, button {
+            padding: 6px;
+            margin: 4px 0;
+            box-sizing: border-box;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        .headers, .bodyEditor {
+            margin-bottom: 10px;
+        }
+
+        .pair {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 5px;
+            align-items: center;
+        }
+
+        textarea {
+            width: 100%;
+        }
+
+        pre {
+            background: #f8f8f8;
+            padding: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            border: 1px solid #ddd;
+        }
+
+        /* form-data 布局优化 */
+        .pair .key {
+            flex: 3;
+        }
+
+        .pair .type {
+            flex: 1.5;
+        }
+
+        .pair .value {
+            flex: 4.5;
+        }
+
+        .pair button {
+            flex: 1;
+        }
+    </style>
+</head>
+<body>
+
+<h1>🌐 pap4j-boot3 Example API Tester</h1>
+<p style="font-size: 1rem; color: #555;">
+    Author: <a href="http://pap-docs.pap.net.cn" target="_blank" rel="noopener noreferrer">alexgaoyh</a>
+</p>
+
+<label>请求 URL</label>
+<input id="url" value="https://httpbin.org/post" style="width:100%"/>
+
+<label>方法</label>
+<select id="method">
+    <option>GET</option>
+    <option selected>POST</option>
+    <option>PUT</option>
+    <option>DELETE</option>
+</select>
+
+<h3>Headers</h3>
+<div id="headers" class="headers"></div>
+<button onclick="addHeader()">➕ 添加 Header</button>
+
+<h3>Content-Type</h3>
+<select id="contentType" onchange="updateBodyEditor()">
+    <option value="">(自动检测)</option>
+    <option value="application/json">application/json</option>
+    <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+    <option value="multipart/form-data">multipart/form-data</option>
+    <option value="text/plain">text/plain</option>
+</select>
+
+<h3>请求 Body</h3>
+<div id="bodyEditor" class="bodyEditor"></div>
+<button id="addFormRowBtn">➕ 添加字段</button>
+
+<button onclick="sendRequest()">🚀 发送请求</button>
+
+<h3>响应结果</h3>
+<pre id="response"></pre>
+
+<script>
+    const headersDiv = document.getElementById('headers');
+    const bodyEditor = document.getElementById('bodyEditor');
+    const responseDiv = document.getElementById('response');
+    const contentTypeSel = document.getElementById('contentType');
+    const addFormRowBtn = document.getElementById('addFormRowBtn');
+
+    function addHeader(k = '', v = '') {
+        const div = document.createElement('div');
+        div.className = 'pair';
+        div.innerHTML = `<input placeholder="Header 名" value="${k}" style="flex:3"/>
+                         <input placeholder="Header 值" value="${v}" style="flex:6"/>
+                         <button onclick="this.parentElement.remove()">删除</button>`;
+        headersDiv.appendChild(div);
+    }
+
+    // 添加 form-data 行
+    function addFormDataRow(key = '', type = 'text', value = '') {
+        const div = document.createElement('div');
+        div.className = 'pair';
+
+        const keyInput = document.createElement('input');
+        keyInput.placeholder = '字段名';
+        keyInput.value = key;
+        keyInput.className = 'key';
+
+        const typeSelect = document.createElement('select');
+        const optText = document.createElement('option');
+        optText.value = 'text';
+        optText.innerText = 'Text';
+        const optFile = document.createElement('option');
+        optFile.value = 'file';
+        optFile.innerText = 'File';
+        typeSelect.appendChild(optText);
+        typeSelect.appendChild(optFile);
+        typeSelect.value = type;
+        typeSelect.className = 'type';
+
+        let valueInput = document.createElement('input');
+        if (type === 'file') valueInput.type = 'file'; else {
+            valueInput.type = 'text';
+            valueInput.value = value;
+            valueInput.placeholder = '字段值';
+        }
+        valueInput.className = 'value';
+
+        const removeBtn = document.createElement('button');
+        removeBtn.innerText = '删除';
+        removeBtn.onclick = () => bodyEditor.removeChild(div);
+
+        typeSelect.onchange = () => {
+            const newType = typeSelect.value;
+            const newInput = document.createElement('input');
+            if (newType === 'file') newInput.type = 'file';
+            else {
+                newInput.type = 'text';
+                newInput.placeholder = '字段值';
+                newInput.value = valueInput.value;
+            }
+            newInput.className = 'value';
+            div.replaceChild(newInput, valueInput);
+            valueInput = newInput;
+        };
+
+        div.appendChild(keyInput);
+        div.appendChild(typeSelect);
+        div.appendChild(valueInput);
+        div.appendChild(removeBtn);
+
+        bodyEditor.appendChild(div);
+    }
+
+    // 切换Body类型
+    function updateBodyEditor() {
+        const type = contentTypeSel.value;
+        bodyEditor.innerHTML = '';
+        if (type === 'application/json' || type === 'text/plain' || !type) {
+            bodyEditor.innerHTML = `<textarea id="bodyText" rows="8" placeholder='{"key":"value"}'></textarea>`;
+            addFormRowBtn.style.display = 'none';
+        } else {
+            addFormDataRow();
+            addFormRowBtn.style.display = 'inline-block';
+        }
+    }
+
+    addFormRowBtn.onclick = () => addFormDataRow();
+
+    // 组装 FormData，符合后端 @RequestParam Map<String,String> params + List<MultipartFile> files
+    function buildMultipartData() {
+        const fd = new FormData();
+        const url = document.getElementById('url').value.trim();
+        const method = document.getElementById('method').value.trim();
+
+        // 🚨 确保 target url 传到后端
+        fd.append('url', url);
+        fd.append('method', method);
+
+        // 遍历 bodyEditor
+        bodyEditor.querySelectorAll('.pair').forEach(div => {
+            const [keyInput, typeSelect, valueInput] = div.children;
+            const key = keyInput.value.trim();
+            if (!key) return;
+
+            if (typeSelect.value === 'file') {
+                if (valueInput.files.length > 0) {
+                    // 文件部分
+                    fd.append('files', valueInput.files[0]);
+                    // 也可以将文件字段名写入 params
+                    fd.append(key, valueInput.files[0].name);
+                }
+            } else {
+                // 普通字段
+                fd.append(key, valueInput.value);
+            }
+        });
+
+        return fd;
+    }
+
+
+    async function sendRequest() {
+        const url = document.getElementById('url').value;
+        const method = document.getElementById('method').value;
+        const type = contentTypeSel.value;
+
+        const headers = {};
+        headersDiv.querySelectorAll('.pair').forEach(div => {
+            const [k, v] = Array.from(div.querySelectorAll('input')).map(i => i.value.trim());
+            if (k) headers[k] = v;
+        });
+        if (type && type !== 'multipart/form-data') headers['Content-Type'] = type;
+
+        responseDiv.textContent = '⏳ 正在请求...';
+
+        try {
+            let res;
+            if (type === 'multipart/form-data') {
+                const fd = buildMultipartData();
+                res = await fetch('/proxy/multipart', {method: 'POST', body: fd});
+            } else if (type === 'application/x-www-form-urlencoded') {
+                const fd = buildMultipartData();
+                res = await fetch('/proxy/form', {method: 'POST', body: fd});
+            } else {
+                const body = document.getElementById('bodyText')?.value || '';
+                res = await fetch('/proxy', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({url, method, headers, body})
+                });
+            }
+            const text = await res.text();
+            responseDiv.textContent = text;
+        } catch (err) {
+            responseDiv.textContent = '❌ Error: ' + err;
+        }
+    }
+
+    // 初始化
+    addHeader('Accept', 'application/json');
+    updateBodyEditor();
+</script>
+
+</body>
+</html>
