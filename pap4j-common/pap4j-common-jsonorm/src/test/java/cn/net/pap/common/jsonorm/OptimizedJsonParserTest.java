@@ -8,6 +8,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.module.afterburner.AfterburnerModule;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
@@ -185,6 +188,77 @@ public class OptimizedJsonParserTest {
         long start = System.nanoTime();
         for (int i = 0; i < 10000; i++) {
             writer.writeValueAsString(jsonDTO2);
+        }
+        long end = System.nanoTime();
+
+        System.out.println("Time per serialization: " +
+                (end - start) / 10000 / 1_000 + "μs");
+    }
+
+    @Test
+    public void benchmarkSerializationTest5() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+
+        // 创建一个复杂的 JsonArray 对象
+        ArrayNode jsonArray = new JsonNodeFactory(false).arrayNode();
+        for(int idx = 0; idx < 100; idx++) {
+            ObjectNode jsonObject = new JsonNodeFactory(false).objectNode();
+            jsonObject.put("text", idx + "");
+            jsonObject.set("box", new JsonNodeFactory(false).arrayNode()
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+            );
+            jsonObject.set("coords", new JsonNodeFactory(false).arrayNode()
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+            );
+            jsonObject.put("distance", idx);
+            jsonArray.add(jsonObject);
+        }
+
+        long start = System.nanoTime();
+        for (int i = 0; i < 10000; i++) {
+            mapper.writeValueAsString(jsonArray);
+        }
+        long end = System.nanoTime();
+
+        System.out.println("Time per serialization: " +
+                (end - start) / 10000 / 1_000 + "μs");
+    }
+
+    @Test
+    public void benchmarkSerializationTest6() throws Exception {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new AfterburnerModule());
+
+        // 创建一个复杂的 JsonArray 对象
+        ArrayNode jsonArray = new JsonNodeFactory(false).arrayNode();
+        for(int idx = 0; idx < 100; idx++) {
+            ObjectNode jsonObject = new JsonNodeFactory(false).objectNode();
+            jsonObject.put("text", idx + "");
+            jsonObject.set("box", new JsonNodeFactory(false).arrayNode()
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+            );
+            jsonObject.set("coords", new JsonNodeFactory(false).arrayNode()
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+                    .add(Double.parseDouble(idx + ""))
+            );
+            jsonObject.put("distance", idx);
+            jsonArray.add(jsonObject);
+        }
+
+        long start = System.nanoTime();
+        for (int i = 0; i < 10000; i++) {
+            mapper.writeValueAsString(jsonArray);
         }
         long end = System.nanoTime();
 
