@@ -29,6 +29,11 @@
             <artifactId>jackson-module-jsonSchema-jakarta</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>com.fasterxml.jackson.module</groupId>
+            <artifactId>jackson-module-afterburner</artifactId>
+        </dependency>
+
         <!-- check json using json-schema -->
         <dependency>
             <groupId>com.github.erosb</groupId>
