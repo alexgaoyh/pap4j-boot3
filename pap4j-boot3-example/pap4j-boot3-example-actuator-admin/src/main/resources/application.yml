@@ -1,3 +1,16 @@
 server:
   port: 9999
+  shutdown: graceful  # 启用优雅停机
 
+spring:
+  lifecycle:
+    timeout-per-shutdown-phase: 300s  # 设置等待存量请求完成的超时时间
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: ""
+  endpoint:
+    all:
+      enabled: false
