@@ -1,13 +1,17 @@
 package cn.net.pap.example.ftp.server.config;
 
+import cn.net.pap.example.ftp.server.command.EncodingCommand;
 import org.apache.ftpserver.FtpServer;
 import org.apache.ftpserver.FtpServerFactory;
+import org.apache.ftpserver.command.CommandFactoryFactory;
 import org.apache.ftpserver.ftplet.Authority;
 import org.apache.ftpserver.ftplet.FtpException;
+import org.apache.ftpserver.ftplet.UserManager;
 import org.apache.ftpserver.listener.ListenerFactory;
+import org.apache.ftpserver.usermanager.PropertiesUserManagerFactory;
 import org.apache.ftpserver.usermanager.impl.BaseUser;
 import org.apache.ftpserver.usermanager.impl.WritePermission;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -16,20 +20,28 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
+@ConfigurationProperties(prefix = "ftp")
 public class FtpServerConfig {
 
-    @Value("${ftp.port:2121}")
-    private int port;
+    private int port = 21;  // 默认端口
 
-    @Value("${ftp.username:admin}")
-    private String username;
+    private List<FtpUserProperties> users = new ArrayList<>();
 
-    @Value("${ftp.password:123456}")
-    private String password;
+    public int getPort() {
+        return port;
+    }
 
-    // windows 支持映射一个网络驱动器 ，选择驱动器，映射一个文件夹 \\192.168.1.115\knowledge(共享文件夹) 的形式.
-    @Value("${ftp.home.dir:d:/knowledge}")
-    private String homeDir;
+    public void setPort(int port) {
+        this.port = port;
+    }
+
+    public List<FtpUserProperties> getUsers() {
+        return users;
+    }
+
+    public void setUsers(List<FtpUserProperties> users) {
+        this.users = users;
+    }
 
     @Bean
     public FtpServer ftpServer() throws FtpException {
@@ -40,22 +52,30 @@ public class FtpServerConfig {
         listenerFactory.setPort(port);
         serverFactory.addListener("default", listenerFactory.createListener());
 
-        // 确保主目录存在
-        ensureHomeDirectoryExists(homeDir);
+        // 创建用户管理器
+        PropertiesUserManagerFactory userManagerFactory = new PropertiesUserManagerFactory();
+        userManagerFactory.setFile(null); // 不使用文件存储用户
+        UserManager userManager = userManagerFactory.createUserManager();
 
-        // 配置用户
-        BaseUser user = new BaseUser();
-        user.setName(username);
-        user.setPassword(password);
-        user.setHomeDirectory(homeDir);
+        // 添加用户
+        for (FtpUserProperties userProp : users) {
+            ensureHomeDirectoryExists(userProp.getHomeDirectory());
 
-        // 设置用户权限
-        List<Authority> authorities = new ArrayList<>();
-        authorities.add(new WritePermission());
-        user.setAuthorities(authorities);
+            BaseUser user = new BaseUser();
+            user.setName(userProp.getUsername());
+            user.setPassword(userProp.getPassword());
+            user.setHomeDirectory(userProp.getHomeDirectory());
 
-        // 添加用户到用户管理器
-        serverFactory.getUserManager().save(user);
+            List<Authority> authorities = new ArrayList<>();
+            authorities.add(new WritePermission());
+            user.setAuthorities(authorities);
+
+            userManager.save(user);
+        }
+        serverFactory.setUserManager(userManager);
+
+        // 注册自定义命令
+        registerEncodingCommand(serverFactory);
 
         // 设置系统属性，使FTP服务器使用UTF-8编码
         System.setProperty("ftpserver.encoding", "UTF-8");
@@ -64,6 +84,23 @@ public class FtpServerConfig {
         FtpServer server = serverFactory.createServer();
         server.start();
         return server;
+    }
+
+
+    /**
+     * 注册 SITE ENCODING 命令
+     */
+    private void registerEncodingCommand(FtpServerFactory serverFactory) {
+        CommandFactoryFactory factoryFactory = new CommandFactoryFactory();
+
+        // 先保留默认命令
+        factoryFactory.setUseDefaultCommands(true);
+
+        // 添加自定义 SITE 命令（注意必须大写，前缀 SITE_）
+        factoryFactory.addCommand("SITE_ENCODING", new EncodingCommand());
+
+        // 注册到 serverFactory
+        serverFactory.setCommandFactory(factoryFactory.createCommandFactory());
     }
 
     /**
@@ -78,6 +115,34 @@ public class FtpServerConfig {
             if (!created) {
                 throw new RuntimeException("Failed to create FTP home directory: " + homeDirPath);
             }
+        }
+    }
+
+
+    /**
+     * 用户配置对象
+     */
+    public static class FtpUserProperties {
+        private final String username;
+        private final String password;
+        private final String homeDirectory;
+
+        public FtpUserProperties(String username, String password, String homeDirectory) {
+            this.username = username;
+            this.password = password;
+            this.homeDirectory = homeDirectory;
+        }
+
+        public String getUsername() {
+            return username;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public String getHomeDirectory() {
+            return homeDirectory;
         }
     }
 }
