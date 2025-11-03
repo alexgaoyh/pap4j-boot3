@@ -1,1 +1,4 @@
+# Spring Application Run Listeners
 org.springframework.boot.SpringApplicationRunListener=cn.net.pap.example.admin.listener.Pap4jBoot3RunListener
+# Application Listeners - ???????
+org.springframework.context.ApplicationListener=cn.net.pap.example.admin.listener.Pap4jBoot3ContextClosedEventListener
