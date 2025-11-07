@@ -3,8 +3,20 @@ package cn.net.pap.common.file;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class ReadTxtToStringUtilTest {
+
+    // @Test
+    public void test1() throws IOException {
+        String txtPath = "D:\\knowledge\\中文\\中文文件.txt";
+        String encode = ReadTxtToStringUtil.detectCharsetUsingICU4J(txtPath);
+        System.out.println(encode);
+        String content = Files.readString(Paths.get(txtPath), Charset.forName(encode));
+        System.out.println(content);
+    }
 
     // @Test
     public void detectCharsetUsingICU4JTest() throws IOException {
