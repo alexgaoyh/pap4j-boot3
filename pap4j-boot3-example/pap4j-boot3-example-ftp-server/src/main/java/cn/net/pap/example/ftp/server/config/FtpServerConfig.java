@@ -1,5 +1,6 @@
 package cn.net.pap.example.ftp.server.config;
 
+import cn.net.pap.example.ftp.server.command.ContentCommand;
 import cn.net.pap.example.ftp.server.command.EncodingCommand;
 import org.apache.ftpserver.FtpServer;
 import org.apache.ftpserver.FtpServerFactory;
@@ -75,7 +76,7 @@ public class FtpServerConfig {
         serverFactory.setUserManager(userManager);
 
         // 注册自定义命令
-        registerEncodingCommand(serverFactory);
+        registerCommand(serverFactory);
 
         // 设置系统属性，使FTP服务器使用UTF-8编码
         System.setProperty("ftpserver.encoding", "UTF-8");
@@ -90,7 +91,7 @@ public class FtpServerConfig {
     /**
      * 注册 SITE ENCODING 命令
      */
-    private void registerEncodingCommand(FtpServerFactory serverFactory) {
+    private void registerCommand(FtpServerFactory serverFactory) {
         CommandFactoryFactory factoryFactory = new CommandFactoryFactory();
 
         // 先保留默认命令
@@ -98,6 +99,8 @@ public class FtpServerConfig {
 
         // 添加自定义 SITE 命令（注意必须大写，前缀 SITE_）
         factoryFactory.addCommand("SITE_ENCODING", new EncodingCommand());
+        factoryFactory.addCommand("SITE_CONTENT", new ContentCommand());
+
 
         // 注册到 serverFactory
         serverFactory.setCommandFactory(factoryFactory.createCommandFactory());
