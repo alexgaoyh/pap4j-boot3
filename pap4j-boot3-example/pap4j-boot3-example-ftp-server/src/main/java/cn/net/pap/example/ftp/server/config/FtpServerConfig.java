@@ -2,6 +2,7 @@ package cn.net.pap.example.ftp.server.config;
 
 import cn.net.pap.example.ftp.server.command.ContentCommand;
 import cn.net.pap.example.ftp.server.command.EncodingCommand;
+import cn.net.pap.example.ftp.server.command.MonitorUsersCommand;
 import org.apache.ftpserver.FtpServer;
 import org.apache.ftpserver.FtpServerFactory;
 import org.apache.ftpserver.command.CommandFactoryFactory;
@@ -100,6 +101,7 @@ public class FtpServerConfig {
         // 添加自定义 SITE 命令（注意必须大写，前缀 SITE_）
         factoryFactory.addCommand("SITE_ENCODING", new EncodingCommand());
         factoryFactory.addCommand("SITE_CONTENT", new ContentCommand());
+        factoryFactory.addCommand("SITE_MONITORUSERS", new MonitorUsersCommand());
 
 
         // 注册到 serverFactory
