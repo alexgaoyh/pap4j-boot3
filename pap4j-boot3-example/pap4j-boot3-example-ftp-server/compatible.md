@@ -50,6 +50,10 @@ Get-ChildItem -Recurse -Include "*.java" | ForEach-Object {
 // org.apache.ftpserver.impl.DefaultFtpHandler.java 的 NON_AUTHENTICATED_COMMANDS 数组，增加 OPTS 的支持；
 // private static final String[] NON_AUTHENTICATED_COMMANDS = new String[] { "USER", "PASS", "AUTH", "QUIT", "PROT", "PBSZ", "OPTS" };
 
+// 修改代码
+// org.apache.ftpserver.listener.nio.FtpLoggingFilter.java 的 messageReceived 方法，可以增加用户信息的打印，如下方法是获取当前登录用户的信息，注意如果是null，可以给一个默认值
+// Object userAttribute = session.getAttribute("org.apache.ftpserver.user"); if (userAttribute != null && userAttribute instanceof BaseUser) { BaseUser user = (BaseUser)userAttribute; }
+
 // 打包： clean install -Dmaven.checkstyle.skip=true -Dcheckstyle.skip=true -DskipTests -Dmaven.test.skip=true
 ```
 
