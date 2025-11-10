@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class FilesTest {
 
@@ -63,6 +64,37 @@ public class FilesTest {
         sortFileLinesWithComparator("C:\\Users\\86181\\Desktop\\sort.txt",
                 "C:\\Users\\86181\\Desktop\\sort_out.txt",
                 Comparator.naturalOrder());
+    }
+
+    // @Test
+    public void convertLineEndingsTest() throws IOException {
+        Path startDir = Paths.get("C:\\Users\\86181\\Desktop");
+
+        try (Stream<Path> paths = Files.walk(startDir)) {
+            paths.filter(path -> path.toString().endsWith(".java"))
+                    .forEach(path -> {
+                        convertLineEndings(path.toAbsolutePath().toString());
+                        System.out.println("已处理: " + path);
+                    });
+        } catch (IOException e) {
+            System.err.println("遍历目录时出错: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    public static boolean convertLineEndings(String filePath) {
+        try {
+            Path path = Paths.get(filePath);
+            String content = Files.readString(path);
+            String convertedContent = content.replace("\r\n", "\n");
+            if (!content.equals(convertedContent)) {
+                Files.writeString(path, convertedContent);
+            }
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
 }
