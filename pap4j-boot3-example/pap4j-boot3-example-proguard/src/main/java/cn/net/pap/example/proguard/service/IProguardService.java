@@ -85,4 +85,6 @@ public interface IProguardService {
     Boolean checkDeadLock(Long id1, Long id2);
 
     Proguard sleep(Long timeMS);
+
+    Proguard timeout(Proguard proguard, Long timeoutMS);
 }

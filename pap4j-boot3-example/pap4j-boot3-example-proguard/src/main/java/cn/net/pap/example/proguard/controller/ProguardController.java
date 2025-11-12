@@ -290,4 +290,42 @@ public class ProguardController {
         return "longtime";
     }
 
+    @GetMapping("/timeout")
+    public Proguard timeout(@RequestParam(name = "timeoutMS") Long timeoutMS) {
+        Proguard proguard = new Proguard();
+        proguard.setProguardId(1l);
+        proguard.setProguardName(proguard.getProguardId() + "");
+
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        extMap.put("threadId", Thread.currentThread().getName());
+        proguard.setExtMap(extMap);
+
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+        extList.add("B");
+        extList.add("C");
+        extList.add("D");
+        proguard.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+        abstractMap.put("long", 1l);
+        abstractMap.put("float", 1.23f);
+        abstractMap.put("boolean", true);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+        proguard.setAbstractList(arrayNode);
+
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard.setAbstractObj(objectNode);
+
+        proguardService.timeout(proguard, timeoutMS);
+        return proguard;
+    }
+
 }

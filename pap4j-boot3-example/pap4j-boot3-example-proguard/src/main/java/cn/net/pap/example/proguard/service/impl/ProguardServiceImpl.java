@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -24,6 +25,10 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import java.util.stream.Stream;
@@ -289,4 +294,36 @@ public class ProguardServiceImpl implements IProguardService {
         return null;
     }
 
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @Override
+    public Proguard timeout(Proguard proguard, Long timeMS) {
+        Future<Proguard> future = Executors.newCachedThreadPool().submit(() ->
+                transactionTemplate.execute(status -> {
+                    try {
+                        proguard.setProguardId(1L);
+                        proguardRepository.save(proguard);
+
+                        Thread.sleep(timeMS);
+
+                        proguard.setProguardId(2L);
+                        proguardRepository.save(proguard);
+                        return proguard;
+
+                    } catch (InterruptedException e) {
+                        status.setRollbackOnly();
+                        throw new RuntimeException("操作被中断", e);
+                    }
+                })
+        );
+        try {
+            return future.get(3, TimeUnit.SECONDS);
+        } catch (TimeoutException e) {
+            future.cancel(true);
+            throw new RuntimeException("执行超时，任务被取消", e);
+        } catch (Exception e) {
+            throw new RuntimeException("任务执行异常", e);
+        }
+    }
 }
