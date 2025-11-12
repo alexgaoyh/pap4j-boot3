@@ -29,8 +29,8 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <liteflow.version>2.11.4.2</liteflow.version>
-        <drools.version>10.0.0</drools.version>
+        <liteflow.version>2.15.1</liteflow.version>
+        <drools.version>10.1.0</drools.version>
     </properties>
 
     <dependencyManagement>

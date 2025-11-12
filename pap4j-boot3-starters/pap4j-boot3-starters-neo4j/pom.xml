@@ -38,7 +38,7 @@
         <dependency>
             <groupId>org.neo4j</groupId>
             <artifactId>neo4j-ogm-bolt-driver</artifactId>
-            <version>4.0.18</version>
+            <version>4.0.21</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.neo4j.bolt</groupId>
