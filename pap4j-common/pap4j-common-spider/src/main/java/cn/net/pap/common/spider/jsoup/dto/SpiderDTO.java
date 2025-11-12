@@ -10,6 +10,8 @@ public class SpiderDTO implements Serializable {
 
     private String sign;
 
+    private Integer pageNumber;
+
     public SpiderDTO() {
     }
 
@@ -17,6 +19,13 @@ public class SpiderDTO implements Serializable {
         this.id = id;
         this.name = name;
         this.sign = sign;
+    }
+
+    public SpiderDTO(String id, String name, String sign, Integer pageNumber) {
+        this.id = id;
+        this.name = name;
+        this.sign = sign;
+        this.pageNumber = pageNumber;
     }
 
     public String getId() {
@@ -41,6 +50,14 @@ public class SpiderDTO implements Serializable {
 
     public void setSign(String sign) {
         this.sign = sign;
+    }
+
+    public Integer getPageNumber() {
+        return pageNumber;
+    }
+
+    public void setPageNumber(Integer pageNumber) {
+        this.pageNumber = pageNumber;
     }
 
 }
