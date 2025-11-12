@@ -253,6 +253,7 @@
 
     <build>
         <plugins>
+            <!-- dependency-check:check -Ddependency-check.skip=false -->
             <plugin>
                 <groupId>org.owasp</groupId>
                 <artifactId>dependency-check-maven</artifactId>
