@@ -140,4 +140,105 @@ public class RectangleUtil {
         }
     }
 
+    // ------------------- 行合并 -------------------
+    /**
+     * 按行合并字框
+     * @param boxes 字框列表
+     * @param gapMultiplier 字间隔阈值系数（推荐1.5）
+     * @param verticalOverlapThreshold Y方向重叠比例阈值（推荐0.6）
+     * @return List<List<Double>> 每个元素表示一行矩形 [ltX, rbX, ltY, rbY]
+     */
+    public static List<List<Double>> mergeBoxesToLines(List<List<Double>> boxes,
+                                                       double gapMultiplier,
+                                                       double verticalOverlapThreshold) {
+        List<List<Double>> lines = new ArrayList<>();
+        // 按 top 排序
+        boxes.sort(Comparator.comparingDouble(b -> b.get(2))); // ltY
+
+        for (List<Double> b : boxes) {
+            boolean merged = false;
+            for (List<Double> line : lines) {
+                if (isSameLine(line, b, verticalOverlapThreshold)) {
+                    double avgWidth = line.get(1) - line.get(0);
+                    if (isAdjacent(line, b, avgWidth, gapMultiplier)) {
+                        // 合并
+                        line.set(0, Math.min(line.get(0), b.get(0)));
+                        line.set(1, Math.max(line.get(1), b.get(1)));
+                        line.set(2, Math.min(line.get(2), b.get(2)));
+                        line.set(3, Math.max(line.get(3), b.get(3)));
+                        merged = true;
+                        break;
+                    }
+                }
+            }
+            if (!merged) {
+                lines.add(new ArrayList<>(b));
+            }
+        }
+        return lines;
+    }
+
+    // ------------------- 列合并 -------------------
+    /**
+     * 按列合并字框
+     * @param boxes 字框列表
+     * @param gapMultiplier 行间隔阈值系数（推荐1.5）
+     * @param horizontalOverlapThreshold X方向重叠比例阈值（推荐0.6）
+     * @return List<List<Double>> 每个元素表示一列矩形 [ltX, rbX, ltY, rbY]
+     */
+    public static List<List<Double>> mergeBoxesToColumns(List<List<Double>> boxes,
+                                                         double gapMultiplier,
+                                                         double horizontalOverlapThreshold) {
+        List<List<Double>> columns = new ArrayList<>();
+        // 按 left 排序
+        boxes.sort(Comparator.comparingDouble(b -> b.get(0))); // ltX
+
+        for (List<Double> b : boxes) {
+            boolean merged = false;
+            for (List<Double> col : columns) {
+                if (isSameColumn(col, b, horizontalOverlapThreshold)) {
+                    double avgHeight = col.get(3) - col.get(2);
+                    double gap = Math.max(0, b.get(2) - col.get(3));
+                    if (gap <= avgHeight * gapMultiplier) {
+                        // 合并列
+                        col.set(0, Math.min(col.get(0), b.get(0)));
+                        col.set(1, Math.max(col.get(1), b.get(1)));
+                        col.set(2, Math.min(col.get(2), b.get(2)));
+                        col.set(3, Math.max(col.get(3), b.get(3)));
+                        merged = true;
+                        break;
+                    }
+                }
+            }
+            if (!merged) {
+                columns.add(new ArrayList<>(b));
+            }
+        }
+        return columns;
+    }
+
+    // ------------------- 内部辅助 -------------------
+    /** 判断两个字框是否属于同一行（Y方向重叠比例） */
+    private static boolean isSameLine(List<Double> a, List<Double> b, double verticalOverlapThreshold) {
+        double interHeight = Math.min(a.get(3), b.get(3)) - Math.max(a.get(2), b.get(2));
+        if (interHeight <= 0) return false;
+        double minHeight = Math.min(a.get(3) - a.get(2), b.get(3) - b.get(2));
+        return interHeight / minHeight >= verticalOverlapThreshold;
+    }
+
+    /** 判断两个字框是否属于同一列（X方向重叠比例） */
+    private static boolean isSameColumn(List<Double> a, List<Double> b, double horizontalOverlapThreshold) {
+        double interWidth = Math.min(a.get(1), b.get(1)) - Math.max(a.get(0), b.get(0));
+        if (interWidth <= 0) return false;
+        double minWidth = Math.min(a.get(1) - a.get(0), b.get(1) - b.get(0));
+        return interWidth / minWidth >= horizontalOverlapThreshold;
+    }
+
+    /** 判断水平间隔是否可以合并 */
+    private static boolean isAdjacent(List<Double> a, List<Double> b, double avgWidth, double multiplier) {
+        if (b.get(0) <= a.get(1)) return true; // 有交叠
+        double gap = b.get(0) - a.get(1);
+        return gap <= avgWidth * multiplier;
+    }
+
 }

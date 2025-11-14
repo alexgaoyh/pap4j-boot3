@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.List;
 
 public class RectangleUtilTest {
@@ -63,6 +64,28 @@ public class RectangleUtilTest {
         List<Double> merged = RectangleUtil.mergeRectangles(box1, box2, box3, box4);
 
         System.out.println(merged);
+    }
+
+    @Test
+    public void mergeBoxesTest() {
+        List<List<Double>> boxes = new ArrayList<>();
+        boxes.add(List.of(10.0, 40.0, 0.0, 20.0));
+        boxes.add(List.of(52.0, 80.0, 0.0, 20.0));
+        boxes.add(List.of(15.0, 50.0, 25.0, 45.0));
+        boxes.add(List.of(60.0, 90.0, 25.0, 45.0));
+        boxes.add(List.of(10.0, 50.0, 50.0, 70.0));
+
+        List<List<Double>> lines = RectangleUtil.mergeBoxesToLines(boxes, 1.5, 0.6);
+        System.out.println("Merged lines:");
+        for (List<Double> l : lines) {
+            System.out.println(l);
+        }
+
+        List<List<Double>> columns = RectangleUtil.mergeBoxesToColumns(boxes, 1.5, 0.6);
+        System.out.println("Merged columns:");
+        for (List<Double> c : columns) {
+            System.out.println(c);
+        }
     }
 
 }
