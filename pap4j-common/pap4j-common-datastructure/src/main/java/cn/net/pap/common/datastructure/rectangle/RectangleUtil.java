@@ -19,8 +19,7 @@ public class RectangleUtil {
      * @return
      */
     public static boolean isOverlap(List<List<Double>> rectangleList1, List<List<Double>> rectangleList2) {
-        if (rectangleList1 == null || rectangleList1.size() == 0 ||
-                rectangleList2 == null || rectangleList2.size() == 0) {
+        if (rectangleList1 == null || rectangleList1.size() == 0 || rectangleList2 == null || rectangleList2.size() == 0) {
             return false;
         }
         for (List<Double> box1 : rectangleList1) {
@@ -79,6 +78,7 @@ public class RectangleUtil {
 
     /**
      * 重排序
+     *
      * @param rectList [x, y, x', y'] 坐标集合
      * @return
      */
@@ -96,6 +96,48 @@ public class RectangleUtil {
                 }
             }
         });
+    }
+
+
+    /**
+     * 合并 4 个矩形，最终生成一个最小外接矩形
+     * <p>
+     * 每个 box = [leftTopX, rightBottomX, leftTopY, rightBottomY]
+     *
+     * @return 合并后的矩形结构：[minX, maxX, minY, maxY]
+     */
+    public static List<Double> mergeRectangles(List<Double> box1, List<Double> box2, List<Double> box3, List<Double> box4) {
+        validateBox(box1);
+        validateBox(box2);
+        validateBox(box3);
+        validateBox(box4);
+
+        double minX = Double.MAX_VALUE;
+        double maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE;
+        double maxY = -Double.MAX_VALUE;
+
+        List<List<Double>> boxes = List.of(box1, box2, box3, box4);
+
+        for (List<Double> box : boxes) {
+            double x1 = box.get(0); // left top x
+            double x2 = box.get(1); // right bottom x
+            double y1 = box.get(2); // left top y
+            double y2 = box.get(3); // right bottom y
+
+            minX = Math.min(minX, x1);
+            maxX = Math.max(maxX, x2);
+            minY = Math.min(minY, y1);
+            maxY = Math.max(maxY, y2);
+        }
+
+        return List.of(minX, maxX, minY, maxY);
+    }
+
+    private static void validateBox(List<Double> box) {
+        if (box == null || box.size() != 4) {
+            throw new IllegalArgumentException("Each box must be a List<Double> of length 4");
+        }
     }
 
 }

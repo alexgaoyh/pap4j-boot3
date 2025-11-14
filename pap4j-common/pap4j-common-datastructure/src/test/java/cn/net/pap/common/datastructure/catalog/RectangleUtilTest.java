@@ -53,4 +53,16 @@ public class RectangleUtilTest {
         System.out.println(rectList);
     }
 
+    @Test
+    public void mergeRectanglesTest() {
+        List<Double> box1 = List.of(10.0, 30.0, 20.0, 40.0);
+        List<Double> box2 = List.of(15.0, 50.0, 25.0, 45.0);
+        List<Double> box3 = List.of(5.0, 20.0, 10.0, 35.0);
+        List<Double> box4 = List.of(12.0, 32.0, 18.0, 42.0);
+
+        List<Double> merged = RectangleUtil.mergeRectangles(box1, box2, box3, box4);
+
+        System.out.println(merged);
+    }
+
 }
