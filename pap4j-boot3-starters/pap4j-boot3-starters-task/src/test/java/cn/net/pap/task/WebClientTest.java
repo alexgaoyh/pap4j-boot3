@@ -1,6 +1,7 @@
 package cn.net.pap.task;
 
 import cn.net.pap.task.dto.WebClientBodyDTO;
+import cn.net.pap.task.util.RateLimitedUtil;
 import cn.net.pap.task.webclient.WebClientUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -140,6 +141,48 @@ public class WebClientTest {
         System.out.println("成功: " + successCount.get());
         System.out.println("失败: " + errorCount.get());
         System.out.println("耗时(ms): " + (end - start));
+        System.out.println("===================================");
+    }
+
+    @Test
+    public void postMonoTest3() throws Exception {
+        System.out.println(RateLimitedUtil.getRateLimitStatus());
+
+        String url = "http://127.0.0.1:30000/longtime";
+        String requestBody = "{}";
+
+        int requestCount = 11;
+        long start = System.currentTimeMillis();
+
+        CountDownLatch latch = new CountDownLatch(requestCount);
+
+        for (int i = 0; i < requestCount; i++) {
+            RateLimitedUtil.executeWithRateLimit(() ->
+                    WebClientUtil.postMono(url, requestBody, null)
+            ).flatMap(response -> {
+                if (response instanceof ClientResponse) {
+                    ClientResponse clientResponse = (ClientResponse) response;
+                    return clientResponse.bodyToMono(String.class)
+                            .map(body -> new WebClientBodyDTO(HttpStatus.valueOf(response.statusCode().value()), "200", body));
+                }
+                return Mono.just(response.toString());
+            }).subscribe(result -> {
+                System.out.println("请求返回值: " + result);
+                latch.countDown();
+            }, error -> {
+                latch.countDown();
+            });
+        }
+
+        // 等待所有请求完成
+        latch.await();
+
+        long end = System.currentTimeMillis();
+
+        System.out.println("===================================");
+        System.out.println("总请求数: " + requestCount);
+        System.out.println("耗时(ms): " + (end - start));
+        System.out.println("当前限流状态: " + RateLimitedUtil.getRateLimitStatus());
         System.out.println("===================================");
     }
 
