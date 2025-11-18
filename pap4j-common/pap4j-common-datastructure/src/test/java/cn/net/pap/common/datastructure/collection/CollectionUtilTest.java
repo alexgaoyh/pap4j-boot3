@@ -4,6 +4,7 @@ import cn.net.pap.common.datastructure.lamba.StudentDTO;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,10 +34,8 @@ public class CollectionUtilTest {
     // @Test
     public void batchByPropertyTest() {
         List<StudentDTO> batchEntityList = new ArrayList<>();
-        for(int i = 0; i < 9876; i++) {
-            StudentDTO studentDTO = new StudentDTO.Builder()
-                    .setFirstName("alex" + i).setLastName("gaoyh" + i).setAge(i).setEmail("https://pap-docs.pap.net.cn/")
-                    .build();
+        for (int i = 0; i < 9876; i++) {
+            StudentDTO studentDTO = new StudentDTO.Builder().setFirstName("alex" + i).setLastName("gaoyh" + i).setAge(i).setEmail("https://pap-docs.pap.net.cn/").build();
             batchEntityList.add(studentDTO);
         }
         List<List<Integer>> ageGroupList = CollectionUtil.batchByProperty(batchEntityList, 50, StudentDTO::getAge);
@@ -47,19 +46,34 @@ public class CollectionUtilTest {
         System.out.println("------------------------------------------");
 
         List<Map<String, Object>> batchMapList = new ArrayList<>();
-        for(int i = 0; i < 9876; i++) {
+        for (int i = 0; i < 9876; i++) {
             Map<String, Object> tmp = new HashMap<>();
-            tmp.put("firstName","alex" + i);
+            tmp.put("firstName", "alex" + i);
             tmp.put("age", i);
             batchMapList.add(tmp);
         }
-        List<List<Integer>> ageGroupList2 = CollectionUtil.batchByProperty(batchMapList,50, map -> (Integer) map.get("age"));
-        List<List<String>> firstNameGroupList2 = CollectionUtil.batchByProperty(batchMapList,50, map -> (String) map.get("firstName"));
+        List<List<Integer>> ageGroupList2 = CollectionUtil.batchByProperty(batchMapList, 50, map -> (Integer) map.get("age"));
+        List<List<String>> firstNameGroupList2 = CollectionUtil.batchByProperty(batchMapList, 50, map -> (String) map.get("firstName"));
         System.out.println(ageGroupList2);
         System.out.println(firstNameGroupList2);
 
 
     }
 
+    @Test
+    public void sortMapListTest() {
+        List<Map<String, Object>> list = new ArrayList<>();
+
+        list.add(Map.of("id", 5, "name", "D"));
+        list.add(Map.of("id", 3, "name", "A"));
+        list.add(Map.of("id", 1, "name", "B"));
+        list.add(Map.of("id", 2, "name", "C"));
+
+        List<Integer> orderList = Arrays.asList(2, 1, 3);
+
+        CollectionUtil.sortByOrderList(list, orderList, "id");
+
+        System.out.println(list);
+    }
 
 }

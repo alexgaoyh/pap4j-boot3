@@ -2,7 +2,9 @@ package cn.net.pap.common.datastructure.collection;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -95,15 +97,16 @@ public class CollectionUtil {
 
     /**
      * 安全分批处理方法
-     * @param list 原始集合（可为空）
-     * @param batchSize 每批大小（必须大于0）
+     *
+     * @param list              原始集合（可为空）
+     * @param batchSize         每批大小（必须大于0）
      * @param propertyExtractor 属性提取函数（不可为null）
-     * @param <T> 原始元素类型
-     * @param <R> 结果元素类型
+     * @param <T>               原始元素类型
+     * @param <R>               结果元素类型
      * @return 分批后的结果列表（永远不会返回null）
      * @throws IllegalArgumentException 如果参数不合法
      */
-    public static <T, R> List<List<R>> batchByProperty(List<T> list,int batchSize,Function<T, R> propertyExtractor) {
+    public static <T, R> List<List<R>> batchByProperty(List<T> list, int batchSize, Function<T, R> propertyExtractor) {
         Objects.requireNonNull(propertyExtractor, "Property extractor cannot be null");
         if (batchSize <= 0) {
             throw new IllegalArgumentException("Batch size must be positive");
@@ -115,27 +118,61 @@ public class CollectionUtil {
 
         final List<T> unmodifiableList = Collections.unmodifiableList(list);
 
-        return IntStream.range(0, (unmodifiableList.size() + batchSize - 1) / batchSize)
-                .mapToObj(i -> {
-                    int start = i * batchSize;
-                    int end = Math.min(unmodifiableList.size(), start + batchSize);
-                    return unmodifiableList.subList(start, end)
-                            .stream()
-                            .map(element -> {
-                                try {
-                                    return propertyExtractor.apply(element);
-                                } catch (Exception e) {
-                                    // 记录日志或处理提取异常
-                                    throw new RuntimeException(e);
-                                }
-                            })
-                            .filter(Objects::nonNull)
-                            .collect(Collectors.toList());
-                })
-                .filter(batch -> !batch.isEmpty())
-                .collect(Collectors.collectingAndThen(
-                        Collectors.toList(),
-                        Collections::unmodifiableList));
+        return IntStream.range(0, (unmodifiableList.size() + batchSize - 1) / batchSize).mapToObj(i -> {
+            int start = i * batchSize;
+            int end = Math.min(unmodifiableList.size(), start + batchSize);
+            return unmodifiableList.subList(start, end).stream().map(element -> {
+                try {
+                    return propertyExtractor.apply(element);
+                } catch (Exception e) {
+                    // 记录日志或处理提取异常
+                    throw new RuntimeException(e);
+                }
+            }).filter(Objects::nonNull).collect(Collectors.toList());
+        }).filter(batch -> !batch.isEmpty()).collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
+    }
+
+    /**
+     * 根据指定的顺序列表 orderList，对 mapList 中的元素按 map[key] 的值进行排序。 稳定排序
+     *
+     * @param mapList   需要排序的 List<Map>
+     * @param orderList 排序基准的顺序列表，如 [3,1,2]
+     * @param key       Map 中用来与 orderList 匹配的键
+     */
+    public static void sortByOrderList(List<Map<String, Object>> mapList, List<Integer> orderList, String key) {
+        if (mapList == null || orderList == null || key == null) {
+            return;
+        }
+
+        Map<Integer, Integer> orderIndex = new HashMap<>();
+        for (int i = 0; i < orderList.size(); i++) {
+            orderIndex.put(orderList.get(i), i);
+        }
+
+        // 排序
+        mapList.sort((m1, m2) -> {
+            Integer v1 = getInt(m1.get(key));
+            Integer v2 = getInt(m2.get(key));
+
+            // 不在 orderList 中的，排到最后
+            int i1 = orderIndex.getOrDefault(v1, Integer.MAX_VALUE);
+            int i2 = orderIndex.getOrDefault(v2, Integer.MAX_VALUE);
+
+            return Integer.compare(i1, i2);
+        });
+    }
+
+    private static Integer getInt(Object obj) {
+        if (obj instanceof Integer) {
+            return (Integer) obj;
+        }
+        if (obj instanceof Number) {
+            return ((Number) obj).intValue();
+        }
+        if (obj instanceof String) {
+            return Integer.parseInt((String) obj);
+        }
+        return null;
     }
 
 }
