@@ -72,10 +72,15 @@ public class WebClientTest {
         CountDownLatch latch = new CountDownLatch(1);
 
         WebClientUtil.postMono(url, body, null)
-                .flatMap(response ->
-                        response.bodyToMono(String.class)
-                                .map(b -> "Status: " + response.statusCode() + ", Body: " + b)
-                )
+                .flatMap(response -> {
+                    // 显式处理 HTTP 非 2xx 状态
+                    if (!response.statusCode().is2xxSuccessful()) {
+                        return Mono.error(new RuntimeException("HTTP错误: " + response.statusCode()));
+                    }
+                    return response.bodyToMono(String.class)
+                            .defaultIfEmpty("") // 处理空响应体
+                            .map(b -> "Status: " + response.statusCode() + ", Body: " + b);
+                })
                 .doOnError(e -> {
                     System.err.println("异常: " + e.getMessage());
                 })
@@ -83,11 +88,20 @@ public class WebClientTest {
                     System.out.println("异步流程全部结束: " + s);
                     latch.countDown();
                 })
-                .subscribe(result -> {
-                    System.out.println("成功: " + result);
-                });
+                .subscribe(
+                    result -> {
+                        System.out.println("成功: " + result);
+                    },
+                    error -> {
+                        // 显式错误处理
+                        System.err.println("订阅时发生错误: " + error.getMessage());
+                    }
+                );
         System.out.println("主线程执行中!");
-        latch.await(10, TimeUnit.SECONDS);
+        boolean await = latch.await(10, TimeUnit.SECONDS);
+        if (!await) {
+            System.err.println("等待超时，异步请求可能未完成!");
+        }
     }
 
     @Test
