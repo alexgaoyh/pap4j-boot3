@@ -85,7 +85,7 @@ public class WebClientTest {
                 .subscribe(result -> {
                     System.out.println("成功: " + result);
                 });
-
+        System.out.println("主线程执行中!");
         latch.await(10, TimeUnit.SECONDS);
     }
 
