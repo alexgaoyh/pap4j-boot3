@@ -9,9 +9,17 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.BodyInserters;
-import org.springframework.web.reactive.function.client.*;
+import org.springframework.web.reactive.function.client.ClientRequest;
+import org.springframework.web.reactive.function.client.ClientResponse;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunction;
+import org.springframework.web.reactive.function.client.ExchangeFilterFunctions;
+import org.springframework.web.reactive.function.client.ExchangeFunction;
+import org.springframework.web.reactive.function.client.ExchangeStrategies;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientRequestException;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
+import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 
 import java.nio.charset.StandardCharsets;
@@ -21,8 +29,87 @@ import java.util.UUID;
 
 public class WebClientUtil {
 
+    private static final WebClient webClient;
+    private static final HttpClient httpClient;
+
+    static {
+        // 创建连接池 ConnectionProvider
+        ConnectionProvider provider = ConnectionProvider.builder("pap4j-boot3-task-webclient")
+                .maxConnections(2000)                        // 最大连接数（根据你业务调）
+                .pendingAcquireMaxCount(5000)                // 等待队列
+                .pendingAcquireTimeout(Duration.ofSeconds(2))// 等待超时
+                .maxIdleTime(Duration.ofSeconds(30))         // 空闲连接存活
+                .lifo()                                      // LIFO 方式减少队列抖动
+                .build();
+
+        // 构建 TcpClient，并保留你现有的 timeout 配置
+        TcpClient tcpClient = TcpClient.create(provider)
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 5000)        // 连接超时
+                .doOnConnected(connection -> {
+                    connection.addHandlerLast(new ReadTimeoutHandler(10)); // 读超时
+                    connection.addHandlerLast(new WriteTimeoutHandler(10));// 写超时
+                });
+
+        // 构建 HttpClient 并保留你的 responseTimeout
+        httpClient = HttpClient.from(tcpClient)
+                .responseTimeout(Duration.ofMillis(10000));
+
+        // 初始化 WebClient
+        webClient = WebClient.builder()
+                // setting timeout
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                // add filter basicAuthentication   using  analysisBasicAuthentication() to analysis
+                .filter(ExchangeFilterFunctions.basicAuthentication("alexgaoyh", "pap.net.cn"))
+                // 添加 header traceId
+                .filter(addTraceIdInHeader())
+                // add filter logResponse  to record log
+                .filter(logResponse())
+                .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                .build();
+    }
+
+    /**
+     * 异步POST请求 - 返回Mono，由调用方决定是否阻塞
+     */
+    public static Mono<ClientResponse> postMono(String url, String bodyJSON, HttpHeaders headers) {
+        String traceId = UUID.randomUUID().toString();
+
+        return webClient.post()
+                .uri(url)
+                .headers(h -> {
+                    if (headers != null && !headers.isEmpty()) {
+                        h.addAll(headers);
+                    }
+                    h.set("pap-trace-id", traceId);
+                })
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(bodyJSON)
+                .exchange()
+                .onErrorResume(WebClientRequestException.class, err -> {
+                    if (err.getCause() instanceof java.net.ConnectException) {
+                        return Mono.just(ClientResponse.create(HttpStatus.GATEWAY_TIMEOUT)
+                                .header("pap-retry-code", "NoRetry")
+                                .header("exception-code", HttpStatus.GATEWAY_TIMEOUT + "")
+                                .header("pap-trace-id", traceId)
+                                .body("PAP: 连接超时").build());
+                    } else if (err.getCause() instanceof ReadTimeoutException) {
+                        return Mono.just(ClientResponse.create(HttpStatus.REQUEST_TIMEOUT)
+                                .header("pap-retry-code", "NoRetry")
+                                .header("exception-code", HttpStatus.REQUEST_TIMEOUT + "")
+                                .header("pap-trace-id", traceId)
+                                .body("PAP: 请求超时").build());
+                    } else {
+                        return Mono.just(ClientResponse.create(HttpStatus.INTERNAL_SERVER_ERROR)
+                                .header("exception-code", HttpStatus.INTERNAL_SERVER_ERROR + "")
+                                .header("pap-trace-id", traceId)
+                                .body("PAP: 发生其他错误").build());
+                    }
+                });
+    }
+
     /**
      * simple http post request body
+     *
      * @param url
      * @param objectJSON
      * @param headers
@@ -46,13 +133,13 @@ public class WebClientUtil {
         Mono<ClientResponse> mono = WebClient.builder()
                 .exchangeStrategies(
                         ExchangeStrategies.builder()
-                            .codecs(configurer -> configurer
-                                .defaultCodecs().maxInMemorySize(maxByteCount)
-                        ).build())
+                                .codecs(configurer -> configurer
+                                        .defaultCodecs().maxInMemorySize(maxByteCount)
+                                ).build())
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeaders(httpHeaders -> {
-                    if(headers != null && !headers.isEmpty()) {
+                    if (headers != null && !headers.isEmpty()) {
                         httpHeaders.addAll(headers);
                     }
                 })
@@ -70,6 +157,7 @@ public class WebClientUtil {
 
     /**
      * WebClient post body json
+     *
      * @param url
      * @param bodyJSON
      * @return
@@ -85,8 +173,8 @@ public class WebClientUtil {
                 .responseTimeout(Duration.ofMillis(10000));
 
         String existingTraceId = null;
-        String newTraceId = UUID.randomUUID().toString();;
-        if(headers != null && !headers.isEmpty()) {
+        String newTraceId = UUID.randomUUID().toString();
+        if (headers != null && !headers.isEmpty()) {
             existingTraceId = headers.getFirst("pap-trace-id");
         }
         String combinedTraceId = existingTraceId != null ? existingTraceId + "," + newTraceId : newTraceId;
@@ -102,7 +190,7 @@ public class WebClientUtil {
                 .filter(logResponse())
                 .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                 .defaultHeaders(httpHeaders -> {
-                    if(headers != null && !headers.isEmpty()) {
+                    if (headers != null && !headers.isEmpty()) {
                         httpHeaders.addAll(headers);
                     }
                 })
@@ -113,7 +201,7 @@ public class WebClientUtil {
                 .body(BodyInserters.fromObject(bodyJSON))
                 .exchange()
                 .onErrorResume(WebClientRequestException.class, err -> {
-                    if(err.getCause() instanceof java.net.ConnectException) {
+                    if (err.getCause() instanceof java.net.ConnectException) {
                         return Mono.just(ClientResponse.create(HttpStatus.GATEWAY_TIMEOUT)
                                 .header("pap-retry-code", "NoRetry")
                                 .header("exception-code", HttpStatus.GATEWAY_TIMEOUT + "")
