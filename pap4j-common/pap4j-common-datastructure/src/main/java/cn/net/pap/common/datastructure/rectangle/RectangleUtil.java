@@ -2,14 +2,95 @@ package cn.net.pap.common.datastructure.rectangle;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.PriorityQueue;
 
 /**
  * 矩形操作 工具类
  */
 public class RectangleUtil {
+
+    /**
+     * 天际线问题
+     *
+     * @param buildings 输入的所有建筑物的位置和高度  x1 x2 y
+     * @return 显示由这些建筑物形成的天际线。  轮廓
+     */
+    public static List<List<Integer>> getSkyline(int[][] buildings) {
+        List<int[]> all = new ArrayList<>();
+        for (int[] e : buildings) {
+            all.add(new int[]{e[0], -e[2]}); //left top corner
+            all.add(new int[]{e[1], e[2]}); //right top corner
+        }
+        // sort by x asc, if x is equal , by y desc
+        all.sort((o1, o2) -> o1[0] - o2[0] == 0 ? o1[1] - o2[1] : o1[0] - o2[0]);
+
+        List<List<Integer>> res = new ArrayList<>();
+        // queue to store heights
+        PriorityQueue<Integer> heights = new PriorityQueue<>(Comparator.reverseOrder());
+        // when the last build gone, the max height is 0
+        heights.add(0);
+
+        // last point's height
+        int maxHeight = 0;
+        for (int[] p : all) {
+            // p[1] < 0 left corner, add height to stack
+            // else right corner, remove height from stack
+            if (p[1] < 0) heights.add(-p[1]);
+            else heights.remove(p[1]);
+
+            // meet change point, add it to the result list
+            if (maxHeight != heights.peek()) {
+                maxHeight = heights.peek();
+                res.add(Arrays.asList(p[0], maxHeight));
+            }
+        }
+
+        return res;
+    }
+
+
+    /**
+     * 处理多个矩形区域的天际线问题
+     *
+     * @param rectangles 矩形数组，每个矩形为[leftTopX, leftTopY, rightBottomX, rightBottomY]， 注意右下角点的y在水平线上(rightBottomY==0)。
+     * @return 显示由这些矩形形成的天际线轮廓
+     */
+    public static List<List<Integer>> getSkylineFromRectangles(int[][] rectangles) {
+        List<int[]> all = new ArrayList<>();
+        for (int[] rect : rectangles) {
+            int leftTopX = rect[0];
+            int leftTopY = rect[1]; // 高度
+            int rightBottomX = rect[2];
+            int rightBottomY = rect[3]; // 高度
+
+            all.add(new int[]{leftTopX, -leftTopY}); // left top corner
+            all.add(new int[]{rightBottomX, leftTopY}); // right top corner
+        }
+
+        // sort by x asc, if x is equal , by y desc
+        all.sort((o1, o2) -> o1[0] - o2[0] == 0 ? o1[1] - o2[1] : o1[0] - o2[0]);
+
+        List<List<Integer>> res = new ArrayList<>();
+        PriorityQueue<Integer> heights = new PriorityQueue<>(Comparator.reverseOrder());
+        heights.add(0);
+
+        int maxHeight = 0;
+        for (int[] p : all) {
+            if (p[1] < 0) heights.add(-p[1]);
+            else heights.remove(p[1]);
+
+            if (maxHeight != heights.peek()) {
+                maxHeight = heights.peek();
+                res.add(Arrays.asList(p[0], maxHeight));
+            }
+        }
+
+        return res;
+    }
 
     /**
      * 两个矩形区域集合是否有重叠

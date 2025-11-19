@@ -88,4 +88,24 @@ public class RectangleUtilTest {
         }
     }
 
+    @Test
+    public void getSkylineTest() {
+        int[][] buildings = {{2, 9, 10}, {3, 7, 15}, {5, 12, 12}, {15, 20, 10}, {19, 24, 8}};
+        List<List<Integer>> skyline = RectangleUtil.getSkyline(buildings);
+        System.out.println(skyline);
+
+    }
+
+    @Test
+    public void getSkylineFromRectanglesTest() {
+        int[][] buildings = {
+                {2, 9, 7, 0},
+                {3, 12, 8, 0},
+                {5, 8, 9, 0}
+        };
+        List<List<Integer>> skyline = RectangleUtil.getSkylineFromRectangles(buildings);
+        System.out.println(skyline);
+
+    }
+
 }
