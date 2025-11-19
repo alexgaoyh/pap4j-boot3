@@ -5,7 +5,6 @@ import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.List;
 
 public class RectangleUtilTest {
@@ -33,17 +32,17 @@ public class RectangleUtilTest {
 
     @Test
     public void verticalPartTest() {
-        Double[] rect = new Double[]{1702.08,1125.63,1806.04,1565.68};
+        Double[] rect = new Double[]{1702.08, 1125.63, 1806.04, 1565.68};
         List<Double[]> partRects = RectangleUtil.verticalPart(rect, 4);
         System.out.println(partRects);
     }
 
     @Test
     public void reSortTest() {
-        Double[] rect1 = new Double[]{1702.08,2920.65,1806.04,3472.88};
-        Double[] rect2 = new Double[]{1702.08,1125.63,1806.04,1565.68};
-        Double[] rect3 = new Double[]{1346.68,2023.14,1450.64,3248.51};
-        Double[] rect4 = new Double[]{1524.38,2023.14,1628.34,3248.51};
+        Double[] rect1 = new Double[]{1702.08, 2920.65, 1806.04, 3472.88};
+        Double[] rect2 = new Double[]{1702.08, 1125.63, 1806.04, 1565.68};
+        Double[] rect3 = new Double[]{1346.68, 2023.14, 1450.64, 3248.51};
+        Double[] rect4 = new Double[]{1524.38, 2023.14, 1628.34, 3248.51};
         List<Double[]> rectList = new ArrayList<>();
         rectList.add(rect1);
         rectList.add(rect2);
@@ -105,6 +104,24 @@ public class RectangleUtilTest {
         };
         List<List<Integer>> skyline = RectangleUtil.getSkylineFromRectangles(buildings);
         System.out.println(skyline);
+
+    }
+
+    /**
+     * 按行合并，返回多边形点集合
+     */
+    @Test
+    public void mergeBoxesToPolygonsTest() {
+        List<List<Double>> boxes = new ArrayList<>();
+        boxes.add(List.of(10.0, 30.0, 20.0, 40.0));
+        boxes.add(List.of(35.0, 55.0, 22.0, 42.0));
+        boxes.add(List.of(60.0, 80.0, 25.0, 45.0));
+
+        List<List<Double>> lines = RectangleUtil.mergeLineBoxesToPolygons(boxes, 1.5, 0.6);
+        System.out.println("Merged Polygons:");
+        for (List<Double> l : lines) {
+            System.out.println(l);
+        }
 
     }
 

@@ -6,7 +6,9 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.PriorityQueue;
+import java.util.stream.Collectors;
 
 /**
  * 矩形操作 工具类
@@ -90,6 +92,207 @@ public class RectangleUtil {
         }
 
         return res;
+    }
+
+    /**
+     * 按行合并字框为多边形
+     *
+     * @param boxes                    字框列表，每个字框格式 [ltX, rbX, ltY, rbY]
+     * @param gapMultiplier            字间隔阈值系数（推荐1.5）
+     * @param verticalOverlapThreshold Y方向重叠比例阈值（推荐0.6）
+     * @return List<List < Double>> 每个元素表示一个多边形的点序列 [x1, y1, x2, y2, ...]
+     */
+    public static List<List<Double>> mergeLineBoxesToPolygons(List<List<Double>> boxes, double gapMultiplier, double verticalOverlapThreshold) {
+        List<LinePolygon> lines = new ArrayList<>();
+
+        // 按 top 排序
+        boxes.sort(Comparator.comparingDouble(b -> b.get(2))); // ltY
+
+        for (List<Double> box : boxes) {
+            boolean merged = false;
+            for (LinePolygon line : lines) {
+                if (isSameLine(line.getBoundingBox(), box, verticalOverlapThreshold)) {
+                    double avgWidth = line.getBoundingBox().get(1) - line.getBoundingBox().get(0);
+                    if (isAdjacent(line.getBoundingBox(), box, avgWidth, gapMultiplier)) {
+                        // 合并到行
+                        line.mergeBox(box);
+                        merged = true;
+                        break;
+                    }
+                }
+            }
+            if (!merged) {
+                lines.add(new LinePolygon(box));
+            }
+        }
+
+        // 转换为点序列格式
+        return lines.stream().map(LinePolygon::getPoints).collect(Collectors.toList());
+    }
+
+    /**
+     * 行多边形类，用于管理同一行的字框并生成多边形轮廓
+     */
+    private static class LinePolygon {
+        private List<List<Double>> boxes = new ArrayList<>();
+
+        public LinePolygon(List<Double> initialBox) {
+            boxes.add(new ArrayList<>(initialBox));
+        }
+
+        /**
+         * 合并新的字框到行中
+         */
+        public void mergeBox(List<Double> box) {
+            boxes.add(new ArrayList<>(box));
+        }
+
+        /**
+         * 获取行的边界框
+         */
+        public List<Double> getBoundingBox() {
+            if (boxes.isEmpty()) {
+                return Arrays.asList(0.0, 0.0, 0.0, 0.0);
+            }
+
+            double minX = Double.MAX_VALUE;
+            double maxX = Double.MIN_VALUE;
+            double minY = Double.MAX_VALUE;
+            double maxY = Double.MIN_VALUE;
+
+            for (List<Double> box : boxes) {
+                minX = Math.min(minX, box.get(0));
+                maxX = Math.max(maxX, box.get(1));
+                minY = Math.min(minY, box.get(2));
+                maxY = Math.max(maxY, box.get(3));
+            }
+
+            return Arrays.asList(minX, maxX, minY, maxY);
+        }
+
+        /**
+         * 生成多边形的点序列（顺时针方向）
+         */
+        public List<Double> getPoints() {
+            if (boxes.isEmpty()) {
+                return new ArrayList<>();
+            }
+
+            // 如果只有一个框，直接返回矩形
+            if (boxes.size() == 1) {
+                return createRectangularPolygon(boxes.get(0));
+            }
+
+            // 按X坐标排序
+            boxes.sort(Comparator.comparingDouble(b -> b.get(0)));
+
+            List<Double> points = new ArrayList<>();
+
+            // 生成上轮廓
+            generateTopContour(points);
+
+            // 生成右轮廓
+            // generateRightContour(points);
+
+            // 生成下轮廓
+            generateBottomContour(points);
+
+            // 生成左轮廓
+            // generateLeftContour(points);
+
+            return points;
+        }
+
+        /**
+         * 生成上轮廓
+         */
+        private void generateTopContour(List<Double> points) {
+            // 按顶部Y坐标分组，处理不同高度的字框
+            Map<Double, List<List<Double>>> topGroups = boxes.stream().collect(Collectors.groupingBy(b -> b.get(2)));
+
+            // 按Y坐标从低到高处理
+            List<Double> sortedTops = topGroups.keySet().stream().sorted().collect(Collectors.toList());
+
+            for (Double top : sortedTops) {
+                List<List<Double>> group = topGroups.get(top);
+                group.sort(Comparator.comparingDouble(b -> b.get(0)));
+
+                // 添加该组的所有左上角点
+                for (List<Double> box : group) {
+                    points.add(box.get(0)); // left
+                    points.add(top);        // top
+                }
+
+                // 添加该组最后一个框的右上角点
+                List<Double> lastBox = group.get(group.size() - 1);
+                points.add(lastBox.get(1)); // right
+                points.add(top);            // top
+            }
+        }
+
+        /**
+         * 生成下轮廓
+         */
+        private void generateBottomContour(List<Double> points) {
+            // 按底部Y坐标分组，处理不同高度的字框
+            Map<Double, List<List<Double>>> bottomGroups = boxes.stream().collect(Collectors.groupingBy(b -> b.get(3)));
+
+            // 按Y坐标从高到低处理
+            List<Double> sortedBottoms = bottomGroups.keySet().stream().sorted(Comparator.reverseOrder()).collect(Collectors.toList());
+
+            for (Double bottom : sortedBottoms) {
+                List<List<Double>> group = bottomGroups.get(bottom);
+                // 按X坐标从右到左排序
+                group.sort(Comparator.comparingDouble(b -> b.get(0)));
+                Collections.reverse(group);
+
+                // 添加该组的所有右下角点
+                for (List<Double> box : group) {
+                    points.add(box.get(1));  // right
+                    points.add(bottom);      // bottom
+                }
+
+                // 添加该组最后一个框的左下角点
+                List<Double> lastBox = group.get(group.size() - 1);
+                points.add(lastBox.get(0)); // left
+                points.add(bottom);         // bottom
+            }
+        }
+
+        /**
+         * 生成右轮廓
+         */
+        private void generateRightContour(List<Double> points) {
+            List<Double> bbox = getBoundingBox();
+            // 从右上角到右下角
+            points.add(bbox.get(1)); // right
+            points.add(bbox.get(2)); // top
+            points.add(bbox.get(1)); // right
+            points.add(bbox.get(3)); // bottom
+        }
+
+        /**
+         * 生成左轮廓
+         */
+        private void generateLeftContour(List<Double> points) {
+            List<Double> bbox = getBoundingBox();
+            // 从左下角到左上角
+            points.add(bbox.get(0)); // left
+            points.add(bbox.get(3)); // bottom
+            points.add(bbox.get(0)); // left
+            points.add(bbox.get(2)); // top
+        }
+
+        /**
+         * 创建矩形多边形
+         */
+        private List<Double> createRectangularPolygon(List<Double> box) {
+            return Arrays.asList(box.get(0), box.get(2), // left-top
+                    box.get(1), box.get(2), // right-top
+                    box.get(1), box.get(3), // right-bottom
+                    box.get(0), box.get(3)  // left-bottom
+            );
+        }
     }
 
     /**
@@ -222,16 +425,16 @@ public class RectangleUtil {
     }
 
     // ------------------- 行合并 -------------------
+
     /**
      * 按行合并字框
-     * @param boxes 字框列表
-     * @param gapMultiplier 字间隔阈值系数（推荐1.5）
+     *
+     * @param boxes                    字框列表
+     * @param gapMultiplier            字间隔阈值系数（推荐1.5）
      * @param verticalOverlapThreshold Y方向重叠比例阈值（推荐0.6）
-     * @return List<List<Double>> 每个元素表示一行矩形 [ltX, rbX, ltY, rbY]
+     * @return List<List < Double>> 每个元素表示一行矩形 [ltX, rbX, ltY, rbY]
      */
-    public static List<List<Double>> mergeBoxesToLines(List<List<Double>> boxes,
-                                                       double gapMultiplier,
-                                                       double verticalOverlapThreshold) {
+    public static List<List<Double>> mergeBoxesToLines(List<List<Double>> boxes, double gapMultiplier, double verticalOverlapThreshold) {
         List<List<Double>> lines = new ArrayList<>();
         // 按 top 排序
         boxes.sort(Comparator.comparingDouble(b -> b.get(2))); // ltY
@@ -260,16 +463,16 @@ public class RectangleUtil {
     }
 
     // ------------------- 列合并 -------------------
+
     /**
      * 按列合并字框
-     * @param boxes 字框列表
-     * @param gapMultiplier 行间隔阈值系数（推荐1.5）
+     *
+     * @param boxes                      字框列表
+     * @param gapMultiplier              行间隔阈值系数（推荐1.5）
      * @param horizontalOverlapThreshold X方向重叠比例阈值（推荐0.6）
-     * @return List<List<Double>> 每个元素表示一列矩形 [ltX, rbX, ltY, rbY]
+     * @return List<List < Double>> 每个元素表示一列矩形 [ltX, rbX, ltY, rbY]
      */
-    public static List<List<Double>> mergeBoxesToColumns(List<List<Double>> boxes,
-                                                         double gapMultiplier,
-                                                         double horizontalOverlapThreshold) {
+    public static List<List<Double>> mergeBoxesToColumns(List<List<Double>> boxes, double gapMultiplier, double horizontalOverlapThreshold) {
         List<List<Double>> columns = new ArrayList<>();
         // 按 left 排序
         boxes.sort(Comparator.comparingDouble(b -> b.get(0))); // ltX
@@ -299,7 +502,10 @@ public class RectangleUtil {
     }
 
     // ------------------- 内部辅助 -------------------
-    /** 判断两个字框是否属于同一行（Y方向重叠比例） */
+
+    /**
+     * 判断两个字框是否属于同一行（Y方向重叠比例）
+     */
     private static boolean isSameLine(List<Double> a, List<Double> b, double verticalOverlapThreshold) {
         double interHeight = Math.min(a.get(3), b.get(3)) - Math.max(a.get(2), b.get(2));
         if (interHeight <= 0) return false;
@@ -307,7 +513,9 @@ public class RectangleUtil {
         return interHeight / minHeight >= verticalOverlapThreshold;
     }
 
-    /** 判断两个字框是否属于同一列（X方向重叠比例） */
+    /**
+     * 判断两个字框是否属于同一列（X方向重叠比例）
+     */
     private static boolean isSameColumn(List<Double> a, List<Double> b, double horizontalOverlapThreshold) {
         double interWidth = Math.min(a.get(1), b.get(1)) - Math.max(a.get(0), b.get(0));
         if (interWidth <= 0) return false;
@@ -315,7 +523,9 @@ public class RectangleUtil {
         return interWidth / minWidth >= horizontalOverlapThreshold;
     }
 
-    /** 判断水平间隔是否可以合并 */
+    /**
+     * 判断水平间隔是否可以合并
+     */
     private static boolean isAdjacent(List<Double> a, List<Double> b, double avgWidth, double multiplier) {
         if (b.get(0) <= a.get(1)) return true; // 有交叠
         double gap = b.get(0) - a.get(1);
