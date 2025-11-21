@@ -9,6 +9,8 @@ import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TestDataSourceDameng {
 
@@ -20,6 +22,30 @@ public class TestDataSourceDameng {
         ResultSet resultSet = statement.executeQuery("select * from TEST_TABLE");
         if (resultSet.next()) {
             System.out.println(resultSet.getString(1));
+        }
+
+    }
+
+    // @Test
+    public void prepareStatementTest() throws SQLException {
+        try {
+            DriverManager.registerDriver(new dm.jdbc.driver.DmDriver());
+            Connection conn = DriverManager.getConnection("jdbc:dm://192.168.1.180:5236", "SYSDBA", "Dameng123");
+
+            List<PreparedStatement> pstmtList = new ArrayList<>();
+            for(int i = 10000; i < 20010; i++) {
+                System.out.println(i);
+                // 默认 dm.ini 里面，MAX_SESSION_STATEMENT = 10000, 所以这里当出现10000条数据之后，就抛出来了异常。
+                String insert = "INSERT INTO SYS_CONFIG(CONFIG_ID) VALUES("+i+")";
+                PreparedStatement pstmt = conn.prepareStatement(insert);
+                pstmt.addBatch(); // 改为addBatch
+                pstmtList.add(pstmt);
+            }
+            for (PreparedStatement p : pstmtList) {
+                p.executeBatch();
+            }
+        } catch (SQLException e) {
+            throw new RuntimeException(e);
         }
 
     }
