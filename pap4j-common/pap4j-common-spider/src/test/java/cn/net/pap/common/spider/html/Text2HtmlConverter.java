@@ -1,5 +1,6 @@
 package cn.net.pap.common.spider.html;
 
+import com.ibm.icu.text.BreakIterator;
 import org.apache.commons.lang3.StringUtils;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -15,14 +16,14 @@ public class Text2HtmlConverter {
 
     @Test
     void test1() {
-        String input = "此处为文字[=地图]😎\uD83D\uDD2E\n第二行（包含[=模糊]内容）";
+        String input = "👨‍👩‍👧‍👦𠀀此处为文字[=地图]😎\uD83D\uDD2E\n第二行（包含[=模糊]内容）";
         String html = Text2HtmlConverter.convertTextToHtml("IMG123", input, "color:red;");
         System.out.println(html);
     }
 
     @Test
     void test2() {
-        String input = "表格[=表格]残缺[=残缺]模糊[=模糊]😎\uD83D\uDD2E";
+        String input = "👨‍👩‍👧‍👦𠀀表格[=表格]残缺[=残缺]模糊[=模糊]😎\uD83D\uDD2E";
         String html = Text2HtmlConverter.convertTextToHtml("IMG456", input, "font-style:italic;");
         System.out.println(html);
     }
@@ -141,7 +142,7 @@ public class Text2HtmlConverter {
             List<TextElement> result = new ArrayList<>();
             if (StringUtils.isBlank(line)) return result;
 
-            CodePointReader reader = new CodePointReader(line);
+            IcuBreakIteratorReader reader = new IcuBreakIteratorReader(line);
 
             while (!reader.end()) {
                 int cp = reader.peek();
@@ -165,7 +166,7 @@ public class Text2HtmlConverter {
                 }
 
                 // 普通字符
-                String c = new String(Character.toChars(cp));
+                String c = reader.currentGrapheme();
                 if ("〓".equals(c)) {
                     result.add(new CharElement(bussId, c, baseOffset + reader.position() + 1, "集外字"));
                 } else {
@@ -184,7 +185,7 @@ public class Text2HtmlConverter {
     // ================================
     private static class SpecialParser {
 
-        public static ParseResult parse(String bussId, CodePointReader r, int baseOffset) {
+        public static ParseResult parse(String bussId, IcuBreakIteratorReader r, int baseOffset) {
             int startPos = r.position();
 
             // 找到 ']'
@@ -225,11 +226,11 @@ public class Text2HtmlConverter {
     }
 
     // ================================
-    // CSS解析器（code point 版本）
+    // CSS解析器
     // ================================
     private static class AnnotationParser {
 
-        public static ParseResult parse(String bussId, CodePointReader r, String zhuShuCSS, int baseOffset) {
+        public static ParseResult parse(String bussId, IcuBreakIteratorReader r, String zhuShuCSS, int baseOffset) {
 
             int startPos = r.position();
             r.next(); // 跳过（
@@ -249,7 +250,7 @@ public class Text2HtmlConverter {
 
             AnnotationElement ann = new AnnotationElement(bussId, zhuShuCSS, baseOffset + startPos);
 
-            CodePointReader innerReader = r.subReader(markStart, endPos);
+            IcuBreakIteratorReader innerReader = r.subReader(markStart, endPos);
 
             while (!innerReader.end()) {
                 int cp = innerReader.peek();
@@ -262,7 +263,7 @@ public class Text2HtmlConverter {
                     }
                 }
 
-                String c = new String(Character.toChars(cp));
+                String c = innerReader.currentGrapheme();
                 ann.addElement(new CharElement(bussId, c, baseOffset + startPos + innerReader.position() + 1, "字符"));
 
                 innerReader.next();
@@ -284,56 +285,130 @@ public class Text2HtmlConverter {
     }
 
     // ================================
-    // CodePointReader：关键部分 按 code point 安全遍历
+    // IcuBreakIteratorReader：使用 ICU4J 的 BreakIterator
     // ================================
-    private static class CodePointReader {
+    private static class IcuBreakIteratorReader {
+        private final String text;
+        private final BreakIterator breakIterator;
+        private int currentBreak;
+        private int nextBreak;
+        private int codePointPosition;
 
-        private final String str;
-        private final int[] cps;
-        private int idx = 0;
+        public IcuBreakIteratorReader(String text) {
+            this.text = text;
+            this.breakIterator = BreakIterator.getCharacterInstance();
+            this.breakIterator.setText(text);
+            this.currentBreak = breakIterator.first();
+            this.nextBreak = breakIterator.next();
+            this.codePointPosition = 0;
+        }
 
-        public CodePointReader(String str) {
-            this.str = str;
-            cps = str.codePoints().toArray();
+        private IcuBreakIteratorReader(String text, boolean isSubReader) {
+            // 用于 subReader 的私有构造函数
+            this.text = text;
+            this.breakIterator = BreakIterator.getCharacterInstance();
+            this.breakIterator.setText(text);
+            this.currentBreak = breakIterator.first();
+            this.nextBreak = breakIterator.next();
+            this.codePointPosition = 0;
         }
 
         public boolean end() {
-            return idx >= cps.length;
+            return currentBreak == BreakIterator.DONE;
         }
 
         public int peek() {
-            return end() ? -1 : cps[idx];
+            if (end() || currentBreak >= text.length()) return -1;
+            return text.codePointAt(currentBreak);
         }
 
         public int peekNext() {
-            return idx + 1 < cps.length ? cps[idx + 1] : -1;
+            if (nextBreak == BreakIterator.DONE || nextBreak >= text.length()) return -1;
+            return text.codePointAt(nextBreak);
         }
 
         public int next() {
-            return cps[idx++];
+            if (end()) return -1;
+
+            int currentCodePoint = peek();
+            currentBreak = nextBreak;
+            nextBreak = (nextBreak == BreakIterator.DONE) ? BreakIterator.DONE : breakIterator.next();
+            codePointPosition++;
+
+            return currentCodePoint;
         }
 
         public int position() {
-            return idx;
+            return codePointPosition;
         }
 
         public void setPosition(int newPos) {
-            idx = Math.min(newPos, cps.length);
+            // 简单实现：重置并移动到指定位置
+            breakIterator.first();
+            currentBreak = breakIterator.current();
+            nextBreak = breakIterator.next();
+            codePointPosition = 0;
+
+            for (int i = 0; i < newPos && !end(); i++) {
+                next();
+            }
         }
 
-        public int indexOf(int cp) {
-            for (int i = idx; i < cps.length; i++) {
-                if (cps[i] == cp) return i;
+        public int indexOf(int targetCodePoint) {
+            int savedPosition = codePointPosition;
+            int savedCurrentBreak = currentBreak;
+            int savedNextBreak = nextBreak;
+
+            int foundPosition = -1;
+            while (!end()) {
+                if (peek() == targetCodePoint) {
+                    foundPosition = codePointPosition;
+                    break;
+                }
+                next();
             }
-            return -1;
+
+            // 恢复状态
+            setPosition(savedPosition);
+
+            return foundPosition;
         }
 
         public String substring(int start, int end) {
-            return new String(cps, start, end - start);
+            // 使用简单的字符位置计算
+            IcuBreakIteratorReader tempReader = new IcuBreakIteratorReader(text, true);
+            tempReader.setPosition(start);
+
+            int startCharIndex = tempReader.currentBreak;
+            tempReader.setPosition(end);
+            int endCharIndex = tempReader.currentBreak;
+
+            if (startCharIndex < 0 || endCharIndex < 0 || startCharIndex > endCharIndex) {
+                return "";
+            }
+
+            return text.substring(startCharIndex, endCharIndex);
         }
 
-        public CodePointReader subReader(int start, int end) {
-            return new CodePointReader(new String(cps, start, end - start));
+        public IcuBreakIteratorReader subReader(int start, int end) {
+            String subStr = substring(start, end);
+            return new IcuBreakIteratorReader(subStr, true);
+        }
+
+        public String currentGrapheme() {
+            if (end()) return "";
+
+            if (nextBreak == BreakIterator.DONE) {
+                // 最后一个字符
+                return text.substring(currentBreak);
+            } else {
+                return text.substring(currentBreak, nextBreak);
+            }
+        }
+
+        // 辅助方法：获取当前字符索引
+        public int getCurrentCharIndex() {
+            return currentBreak;
         }
     }
 
