@@ -20,4 +20,11 @@ public class i18nController {
         return messageSource.getMessage("greeting.message", null, locale);
     }
 
+    @GetMapping("/greeting2")
+    public String greeting2(@RequestHeader(value = "Accept-Language", required = false) Locale locale) {
+        Object[] args = {"alexgaoyh"};
+        String message = messageSource.getMessage("greeting.message2", args, locale);
+        return message;
+    }
+
 }
