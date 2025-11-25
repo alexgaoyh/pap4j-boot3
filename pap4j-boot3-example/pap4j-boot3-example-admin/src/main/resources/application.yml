@@ -3,3 +3,6 @@ spring:
     resources:
       static-locations:
         file:D:/pap/
+  messages:
+    encoding: utf-8
+    basename: i18n/messages
