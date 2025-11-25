@@ -234,6 +234,19 @@ public class StringUtilIcu4jTest {
 
     }
 
+    @Test
+    public void wordInstanceTest1() {
+        String source = "I like to eat apples. 我喜欢吃苹果。";
+
+        BreakIterator boundary = BreakIterator.getWordInstance(new Locale("zh", "CN"));
+        boundary.setText(source);
+
+        int start = boundary.first();
+        for (int end = boundary.next(); end != BreakIterator.DONE; start = end, end = boundary.next()) {
+            System.out.println(start + ": " + source.substring(start, end));
+        }
+    }
+
     private List<String> segmentWithICU(String text) {
         com.ibm.icu.text.BreakIterator iterator = com.ibm.icu.text.BreakIterator.getCharacterInstance();
         iterator.setText(text);
