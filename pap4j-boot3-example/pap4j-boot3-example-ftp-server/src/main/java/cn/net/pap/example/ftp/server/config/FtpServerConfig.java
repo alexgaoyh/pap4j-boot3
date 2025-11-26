@@ -3,6 +3,7 @@ package cn.net.pap.example.ftp.server.config;
 import cn.net.pap.example.ftp.server.command.ContentCommand;
 import cn.net.pap.example.ftp.server.command.EncodingCommand;
 import cn.net.pap.example.ftp.server.command.MonitorUsersCommand;
+import cn.net.pap.example.ftp.server.ftplet.RateLimitFtplet;
 import org.apache.ftpserver.FtpServer;
 import org.apache.ftpserver.FtpServerFactory;
 import org.apache.ftpserver.command.CommandFactoryFactory;
@@ -53,6 +54,9 @@ public class FtpServerConfig {
         ListenerFactory listenerFactory = new ListenerFactory();
         listenerFactory.setPort(port);
         serverFactory.addListener("default", listenerFactory.createListener());
+
+        // 流控的功能
+        serverFactory.getFtplets().put("rateLimit", new RateLimitFtplet(50));
 
         // 创建用户管理器
         PropertiesUserManagerFactory userManagerFactory = new PropertiesUserManagerFactory();
