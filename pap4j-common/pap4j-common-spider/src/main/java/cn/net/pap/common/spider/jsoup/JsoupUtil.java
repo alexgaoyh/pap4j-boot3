@@ -1,15 +1,18 @@
 package cn.net.pap.common.spider.jsoup;
 
 import cn.net.pap.common.spider.jsoup.dto.SpiderDTO;
+import com.ibm.icu.text.BreakIterator;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -167,6 +170,87 @@ public class JsoupUtil {
         }
 
         return sb.toString();
+    }
+
+    /**
+     * 把字符串按“所见字符（grapheme cluster）”切分
+     * @param text
+     * @return
+     */
+    public static List<String> splitToGraphemes(String text) {
+        List<String> result = new ArrayList<>();
+        BreakIterator it = BreakIterator.getCharacterInstance(Locale.CHINA);
+        it.setText(text);
+
+        int start = it.first();
+        int end = it.next();
+
+        while (end != BreakIterator.DONE) {
+            String grapheme = text.substring(start, end);
+            result.add(grapheme);
+            start = end;
+            end = it.next();
+        }
+        return result;
+    }
+
+    /**
+     * 主方法：用 ICU4J 分割 + 连续匹配
+     * @param html
+     * @param keyword
+     * @param css
+     * @return
+     */
+    public static String highlightSequential(String html, String keyword, String css) {
+
+        Document doc = Jsoup.parseBodyFragment(html);
+        Elements chars = doc.select("span.chars");
+
+        // 关键字切成“视觉字符”
+        List<String> keyGraphemes = splitToGraphemes(keyword);
+        int kLen = keyGraphemes.size();
+
+        // 把 HTML 中每个“字符 span 的可见字”也切成 grapheme
+        List<String> htmlGraphemes = new ArrayList<>();
+        for (Element e : chars) {
+            String grapheme = e.text();
+            htmlGraphemes.addAll(splitToGraphemes(grapheme));
+        }
+
+        int total = htmlGraphemes.size();
+
+        for (int start = 0; start < total; start++) {
+
+            boolean matched = true;
+            int kIndex = 0;
+            int pos = start;
+
+            // 内层连续匹配检查
+            while (pos < total && kIndex < kLen) {
+                if (!htmlGraphemes.get(pos).equals(keyGraphemes.get(kIndex))) {
+                    matched = false;
+                    break;   // 跳出内层 while，到外层继续下一个 start
+                }
+                pos++;
+                kIndex++;
+            }
+
+            if (matched && kIndex == kLen) {
+                // 找到从 start 到 start+kLen 的匹配
+                for (int i = start; i < start + kLen; i++) {
+                    Element e = chars.get(i);
+                    String old = e.attr("style");
+                    if (old == null || old.isEmpty()) {
+                        e.attr("style", css);
+                    } else {
+                        e.attr("style", old + ";" + css);
+                    }
+                }
+                break;
+            }
+        }
+
+        return doc.body().html();
     }
 
 }

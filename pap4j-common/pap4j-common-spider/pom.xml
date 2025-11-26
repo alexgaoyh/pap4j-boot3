@@ -86,7 +86,6 @@
             <groupId>com.ibm.icu</groupId>
             <artifactId>icu4j</artifactId>
             <version>77.1</version>
-            <scope>test</scope>
         </dependency>
 
         <dependency>

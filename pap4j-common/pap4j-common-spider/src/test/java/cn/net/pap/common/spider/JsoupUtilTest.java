@@ -58,4 +58,33 @@ public class JsoupUtilTest {
         }
     }
 
+    @Test
+    public void parse3Test() {
+        String html = """
+                <p>
+                  <span class="chars">原</span>
+                  <span class="chars">於</span>
+                  <span class="chars">江</span>
+                  <span class="chars">南</span>
+                  <span class="chars">屈</span>
+                  <span class="chars">👨‍👩‍👦‍👦</span>
+                  <span data-id="pap.net.cn">
+                      <span class="chars">長</span>
+                      <span class="chars">沙</span>
+                      <span class="chars">羅</span>
+                      <span class="chars">縣</span>
+                      <span class="chars">西</span>
+                      <span class="chars">北</span>
+                  </span>
+                  <span class="chars">淮</span>
+                  <span class="chars">南</span>
+                  <span class="chars">王</span>
+                  <span class="chars">安</span>
+                </p>
+                """;
+        String s = JsoupUtil.highlightSequential(html, "屈👨‍👩‍👦‍👦長沙", "background:yellow;color:red;");
+        System.out.println(s);
+    }
+
+
 }
