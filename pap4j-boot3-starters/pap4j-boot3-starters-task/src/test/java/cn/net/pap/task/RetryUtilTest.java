@@ -100,4 +100,34 @@ public class RetryUtilTest {
         assertTrue(count.get() >= 1);
     }
 
+    @Test
+    public void testTTaskFailsOnceThenSucceeds() throws Exception {
+        AtomicInteger count = new AtomicInteger(0);
+        String result = RetryUtil.retryTWithBackoff(3, 1000, () -> {
+            System.out.println(System.currentTimeMillis());
+            if (count.getAndIncrement() < 1) {
+                throw new RuntimeException("fail once");
+            }
+            return "ok";
+        }, r -> "ok".equals(r), 1.5, RuntimeException.class);
+
+        assertEquals("ok", result);
+        assertEquals(2, count.get());
+    }
+
+    @Test
+    public void testTTaskAlwaysFailsWithBackoffException() {
+        AtomicInteger count = new AtomicInteger(0);
+        Exception exception = assertThrows(RuntimeException.class, () ->
+                RetryUtil.retryTWithBackoff(5, 1000, () -> {
+                    System.out.println(System.currentTimeMillis());
+                    count.incrementAndGet();
+                    throw new RuntimeException("always fail");
+                }, r -> true, 2.0, RuntimeException.class)
+        );
+
+        assertEquals("always fail", exception.getMessage());
+        assertEquals(5, count.get());
+    }
+
 }
