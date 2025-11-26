@@ -2,6 +2,7 @@ package cn.net.pap.common.file;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -57,6 +58,18 @@ public class FilesTest {
         List<String> lines = Files.readAllLines(Paths.get(inputFilePath));
         lines.sort(comparator);
         Files.write(Paths.get(outputFilePath), lines);
+    }
+
+    // @Test
+    public void readTest1() throws Exception {
+        List<String> lines = Files.readAllLines(Paths.get(System.getProperty("user.home") + File.separator + "Desktop" + File.separator + "1.txt"));
+        for(int idx = 1; idx < lines.size(); idx++) {
+            String before = lines.get(idx - 1);
+            String current = lines.get(idx);
+            String[] beforeSplit = before.split(":");
+            String[] currentSplit = current.split(":");
+            System.out.println(Long.parseLong(currentSplit[2].trim()) - Long.parseLong(beforeSplit[2].trim()));
+        }
     }
 
     // @Test
