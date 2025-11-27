@@ -12,10 +12,13 @@ import javax.xml.transform.stream.StreamResult;
 import javax.xml.xpath.*;
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public final class XmlParseUtil {
@@ -44,6 +47,92 @@ public final class XmlParseUtil {
         } catch (Exception e) {
             throw new IOException("Failed to parse XML document", e);
         }
+    }
+
+    /**
+     * w3c dom 节点解析，根据路径解析
+     * @param document
+     * @param root
+     * @return
+     * @throws XPathExpressionException
+     */
+    public static NodeList parseChild(Document document, String root) throws XPathExpressionException {
+        XPath xpath = XPATH_FACTORY.newXPath();
+        NodeList rootNodes = (NodeList) xpath.evaluate(root, document, XPathConstants.NODESET);
+        return rootNodes;
+    }
+
+    /**
+     * 将节点内容转换为原始 XML 字符串
+     */
+    public static String nodeToString(Node node) {
+        try {
+            TransformerFactory transformerFactory = TransformerFactory.newInstance();
+            Transformer transformer = transformerFactory.newTransformer();
+
+            // 设置输出属性
+            transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
+            transformer.setOutputProperty(OutputKeys.INDENT, "no");
+            transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+
+            StringWriter writer = new StringWriter();
+            transformer.transform(new DOMSource(node), new StreamResult(writer));
+
+            return writer.toString();
+
+        } catch (Exception e) {
+            throw new RuntimeException("转换节点内容失败", e);
+        }
+    }
+
+    /**
+     * 打印节点的内部 HTML/XML 内容（不包含自身标签）
+     */
+    public static String getInnerContent(Node node) {
+        StringBuilder sb = new StringBuilder();
+        NodeList children = node.getChildNodes();
+
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            sb.append(nodeToString(child));
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * 锚点切分，
+     * @param xmlString
+     * @return
+     */
+    public static Map<String, String> splitByAnchor(String xmlString) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (xmlString == null || xmlString.isEmpty()) {
+            return result;
+        }
+
+        Pattern pattern = Pattern.compile("(<anchor[^>]*/>)");
+        Matcher matcher = pattern.matcher(xmlString);
+
+        int lastEnd = 0;
+        boolean firstSegment = true;
+
+        while (matcher.find()) {
+            String content = xmlString.substring(lastEnd, matcher.start()).trim();
+            if (!content.isEmpty()) {
+                String anchorKey = matcher.group(1);
+                result.put(anchorKey, content);
+            }
+            lastEnd = matcher.end();
+            firstSegment = false;
+        }
+
+        // 处理第一段内容（没有任何anchor的情况）
+        if (firstSegment && xmlString.trim().length() > 0) {
+            result.put("initial_content", xmlString.trim());
+        }
+
+        return result;
     }
 
     /**
