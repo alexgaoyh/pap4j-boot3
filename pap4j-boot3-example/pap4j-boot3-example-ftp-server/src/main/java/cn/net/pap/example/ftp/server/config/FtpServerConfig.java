@@ -28,6 +28,8 @@ public class FtpServerConfig {
 
     private int port = 21;  // 默认端口
 
+    private int connectRateLimit = 50;
+
     private List<FtpUserProperties> users = new ArrayList<>();
 
     public int getPort() {
@@ -36,6 +38,14 @@ public class FtpServerConfig {
 
     public void setPort(int port) {
         this.port = port;
+    }
+
+    public int getConnectRateLimit() {
+        return connectRateLimit;
+    }
+
+    public void setConnectRateLimit(int connectRateLimit) {
+        this.connectRateLimit = connectRateLimit;
     }
 
     public List<FtpUserProperties> getUsers() {
@@ -56,7 +66,7 @@ public class FtpServerConfig {
         serverFactory.addListener("default", listenerFactory.createListener());
 
         // 流控的功能
-        serverFactory.getFtplets().put("rateLimit", new RateLimitFtplet(50));
+        serverFactory.getFtplets().put("rateLimit", new RateLimitFtplet(connectRateLimit));
 
         // 创建用户管理器
         PropertiesUserManagerFactory userManagerFactory = new PropertiesUserManagerFactory();
