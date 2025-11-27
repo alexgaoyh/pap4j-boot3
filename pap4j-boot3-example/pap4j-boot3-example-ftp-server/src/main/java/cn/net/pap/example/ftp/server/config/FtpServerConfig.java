@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import java.io.File;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -99,6 +100,23 @@ public class FtpServerConfig {
         // 创建并返回FTP服务器
         FtpServer server = serverFactory.createServer();
         server.start();
+        int boxWidth = 60; // 统一设置框的宽度
+        System.out.println("┌" + "─".repeat(boxWidth - 2) + "┐");
+        System.out.printf ("│ %-56s │%n", "FTP Server Configuration");
+        System.out.printf ("│ Port: %-49s │%n", port);
+        System.out.printf ("│ Connection Rate Limit: %-38s │%n", connectRateLimit);
+        System.out.printf ("│ Character Encoding: %-42s │%n", Charset.defaultCharset().displayName());
+        System.out.println("│" + "─".repeat(boxWidth - 2) + "│");
+        System.out.printf ("│ %-56s │%n", "User Information");
+
+        for (int i = 0; i < users.size(); i++) {
+            FtpUserProperties userProp = users.get(i);
+            System.out.println("│" + "─".repeat(boxWidth - 2) + "│");
+            System.out.printf("│ Username: %-46s │%n", userProp.getUsername());
+            System.out.printf("│ Home Directory: %-41s │%n", userProp.getHomeDirectory());
+        }
+
+        System.out.println("└" + "─".repeat(boxWidth - 2) + "┘");
         return server;
     }
 
