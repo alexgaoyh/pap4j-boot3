@@ -12,7 +12,14 @@ import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -89,13 +96,13 @@ public class WebClientTest {
                     latch.countDown();
                 })
                 .subscribe(
-                    result -> {
-                        System.out.println("成功: " + result);
-                    },
-                    error -> {
-                        // 显式错误处理
-                        System.err.println("订阅时发生错误: " + error.getMessage());
-                    }
+                        result -> {
+                            System.out.println("成功: " + result);
+                        },
+                        error -> {
+                            // 显式错误处理
+                            System.err.println("订阅时发生错误: " + error.getMessage());
+                        }
                 );
         System.out.println("主线程执行中!");
         boolean await = latch.await(10, TimeUnit.SECONDS);
@@ -132,7 +139,7 @@ public class WebClientTest {
                                 } else {
                                     errorCount.incrementAndGet();
                                 }
-                                if((finalI+1) % 100 == 0) {
+                                if ((finalI + 1) % 100 == 0) {
                                     System.out.println(finalI + "次已执行");
                                 }
                             })
@@ -229,6 +236,55 @@ public class WebClientTest {
         byte[] imageBytes = Files.readAllBytes(Paths.get(imagePath));
         String base64Image = java.util.Base64.getEncoder().encodeToString(imageBytes);
         return base64Image;
+    }
+
+    /**
+     *     @GetMapping("/first")
+     *     public String first(HttpServletResponse resp) throws IOException {
+     *         Cookie userCookie = new Cookie("username", "alexgaoyh");
+     *         userCookie.setMaxAge(24 * 60 * 60); // 1天
+     *         userCookie.setPath("/");
+     *         Cookie tokenCookie = new Cookie("token", "pap.net.cn");
+     *         tokenCookie.setHttpOnly(true);
+     *         tokenCookie.setMaxAge(30 * 60); // 30分钟
+     *         tokenCookie.setPath("/");
+     *         resp.addCookie(userCookie);
+     *         resp.addCookie(tokenCookie);
+     *         return "success";
+     *     }
+     *
+     *     @GetMapping("/second")
+     *     public String second(HttpServletRequest request) {
+     *         String resultStr = "";
+     *         Cookie[] cookies = request.getCookies();
+     *         if(cookies != null) {
+     *             for(Cookie cookie : cookies) {
+     *                 resultStr = resultStr + cookie.getName().toString() + " : " + cookie.getValue().toString() + " ; ";
+     *             }
+     *         }
+     *         return resultStr;
+     *     }
+     * @throws Exception
+     */
+    @Test
+    public void httpClientCookieTest() throws Exception {
+        // CookieManager负责存储与匹配Cookie,它是Java提供的标准实现,类似于浏览器的“Cookie 存储”.当HttpClient收到响应时,它会查看是否有Set-Cookie.如果有就调用 CookieManager的put()方法把它保存。
+        CookieManager cookieManager = new CookieManager();
+        cookieManager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        CookieHandler.setDefault(cookieManager);
+
+        // 构建 HttpClient 并绑定 Cookie 管理器
+        HttpClient client = HttpClient.newBuilder().cookieHandler(cookieManager).build();
+
+        // 第一次请求：写入 cookie
+        HttpRequest request1 = HttpRequest.newBuilder().uri(URI.create("http://localhost:30000/first")).GET().build();
+        HttpResponse<String> response1 = client.send(request1, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response 1: " + response1.body());
+
+        // 第二次请求：自动带上 cookie
+        HttpRequest request2 = HttpRequest.newBuilder().uri(URI.create("http://localhost:30000/second")).GET().build();
+        HttpResponse<String> response2 = client.send(request2, HttpResponse.BodyHandlers.ofString());
+        System.out.println("Response 2: " + response2.body());
     }
 
 
