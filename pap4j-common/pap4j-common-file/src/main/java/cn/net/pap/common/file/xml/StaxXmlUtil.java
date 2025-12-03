@@ -18,9 +18,13 @@ public class StaxXmlUtil {
      */
     public static List<String> readChildrenXmlByStax(String xmlText, String nodeName) {
         List<String> result = new ArrayList<>();
-        try {
+        try (StringReader sr = new StringReader(xmlText)) {
             XMLInputFactory factory = XMLInputFactory.newInstance();
-            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlText));
+            // 优化：合并连续文本事件、关闭命名空间支持
+            factory.setProperty(XMLInputFactory.IS_COALESCING, true);
+            factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, false);
+
+            XMLStreamReader reader = factory.createXMLStreamReader(sr);
 
             StringBuilder sb = null;
             int depth = 0; // 用于记录嵌套层级
@@ -30,7 +34,7 @@ public class StaxXmlUtil {
 
                 if (event == XMLStreamConstants.START_ELEMENT && nodeName.equals(reader.getLocalName())) {
                     // 找到目标节点
-                    sb = new StringBuilder(1024 * 1024); // 预分配 1MB
+                    sb = new StringBuilder(1024 * 64); // 初始 64KB，减少内存浪费
                     depth = 1;
                     sb.append("<").append(nodeName);
                     for (int i = 0; i < reader.getAttributeCount(); i++) {
