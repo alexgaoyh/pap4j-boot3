@@ -9,6 +9,16 @@ import java.util.List;
 
 public class StaxXmlUtil {
 
+    // 将 Factory 设为静态单例，避免每次调用方法时重复创建的巨大开销. XMLInputFactory 是线程安全的（大部分实现中），或者至少创建 Reader 的方法是线程安全的
+    private static final XMLInputFactory factory;
+
+    static {
+        factory = XMLInputFactory.newInstance();
+        // 优化配置：合并连续文本、关闭命名空间（对应原逻辑）
+        factory.setProperty(XMLInputFactory.IS_COALESCING, true);
+        factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, false);
+    }
+
     /**
      * 获取指定节点下的所有子节点 XML 文本
      *
@@ -19,10 +29,6 @@ public class StaxXmlUtil {
     public static List<String> readChildrenXmlByStax(String xmlText, String nodeName) {
         List<String> result = new ArrayList<>();
         try (StringReader sr = new StringReader(xmlText)) {
-            XMLInputFactory factory = XMLInputFactory.newInstance();
-            // 优化：合并连续文本事件、关闭命名空间支持
-            factory.setProperty(XMLInputFactory.IS_COALESCING, true);
-            factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, false);
 
             XMLStreamReader reader = factory.createXMLStreamReader(sr);
 
@@ -34,7 +40,7 @@ public class StaxXmlUtil {
 
                 if (event == XMLStreamConstants.START_ELEMENT && nodeName.equals(reader.getLocalName())) {
                     // 找到目标节点
-                    sb = new StringBuilder(1024 * 64); // 初始 64KB，减少内存浪费
+                    sb = new StringBuilder(1024 * 4); // 初始 4KB，减少内存浪费
                     depth = 1;
                     sb.append("<").append(nodeName);
                     for (int i = 0; i < reader.getAttributeCount(); i++) {
