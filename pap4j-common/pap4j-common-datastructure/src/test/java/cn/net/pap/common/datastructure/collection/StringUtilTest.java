@@ -82,4 +82,19 @@ public class StringUtilTest {
         assertTrue(input.trim().equals(""));
     }
 
+    @Test
+    public void stringBuilderTest() {
+        for (char b1 = '\u4E00'; b1 <= '\u9FA5'; b1++) {
+            // 对比初始化不同的 capacity
+            // StringBuilder builder = new StringBuilder();
+            StringBuilder builder = new StringBuilder(1024 * 1024);
+            for (char b2 = '\u4E00'; b2 <= '\u9FA5'; b2++) {
+                if(!String.valueOf(b1).equals(String.valueOf(b2))) {
+                    builder.append(String.valueOf(b1));
+                    builder.append(String.valueOf(b2));
+                }
+            }
+        }
+    }
+
 }
