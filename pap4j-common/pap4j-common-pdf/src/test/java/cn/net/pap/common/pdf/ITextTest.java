@@ -258,7 +258,7 @@ public class ITextTest {
                         } finally {
                             writer.dispose();
                         }
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                 }
@@ -429,7 +429,7 @@ public class ITextTest {
         }
     }
 
-    public static BufferedImage mergeImagesByPosition(List<ImageRenderInfo> imageInfos, float pageWidthPt, float pageHeightPt, int dpi) throws IOException {
+    public static BufferedImage mergeImagesByPosition(List<ImageRenderInfo> imageInfos, float pageWidthPt, float pageHeightPt, int dpi) throws Exception {
         float scale = dpi / 72f; // 1pt = 1/72 inch
 
         int canvasWidth = Math.round(pageWidthPt * scale);
@@ -499,7 +499,7 @@ public class ITextTest {
      * @param renderInfo
      * @return
      */
-    public static BufferedImage extractJBIG2AsBufferedImageWithTransparency(ImageRenderInfo renderInfo) {
+    public static BufferedImage extractJBIG2AsBufferedImageWithTransparency(ImageRenderInfo renderInfo) throws Exception {
         try {
             PdfImageObject image = renderInfo.getImage();
             if (image == null) return null;
@@ -550,9 +550,9 @@ public class ITextTest {
 
             return img;
 
-        } catch (IOException e) {
-            e.printStackTrace();
-            return null;
+        } catch (Exception e) {
+            // e.printStackTrace();
+            throw new Exception(e);
         }
     }
 
