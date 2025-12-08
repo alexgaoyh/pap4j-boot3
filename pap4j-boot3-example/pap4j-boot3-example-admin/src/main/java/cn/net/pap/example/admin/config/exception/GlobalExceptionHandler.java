@@ -33,8 +33,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<Map<String, Object>> handlerMethodValidationException(HandlerMethodValidationException ex) {
+        String message = "参数校验异常";
+        if(ex.getAllErrors().size() > 0 && ex.getAllErrors().size() == 1) {
+            message = ex.getAllErrors().get(0).getDefaultMessage();
+        }
         HashMap<String, Object> map = new HashMap<>();
-        map.put("err_msg", "参数校验异常");
+        map.put("err_msg", message);
         map.put("code", HttpStatus.BAD_REQUEST);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(map);
     }

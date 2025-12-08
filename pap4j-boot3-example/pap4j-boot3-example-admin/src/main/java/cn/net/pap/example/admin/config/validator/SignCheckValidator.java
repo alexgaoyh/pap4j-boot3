@@ -31,7 +31,12 @@ public class SignCheckValidator implements ConstraintValidator<SignCheck, String
             return false;
         }
         try {
-            return TimestampCryptoUtil.isValid(signFieldValue, timeTolerance);
+            boolean valid = TimestampCryptoUtil.isValid(signFieldValue, timeTolerance);
+            if(!valid) {
+                context.disableDefaultConstraintViolation();
+                context.buildConstraintViolationWithTemplate("签名过期").addPropertyNode("sign").addConstraintViolation();
+            }
+            return valid;
         } catch (Exception e) {
             // 记录异常日志，但校验失败
             return false;
