@@ -1,9 +1,11 @@
 package cn.net.pap.example.admin.controller;
 
 import cn.net.pap.example.admin.config.jackson.view.JacksonViews;
-import cn.net.pap.example.admin.controller.dto.ExampleAdminDTO;
+import cn.net.pap.example.admin.config.validator.SignCheck;
 import cn.net.pap.example.admin.config.validator.dto.ValidationDTO;
+import cn.net.pap.example.admin.controller.dto.ExampleAdminDTO;
 import cn.net.pap.example.admin.dto.GitCommitInfo;
+import cn.net.pap.example.admin.util.TimestampCryptoUtil;
 import cn.net.pap.example.bean.config.dto.ExampleBeanDTO;
 import cn.net.pap.example.user.config.dto.ExampleUserDTO;
 import com.fasterxml.jackson.annotation.JsonView;
@@ -16,9 +18,15 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.io.IOException;
@@ -42,7 +50,7 @@ public class BeanController {
     @Autowired
     private ExampleUserDTO exampleUserDTO;
 
-    @GetMapping(value = "gitCommitInfo", produces="application/json;charset=UTF-8")
+    @GetMapping(value = "gitCommitInfo", produces = "application/json;charset=UTF-8")
     @ResponseBody
     public GitCommitInfo gitCommitInfo() throws Exception {
         try {
@@ -56,7 +64,7 @@ public class BeanController {
 
     }
 
-    @GetMapping(value = "checkFinal", produces="application/json;charset=UTF-8")
+    @GetMapping(value = "checkFinal", produces = "application/json;charset=UTF-8")
     public String checkFinal() throws Exception {
         try {
             ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
@@ -81,6 +89,22 @@ public class BeanController {
         return result;
     }
 
+    @GetMapping("validation-sign1")
+    public Map<String, String> validationSign() {
+        Map<String, String> result = new HashMap<>();
+        result.put("code", "200");
+        result.put("err_msg", TimestampCryptoUtil.encryptNow());
+        return result;
+    }
+
+    @GetMapping("validation-sign2")
+    public Map<String, String> validationSign(@SignCheck(timeTolerance = 6001) @RequestParam(required = false) String sign) {
+        Map<String, String> result = new HashMap<>();
+        result.put("code", "200");
+        result.put("err_msg", "");
+        return result;
+    }
+
     @GetMapping("bean")
     public ExampleBeanDTO exampleBeanDTO() {
         return exampleBeanDTO;
@@ -99,7 +123,7 @@ public class BeanController {
         return exampleAdminDTO;
     }
 
-    @GetMapping(value = "dto2", produces="application/json;charset=UTF-8")
+    @GetMapping(value = "dto2", produces = "application/json;charset=UTF-8")
     public String exampleAdminDTO2() throws Exception {
         ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
         exampleAdminDTO.setCode(0);
@@ -127,7 +151,7 @@ public class BeanController {
         return exampleAdminDTO;
     }
 
-    @GetMapping(value = "dto5", produces="application/json;charset=UTF-8")
+    @GetMapping(value = "dto5", produces = "application/json;charset=UTF-8")
     public String exampleAdminDTO5() throws Exception {
         ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
         exampleAdminDTO.setCode(0);
@@ -137,7 +161,7 @@ public class BeanController {
         return objectMapper.writerWithView(JacksonViews.Basic.class).writeValueAsString(exampleAdminDTO);
     }
 
-    @GetMapping(value = "dto6", produces="application/json;charset=UTF-8")
+    @GetMapping(value = "dto6", produces = "application/json;charset=UTF-8")
     public String exampleAdminDTO6() throws Exception {
         ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
         exampleAdminDTO.setCode(0);
@@ -149,6 +173,7 @@ public class BeanController {
 
     /**
      * /getArray?arrays=1&arrays=2
+     *
      * @param arrays
      * @return
      * @throws IOException
@@ -160,7 +185,7 @@ public class BeanController {
 
     @GetMapping(value = "/test-stream", produces = "text/event-stream")
     @CrossOrigin
-    public SseEmitter conversation(HttpServletRequest request)  {
+    public SseEmitter conversation(HttpServletRequest request) {
         final SseEmitter emitter = new SseEmitter();
         new Thread(() -> {
             try {
@@ -168,7 +193,7 @@ public class BeanController {
                     try {
                         // 模拟某些耗时操作
                         Thread.sleep(1000L);
-                        emitter.send("这是第" + i +"次往服务端发送内容");
+                        emitter.send("这是第" + i + "次往服务端发送内容");
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
@@ -185,6 +210,7 @@ public class BeanController {
 
     /**
      * stream string
+     *
      * @param response
      * @throws IOException
      */
@@ -215,6 +241,7 @@ public class BeanController {
 
     /**
      * stream string with http request
+     *
      * @param response
      * @throws IOException
      */
