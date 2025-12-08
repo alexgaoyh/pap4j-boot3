@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<Map<String, Object>> handlerMethodValidationException(HandlerMethodValidationException ex) {
         String message = "参数校验异常";
-        if(ex.getAllErrors().size() > 0 && ex.getAllErrors().size() == 1) {
+        if(ex.getAllErrors().size() > 0 && ex.getAllErrors().size() == 1 && ex.getAllErrors().get(0) instanceof FieldError) {
             message = ex.getAllErrors().get(0).getDefaultMessage();
         }
         HashMap<String, Object> map = new HashMap<>();
