@@ -57,8 +57,13 @@ public class FtpServerConfig {
         this.users = users;
     }
 
+    @Bean(destroyMethod = "shutdown")
+    public RateLimitFtplet rateLimitFtplet() {
+        return new RateLimitFtplet(connectRateLimit);
+    }
+
     @Bean
-    public FtpServer ftpServer() throws FtpException {
+    public FtpServer ftpServer(RateLimitFtplet rateLimitFtplet) throws FtpException {
         FtpServerFactory serverFactory = new FtpServerFactory();
 
         // 配置监听器
@@ -67,7 +72,7 @@ public class FtpServerConfig {
         serverFactory.addListener("default", listenerFactory.createListener());
 
         // 流控的功能
-        serverFactory.getFtplets().put("rateLimit", new RateLimitFtplet(connectRateLimit));
+        serverFactory.getFtplets().put("rateLimit", rateLimitFtplet);
 
         // 创建用户管理器
         PropertiesUserManagerFactory userManagerFactory = new PropertiesUserManagerFactory();
