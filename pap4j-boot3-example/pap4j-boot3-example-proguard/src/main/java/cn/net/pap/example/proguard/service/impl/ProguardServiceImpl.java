@@ -25,6 +25,7 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -299,31 +300,69 @@ public class ProguardServiceImpl implements IProguardService {
 
     @Override
     public Proguard timeout(Proguard proguard, Long timeMS) {
-        Future<Proguard> future = Executors.newCachedThreadPool().submit(() ->
-                transactionTemplate.execute(status -> {
-                    try {
-                        proguard.setProguardId(1L);
-                        proguardRepository.save(proguard);
-
-                        Thread.sleep(timeMS);
-
-                        proguard.setProguardId(2L);
-                        proguardRepository.save(proguard);
-                        return proguard;
-
-                    } catch (InterruptedException e) {
-                        status.setRollbackOnly();
-                        throw new RuntimeException("操作被中断", e);
-                    }
-                })
-        );
+        ExecutorService executor = Executors.newCachedThreadPool();
         try {
-            return future.get(3, TimeUnit.SECONDS);
-        } catch (TimeoutException e) {
-            future.cancel(true);
-            throw new RuntimeException("执行超时，任务被取消", e);
-        } catch (Exception e) {
-            throw new RuntimeException("任务执行异常", e);
+            Future<Proguard> future = executor.submit(() ->
+                    transactionTemplate.execute(status -> {
+                        try {
+                            proguard.setProguardId(1L);
+                            proguardRepository.save(proguard);
+
+                            Thread.sleep(timeMS);
+
+                            proguard.setProguardId(2L);
+                            proguardRepository.save(proguard);
+                            return proguard;
+
+                        } catch (InterruptedException e) {
+                            status.setRollbackOnly();
+                            // 重新抛出以触发回滚，并标记线程中断状态
+                            Thread.currentThread().interrupt();
+                            throw new RuntimeException("操作被中断", e);
+                        } finally {
+                            if (Thread.currentThread().isInterrupted()) {
+                                logger.warn("检测到中断位：正在工作线程中执行超时后的收尾工作...: {}, {}", proguard.toString(), timeMS);
+                            }
+                        }
+                    })
+            );
+            try {
+                return future.get(3, TimeUnit.SECONDS);
+            } catch (TimeoutException e) {
+                future.cancel(true);
+                throw new RuntimeException("执行超时，任务被取消", e);
+            } catch (Exception e) {
+                throw new RuntimeException("任务执行异常", e);
+            }
+        } finally {
+            shutdownExecutor(executor);
         }
     }
+
+    /**
+     * 安全关闭线程池
+     */
+    private void shutdownExecutor(ExecutorService executor) {
+        if (executor == null) {
+            return;
+        }
+        executor.shutdown(); // 不再接受新任务
+        try {
+            // 等待现有任务完成
+            if (!executor.awaitTermination(120, TimeUnit.SECONDS)) {
+                // 超时后强制关闭
+                executor.shutdownNow();
+                // 再次等待
+                if (!executor.awaitTermination(120, TimeUnit.SECONDS)) {
+                    logger.warn("线程池未能正常关闭");
+                }
+            }
+        } catch (InterruptedException e) {
+            // 如果等待过程中被中断，也强制关闭
+            executor.shutdownNow();
+            // 保持中断状态
+            Thread.currentThread().interrupt();
+        }
+    }
+
 }
