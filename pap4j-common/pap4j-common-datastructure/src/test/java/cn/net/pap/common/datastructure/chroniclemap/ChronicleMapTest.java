@@ -171,7 +171,7 @@ public class ChronicleMapTest {
                 .createPersistedTo(new File("D:/chromicle_map_customer_batch.dat"))) {
 
             // 2. 初始化 ChronicleQueue (存储 ValueDataNeighborsDTO)
-            try (ChronicleQueue queue = SingleChronicleQueueBuilder.builder(new File("D:/chromicle_queue_customer_batch.dat"), WireType.BINARY).build()) {
+            try (ChronicleQueue queue = SingleChronicleQueueBuilder.builder(new File("D:/chromicle_queue_customer_batch.dat"), WireType.BINARY).blockSize(1024*64).build()) {
 
                 // --- 3. 批量写入数据到 Queue 和 Map ---
                 System.out.println("--- 3. 开始批量写入数据 ---");
