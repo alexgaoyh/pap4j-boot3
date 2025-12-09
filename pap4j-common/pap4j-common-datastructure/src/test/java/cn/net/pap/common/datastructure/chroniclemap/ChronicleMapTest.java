@@ -1,6 +1,13 @@
 package cn.net.pap.common.datastructure.chroniclemap;
 
+import cn.net.pap.common.datastructure.chroniclemap.dto.ValueDataDTO;
+import cn.net.pap.common.datastructure.chroniclemap.dto.ValueDataNeighborsDTO;
 import net.openhft.chronicle.map.ChronicleMap;
+import net.openhft.chronicle.queue.ChronicleQueue;
+import net.openhft.chronicle.queue.ExcerptAppender;
+import net.openhft.chronicle.queue.ExcerptTailer;
+import net.openhft.chronicle.queue.impl.single.SingleChronicleQueueBuilder;
+import net.openhft.chronicle.wire.WireType;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -10,6 +17,8 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -143,6 +152,102 @@ public class ChronicleMapTest {
 
             // 4. 验证磁盘占用
             System.out.println("磁盘映射文件大小: " + (file.length() / 1024 / 1024) + " MB");
+        }
+    }
+
+    // @Test
+    void customerValueBatchTest() throws IOException {
+        // 定义要写入的数据条目数
+        final int ENTRY_COUNT = 5;
+        // 存储写入时的邻居索引，用于稍后的批量验证
+        final Map<Long, Long> expectedNeighborsIndices = new HashMap<>();
+
+        // 1. 初始化 ChronicleMap (存储 ValueDataDTO)
+        try (ChronicleMap<Long, ValueDataDTO> map = ChronicleMap
+                .of(Long.class, ValueDataDTO.class)
+                .name("value-data-map-batch")
+                .averageValue(new ValueDataDTO())
+                .entries(ENTRY_COUNT * 2) // 预期条目数
+                .createPersistedTo(new File("D:/chromicle_map_customer_batch.dat"))) {
+
+            // 2. 初始化 ChronicleQueue (存储 ValueDataNeighborsDTO)
+            try (ChronicleQueue queue = SingleChronicleQueueBuilder.builder(new File("D:/chromicle_queue_customer_batch.dat"), WireType.BINARY).build()) {
+
+                // --- 3. 批量写入数据到 Queue 和 Map ---
+                System.out.println("--- 3. 开始批量写入数据 ---");
+
+                for (long i = 1; i <= ENTRY_COUNT; i++) {
+                    // 3.1 准备邻居数据 (Neighbors Data)
+                    ValueDataNeighborsDTO neighborsData = new ValueDataNeighborsDTO();
+                    // 邻居 ID 根据主键 i 偏移
+                    neighborsData.neighbors = new long[]{1000L + i, 2000L + i, 3000L + i};
+
+                    // 3.2 写入邻居数据到 Queue
+                    ExcerptAppender appender = queue.createAppender();
+                    // 记录写入时的索引
+                    appender.writeBytes(out -> neighborsData.writeMarshallable(out));
+                    long neighborsIndex = appender.lastIndexAppended();
+
+                    // 存储 Key 和 索引，用于后续验证
+                    expectedNeighborsIndices.put(i, neighborsIndex);
+
+                    // 3.3 准备主数据 (Main Data)
+                    Long primaryKey = i;
+                    ValueDataDTO mainData = new ValueDataDTO();
+                    mainData.label = (int) (i * 10); // 标签根据 i 变化
+                    mainData.weight = i * 0.1;      // 权重根据 i 变化
+                    mainData.timestamp = System.currentTimeMillis();
+                    // 设置 Queue 索引
+                    mainData.neighborsIndex = neighborsIndex;
+
+                    // 3.4 写入主数据到 Map
+                    map.put(primaryKey, mainData);
+
+                    System.out.printf("写入数据: Key=%d, Label=%d, QueueIndex=%d%n", primaryKey, mainData.label, neighborsIndex);
+                }
+
+                // --- 4. 批量读取数据并验证 ---
+                System.out.println("\n--- 4. 开始批量读取和验证数据 ---");
+
+                ExcerptTailer tailer = queue.createTailer();
+
+                for (long i = 1; i <= ENTRY_COUNT; i++) {
+                    Long primaryKey = i;
+
+                    // 4.1 从 Map 读取主数据 (Main Data)
+                    ValueDataDTO retrievedMainData = map.get(primaryKey);
+
+                    // 验证 Map 中的主数据
+                    assertNotNull(retrievedMainData, "Map中应能读取到 Key=" + primaryKey + " 的主数据");
+                    assertEquals((int) (i * 10), retrievedMainData.label, "Label 字段值应匹配");
+                    assertEquals(i * 0.1, retrievedMainData.weight, 0.001, "Weight 字段值应匹配");
+
+                    // 获取并验证索引
+                    long expectedIndex = expectedNeighborsIndices.get(primaryKey);
+                    assertEquals(expectedIndex, retrievedMainData.neighborsIndex, "NeighborsIndex 索引值应匹配");
+
+                    // 4.2 使用索引从 Queue 读取关联的邻居数据 (Neighbors Data)
+                    long retrievedNeighborsIndex = retrievedMainData.neighborsIndex;
+
+                    // 移动到指定的索引位置
+                    boolean success = tailer.moveToIndex(retrievedNeighborsIndex);
+                    assertEquals(true, success, "应能成功移动到 neighborsIndex=" + retrievedNeighborsIndex + " 的索引位置");
+
+                    ValueDataNeighborsDTO retrievedNeighborsData = new ValueDataNeighborsDTO();
+                    // 读取数据
+                    tailer.readBytes(in -> retrievedNeighborsData.readMarshallable(in));
+
+                    // 验证邻居数据
+                    long[] expectedNeighbors = new long[]{1000L + i, 2000L + i, 3000L + i};
+                    assertArrayEquals(expectedNeighbors, retrievedNeighborsData.neighbors, "Neighbors 数组内容应匹配");
+
+                    System.out.printf("成功验证 Key=%d, Label=%d, Neighbors=%s%n",
+                            primaryKey,
+                            retrievedMainData.label,
+                            java.util.Arrays.toString(retrievedNeighborsData.neighbors));
+                }
+                System.out.println("--- 所有数据验证成功！ ---");
+            }
         }
     }
 
