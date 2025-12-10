@@ -3,6 +3,9 @@ package cn.net.pap.common.jsonorm;
 import cn.net.pap.common.jsonorm.dto.HeadDTO;
 import cn.net.pap.common.jsonorm.util.JacksonUtil;
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -10,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.PropertyNamingStrategy;
 import com.fasterxml.jackson.databind.cfg.MapperConfig;
 import com.fasterxml.jackson.databind.introspect.AnnotatedMethod;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -185,6 +189,54 @@ public class JacksonUtilTest {
         Map<String, String> extracted = JacksonUtil.extractKeys(desktop + File.separator + "large.json", keys);
         extracted.forEach((k, v) -> System.out.println(k + " : " + v));
 
+    }
+
+    @Test
+    public void jsonParserTest1() throws Exception {
+        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
+        String filePath = desktop + File.separator + "json.json";
+        if(new File(filePath).exists()) {
+            JsonFactory factory = new JsonFactory();
+            try (JsonParser parser = factory.createParser(new File(filePath))) {
+                JsonToken token;
+                while ((token = parser.nextToken()) != null) {
+                    System.out.println("Token: " + token);
+                    System.out.println("Current name: " + parser.getCurrentName());
+                    System.out.println("Current value: " + parser.getText());
+                    System.out.println("---");
+                }
+            }
+        }
+    }
+
+    @Test
+    public void jsonParserTest2() throws Exception {
+        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
+        String filePath = desktop + File.separator + "array.json";
+        if(new File(filePath).exists()) {
+            List<JsonNode> jsonNodes = JacksonUtil.readJsonArrayRange(filePath, 0, 2);
+            jsonNodes.stream().forEach(e -> System.out.println(e.toPrettyString()));
+        }
+    }
+
+    @Test
+    public void jsonParserTest3() throws Exception {
+        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
+        String filePath = desktop + File.separator + "json.json";
+        if(new File(filePath).exists()) {
+            List<JsonNode> jsonNodes = JacksonUtil.readJsonArrayRange(filePath, "result", 0, 2);
+            jsonNodes.stream().forEach(e -> System.out.println(e.toPrettyString()));
+        }
+    }
+
+    @Test
+    public void jsonParserTest4() throws Exception {
+        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
+        String filePath = desktop + File.separator + "json.json";
+        if(new File(filePath).exists()) {
+            ObjectNode objectNode = JacksonUtil.readObjectWithArraySlice(filePath, "result", 0, 2);
+            System.out.println(objectNode.toPrettyString());
+        }
     }
 
 
