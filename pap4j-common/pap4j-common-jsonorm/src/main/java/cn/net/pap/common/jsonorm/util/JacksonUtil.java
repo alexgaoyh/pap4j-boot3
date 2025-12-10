@@ -318,31 +318,18 @@ public class JacksonUtil {
             while (true) {
                 JsonToken token = parser.nextToken();
                 if (token == null || token == JsonToken.END_ARRAY) {
-                    break; // 数组结束
+                    break;
                 }
-                // 处理对象或数组的元素
-                if (token == JsonToken.START_OBJECT || token == JsonToken.START_ARRAY) {
-                    JsonNode node = objectMapper.readTree(parser);
-                    // startIndex ≤ index < endIndex
-                    if (index >= startIndex && index < endIndex) {
-                        result.add(node);
-                    }
-                    if (index >= endIndex) {
-                        break; // 已读完指定范围
-                    }
-                    index++;
+
+                JsonNode node = objectMapper.readTree(parser);
+
+                if (index >= startIndex && index < endIndex) {
+                    result.add(node);
                 }
-                // 处理简单值（如字符串、数字等）
-                else {
-                    JsonNode node = objectMapper.readTree(parser);
-                    if (index >= startIndex && index < endIndex) {
-                        result.add(node);
-                    }
-                    if (index >= endIndex) {
-                        break;
-                    }
-                    index++;
+                if (index >= endIndex) {
+                    break;
                 }
+                index++;
             }
         }
         return result;
@@ -363,7 +350,6 @@ public class JacksonUtil {
 
         JsonFactory factory = new JsonFactory();
         try (JsonParser parser = factory.createParser(new File(filePath))) {
-            int depth = 0;
             int pathIndex = 0;
 
             // 1. 扫描 JSON，找到指定数组字段
@@ -376,11 +362,6 @@ public class JacksonUtil {
                         // 如果已经到路径末尾，且字段值是数组，则进入读取阶段
                         if (pathIndex == path.length - 1 && parser.getCurrentToken() == JsonToken.START_ARRAY) {
                             return readArrayRangeCore(parser, startIndex, endIndex);
-                        }
-                        // 否则进入下一个对象层
-                        if (parser.getCurrentToken() == JsonToken.START_OBJECT) {
-                            pathIndex++;
-                            continue;
                         }
                     }
                 }
