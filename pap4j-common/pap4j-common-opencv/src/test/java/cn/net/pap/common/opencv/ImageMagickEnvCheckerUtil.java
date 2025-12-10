@@ -146,6 +146,73 @@ public class ImageMagickEnvCheckerUtil {
 
     // jpg 转换的时候，需要区分 基线JPEG 和 渐进式JPEG(magick input.jpg -interlace Plane output.jpg)
 
+    // 生成一个黄色背景，然后在左上角添加一行文字  A1图像  600DPI
+    // magick -size 14031x19866 -density 600 xc:yellow -gravity NorthWest -pointsize 120 -annotate +100+100 "A1 Chart (600 DPI)" a1_600dpi_with_text.jpg
+
+    // 左旋90度
+    // magick input.jpg -rotate -90 output.jpg
+
+    // 右旋90度
+    // magick input.jpg -rotate 90 output.jpg
+
+    // 左微旋 (逆时针旋转5度)
+    // magick input.jpg -rotate -5 output.jpg
+
+    // 右微旋 (顺时针旋转5度)
+    // magick input.jpg -rotate 5 output.jpg
+
+    // 裁剪 (裁剪为 400x300 大小，从坐标 (100,50) 开始)
+    // magick input.jpg -crop 400x300+100+50 output.jpg
+
+    // 去除区域内 (移除 200x200 区域，从 (50,50) 开始，用白色填充)
+    // magick input.jpg -fill white -draw "rectangle 50,50 250,250" output.jpg
+
+    // 去除区域外 （只有矩形区域 100,100-300,300 内的内容保留，其他区域变为白色）
+    // magick input.jpg ( +clone -fill black -colorize 100 -fill white -draw "rectangle 100,100 300,300" ) -alpha off -compose copy_opacity -composite -background white -alpha remove output.jpg
+
+    // 反色
+    // magick input.jpg -negate output.jpg
+
+    // 色深 (增加对比度，使颜色更浓)
+    // magick input.jpg -level 0%,100%,1.2 output.jpg
+
+    // 色浅 (降低对比度，使颜色更淡)
+    // magick input.jpg -level 0%,100%,0.8 output.jpg
+
+    // 锐化
+    // magick input.jpg -sharpen 0x1.0 output.jpg
+
+    // 柔化 (高斯模糊)
+    // magick input.jpg -blur 0x1.0 output.jpg
+
+    // 图像去噪 (使用非局部均值降噪)
+    // magick input.jpg -statistic Nonpeak 3 output.jpg
+
+    // 去黑边 (裁剪纯黑色边框)
+    // magick input.jpg -bordercolor black -border 1x1 -fuzz 5% -trim output.jpg
+
+    // 去边 (裁剪所有纯色边框)
+    // magick input.jpg -trim output.jpg
+
+    // 左白边/右白边 (为图像添加白色边框，这里以左白边为例，宽度10像素)
+    // magick input.jpg -bordercolor white -border 10x0 output.jpg
+    // magick input.jpg -gravity east -background white -extent 110%x100% output.jpg
+
+    // 背景色平滑 (将背景替换为平均色)
+    // magick input.jpg -background "%[pixel:p{0,0}]" -flatten output.jpg
+
+    // 过滤底色 (去除接近白色的背景，使其透明)
+    // magick input.jpg -fuzz 10% -transparent white output.jpg
+
+    // 补齐图像 (将图像扩展为 800x600，用白色填充缺失部分)
+    // magick input.jpg -background white -gravity center -extent 800x600 output.jpg
+
+    // 字深 (通过提高对比度使文字更深)
+    // magick input.jpg -level 60%,100%,1.5 output.jpg
+
+    // 字浅 (通过降低对比度使文字更浅)
+    // magick input.jpg +level 60%,100%,1.5 output.jpg
+
     // @Test
     public void streamTest() throws IOException, InterruptedException {
         ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
