@@ -887,6 +887,7 @@ public class OpenCVUtils {
     /**
      * 这个方法，传入的直接是已经生成边缘的图像
      * 可以配合 ImageMagick 生成这个边缘图： magick 20.jpg -canny  0x1+10%+30% edges.png
+     * 角度通常是 顺时针为正，逆时针为负
      * @param inputPath
      * @return
      */
@@ -912,15 +913,24 @@ public class OpenCVUtils {
             double x1 = line[0], y1 = line[1], x2 = line[2], y2 = line[3];
             double angle = Math.toDegrees(Math.atan2(y2 - y1, x2 - x1));
             // TODO 过滤接近垂直的线（避免90°干扰）, 这个值可以根据实际情况做不同的调整
+            // todo 这里的判断也不对 要查一下， 是不是默认返回的都是小于0的比较正确
             if (Math.abs(angle) < 88) {
                 angles.add(angle);
             }
         }
 
-        // 5. 输出倾斜角度（中值）
+        // 5. 输出倾斜角度（中值）todo 这里输出中值的原因是什么？ 没道理
         if (!angles.isEmpty()) {
             angles.sort(Double::compare);
             double medianAngle = angles.get(angles.size() / 2);
+
+            // todo 理解一下 todo 这里要根据图像的宽高，哪个是短边，做一个额外的处理， 长边和短边，对于角度的理解是不同的
+            int width = src.width();
+            int height = src.height();
+            if(width < height) {
+                medianAngle = medianAngle + 90;
+            }
+
             return medianAngle;
         } else {
             return null;
