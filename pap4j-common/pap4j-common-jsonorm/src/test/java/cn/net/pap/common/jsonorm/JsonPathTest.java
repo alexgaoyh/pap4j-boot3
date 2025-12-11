@@ -483,7 +483,10 @@ public class JsonPathTest {
             LinkedHashMap<String, Object> jsonObject = (LinkedHashMap<String, Object>) json;
             for (Map.Entry<String, Object> entry : jsonObject.entrySet()) {
                 String currentPath = parentPath.isEmpty() ? entry.getKey() : parentPath + "." + entry.getKey();
-                fieldNames.add(currentPath);
+                // 有子的给忽略掉
+                if(!(entry.getValue() instanceof JSONArray) && !(entry.getValue() instanceof LinkedHashMap)) {
+                    fieldNames.add(currentPath);
+                }
                 getAllFieldNames(entry.getValue(), currentPath, fieldNames);
             }
         } else if (json instanceof JSONObject) {
