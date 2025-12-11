@@ -338,36 +338,33 @@ public class JacksonUtil {
     /**
      * 从超大 JSON 数组文件中，流式读取指定下标范围的元素 支持 根节点不是是数组，从根节点过滤
      * @param filePath
-     * @param arrayFieldPath
+     * @param fieldPath
      * @param startIndex
      * @param endIndex
      * @return
      * @throws Exception
      */
-    public static List<JsonNode> readJsonArrayRange(String filePath, String arrayFieldPath, int startIndex, int endIndex) throws Exception {
-        List<JsonNode> result = new ArrayList<>();
-        String[] path = arrayFieldPath.split("\\.");
+    public static List<JsonNode> readJsonArrayRange(String filePath, String fieldPath, int startIndex, int endIndex) throws Exception {
 
         JsonFactory factory = new JsonFactory();
         try (JsonParser parser = factory.createParser(new File(filePath))) {
-            int pathIndex = 0;
 
             // 1. 扫描 JSON，找到指定数组字段
             while (parser.nextToken() != null) {
                 JsonToken token = parser.getCurrentToken();
                 if (token == JsonToken.FIELD_NAME) {
                     String currentName = parser.getCurrentName();
-                    if (currentName.equals(path[pathIndex])) {
+                    if (currentName.equals(fieldPath)) {
                         parser.nextToken(); // 移到字段值
                         // 如果已经到路径末尾，且字段值是数组，则进入读取阶段
-                        if (pathIndex == path.length - 1 && parser.getCurrentToken() == JsonToken.START_ARRAY) {
+                        if (parser.getCurrentToken() == JsonToken.START_ARRAY) {
                             return readArrayRangeCore(parser, startIndex, endIndex);
                         }
                     }
                 }
             }
         }
-        throw new IllegalStateException("未找到数组字段：" + arrayFieldPath);
+        throw new IllegalStateException("未找到数组字段：" + fieldPath);
     }
 
     private static List<JsonNode> readArrayRangeCore(JsonParser parser, int startIndex, int endIndex) throws Exception {
