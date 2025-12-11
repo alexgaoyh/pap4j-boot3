@@ -7,8 +7,12 @@ import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationConfig;
-import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.BooleanNode;
+import com.fasterxml.jackson.databind.node.DoubleNode;
+import com.fasterxml.jackson.databind.node.IntNode;
+import com.fasterxml.jackson.databind.node.NullNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
 
@@ -337,6 +341,7 @@ public class JacksonUtil {
 
     /**
      * 从超大 JSON 数组文件中，流式读取指定下标范围的元素 支持 根节点不是是数组，从根节点过滤
+     *
      * @param filePath
      * @param fieldPath
      * @param startIndex
@@ -391,6 +396,8 @@ public class JacksonUtil {
     /**
      * 根节点是对象 其中某个字段（如 "result"）是超大数组 你要 仅分片读取数组，同时保留根对象的其他字段 返回的结果是多个 完整对象（除大数组外的字段 + 当前片段数组）
      * 根为对象，某字段是大数组。读取该数组的 [startIndex, endIndex) 切片，并保留根对象其它字段。
+     * 仅分片读取数组，同时保留根对象的其他字段， 特定字段数组部分的实现，调用前面的代码进行复用
+     *
      * @param filePath
      * @param arrayField
      * @param startIndex
@@ -398,84 +405,68 @@ public class JacksonUtil {
      * @return
      * @throws Exception
      */
-    public static ObjectNode readObjectWithArraySlice(String filePath, String arrayField, int startIndex, int endIndex ) throws Exception {
-        try (JsonParser parser = new JsonFactory().createParser(new File(filePath))) {
-            // 根对象
+    public static ObjectNode readObjectWithArraySlice(String filePath, String arrayField, int startIndex, int endIndex) throws Exception {
+        ObjectNode result = objectMapper.createObjectNode();
+
+        // ----------------------------
+        // 1. 流式解析根节点直接属性
+        // ----------------------------
+        JsonFactory factory = new JsonFactory();
+        try (JsonParser parser = factory.createParser(new File(filePath))) {
             if (parser.nextToken() != JsonToken.START_OBJECT) {
                 throw new IllegalStateException("根节点必须是 JSON 对象！");
             }
-            ObjectNode root = objectMapper.createObjectNode();
-            JsonToken token;
-            while ((token = parser.nextToken()) != JsonToken.END_OBJECT) {
-                // 只处理 FIELD_NAME，其他 token 跳过（防御性）
-                if (token != JsonToken.FIELD_NAME) {
-                    // 如果遇到非 FIELD_NAME（理论上不会），让 parser 跳过其 children 保持同步
-                    parser.skipChildren();
-                    continue;
-                }
-                String fieldName = parser.getCurrentName();
-                // 移动到字段值
-                token = parser.nextToken();
-                if (!arrayField.equals(fieldName)) {
-                    // 普通字段：读取整个值（对象/数组/简单类型都支持）
-                    JsonNode node = objectMapper.readTree(parser);
-                    root.set(fieldName, node);
-                } else {
-                    // 目标数组字段
-                    if (token != JsonToken.START_ARRAY) {
-                        throw new IllegalStateException("字段 " + arrayField + " 不是数组！");
-                    }
-                    ArrayNode slice = readArraySliceAndSkipRest(parser, startIndex, endIndex);
-                    root.set(fieldName, slice);
-                    // 此时 parser 已经位于 array 的 END_ARRAY（即数组结束）
-                    // 下一次 while 的 parser.nextToken() 会移动到下一个字段或 END_OBJECT
-                }
-            }
-            return root;
-        }
-    }
 
-    /**
-     * 从 parser 的当前位置（当前 token 是 START_ARRAY）开始，读取数组片段 [startIndex, endIndex)
-     * 并确保跳过数组中剩下的元素直到遇到 END_ARRAY，返回切片 ArrayNode。
-     */
-    private static ArrayNode readArraySliceAndSkipRest(JsonParser parser, int startIndex, int endIndex) throws Exception {
-        ArrayNode array = objectMapper.createArrayNode();
-        int index = 0;
-        // parser 当前指向的是 START_ARRAY（调用此方法前已验证）
-        JsonToken token;
-        while ((token = parser.nextToken()) != null) {
-            if (token == JsonToken.END_ARRAY) {
-                // 正常数组结束
-                break;
-            }
-            // token 是当前元素的起始 token（对象/数组/值等）
-            // 使用 readTree 来读取完整的元素值（会把整个元素消费掉）
-            JsonNode node = objectMapper.readTree(parser);
-            // 如果在目标范围内则收集
-            if (index >= startIndex && index < endIndex) {
-                array.add(node);
-            }
-            index++;
-            // 如果已经读够（index 已超出 endIndex-1），我们需要跳过数组剩余所有元素
-            if (index >= endIndex) {
-                // 跳过剩余数组元素直到遇到 END_ARRAY
-                // 注意：parser 此时位于上一个元素消费后的 token（可能是 START_OBJECT/END_OBJECT 等），
-                // 所以我们需要继续迭代 tokens，skipChildren 用于跳过结构节点的子内容。
-                while ((token = parser.nextToken()) != null) {
-                    if (token == JsonToken.END_ARRAY) {
-                        break; // 找到数组结尾，完成清理
+            while (parser.nextToken() != JsonToken.END_OBJECT) {
+                JsonToken token = parser.getCurrentToken();
+                if (token == JsonToken.FIELD_NAME) {
+                    String fieldName = parser.getCurrentName();
+                    parser.nextToken(); // 移动到字段值
+
+                    if (!fieldName.equals(arrayField)) {
+                        // 只解析根节点直接属性，复杂对象或数组直接跳过
+                        switch (parser.getCurrentToken()) {
+                            case VALUE_STRING:
+                                result.set(fieldName, new TextNode(parser.getText()));
+                                break;
+                            case VALUE_NUMBER_INT:
+                                result.set(fieldName, new IntNode(parser.getIntValue()));
+                                break;
+                            case VALUE_NUMBER_FLOAT:
+                                result.set(fieldName, new DoubleNode(parser.getDoubleValue()));
+                                break;
+                            case VALUE_TRUE:
+                                result.set(fieldName, BooleanNode.TRUE);
+                                break;
+                            case VALUE_FALSE:
+                                result.set(fieldName, BooleanNode.FALSE);
+                                break;
+                            case VALUE_NULL:
+                                result.set(fieldName, NullNode.getInstance());
+                                break;
+                            // todo maybe need handle
+                            case START_OBJECT:
+                            case START_ARRAY:
+                                parser.skipChildren(); // 根节点复杂对象/数组直接跳过
+                                break;
+                            default:
+                                parser.skipChildren();
+                        }
+                    } else {
+                        // 数组字段交给原来的方法处理， 这里直接忽略，因为下方不再使用这个 parser 对象
+                        // parser.skipChildren();
                     }
-                    // 如果碰到结构节点（对象/数组的 START），skipChildren 会跳到对应的 END
-                    if (token == JsonToken.START_OBJECT || token == JsonToken.START_ARRAY) {
-                        parser.skipChildren();
-                    }
-                    // 对于简单值 token（VALUE_STRING, VALUE_NUMBER_INT...）直接继续循环
                 }
-                break;
             }
         }
-        return array;
+
+        // ----------------------------
+        // 2. 调用原来的方法读取数组范围
+        // ----------------------------
+        List<JsonNode> arraySlice = readJsonArrayRange(filePath, arrayField, startIndex, endIndex);
+        result.set(arrayField, objectMapper.valueToTree(arraySlice));
+
+        return result;
     }
 
 
