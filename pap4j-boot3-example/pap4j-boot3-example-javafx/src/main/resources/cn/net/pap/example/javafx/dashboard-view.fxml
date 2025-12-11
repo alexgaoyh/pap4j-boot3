@@ -14,6 +14,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.paint.Color?>
 <?import javafx.scene.text.Font?>
+<?import javafx.scene.input.KeyCodeCombination?>
 
 <VBox prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cn.net.pap.example.javafx.DashboardController">
     <children>
@@ -52,7 +53,11 @@
                 <Menu mnemonicParsing="false" text="Help">
                     <items>
                         <MenuItem mnemonicParsing="false" text="About MyHelloApp" />
-                        <MenuItem mnemonicParsing="false" text="Refresh" onAction="#onHandleRefresh" />
+                        <MenuItem mnemonicParsing="false" text="Refresh" onAction="#onHandleRefresh">
+                            <accelerator>
+                                <KeyCodeCombination alt="UP" control="UP" meta="UP" shift="UP" shortcut="UP" code="F5" />
+                            </accelerator>
+                        </MenuItem>
                     </items>
                 </Menu>
             </menus>
