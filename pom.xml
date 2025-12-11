@@ -354,6 +354,22 @@
                 <version>3.5.0</version>
                 <executions>
                     <execution>
+                        <id>enforce-git-clean</id>
+                        <goals>
+                            <goal>enforce</goal>
+                        </goals>
+                        <phase>validate</phase>
+                        <configuration>
+                            <rules>
+                                <requireProperty>
+                                    <property>git.dirty</property>
+                                    <message>Git工作目录不干净！请先提交或stash所有修改。 当前要求配置设置于根目录 pom.xml</message>
+                                    <regex>false</regex>
+                                </requireProperty>
+                            </rules>
+                        </configuration>
+                    </execution>
+                    <execution>
                         <id>enforce-logging-dependencies</id>
                         <goals>
                             <goal>enforce</goal>
