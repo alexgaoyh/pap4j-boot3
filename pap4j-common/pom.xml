@@ -35,6 +35,7 @@
         <module>pap4j-common-itext7</module>
         <module>pap4j-common-datasketches</module>
         <module>pap4j-common-tesseract</module>
+        <module>pap4j-common-qlexpress</module>
     </modules>
 
     <properties>
