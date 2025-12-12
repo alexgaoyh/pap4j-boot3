@@ -349,52 +349,10 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>io.github.git-commit-id</groupId>
-                <artifactId>git-commit-id-maven-plugin</artifactId>
-                <version>9.0.2</version>
-                <executions>
-                    <execution>
-                        <id>get-the-git-infos</id>
-                        <goals>
-                            <goal>revision</goal>
-                        </goals>
-                        <phase>validate</phase>
-                    </execution>
-                </executions>
-                <configuration>
-                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
-                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
-                    <commitIdGenerationMode>full</commitIdGenerationMode>
-                </configuration>
-            </plugin>
-            <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-enforcer-plugin</artifactId>
                 <version>3.5.0</version>
-                <dependencies>
-                    <dependency>
-                        <groupId>io.github.git-commit-id</groupId>
-                        <artifactId>git-commit-id-maven-plugin</artifactId>
-                        <version>9.0.2</version>
-                    </dependency>
-                </dependencies>
                 <executions>
-                    <execution>
-                        <id>enforce-git-clean</id>
-                        <goals>
-                            <goal>enforce</goal>
-                        </goals>
-                        <phase>initialize</phase>
-                        <configuration>
-                            <rules>
-                                <requireProperty>
-                                    <property>git.dirty</property>
-                                    <message>Git工作目录不干净！请先提交或stash所有修改。 当前要求配置设置于根目录 pom.xml</message>
-                                    <regex>false</regex>
-                                </requireProperty>
-                            </rules>
-                        </configuration>
-                    </execution>
                     <execution>
                         <id>enforce-logging-dependencies</id>
                         <goals>
@@ -420,6 +378,43 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>io.github.git-commit-id</groupId>
+                <artifactId>git-commit-id-maven-plugin</artifactId>
+                <version>9.0.2</version>
+                <executions>
+                    <execution>
+                        <id>generate-git-info</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>revision</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>validate-git-state</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>validateRevision</goal>
+                        </goals>
+                        <configuration>
+                            <validationProperties>
+                                <validationProperty>
+                                    <name>当前 Git 工作区存在未提交的修改，请提交或清理后再执行构建！</name>
+                                    <value>${git.dirty}</value>
+                                    <shouldMatchTo>false</shouldMatchTo>
+                                </validationProperty>
+                            </validationProperties>
+                            <validationShouldFailIfNoMatch>true</validationShouldFailIfNoMatch>
+                        </configuration>
+                    </execution>
+                </executions>
+                <configuration>
+                    <skipPoms>false</skipPoms>
+                    <generateGitPropertiesFile>true</generateGitPropertiesFile>
+                    <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
+                    <commitIdGenerationMode>full</commitIdGenerationMode>
+                </configuration>
             </plugin>
             <!-- mvn checkstyle:check          执行前述命令，当前可以验证是否允许实例化某一个对象  -->
             <plugin>
