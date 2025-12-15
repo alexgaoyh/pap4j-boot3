@@ -57,6 +57,18 @@ public class DashboardController implements Initializable {
     }
 
     private void reloadFXML(Stage stage) throws IOException {
+        // 保存当前窗口状态
+        boolean wasMaximized = stage.isMaximized();
+
+        // 保存窗口位置和尺寸（用于非最大化状态）
+        double windowX = stage.getX();
+        double windowY = stage.getY();
+        double windowWidth = stage.getWidth();
+        double windowHeight = stage.getHeight();
+
+        // 1. 先隐藏窗口，避免视觉抖动
+        stage.hide();
+
         FXMLLoader loader = new FXMLLoader();
         // 尝试从文件系统加载（开发时热重载）
         File fxmlFile = new File(JavaFxConstant.projectLocation + "src/main/resources/cn/net/pap/example/javafx/dashboard-view.fxml");
@@ -73,7 +85,35 @@ public class DashboardController implements Initializable {
         loader.setLocation(fxmlUrl);
         Parent root = loader.load();
         Scene scene = new Scene(root);
+
+        // 2. 设置新场景
         stage.setScene(scene);
+
+        // 3. 在显示前设置窗口状态
+        if (wasMaximized) {
+            // 直接设置为最大化状态
+            stage.setMaximized(true);
+        } else {
+            // 恢复窗口位置和尺寸
+            stage.setX(windowX);
+            stage.setY(windowY);
+            stage.setWidth(windowWidth);
+            stage.setHeight(windowHeight);
+        }
+
+        stage.setTitle("首页");
+        // 4. 显示窗口
+        stage.show();
+
+        // 5. 确保最大化状态正确（如果需要的话）
+        if (wasMaximized) {
+            javafx.application.Platform.runLater(() -> {
+                // 检查并确保最大化状态
+                if (!stage.isMaximized()) {
+                    stage.setMaximized(true);
+                }
+            });
+        }
 
         System.out.println("界面刷新成功");
     }

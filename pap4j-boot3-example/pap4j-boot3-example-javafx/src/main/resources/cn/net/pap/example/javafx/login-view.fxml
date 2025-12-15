@@ -1,14 +1,62 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
-<?import javafx.scene.layout.AnchorPane?>
-<AnchorPane prefHeight="344.0" prefWidth="423.0" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/17"
+<?import javafx.scene.layout.*?>
+
+<AnchorPane xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="cn.net.pap.example.javafx.LoginController">
-    <children>
-        <Label layoutX="40" layoutY="60" prefHeight="33.0" prefWidth="125.0" fx:id="usernameLabel" />
-        <TextField fx:id="usernameField" layoutX="200.0" layoutY="65.0" prefWidth="150"/>
-        <PasswordField fx:id="passwordField" layoutX="200.0" layoutY="161.0" prefWidth="150"/>
-        <Label layoutX="40.0" layoutY="156.0" prefHeight="33.0" prefWidth="125.0" fx:id="passwordLabel" />
-        <Button layoutX="180.0" layoutY="255.0" onAction="#onLoginButtonClick" fx:id="loginButton" defaultButton="true"/>
-    </children>
+
+    <VBox AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0"
+          AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0"
+          alignment="CENTER" spacing="30" fillWidth="true">
+
+        <padding>
+            <Insets top="40" bottom="40" left="60" right="60"/>
+        </padding>
+
+        <!-- 标题 -->
+        <Label text="系统登录" style="-fx-font-size: 32px; -fx-font-weight: bold; -fx-padding: 0 0 10 0;"/>
+
+        <!-- 表单区域 -->
+        <GridPane hgap="20" vgap="25" alignment="CENTER" maxWidth="Infinity"
+                  VBox.vgrow="ALWAYS" maxHeight="Infinity">
+            <columnConstraints>
+                <ColumnConstraints halignment="RIGHT" prefWidth="100" maxWidth="140" hgrow="NEVER"/>
+                <ColumnConstraints halignment="LEFT" hgrow="ALWAYS" fillWidth="true"/>
+            </columnConstraints>
+
+            <rowConstraints>
+                <RowConstraints vgrow="ALWAYS" minHeight="50" prefHeight="60"/>
+                <RowConstraints vgrow="ALWAYS" minHeight="50" prefHeight="60"/>
+            </rowConstraints>
+
+            <!-- 用户名 -->
+            <Label fx:id="usernameLabel" text="用户名：" GridPane.rowIndex="0" GridPane.columnIndex="0"
+                   style="-fx-font-size: 16px;"/>
+            <TextField fx:id="usernameField" promptText="请输入用户名"
+                       GridPane.rowIndex="0" GridPane.columnIndex="1"
+                       prefWidth="400" prefHeight="45" maxWidth="Infinity"
+                       GridPane.hgrow="ALWAYS"
+                       style="-fx-font-size: 15px; -fx-padding: 8 12;"/>
+
+            <!-- 密码 -->
+            <Label fx:id="passwordLabel" text="密码：" GridPane.rowIndex="1" GridPane.columnIndex="0"
+                   style="-fx-font-size: 16px;"/>
+            <PasswordField fx:id="passwordField" promptText="请输入密码"
+                           GridPane.rowIndex="1" GridPane.columnIndex="1"
+                           prefWidth="400" prefHeight="45" maxWidth="Infinity"
+                           GridPane.hgrow="ALWAYS"
+                           style="-fx-font-size: 15px; -fx-padding: 8 12;"/>
+        </GridPane>
+
+        <!-- 登录按钮 -->
+        <HBox alignment="CENTER" spacing="10" maxWidth="Infinity" VBox.vgrow="ALWAYS">
+            <Button fx:id="loginButton" text="登录" onAction="#onLoginButtonClick"
+                    defaultButton="true"
+                    prefWidth="300" prefHeight="50" maxWidth="Infinity"
+                    HBox.hgrow="ALWAYS"
+                    style="-fx-font-size: 18px; -fx-background-color: #3b82f6; -fx-text-fill: white; -fx-background-radius: 8; -fx-padding: 10 20;"/>
+        </HBox>
+    </VBox>
 </AnchorPane>

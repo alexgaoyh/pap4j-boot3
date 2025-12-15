@@ -46,8 +46,29 @@ public class LoginController implements Initializable {
                 controller.setWelcomeMessage("欢迎回来，" + username + "！");
             }
 
-            Stage stage = (Stage) ((Button) event.getSource()).getScene().getWindow();
-            stage.setScene(new Scene(root));
+            Stage currentStage = (Stage) ((Button) event.getSource()).getScene().getWindow();
+            boolean wasMaximized = currentStage.isMaximized();
+
+            // 创建新Stage，而不是重用旧的
+            Stage newStage = new Stage();
+            newStage.setScene(new Scene(root));
+            newStage.setTitle("首页");
+
+            if (wasMaximized) {
+                newStage.setMaximized(true);
+            } else {
+                // 复制旧窗口的位置和大小
+                newStage.setX(currentStage.getX());
+                newStage.setY(currentStage.getY());
+                newStage.setWidth(currentStage.getWidth());
+                newStage.setHeight(currentStage.getHeight());
+            }
+
+            // 关闭旧窗口
+            currentStage.close();
+            // 显示新窗口
+            newStage.show();
+
         } else {
             Alert alert = new Alert(Alert.AlertType.ERROR);
             alert.setHeaderText("登录失败");
@@ -60,6 +81,8 @@ public class LoginController implements Initializable {
     public void initialize(URL url, ResourceBundle resourceBundle) {
         usernameLabel.setText("用户名:");
         passwordLabel.setText("密码:");
+        usernameField.setText("admin");
+        passwordField.setText("123456");
         loginButton.setText("登录");
     }
 
