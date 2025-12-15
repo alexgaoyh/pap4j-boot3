@@ -7,11 +7,13 @@ import com.alibaba.qlexpress4.QLResult;
 import com.alibaba.qlexpress4.runtime.trace.ExpressionTrace;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class QLExpressArithTest {
 
@@ -179,6 +181,18 @@ public class QLExpressArithTest {
 
         Object result = Express4RunnerUtil.runner.execute(express, context, QLOptions.builder().traceExpression(true).build());
         System.out.println(((QLResult)result).getResult());
+    }
+
+    @Test
+    public void test6() {
+        Map<String, Object> context = new HashMap<>();
+        context.put("a", 1.0);
+        context.put("b", 0.3);
+        assertTrue((Boolean)Express4RunnerUtil.runner.execute("1.3==a+b", context, QLOptions.builder().precise(true).build()).getResult());
+
+        Object result = Express4RunnerUtil.runner.execute("a / b", context, QLOptions.builder().precise(true).build()).getResult();
+        assertTrue(new BigDecimal("3.33").equals(result));
+
     }
 
 }

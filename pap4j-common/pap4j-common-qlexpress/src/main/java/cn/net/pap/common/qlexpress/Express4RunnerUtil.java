@@ -12,6 +12,8 @@ public class Express4RunnerUtil {
     public static final Express4Runner runner = new Express4Runner(InitOptions.DEFAULT_OPTIONS);
 
     static {
+        // 除法保留两位小数 详见 com.alibaba.qlexpress4.runtime.operator.number.BigDecimalMath
+        System.setProperty("qlexpress4.division.min.scale", "2");
         runner.addFunction("DIV2", new DivideOperator(2));
         runner.addFunction("ISBLANK", new IsBlankOperator());
         runner.addFunction("UPPER", new UpperOperator());
