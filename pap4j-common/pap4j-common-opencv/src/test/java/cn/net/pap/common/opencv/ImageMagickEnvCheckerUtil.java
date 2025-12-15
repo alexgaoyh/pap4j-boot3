@@ -174,10 +174,10 @@ public class ImageMagickEnvCheckerUtil {
     // magick input.jpg -negate output.jpg
 
     // 色深 (增加对比度，使颜色更浓)
-    // magick input.jpg -level 0%,100%,1.2 output.jpg
+    // magick input.jpg -level 0%,100%,0.8 output.jpg
 
     // 色浅 (降低对比度，使颜色更淡)
-    // magick input.jpg -level 0%,100%,0.8 output.jpg
+    // magick input.jpg -level 0%,100%,1.2 output.jpg
 
     // 锐化
     // magick input.jpg -sharpen 0x1.0 output.jpg
@@ -208,10 +208,11 @@ public class ImageMagickEnvCheckerUtil {
     // magick input.jpg -background white -gravity center -extent 800x600 output.jpg
 
     // 字深 (通过提高对比度使文字更深)
-    // magick input.jpg -level 60%,100%,1.5 output.jpg
+    // magick input.jpg -level 10%,100%,1.1 output.jpg
 
     // 字浅 (通过降低对比度使文字更浅)
-    // magick input.jpg +level 60%,100%,1.5 output.jpg
+
+    // magick input.jpg +level 10%,100%,1.1 output.jpg
 
     // @Test
     public void streamTest() throws IOException, InterruptedException {
