@@ -1,9 +1,14 @@
 package cn.net.pap.common.qlexpress;
 
+import com.alibaba.qlexpress4.Express4Runner;
+import com.alibaba.qlexpress4.InitOptions;
 import com.alibaba.qlexpress4.QLOptions;
+import com.alibaba.qlexpress4.QLResult;
+import com.alibaba.qlexpress4.runtime.trace.ExpressionTrace;
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -129,6 +134,51 @@ public class QLExpressArithTest {
 
         Object result2 = Express4RunnerUtil.runner.execute("TERNARY(ISBLANK(''),UPPER(''),UPPER('K'))", context, QLOptions.DEFAULT_OPTIONS).getResult();
         assertEquals("", result2.toString(), "表达式测试失败");
+    }
+
+    @Test
+    public void test4() {
+        Map<String, Object> context = new HashMap<>();
+        context.put("a", 10);
+        context.put("b", 5);
+        context.put("c", 2);
+
+        Express4Runner runner = new Express4Runner(InitOptions.builder().traceExpression(true).build());
+        QLResult result = runner.execute("(a + b * c) / (a - b)", context, QLOptions.builder().traceExpression(true).build());
+        List<ExpressionTrace> expressionTraces = result.getExpressionTraces();
+        System.out.println(expressionTraces.get(0).toPrettyString(0));
+    }
+
+    @Test
+    public void test5() {
+        String express  = """
+            mapRule = {
+                "userCard": {
+                    "userName": userName,
+                    "userAge": userAge,
+                    "isAdult": userAge >= 18,
+                    "hobbies": hobbyList,
+                    "address": {
+                        "city": city,
+                        "district": district
+                    }
+                },
+                "summary": "用户[" + userName + "]的信息卡片"
+            };
+            // 返回映射结果
+            return mapRule;
+        """;
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("userName", "李四");
+        context.put("userAge", 20);
+        String[] hobbyList = new String[]{"阅读", "游泳", "编程"};
+        context.put("hobbyList", hobbyList);
+        context.put("city", "上海");
+        context.put("district", "浦东新区");
+
+        Object result = Express4RunnerUtil.runner.execute(express, context, QLOptions.builder().traceExpression(true).build());
+        System.out.println(((QLResult)result).getResult());
     }
 
 }
