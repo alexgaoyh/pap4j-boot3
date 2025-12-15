@@ -5,8 +5,9 @@ import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Scene;
-import javafx.scene.control.Alert;
 import javafx.stage.Stage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.net.URL;
@@ -16,6 +17,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class MainApp extends Application {
+
+    private static final Logger log = LoggerFactory.getLogger(MainApp.class);
 
     @Override
     public void start(Stage stage) throws Exception {
@@ -80,7 +83,7 @@ public class MainApp extends Application {
             try {
                 SystemTray.getSystemTray().remove(trayIcon);
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("移除托盘图标失败", e);
             }
             // 先执行必要的清理工作
             Platform.runLater(() -> {
@@ -90,15 +93,13 @@ public class MainApp extends Application {
                 // 强制退出所有 JavaFX 线程
                 Platform.exit();
                 // 添加一个延迟，确保日志输出
-                new Timer().schedule(new TimerTask() {
+                new Timer("force-exit-timer", true).schedule(new TimerTask() {
                     @Override
                     public void run() {
-                        System.out.println("应用程序已关闭");
-                        // 在 exec:java 模式下，可能需要这个来真正退出
-                        // 但会让 Maven 输出 "Process terminated"
+                        log.warn("强制退出 JVM（Timer 兜底）");
                         System.exit(0);
                     }
-                }, 100);
+                }, 500);
             });
         });
         popupMenu.add(showItem);
@@ -108,7 +109,7 @@ public class MainApp extends Application {
         try {
             systemTray.add(trayIcon);
         } catch (AWTException e) {
-            e.printStackTrace();
+            log.error("systemTray启动服务失败", e);
         }
         // 设置窗口关闭事件
         stage.setOnCloseRequest(event -> {
@@ -130,11 +131,8 @@ public class MainApp extends Application {
             launch();
 
         } catch (Exception e) {
-            Alert alert = new Alert(Alert.AlertType.ERROR);
-            alert.setTitle("错误");
-            alert.setHeaderText(null);
-            alert.setContentText("启动 H2 服务器失败: " + e.getMessage());
-            alert.showAndWait();
+            log.error("启动服务失败", e);
+            System.exit(1);      // 直接退出
         }
 
     }
@@ -142,9 +140,9 @@ public class MainApp extends Application {
     @Override
     public void stop() {
         // 应用关闭时停止服务器
-        System.out.println(H2ServerManager.getConnectionInfo());
-        System.out.println(H2ServerManager.getWebConsoleUrl());
-        System.out.println(H2ServerManager.getDatabaseUrl());
+        log.info("{}", H2ServerManager.getConnectionInfo());
+        log.info("{}", H2ServerManager.getWebConsoleUrl());
+        log.info("{}", H2ServerManager.getDatabaseUrl());
         H2ServerManager.stopServers();
     }
 

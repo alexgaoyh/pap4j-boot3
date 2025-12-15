@@ -6,7 +6,11 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
-import javafx.scene.control.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.PasswordField;
+import javafx.scene.control.TextField;
 import javafx.stage.Stage;
 
 import java.io.IOException;
@@ -38,7 +42,7 @@ public class LoginController implements Initializable {
             Parent root = loader.load();
 
             DashboardController controller = loader.getController();
-            if(controller != null) {
+            if (controller != null) {
                 controller.setWelcomeMessage("欢迎回来，" + username + "！");
             }
 
