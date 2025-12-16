@@ -42,7 +42,7 @@
         <dependency>
             <groupId>cn.net.pap</groupId>
             <artifactId>pap4j-common-bitmap</artifactId>
-            <version>${parent.version}</version>
+            <version>${project.parent.version}</version>
             <scope>test</scope>
         </dependency>
 
