@@ -2,7 +2,6 @@ package cn.net.pap.example.javafx.view;
 
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
-import javafx.geometry.Bounds;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
@@ -15,10 +14,10 @@ import java.util.List;
 public class ZoomableImageView extends StackPane {
 
     private final ImageView imageView = new ImageView();
-    private List<Image> imageList;
-    private int currentIndex = 0;
 
-    private double scale = 1.0;
+    private List<Image> imageList;
+
+    private int currentIndex = 0;
 
     private final DoubleProperty scaleFactor = new SimpleDoubleProperty(1.0);
 
@@ -51,9 +50,6 @@ public class ZoomableImageView extends StackPane {
 
         initEvents();
 
-        // 当容器大小变化时自动适配
-        widthProperty().addListener((obs, oldV, newV) -> fitImage());
-        heightProperty().addListener((obs, oldV, newV) -> fitImage());
     }
 
     private void initEvents() {
@@ -61,15 +57,28 @@ public class ZoomableImageView extends StackPane {
         addEventFilter(ScrollEvent.SCROLL, e -> {
             if (imageView.getImage() == null) return;
             double delta = e.getDeltaY() > 0 ? 1.1 : 0.9;
-            scale *= delta;
-            scale = Math.max(0.2, Math.min(scale, 10)); // 限制缩放范围
-            updateScale(scale);
-            imageView.setScaleX(scale);
-            imageView.setScaleY(scale);
+
+            // 当前缩放因子
+            double baseScale = scaleFactor.get();
+            double newScale = baseScale * delta;
+
+            // 限制缩放范围
+            newScale = Math.max(0.1, Math.min(newScale, 10));
+
+            Image img = imageView.getImage();
+
+            // 使用 fitWidth / fitHeight 缩放
+            imageView.setPreserveRatio(true);
+            imageView.setFitWidth(img.getWidth() * newScale);
+            imageView.setFitHeight(img.getHeight() * newScale);
+
+            // 更新缩放系数
+            updateScale(newScale);
+
             e.consume();
         });
 
-        // 拖拽
+        // 拖拽（按下鼠标）
         addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
             dragStartX = e.getSceneX();
             dragStartY = e.getSceneY();
@@ -77,6 +86,7 @@ public class ZoomableImageView extends StackPane {
             imageStartY = imageView.getTranslateY();
         });
 
+        // 拖拽平移（拖动中）
         addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
             if (imageView.getImage() == null) return;
             double dx = e.getSceneX() - dragStartX;
@@ -85,53 +95,34 @@ public class ZoomableImageView extends StackPane {
             imageView.setTranslateY(imageStartY + dy);
         });
 
-        // 双击恢复
-        addEventFilter(MouseEvent.MOUSE_CLICKED, e -> {
-            if (e.getClickCount() == 2) resetView();
-        });
     }
 
     /**
      * 自适应填充
      **/
-    private void fitImage() {
-        if (imageView.getImage() == null) return;
-
-        double boxWidth = getWidth();
-        double boxHeight = getHeight();
-
-        Image img = imageView.getImage();
-        double imgRatio = img.getWidth() / img.getHeight();
-        double boxRatio = boxWidth / boxHeight;
-
-        System.out.println(img.getWidth() + " " + img.getHeight() + " " + boxWidth + " " + boxHeight);
-
-        if (imgRatio > boxRatio) {
-            imageView.setFitWidth(boxWidth);
-            imageView.setFitHeight(boxWidth / imgRatio);
-        } else {
-            imageView.setFitHeight(boxHeight);
-            imageView.setFitWidth(boxHeight * imgRatio);
+    public void fitImage(double width, double height) {
+        if (imageView.getImage() == null) {
+            return;
         }
 
-        resetView();
-    }
+        double viewportWidth = width;
+        double viewportHeight = height;
 
-    /**
-     * 恢复原图（缩放=1，居中）
-     **/
-    public void resetView() {
-        scale = 1.0;
-        updateScale(scale);
-        imageView.setScaleX(scale);
-        imageView.setScaleY(scale);
+        Image img = imageView.getImage();
+
+        double scaleX = viewportWidth / img.getWidth();
+        double scaleY = viewportHeight / img.getHeight();
+
+        double scaleFactor = Math.min(scaleX, scaleY);
+
+        // 设置适应大小
+        imageView.setFitWidth(img.getWidth() * scaleFactor);
+        imageView.setFitHeight(img.getHeight() * scaleFactor);
+
         imageView.setTranslateX(0);
         imageView.setTranslateY(0);
 
-        // 居中对齐
-        Bounds bounds = imageView.getBoundsInParent();
-        imageView.setTranslateX((getWidth() - bounds.getWidth()) / 2);
-        imageView.setTranslateY((getHeight() - bounds.getHeight()) / 2);
+        updateScale(scaleFactor);
     }
 
     /**
@@ -141,7 +132,6 @@ public class ZoomableImageView extends StackPane {
         if (imageList == null || imageList.isEmpty()) return;
         currentIndex = (currentIndex + 1) % imageList.size();
         imageView.setImage(imageList.get(currentIndex));
-        fitImage();
     }
 
     /**
@@ -151,11 +141,6 @@ public class ZoomableImageView extends StackPane {
         if (imageList == null || imageList.isEmpty()) return;
         currentIndex = (currentIndex - 1 + imageList.size()) % imageList.size();
         imageView.setImage(imageList.get(currentIndex));
-        fitImage();
-    }
-
-    public final double getScaleFactor() {
-        return scaleFactor.get();
     }
 
     public final void setScaleFactor(double scale) {
@@ -168,11 +153,8 @@ public class ZoomableImageView extends StackPane {
 
     // 当缩放变化时，你只需要：
     private void updateScale(double newScale) {
+        newScale = Math.round(newScale * 100.0) / 100.0;
         setScaleFactor(newScale);
-    }
-
-    public int getCurrentIndex() {
-        return currentIndex;
     }
 
 }

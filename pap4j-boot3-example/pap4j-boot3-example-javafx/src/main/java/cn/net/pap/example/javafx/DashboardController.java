@@ -2,6 +2,7 @@ package cn.net.pap.example.javafx;
 
 import cn.net.pap.example.javafx.constant.JavaFxConstant;
 import cn.net.pap.example.javafx.view.ZoomableImageView;
+import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -9,6 +10,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
 import java.io.File;
@@ -29,6 +31,9 @@ public class DashboardController implements Initializable {
 
     @FXML
     private ZoomableImageView zoomableView;
+
+    @FXML
+    private StackPane stackPane;
 
     public void setWelcomeMessage(String message) {
         if (welcomeLabel != null) {
@@ -52,7 +57,9 @@ public class DashboardController implements Initializable {
 
     @FXML
     private void resetView() throws IOException {
-        zoomableView.resetView();
+        Platform.runLater(() ->
+                zoomableView.fitImage(stackPane.getWidth(), stackPane.getHeight())
+        );
     }
 
     private Stage findPrimaryStage() {
@@ -138,6 +145,9 @@ public class DashboardController implements Initializable {
         if (exitButton != null) {
             exitButton.setText("退出");
         }
+        Platform.runLater(() ->
+            zoomableView.fitImage(stackPane.getWidth(), stackPane.getHeight())
+        );
         // 值单向绑定
         scaleLabel.textProperty().bind(zoomableView.scaleFactorProperty().multiply(100).asString("%.0f%%"));
     }
