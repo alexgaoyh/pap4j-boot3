@@ -165,6 +165,7 @@ public class ImageMagickEnvCheckerUtil {
     // magick input.jpg -crop 400x300+100+50 output.jpg
 
     // 去除区域内 (移除 200x200 区域，从 (50,50) 开始，用白色填充)
+    // rectangle x1,y1 x2,y2 (x1, y1) → 矩形左上角的坐标   (x2, y2) → 矩形右下角的坐标
     // magick input.jpg -fill white -draw "rectangle 50,50 250,250" output.jpg
 
     // 去除区域外 （只有矩形区域 100,100-300,300 内的内容保留，其他区域变为白色）
