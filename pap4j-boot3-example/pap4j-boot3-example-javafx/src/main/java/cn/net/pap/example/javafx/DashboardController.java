@@ -1,6 +1,7 @@
 package cn.net.pap.example.javafx;
 
 import cn.net.pap.example.javafx.constant.JavaFxConstant;
+import cn.net.pap.example.javafx.view.ZoomableImageView;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
@@ -21,7 +22,13 @@ public class DashboardController implements Initializable {
     private Label welcomeLabel;
 
     @FXML
+    private Label scaleLabel;
+
+    @FXML
     private Button exitButton;
+
+    @FXML
+    private ZoomableImageView zoomableView;
 
     public void setWelcomeMessage(String message) {
         if (welcomeLabel != null) {
@@ -41,6 +48,11 @@ public class DashboardController implements Initializable {
         if (primaryStage != null) {
             reloadFXML(primaryStage);
         }
+    }
+
+    @FXML
+    private void resetView() throws IOException {
+        zoomableView.resetView();
     }
 
     private Stage findPrimaryStage() {
@@ -126,6 +138,8 @@ public class DashboardController implements Initializable {
         if (exitButton != null) {
             exitButton.setText("退出");
         }
+        // 值单向绑定
+        scaleLabel.textProperty().bind(zoomableView.scaleFactorProperty().multiply(100).asString("%.0f%%"));
     }
 
 }
