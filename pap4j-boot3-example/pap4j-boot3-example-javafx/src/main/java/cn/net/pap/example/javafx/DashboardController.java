@@ -1,11 +1,13 @@
 package cn.net.pap.example.javafx;
 
 import cn.net.pap.example.javafx.constant.JavaFxConstant;
+import cn.net.pap.example.javafx.process.ProcessUtil;
 import cn.net.pap.example.javafx.view.ZoomableImageView;
 import javafx.application.Platform;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
@@ -60,6 +62,22 @@ public class DashboardController implements Initializable {
         Platform.runLater(() ->
                 zoomableView.fitImage(stackPane.getWidth(), stackPane.getHeight())
         );
+        focusInZoomableView();
+    }
+
+    @FXML
+    private void imageRemoveIn() throws Exception {
+        String inputFilePathProtocol = zoomableView.getImageView().getImage().getUrl();
+        Rectangle2D rectangle2D = zoomableView.getSelectionInImageCoordinates();
+        String inputFilePath = inputFilePathProtocol.replaceFirst(JavaFxConstant.FILE_PROTOCOL2, "");
+        if(rectangle2D != null) {
+            ProcessUtil.magick_imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
+            zoomableView.clearSelection();
+            zoomableView.reloadCurrentImage();
+        } else {
+            showErrorAlert("图像处理失败", "执行图像操作时发生错误。\n原因: " + "未获得有效矩形框");
+        }
+        focusInZoomableView();
     }
 
     private Stage findPrimaryStage() {
@@ -134,7 +152,30 @@ public class DashboardController implements Initializable {
             });
         }
 
-        System.out.println("界面刷新成功");
+        focusInZoomableView();
+    }
+
+    private void focusInZoomableView() {
+        Platform.runLater(() -> {
+            // 确保该组件可以接收焦点
+            zoomableView.setFocusTraversable(true);
+            // 请求焦点
+            zoomableView.requestFocus();
+        });
+    }
+
+    /**
+     * 辅助方法：显示错误提示框
+     */
+    private void showErrorAlert(String title, String message) {
+        // 确保在 JavaFX 线程中执行 UI 更新
+        Platform.runLater(() -> {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
     }
 
     @Override
@@ -150,6 +191,8 @@ public class DashboardController implements Initializable {
         );
         // 值单向绑定
         scaleLabel.textProperty().bind(zoomableView.scaleFactorProperty().multiply(100).asString("%.0f%%"));
+
+        focusInZoomableView();
     }
 
 }

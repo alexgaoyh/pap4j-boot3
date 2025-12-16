@@ -97,7 +97,7 @@
                 </BorderPane>
                 <AnchorPane>
                     <children>
-                        <Label alignment="CENTER" font="$x1" layoutX="14.0" layoutY="14.0" style="&#10;" text="Details" textAlignment="CENTER" textFill="$x2" wrapText="false" />
+                        <Button text="去除图像内" onAction="#imageRemoveIn"/>
                     </children>
                 </AnchorPane>
             </items>
