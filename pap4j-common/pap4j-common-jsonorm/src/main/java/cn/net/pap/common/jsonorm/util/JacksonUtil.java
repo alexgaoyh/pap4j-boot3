@@ -469,5 +469,75 @@ public class JacksonUtil {
         return result;
     }
 
+    /**
+     * 节点求和
+     * @param filePath
+     * @param fieldPath
+     * @param targetField
+     * @return
+     * @throws Exception
+     */
+    public static Number sumJsonArrayField(String filePath, String fieldPath, String targetField) throws Exception {
+        JsonFactory factory = new JsonFactory();
+
+        try (JsonParser parser = factory.createParser(new File(filePath))) {
+            // 1. 扫描 JSON，找到指定数组字段
+            while (parser.nextToken() != null) {
+                JsonToken token = parser.getCurrentToken();
+                if (token == JsonToken.FIELD_NAME) {
+                    String currentName = parser.getCurrentName();
+                    if (currentName.equals(fieldPath)) {
+                        parser.nextToken(); // 移到字段值
+                        // 验证是否是数组
+                        if (parser.getCurrentToken() == JsonToken.START_ARRAY) {
+                            return sumArrayFieldCore(parser, targetField);
+                        }
+                    }
+                }
+            }
+        }
+        throw new IllegalStateException("未找到数组字段：" + fieldPath);
+    }
+
+    private static Number sumArrayFieldCore(JsonParser parser, String targetField) throws Exception {
+        ObjectMapper objectMapper = new ObjectMapper();
+        double sum = 0.0;
+        boolean hasDecimal = false; // 标记是否有小数
+
+        while (true) {
+            JsonToken token = parser.nextToken();
+            if (token == null || token == JsonToken.END_ARRAY) {
+                break;
+            }
+
+            if (token == JsonToken.START_OBJECT) {
+                // 读取整个对象
+                JsonNode node = objectMapper.readTree(parser);
+
+                // 查找目标字段
+                JsonNode targetNode = node.get(targetField);
+                if (targetNode != null && targetNode.isNumber()) {
+                    double value = targetNode.asDouble();
+                    sum += value;
+
+                    // 检查是否有小数部分
+                    if (!hasDecimal && targetNode.isFloatingPointNumber()) {
+                        hasDecimal = true;
+                    }
+                }
+            } else {
+                // 如果不是对象，跳过当前元素
+                parser.skipChildren();
+            }
+        }
+
+        // 根据数据类型返回合适的数值类型
+        if (hasDecimal || sum != (long) sum) {
+            return sum; // 返回double
+        } else {
+            return (long) sum; // 返回long
+        }
+    }
+
 
 }

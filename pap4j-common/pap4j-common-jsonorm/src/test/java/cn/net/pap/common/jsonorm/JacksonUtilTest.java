@@ -23,7 +23,12 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.Serializable;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 public class JacksonUtilTest {
 
@@ -241,6 +246,30 @@ public class JacksonUtilTest {
         if(new File(filePath).exists()) {
             ObjectNode objectNode = JacksonUtil.readObjectWithArraySlice(filePath, "result", 0, 2);
             System.out.println(objectNode.toPrettyString());
+        }
+    }
+
+    @Test
+    public void sumJsonArrayFieldTest() throws Exception {
+        Path tempFile = Files.createTempFile("test_data_", ".json");
+        try {
+            String jsonContent = """
+                {
+                  "items": [
+                    {"name": "item1", "price": 10.5},
+                    {"name": "item2", "price": 20},
+                    {"name": "item3", "price": 15.75}
+                  ]
+                }
+                """;
+            Files.writeString(tempFile, jsonContent);
+            // 调用方法并验证结果
+            Number result = JacksonUtil.sumJsonArrayField(tempFile.toString(), "items", "price");
+            assertEquals(46.25, result.doubleValue(), 0.001);
+            assertInstanceOf(Double.class, result);
+        } finally {
+            // 确保删除临时文件
+            Files.deleteIfExists(tempFile);
         }
     }
 
