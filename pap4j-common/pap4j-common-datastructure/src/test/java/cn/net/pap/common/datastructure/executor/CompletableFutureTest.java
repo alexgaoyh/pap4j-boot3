@@ -1,6 +1,7 @@
 package cn.net.pap.common.datastructure.executor;
 
 import cn.net.pap.common.datastructure.cpu.CpuInfoUtil;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.*;
@@ -9,6 +10,11 @@ import java.util.stream.IntStream;
 public class CompletableFutureTest {
 
     private static final ExecutorService executor = Executors.newFixedThreadPool(6);
+
+    @AfterAll
+    public static void shutdown() {
+        executor.shutdown();
+    }
 
     public static String doWork(String input) {
         try {
