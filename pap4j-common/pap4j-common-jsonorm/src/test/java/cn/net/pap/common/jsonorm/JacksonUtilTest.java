@@ -1,8 +1,13 @@
 package cn.net.pap.common.jsonorm;
 
+import java.io.ByteArrayOutputStream;
+import com.esotericsoftware.kryo.io.Input;
+import com.esotericsoftware.kryo.io.Output;
 import cn.net.pap.common.jsonorm.dto.HeadDTO;
+import cn.net.pap.common.jsonorm.dto.JsonDTO;
 import cn.net.pap.common.jsonorm.util.JacksonUtil;
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
+import com.esotericsoftware.kryo.Kryo;
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
@@ -237,6 +242,117 @@ public class JacksonUtilTest {
             ObjectNode objectNode = JacksonUtil.readObjectWithArraySlice(filePath, "result", 0, 2);
             System.out.println(objectNode.toPrettyString());
         }
+    }
+
+    /**
+     *
+     * @throws Exception
+     */
+    @Test
+    public void databaseStorageComparisonTest() throws Exception {
+
+        final int WARM_UP = 5;
+        final int LOOP = 1000;
+
+        // ---------- 构造测试数据 ----------
+        List<JsonDTO.CharDTO> charDTOS = new ArrayList<>();
+        for (int idx = 0; idx < 100; idx++) {
+            JsonDTO.CharDTO charDTO = new JsonDTO.CharDTO();
+            charDTO.setText("Text-" + idx);
+            charDTO.setBox(Arrays.asList(idx * 1.0, idx * 2.0, idx * 3.0, idx * 4.0));
+            charDTO.setCoords(Arrays.asList(idx * 0.1, idx * 0.2, idx * 0.3, idx * 0.4));
+            charDTO.setDistance(idx % 1000);
+            charDTOS.add(charDTO);
+        }
+        JsonDTO jsonDTO = new JsonDTO();
+        jsonDTO.setChars(charDTOS);
+
+        // ---------- JSON ----------
+        ObjectMapper mapper = new ObjectMapper();
+        byte[] jsonBytes = null;
+
+        // warm-up
+        for (int i = 0; i < WARM_UP; i++) {
+            jsonBytes = mapper.writeValueAsBytes(jsonDTO);
+            mapper.readValue(jsonBytes, JsonDTO.class);
+        }
+
+        long jsonSerializeNs = 0;
+        long jsonDeserializeNs = 0;
+
+        for (int i = 0; i < LOOP; i++) {
+            long t1 = System.nanoTime();
+            jsonBytes = mapper.writeValueAsBytes(jsonDTO);
+            long t2 = System.nanoTime();
+
+            long t3 = System.nanoTime();
+            mapper.readValue(jsonBytes, JsonDTO.class);
+            long t4 = System.nanoTime();
+
+            jsonSerializeNs += (t2 - t1);
+            jsonDeserializeNs += (t4 - t3);
+        }
+
+        // ---------- Kryo ----------
+        Kryo kryo = new Kryo();
+        kryo.setRegistrationRequired(false);
+        kryo.setReferences(true);
+        kryo.register(JsonDTO.class);
+
+        byte[] kryoBytes = null;
+
+        // warm-up
+        for (int i = 0; i < WARM_UP; i++) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Output output = new Output(baos);
+            kryo.writeObject(output, jsonDTO);
+            output.close();
+            kryoBytes = baos.toByteArray();
+
+            Input input = new Input(kryoBytes);
+            kryo.readObject(input, JsonDTO.class);
+            input.close();
+        }
+
+        long kryoSerializeNs = 0;
+        long kryoDeserializeNs = 0;
+
+        for (int i = 0; i < LOOP; i++) {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Output output = new Output(baos);
+
+            long d1 = System.nanoTime();
+            kryo.writeObject(output, jsonDTO);
+            output.close();
+            kryoBytes = baos.toByteArray();
+            long d2 = System.nanoTime();
+
+            Input input = new Input(kryoBytes);
+            long d3 = System.nanoTime();
+            kryo.readObject(input, JsonDTO.class);
+            input.close();
+            long d4 = System.nanoTime();
+
+            kryoSerializeNs += (d2 - d1);
+            kryoDeserializeNs += (d4 - d3);
+        }
+
+        // ---------- 输出结果 ----------
+        System.out.println("====== Result (avg over " + LOOP + " runs) ======");
+
+        System.out.println("JSON bytes length = " + jsonBytes.length);
+        System.out.printf("JSON serialize avg = %.3f ms%n",
+                jsonSerializeNs / 1_000_000.0 / LOOP);
+        System.out.printf("JSON deserialize avg = %.3f ms%n",
+                jsonDeserializeNs / 1_000_000.0 / LOOP);
+
+        System.out.println();
+
+        System.out.println("Kryo bytes length = " + kryoBytes.length);
+        System.out.printf("Kryo serialize avg = %.3f ms%n",
+                kryoSerializeNs / 1_000_000.0 / LOOP);
+        System.out.printf("Kryo deserialize avg = %.3f ms%n",
+                kryoDeserializeNs / 1_000_000.0 / LOOP);
     }
 
 
