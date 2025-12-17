@@ -12,6 +12,7 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.stage.Stage;
 
@@ -67,13 +68,18 @@ public class DashboardController implements Initializable {
 
     @FXML
     private void imageRemoveIn() throws Exception {
-        String inputFilePathProtocol = zoomableView.getImageView().getImage().getUrl();
+        ImageView imageView = zoomableView.getImageView();
+        String inputFilePathProtocol = imageView.getImage().getUrl();
         Rectangle2D rectangle2D = zoomableView.getSelectionInImageCoordinates();
         String inputFilePath = inputFilePathProtocol.replaceFirst(JavaFxConstant.FILE_PROTOCOL2, "");
         if(rectangle2D != null) {
             ProcessUtil.magick_imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
             zoomableView.clearSelection();
-            zoomableView.reloadCurrentImage();
+            double scaleX = imageView.getScaleX();
+            double scaleY = imageView.getScaleY();
+            double translateX = imageView.getTranslateX();
+            double translateY = imageView.getTranslateY();
+            zoomableView.reloadCurrentImage(scaleX, scaleY, translateX, translateY);
         } else {
             showErrorAlert("图像处理失败", "执行图像操作时发生错误。\n原因: " + "未获得有效矩形框");
         }

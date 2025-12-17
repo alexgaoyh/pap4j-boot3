@@ -298,12 +298,35 @@ public class ZoomableImageView extends StackPane {
             // 限制缩放范围
             newScale = Math.max(0.1, Math.min(newScale, 10));
 
-            Image img = imageView.getImage();
+            if (Math.abs(newScale - baseScale) < 0.001) return;
 
-            // 使用 fitWidth / fitHeight 缩放
-            imageView.setPreserveRatio(true);
-            imageView.setFitWidth(img.getWidth() * newScale);
-            imageView.setFitHeight(img.getHeight() * newScale);
+            // 获取鼠标在图像视图坐标系中的位置
+            double mouseX = e.getX();
+            double mouseY = e.getY();
+
+            // 获取图像视图当前的边界和位置
+            Bounds imageBounds = imageView.getBoundsInParent();
+            double imageCenterX = imageBounds.getMinX() + imageBounds.getWidth() / 2;
+            double imageCenterY = imageBounds.getMinY() + imageBounds.getHeight() / 2;
+
+            // 计算鼠标相对于图像中心的位置
+            double relativeX = mouseX - imageCenterX;
+            double relativeY = mouseY - imageCenterY;
+
+            // 计算缩放中心点相对于图像中心的比例
+            double scaleRatio = newScale / baseScale;
+
+            // 计算新的平移量，使得鼠标位置在缩放前后保持相对位置不变
+            double newTranslateX = imageView.getTranslateX() + (relativeX * (1 - scaleRatio));
+            double newTranslateY = imageView.getTranslateY() + (relativeY * (1 - scaleRatio));
+
+            // 应用缩放
+            imageView.setScaleX(newScale);
+            imageView.setScaleY(newScale);
+
+            // 应用平移
+            imageView.setTranslateX(newTranslateX);
+            imageView.setTranslateY(newTranslateY);
 
             // 更新缩放系数
             updateScale(newScale);
@@ -454,9 +477,8 @@ public class ZoomableImageView extends StackPane {
         double scaleFactor = Math.min(scaleX, scaleY);
 
         // 设置适应大小
-        imageView.setFitWidth(img.getWidth() * scaleFactor);
-        imageView.setFitHeight(img.getHeight() * scaleFactor);
-
+        imageView.setScaleX(scaleFactor);
+        imageView.setScaleY(scaleFactor);
         imageView.setTranslateX(0);
         imageView.setTranslateY(0);
 
@@ -576,7 +598,7 @@ public class ZoomableImageView extends StackPane {
     /**
      * 重新加载当前图像并刷新 UI
      */
-    public void reloadCurrentImage() {
+    public void reloadCurrentImage(double scaleX, double scaleY, double translateX, double translateY) {
         if (imageList == null || imageList.isEmpty() || currentIndex < 0 || currentIndex >= imageList.size()) {
             return;
         }
@@ -602,8 +624,10 @@ public class ZoomableImageView extends StackPane {
         imageView.setImage(newImage);
 
         // 2. 清除平移，回到 StackPane 居中默认位置
-        imageView.setTranslateX(0);
-        imageView.setTranslateY(0);
+        imageView.setScaleX(scaleX);
+        imageView.setScaleY(scaleY);
+        imageView.setTranslateX(translateX);
+        imageView.setTranslateY(translateY);
 
         // 3. 更新 imageList 中的引用（可选，取决于您是否希望 imageList 保持最新）
         imageList.set(currentIndex, newImage);
