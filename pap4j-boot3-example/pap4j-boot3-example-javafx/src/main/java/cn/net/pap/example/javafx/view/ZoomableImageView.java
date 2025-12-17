@@ -79,6 +79,14 @@ public class ZoomableImageView extends StackPane {
 
         initEvents();
 
+        // 窗口拉动后图像自适应
+        parentProperty().addListener((obs, oldParent, newParent) -> {
+            if (newParent instanceof Pane p) {
+                p.widthProperty().addListener((o, oldV, newV) -> fitImage(newV.doubleValue(), p.getHeight()));
+                p.heightProperty().addListener((o, oldV, newV) -> fitImage(p.getWidth(), newV.doubleValue()));
+            }
+        });
+
         // 确保组件可以获得焦点
         setFocusTraversable(true);
     }
