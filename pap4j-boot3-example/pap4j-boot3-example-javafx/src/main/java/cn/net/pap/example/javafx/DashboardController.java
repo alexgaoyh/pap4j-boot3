@@ -114,7 +114,8 @@ public class DashboardController implements Initializable {
 
         FXMLLoader loader = new FXMLLoader();
         // 尝试从文件系统加载（开发时热重载）
-        File fxmlFile = new File(JavaFxConstant.projectLocation + "src/main/resources/cn/net/pap/example/javafx/dashboard-view.fxml");
+        URL resourceUrl = getClass().getClassLoader().getResource("cn/net/pap/example/javafx/dashboard-view.fxml");
+        File fxmlFile = new File(resourceUrl.getFile());
 
         URL fxmlUrl;
         if (fxmlFile.exists()) {
