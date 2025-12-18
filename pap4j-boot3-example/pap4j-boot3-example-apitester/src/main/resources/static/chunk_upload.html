@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>图像分片上传示例</title>
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+</head>
+<body>
+<h2>分片上传图像</h2>
+<input type="file" id="fileInput"/>
+<div id="progress"></div>
+
+<script>
+    $(document).ready(function () {
+        const CHUNK_SIZE = 5 * 1024 * 1024; // 每个 chunk 5MB
+        const CONCURRENT_UPLOADS = 6;       // 并发上传数量
+
+        // 生成 UUID
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+                const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16);
+            });
+        }
+
+        $('#fileInput').on('change', function () {
+            const file = this.files[0];
+            if (!file) return;
+
+            const uploadId = generateUUID();  // 每次上传生成唯一 uploadId
+            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+            let uploadedChunks = 0;
+
+            const chunkQueue = [];
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * CHUNK_SIZE;
+                const end = Math.min(start + CHUNK_SIZE, file.size);
+                const chunk = file.slice(start, end);
+                chunkQueue.push({index: i, chunk});
+            }
+
+            const uploadChunk = function (chunkObj) {
+                return $.ajax({
+                    url: '/upload',
+                    type: 'POST',
+                    data: chunkObj.chunk,
+                    processData: false,
+                    contentType: 'application/octet-stream',
+                    headers: {
+                        'X-Chunk-Index': chunkObj.index,
+                        'X-Upload-Id': uploadId
+                    },
+                    success: function () {
+                        uploadedChunks++;
+                        $('#progress').text(`上传进度: ${((uploadedChunks / totalChunks) * 100).toFixed(2)}%`);
+                    },
+                    error: function () {
+                        alert(`Chunk ${chunkObj.index} 上传失败`);
+                    }
+                });
+            };
+
+            // 并发控制函数
+            const runConcurrentUploads = function () {
+                const promises = [];
+                for (let i = 0; i < CONCURRENT_UPLOADS; i++) {
+                    if (chunkQueue.length === 0) break;
+                    const chunkObj = chunkQueue.shift();
+                    promises.push(uploadChunk(chunkObj));
+                }
+
+                return $.when.apply($, promises).then(() => {
+                    if (chunkQueue.length > 0) {
+                        return runConcurrentUploads();
+                    }
+                });
+            };
+
+            // 开始上传
+            runConcurrentUploads().then(() => {
+                $('#progress').text('分片上传完成，正在合并...');
+
+                // 调用后端 merge 接口，传 uploadId
+                $.ajax({
+                    url: '/upload/merge',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        fileName: file.name,
+                        uploadId: uploadId,
+                        totalChunks: totalChunks
+                    }),
+                    success: function () {
+                        $('#progress').text('文件上传并合并完成！');
+                    },
+                    error: function () {
+                        $('#progress').text('文件合并失败！');
+                    }
+                });
+            });
+
+        });
+    });
+</script>
+</body>
+</html>
