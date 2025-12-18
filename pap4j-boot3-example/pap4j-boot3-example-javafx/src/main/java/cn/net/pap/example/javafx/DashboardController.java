@@ -10,10 +10,12 @@ import javafx.fxml.Initializable;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
+import javafx.scene.paint.Color;
 import javafx.stage.Stage;
 
 import java.io.File;
@@ -37,6 +39,9 @@ public class DashboardController implements Initializable {
 
     @FXML
     private StackPane stackPane;
+
+    @FXML
+    private Canvas gridOverlay;
 
     public void setWelcomeMessage(String message) {
         if (welcomeLabel != null) {
@@ -62,6 +67,21 @@ public class DashboardController implements Initializable {
     private void resetView() throws IOException {
         Platform.runLater(() ->
                 zoomableView.fitImage(stackPane.getWidth(), stackPane.getHeight())
+        );
+        focusInZoomableView();
+    }
+
+    @FXML
+    private void sizeView() throws IOException {
+        Platform.runLater(() ->
+            {
+                ImageView imageView = zoomableView.getImageView();
+                imageView.setScaleX(1.0);
+                imageView.setScaleY(1.0);
+                imageView.setTranslateX(0);
+                imageView.setTranslateY(0);
+                zoomableView.updateScale(1.0);
+            }
         );
         focusInZoomableView();
     }
@@ -199,7 +219,34 @@ public class DashboardController implements Initializable {
         // 值单向绑定
         scaleLabel.textProperty().bind(zoomableView.scaleFactorProperty().multiply(100).asString("%.0f%%"));
 
+        stackPane.layoutBoundsProperty().addListener((obs, oldBounds, newBounds) -> {
+            drawGrid(newBounds.getWidth(), newBounds.getHeight());
+        });
+
         focusInZoomableView();
+    }
+
+    private void drawGrid(double width, double height) {
+        if(gridOverlay != null) {
+            gridOverlay.setWidth(width);
+            gridOverlay.setHeight(height);
+
+            var gc = gridOverlay.getGraphicsContext2D();
+            gc.clearRect(0, 0, width, height);
+
+            gc.setStroke(Color.rgb(242, 255, 213, 0.8));
+            gc.setLineWidth(2);
+
+            double gridSize = 30; // 网格间距，可调
+            // 纵线
+            for (double x = 0; x <= width; x += gridSize) {
+                gc.strokeLine(x, 0, x, height);
+            }
+            // 横线
+            for (double y = 0; y <= height; y += gridSize) {
+                gc.strokeLine(0, y, width, y);
+            }
+        }
     }
 
 }

@@ -20,6 +20,7 @@
 
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.canvas.Canvas?>
 <VBox prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cn.net.pap.example.javafx.DashboardController">
     <children>
         <MenuBar VBox.vgrow="NEVER">
@@ -83,12 +84,14 @@
                 <BorderPane>
                     <center>
                         <StackPane minWidth="0" minHeight="0" fx:id="stackPane">
+                            <!--<Canvas fx:id="gridOverlay" pickOnBounds="false"></Canvas>-->
                             <ZoomableImageView fx:id="zoomableView"/>
                         </StackPane>
                     </center>
                     <bottom>
                         <HBox alignment="CENTER" spacing="10" prefHeight="40" maxHeight="40" style="-fx-background-color: #f0f0f0; -fx-padding: 10;">
                             <Button text="上一张" prefWidth="80"/>
+                            <Button text="1:1" prefWidth="80" onAction="#sizeView"/>
                             <Button text="重置" prefWidth="80" onAction="#resetView"/>
                             <Button text="下一张" prefWidth="80"/>
                             <Label fx:id="scaleLabel" text="100%"/>

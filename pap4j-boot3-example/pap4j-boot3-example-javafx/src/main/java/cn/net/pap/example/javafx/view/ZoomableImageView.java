@@ -587,7 +587,7 @@ public class ZoomableImageView extends StackPane {
     }
 
     // 当缩放变化时，你只需要：
-    private void updateScale(double newScale) {
+    public void updateScale(double newScale) {
         setScaleFactor(newScale);
     }
 
