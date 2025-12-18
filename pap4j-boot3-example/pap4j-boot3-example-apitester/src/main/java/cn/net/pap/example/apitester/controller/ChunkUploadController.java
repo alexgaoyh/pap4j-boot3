@@ -16,6 +16,8 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.IOException;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -81,16 +83,31 @@ public class ChunkUploadController {
         Path finalFile = uploadDir.resolve(fileName);
 
         return Mono.fromCallable(() -> {
-                    try (var fos = Files.newOutputStream(finalFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
+                    try (FileChannel out = FileChannel.open(finalFile, StandardOpenOption.CREATE, StandardOpenOption.WRITE)) {
                         for (int i = 0; i < totalChunks; i++) {
                             Path chunkFile = uploadDir.resolve(uploadId + "_" + i + ".part");
                             if (!Files.exists(chunkFile)) {
-                                throw new IllegalStateException("Missing chunk file: " + chunkFile.getFileName());
+                                throw new IllegalStateException("Missing chunk: " + chunkFile.getFileName());
                             }
-                            Files.copy(chunkFile, fos);
-                            Files.delete(chunkFile);
+                            try (FileChannel in = FileChannel.open(chunkFile, StandardOpenOption.READ)) {
+                                long pos = 0;
+                                long size = in.size();
+                                while (pos < size) {
+                                    pos += in.transferTo(pos, size - pos, out);
+                                }
+                            }
                         }
                     }
+
+                    // 异步删除分片文件
+                    Mono.fromRunnable(() -> {
+                        for (int i = 0; i < totalChunks; i++) {
+                            try {
+                                Files.deleteIfExists(uploadDir.resolve(uploadId + "_" + i + ".part"));
+                            } catch (IOException ignored) {}
+                        }
+                    }).subscribeOn(Schedulers.boundedElastic()).subscribe();
+
                     return ResponseEntity.ok("File merged successfully: " + finalFile.getFileName());
                 }).subscribeOn(Schedulers.boundedElastic())
                 .onErrorResume(e -> Mono.just(ResponseEntity.status(500)
