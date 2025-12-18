@@ -4,13 +4,16 @@ import com.alibaba.qlexpress4.Express4Runner;
 import com.alibaba.qlexpress4.InitOptions;
 import com.alibaba.qlexpress4.QLOptions;
 import com.alibaba.qlexpress4.QLResult;
+import com.alibaba.qlexpress4.exception.QLSyntaxException;
 import com.alibaba.qlexpress4.runtime.trace.ExpressionTrace;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -193,6 +196,41 @@ public class QLExpressArithTest {
         Object result = Express4RunnerUtil.runner.execute("a / b", context, QLOptions.builder().precise(true).build()).getResult();
         assertTrue(new BigDecimal("3.33").equals(result));
 
+    }
+
+    /**
+     * 校验语法正确性
+     */
+    @Test
+    public void test7() {
+        Express4Runner express4Runner = new Express4Runner(InitOptions.DEFAULT_OPTIONS);
+        try {
+            express4Runner.check("a+b;\n(a+b");
+        }
+        catch (QLSyntaxException e) {
+            assertEquals(2, e.getLineNo());
+            assertEquals(4, e.getColNo());
+            assertEquals("SYNTAX_ERROR", e.getErrorCode());
+            assertEquals(
+                    "[Error SYNTAX_ERROR: mismatched input '<EOF>' expecting ')']\n" + "[Near: a+b; (a+b<EOF>]\n"
+                            + "                ^^^^^\n" + "[Line: 2, Column: 4]",
+                    e.getMessage());
+        }
+    }
+
+    /**
+     * 解析脚本所需外部变量
+     */
+    @Test
+    public void test8() {
+        Express4Runner express4Runner = new Express4Runner(InitOptions.DEFAULT_OPTIONS);
+        Set<String> outVarNames = express4Runner.getOutVarNames("TERNARY(ISBLANK(${input}),UPPER(''),UPPER('K'))");
+        System.out.println(outVarNames);
+
+        Map<String, Object> context = new HashMap<>();
+        context.put("input", "pap");
+        Object result = Express4RunnerUtil.runner.execute("TERNARY(ISBLANK(${input}),UPPER(''),UPPER('K'))", context, QLOptions.builder().precise(true).build()).getResult();
+        System.out.println(result);
     }
 
 }
