@@ -16,6 +16,7 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.StrokeType;
 
@@ -47,6 +48,10 @@ public class ZoomableImageView extends StackPane {
     private double rectStartWidth, rectStartHeight;
     private boolean isSelecting = false;
     private boolean ctrlPressed = false;
+
+    // 选择框内对应的网格线
+    private Pane gridContainer;
+    private Runnable updateGrid;
 
     public ZoomableImageView() {
         String desktop = System.getProperty("user.home") + File.separator + "Desktop";
@@ -106,6 +111,52 @@ public class ZoomableImageView extends StackPane {
         selectionRect.setStrokeType(StrokeType.INSIDE);
         selectionRect.setVisible(false);
 
+        // 创建网格容器
+        gridContainer = new Pane();
+        gridContainer.setMouseTransparent(true);
+        gridContainer.setVisible(false);
+
+        // 创建并更新网格的方法
+        updateGrid = () -> {
+            gridContainer.getChildren().clear();
+
+            double width = selectionRect.getWidth();
+            double height = selectionRect.getHeight();
+            double startX = selectionRect.getX();
+            double startY = selectionRect.getY();
+
+            // 只有当选择框有实际大小时才绘制网格
+            if (width <= 0 || height <= 0) {
+                return;
+            }
+
+            int gridSize = 20; // 网格大小，可根据需要调整
+
+            // 绘制垂直线
+            for (double x = startX; x <= startX + width; x += gridSize) {
+                Line line = new Line(x, startY, x, startY + height);
+                line.setStroke(Color.rgb(255, 0, 0, 0.8));
+                line.setStrokeWidth(1);
+                line.getStrokeDashArray().addAll(2.0, 2.0); // 虚线
+                gridContainer.getChildren().add(line);
+            }
+
+            // 绘制水平线
+            for (double y = startY; y <= startY + height; y += gridSize) {
+                Line line = new Line(startX, y, startX + width, y);
+                line.setStroke(Color.rgb(255, 0, 0, 0.8));
+                line.setStrokeWidth(1);
+                line.getStrokeDashArray().addAll(2.0, 2.0); // 虚线
+                gridContainer.getChildren().add(line);
+            }
+        };
+
+        // 监听选择框变化，更新网格
+        selectionRect.xProperty().addListener((obs, oldVal, newVal) -> updateGrid.run());
+        selectionRect.yProperty().addListener((obs, oldVal, newVal) -> updateGrid.run());
+        selectionRect.widthProperty().addListener((obs, oldVal, newVal) -> updateGrid.run());
+        selectionRect.heightProperty().addListener((obs, oldVal, newVal) -> updateGrid.run());
+
         // 创建8个控制点
         for (int i = 0; i < 8; i++) {
             Circle controlPoint = new Circle(6);
@@ -124,6 +175,8 @@ public class ZoomableImageView extends StackPane {
         // 添加到选择面板
         selectionPane.getChildren().addAll(mask, selectionRect);
         selectionPane.getChildren().addAll(controlPoints);
+        // 将网格容器添加到选择面板
+        selectionPane.getChildren().add(gridContainer);
     }
 
     private Cursor getCursorForControlPoint(int index) {
@@ -356,6 +409,8 @@ public class ZoomableImageView extends StackPane {
                 selectionRect.setWidth(0);
                 selectionRect.setHeight(0);
                 selectionRect.setVisible(true);
+                // 显示网格容器
+                gridContainer.setVisible(true);
                 mask.setVisible(true);
 
                 e.consume();
@@ -514,10 +569,11 @@ public class ZoomableImageView extends StackPane {
         // 选择框
         Rectangle2D selectionInImageCoordinates = getSelectionInImageCoordinates();
         if(selectionInImageCoordinates != null) {
-            System.out.println(selectionInImageCoordinates.toString());
+            // System.out.println(selectionInImageCoordinates.toString());
         }
 
         selectionRect.setVisible(false);
+        gridContainer.setVisible(false);
         mask.setVisible(false);
         for (Circle cp : controlPoints) {
             cp.setVisible(false);
