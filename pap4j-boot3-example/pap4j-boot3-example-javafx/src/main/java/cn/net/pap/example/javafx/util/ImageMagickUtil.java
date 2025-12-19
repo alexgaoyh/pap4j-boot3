@@ -137,21 +137,52 @@ public class ImageMagickUtil {
         }
         executor.setStreamHandler(streamHandler);
 
-        if (timeoutMs > 0) {
-            executor.setWatchdog(new ExecuteWatchdog(timeoutMs));
-        }
-
-        // 注意：execute 使用 Map<String,String> 环境
-        Map<String, String> envToUse = envVars; // 假设调用方已经合并了
-        int exitCode;
+        ExecuteWatchdog watchdog = null;
+        boolean killed = false;
+        int exitCode = -1;
         try {
-            exitCode = executor.execute(cmdLine, envToUse);
-        } catch (ExecuteException e) {
-            exitCode = e.getExitValue();
+            if (timeoutMs > 0) {
+                watchdog = new ExecuteWatchdog(timeoutMs);
+                executor.setWatchdog(watchdog);
+            }
+
+            Map<String, String> envToUse = envVars;
+
+            try {
+                exitCode = executor.execute(cmdLine, envToUse);
+            } catch (ExecuteException e) {
+                exitCode = e.getExitValue();
+                killed = watchdog != null && watchdog.killedProcess();
+                // 如果是超时终止，等待流处理完成
+                if (killed) {
+                    try {
+                        // 等待流处理线程安全停止，避免输出丢失
+                        streamHandler.stop();
+                    } catch (IOException ioe) {
+                        // 记录或忽略流关闭异常
+                    }
+                }
+            }
+        } finally {
+            if (watchdog != null) {
+                try {
+                    if (watchdog.isWatching()) {
+                        watchdog.stop();
+                    }
+                } catch (Exception ignored) {}
+            }
+            try {
+                outStream.close();
+            } catch (IOException e) {
+            }
+            try {
+                errStream.close();
+            } catch (IOException e) {
+            }
         }
 
         String charset = isWindows ? "gbk" : StandardCharsets.UTF_8.name();
-        return new ExecResult(exitCode, outStream.toString(charset), errStream.toString(charset));
+        return new ExecResult(exitCode, outStream.toString(charset), errStream.toString(charset), killed);
     }
 
     /**
@@ -186,11 +217,13 @@ public class ImageMagickUtil {
         private final int exitCode;
         private final String stdout;
         private final String stderr;
+        private boolean killed;
 
-        public ExecResult(int exitCode, String stdout, String stderr) {
+        public ExecResult(int exitCode, String stdout, String stderr, boolean killed) {
             this.exitCode = exitCode;
             this.stdout = stdout;
             this.stderr = stderr;
+            this.killed = killed;
         }
 
         public int getExitCode() {
@@ -208,6 +241,20 @@ public class ImageMagickUtil {
         public boolean isSuccess() {
             return exitCode == 0;
         }
+
+        public boolean isKilled() {
+            return killed;
+        }
+
+        @Override
+        public String toString() {
+            return "ExecResult{" +
+                    "exitCode=" + exitCode +
+                    ", stdout='" + stdout + '\'' +
+                    ", stderr='" + stderr + '\'' +
+                    ", killed=" + killed +
+                    '}';
+        }
     }
 
     public static boolean magick_imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2) throws IOException {
@@ -219,7 +266,7 @@ public class ImageMagickUtil {
             Map<String, String> envJavaHome = new HashMap<>();
             String oldPath = System.getenv("PATH");
             envJavaHome.put("PATH", getMagickPath(ApplicationProperties.getImageMagickPath()) + File.pathSeparator + oldPath);
-            ExecResult execResult = execWithShell(cmd, envJavaHome, new File("."), 10000);
+            ExecResult execResult = execWithShell(cmd, envJavaHome, new File("."), 60000);
 
             if (!execResult.isSuccess()) {
                 log.error("Magick failed: {}\n{}", cmd, execResult.getStderr());
