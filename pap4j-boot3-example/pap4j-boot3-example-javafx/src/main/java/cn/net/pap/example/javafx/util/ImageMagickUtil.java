@@ -271,7 +271,7 @@ public class ImageMagickUtil {
         try {
             String drawCommand = String.format("rectangle %.2f,%.2f %.2f,%.2f", x1, y1, x2, y2);
 
-            String cmd = String.join(" ", "magick", inputPath, "-fill", "white", "-draw", "\"" + drawCommand + "\"", outputPath);
+            String cmd = String.join(" ", "magick", "\"" + inputPath + "\"", "-fill", "white", "-draw", "\"" + drawCommand + "\"", "\"" + outputPath + "\"");
 
             Map<String, String> envHome = new HashMap<>();
             String oldPath = System.getenv("PATH");
