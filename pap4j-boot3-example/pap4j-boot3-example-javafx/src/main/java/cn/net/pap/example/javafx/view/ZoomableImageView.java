@@ -4,10 +4,13 @@ import cn.net.pap.example.javafx.dto.ImageViewDTO;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.value.ChangeListener;
 import javafx.embed.swing.SwingFXUtils;
+import javafx.event.EventHandler;
 import javafx.geometry.Bounds;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Cursor;
+import javafx.scene.Parent;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
@@ -61,25 +64,23 @@ public class ZoomableImageView extends StackPane {
     private Pane gridContainer;
     private Runnable updateGrid;
 
+    // 定义事件处理器成员变量
+    private EventHandler<ScrollEvent> scrollHandler;
+    private EventHandler<MouseEvent> mousePressedHandler;
+    private EventHandler<MouseEvent> mouseDraggedHandler;
+    private EventHandler<MouseEvent> mouseReleasedHandler;
+    private EventHandler<MouseEvent> mouseClickedHandler;
+    private EventHandler<KeyEvent> keyPressedHandler;
+    private EventHandler<KeyEvent> keyReleasedHandler;
+
+    private ChangeListener<Number> widthListener;
+    private ChangeListener<Number> heightListener;
+    private ChangeListener<Parent> parentListener;
+    private ChangeListener<Number> rectChangeListener;
+
     public ZoomableImageView() {
-        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
-        String imagePath = desktop + File.separator + "alexgaoyh.tif";
-        try (InputStream is = Files.newInputStream(Path.of(imagePath))) {
-            BufferedImage bufferedImage = ImageIO.read(is);
-            Image fxImage = SwingFXUtils.toFXImage(bufferedImage, null);
-            ImageViewDTO imageViewDTO = new ImageViewDTO(fxImage, imagePath);
-            List<ImageViewDTO> images = new ArrayList<ImageViewDTO>();
-            images.add(imageViewDTO);
-            init(images);
-        } catch (IOException e) {
-            Platform.runLater(() -> {
-                javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
-                alert.setTitle("错误");
-                alert.setHeaderText(null);
-                alert.setContentText("图像加载异常:" + e.getMessage());
-                alert.showAndWait();
-            });
-        }
+        List<ImageViewDTO> images = new ArrayList<ImageViewDTO>();
+        init(images);
     }
 
     public void init(List<ImageViewDTO> images) {
@@ -96,23 +97,43 @@ public class ZoomableImageView extends StackPane {
         initSelectionTools();
 
         // 将图像视图和选择面板添加到堆栈面板
+        getChildren().clear();
         getChildren().addAll(imageView, selectionPane);
 
+        removeAllEventListeners();
         initEvents();
 
-        // 窗口拉动后图像自适应
-        parentProperty().addListener((obs, oldParent, newParent) -> {
-            if (newParent instanceof Pane p) {
-                p.widthProperty().addListener((o, oldV, newV) -> fitImage(newV.doubleValue(), p.getHeight()));
-                p.heightProperty().addListener((o, oldV, newV) -> fitImage(p.getWidth(), newV.doubleValue()));
+        // 清理旧的父容器监听器，防止多次调用 init 导致叠加
+        if (parentListener != null) {
+            parentProperty().removeListener(parentListener);
+        }
+
+        parentListener = (obs, oldParent, newParent) -> {
+            // 清理旧父容器的宽度/高度监听
+            if (oldParent instanceof Pane oldP) {
+                if (widthListener != null) oldP.widthProperty().removeListener(widthListener);
+                if (heightListener != null) oldP.heightProperty().removeListener(heightListener);
             }
-        });
+
+            if (newParent instanceof Pane p) {
+                widthListener = (o, oldV, newV) -> fitImage(newV.doubleValue(), p.getHeight());
+                heightListener = (o, oldV, newV) -> fitImage(p.getWidth(), newV.doubleValue());
+                p.widthProperty().addListener(widthListener);
+                p.heightProperty().addListener(heightListener);
+            }
+        };
+        parentProperty().addListener(parentListener);
 
         // 确保组件可以获得焦点
         setFocusTraversable(true);
     }
 
     private void initSelectionTools() {
+        // 清理旧资源
+        cleanupExternalListeners();
+        selectionPane.getChildren().clear();
+        controlPoints.clear();
+
         // 创建遮罩层
         mask = new Rectangle();
         mask.setFill(Color.rgb(0, 0, 0, 0.3)); // 半透明黑色
@@ -168,10 +189,18 @@ public class ZoomableImageView extends StackPane {
         };
 
         // 监听选择框变化，更新网格
-        selectionRect.xProperty().addListener((obs, oldVal, newVal) -> updateGrid.run());
-        selectionRect.yProperty().addListener((obs, oldVal, newVal) -> updateGrid.run());
-        selectionRect.widthProperty().addListener((obs, oldVal, newVal) -> updateGrid.run());
-        selectionRect.heightProperty().addListener((obs, oldVal, newVal) -> updateGrid.run());
+        if (rectChangeListener != null) {
+            selectionRect.xProperty().removeListener(rectChangeListener);
+            selectionRect.yProperty().removeListener(rectChangeListener);
+            selectionRect.widthProperty().removeListener(rectChangeListener);
+            selectionRect.heightProperty().removeListener(rectChangeListener);
+        }
+        rectChangeListener = (obs, oldVal, newVal) -> updateGrid.run();
+
+        selectionRect.xProperty().addListener(rectChangeListener);
+        selectionRect.yProperty().addListener(rectChangeListener);
+        selectionRect.widthProperty().addListener(rectChangeListener);
+        selectionRect.heightProperty().addListener(rectChangeListener);
 
         // 创建8个控制点
         for (int i = 0; i < 8; i++) {
@@ -189,10 +218,16 @@ public class ZoomableImageView extends StackPane {
         }
 
         // 添加到选择面板
+        selectionPane.getChildren().clear();
         selectionPane.getChildren().addAll(mask, selectionRect);
         selectionPane.getChildren().addAll(controlPoints);
         // 将网格容器添加到选择面板
         selectionPane.getChildren().add(gridContainer);
+
+        // 如果当前已经有 Parent，手动触发一次适配
+        if (getParent() instanceof Pane p) {
+            setupParentListeners(p);
+        }
     }
 
     private Cursor getCursorForControlPoint(int index) {
@@ -363,9 +398,71 @@ public class ZoomableImageView extends StackPane {
         controlPoints.get(7).setCenterY(y + height / 2);
     }
 
+    private void cleanupExternalListeners() {
+        // 必须从当前的 Parent 上摘除监听器
+        if (getParent() instanceof Pane p) {
+            if (widthListener != null) p.widthProperty().removeListener(widthListener);
+            if (heightListener != null) p.heightProperty().removeListener(heightListener);
+        }
+    }
+
+    private void setupParentListeners(Pane p) {
+        // 移除旧的，防止重复叠加
+        if (widthListener != null) p.widthProperty().removeListener(widthListener);
+        if (heightListener != null) p.heightProperty().removeListener(heightListener);
+
+        widthListener = (o, oldV, newV) -> fitImage(newV.doubleValue(), p.getHeight());
+        heightListener = (o, oldV, newV) -> fitImage(p.getWidth(), newV.doubleValue());
+
+        p.widthProperty().addListener(widthListener);
+        p.heightProperty().addListener(heightListener);
+    }
+
+    private void removeAllEventListeners() {
+        // 移除滚轮事件
+        if(scrollHandler != null) {
+            removeEventFilter(ScrollEvent.SCROLL, scrollHandler);
+        }
+
+        // 移除鼠标事件
+        if(mousePressedHandler != null) {
+            removeEventFilter(MouseEvent.MOUSE_PRESSED, mousePressedHandler);
+        }
+        if(mouseDraggedHandler != null) {
+            removeEventFilter(MouseEvent.MOUSE_DRAGGED, mouseDraggedHandler);
+        }
+        if(mouseReleasedHandler != null) {
+            removeEventFilter(MouseEvent.MOUSE_RELEASED, mouseReleasedHandler);
+        }
+        if(mouseClickedHandler != null) {
+            removeEventFilter(MouseEvent.MOUSE_CLICKED, mouseClickedHandler);
+        }
+
+        // 移除键盘事件
+        if(keyPressedHandler != null) {
+            removeEventFilter(KeyEvent.KEY_PRESSED, keyPressedHandler);
+        }
+        if(keyReleasedHandler != null) {
+            removeEventFilter(KeyEvent.KEY_RELEASED, keyReleasedHandler);
+        }
+
+        // 移除其他事件处理器
+        setOnMouseEntered(null);
+        setOnMouseExited(null);
+
+        // 重置所有事件处理器引用
+        scrollHandler = null;
+        mousePressedHandler = null;
+        mouseDraggedHandler = null;
+        mouseReleasedHandler = null;
+        mouseClickedHandler = null;
+        keyPressedHandler = null;
+        keyReleasedHandler = null;
+    }
+
     private void initEvents() {
         // 滚轮缩放
-        addEventFilter(ScrollEvent.SCROLL, e -> {
+        scrollHandler = e -> {
             if (imageView.getImage() == null) return;
             double delta = e.getDeltaY() > 0 ? 1.1 : 0.9;
 
@@ -410,10 +507,12 @@ public class ZoomableImageView extends StackPane {
             updateScale(newScale);
 
             e.consume();
-        });
+        };
+
+        addEventFilter(ScrollEvent.SCROLL, scrollHandler);
 
         // 拖拽（按下鼠标）
-        addEventFilter(MouseEvent.MOUSE_PRESSED, e -> {
+        mousePressedHandler = e -> {
             // 鼠标按下时请求焦点
             requestFocus();
 
@@ -440,10 +539,12 @@ public class ZoomableImageView extends StackPane {
 
                 e.consume();
             }
-        });
+        };
+
+        addEventFilter(MouseEvent.MOUSE_PRESSED, mousePressedHandler);
 
         // 拖拽平移（拖动中）
-        addEventFilter(MouseEvent.MOUSE_DRAGGED, e -> {
+        mouseDraggedHandler = e -> {
             if (imageView.getImage() == null) return;
 
             if (isSelecting) {
@@ -469,10 +570,12 @@ public class ZoomableImageView extends StackPane {
                 imageView.setTranslateX(imageStartX + dx);
                 imageView.setTranslateY(imageStartY + dy);
             }
-        });
+        };
+
+        addEventFilter(MouseEvent.MOUSE_DRAGGED, mouseDraggedHandler);
 
         // 鼠标释放
-        addEventFilter(MouseEvent.MOUSE_RELEASED, e -> {
+        mouseReleasedHandler = e -> {
             if (isSelecting) {
                 isSelecting = false;
 
@@ -482,10 +585,12 @@ public class ZoomableImageView extends StackPane {
                 }
                 updateMaskAndControlPoints();
             }
-        });
+        };
+
+        addEventFilter(MouseEvent.MOUSE_RELEASED, mouseReleasedHandler);
 
         // 键盘事件过滤器 - 监听Ctrl键
-        addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+        keyPressedHandler = e -> {
             if (e.getCode() == KeyCode.CONTROL) {
                 ctrlPressed = true;
                 if (!isSelecting && selectionRect.isVisible()) {
@@ -493,19 +598,23 @@ public class ZoomableImageView extends StackPane {
                     setCursor(Cursor.CROSSHAIR);
                 }
             }
-        });
+        };
 
-        addEventFilter(KeyEvent.KEY_RELEASED, e -> {
+        addEventFilter(KeyEvent.KEY_PRESSED, keyPressedHandler);
+
+        keyReleasedHandler = e -> {
             if (e.getCode() == KeyCode.CONTROL) {
                 ctrlPressed = false;
                 if (!isSelecting) {
                     setCursor(Cursor.DEFAULT);
                 }
             }
-        });
+        };
+
+        addEventFilter(KeyEvent.KEY_RELEASED, keyReleasedHandler);
 
         // 点击空白处取消选择
-        addEventFilter(MouseEvent.MOUSE_CLICKED, e -> {
+        mouseClickedHandler = e -> {
             if (!ctrlPressed && selectionRect.isVisible() && draggedControlPoint == null) {
                 // 检查是否点击在控制点或选择框上
                 boolean clickedOnSelection = false;
@@ -521,7 +630,9 @@ public class ZoomableImageView extends StackPane {
                     clearSelection();
                 }
             }
-        });
+        };
+
+        addEventFilter(MouseEvent.MOUSE_CLICKED, mouseClickedHandler);
 
         // 鼠标进入时设置光标
         setOnMouseEntered(e -> {
@@ -715,6 +826,40 @@ public class ZoomableImageView extends StackPane {
             });
         }
 
+    }
+
+    public void dispose() {
+        removeAllEventListeners();
+
+        // 移除父容器监听
+        if (getParent() instanceof Pane p) {
+            if (widthListener != null) p.widthProperty().removeListener(widthListener);
+            if (heightListener != null) p.heightProperty().removeListener(heightListener);
+        }
+        if (parentListener != null) {
+            parentProperty().removeListener(parentListener);
+        }
+
+        // 移除选框属性监听器
+        if (selectionRect != null && rectChangeListener != null) {
+            selectionRect.xProperty().removeListener(rectChangeListener);
+            selectionRect.yProperty().removeListener(rectChangeListener);
+            selectionRect.widthProperty().removeListener(rectChangeListener);
+            selectionRect.heightProperty().removeListener(rectChangeListener);
+        }
+
+        // 清空图像资源
+        imageView.setImage(null);
+        if (imageList != null) {
+            imageList.clear();
+        }
+
+        // 清理大列表
+        controlPoints.clear();
+        gridContainer.getChildren().clear();
+
+        // 断开 Lambda 引用
+        updateGrid = null;
     }
 
 }

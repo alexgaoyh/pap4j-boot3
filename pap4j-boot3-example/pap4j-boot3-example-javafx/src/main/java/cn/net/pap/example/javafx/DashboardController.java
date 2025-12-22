@@ -1,28 +1,54 @@
 package cn.net.pap.example.javafx;
 
+import cn.net.pap.example.javafx.dto.FileTreeItem;
+import cn.net.pap.example.javafx.dto.ImageViewDTO;
 import cn.net.pap.example.javafx.util.ImageMagickUtil;
 import cn.net.pap.example.javafx.view.ZoomableImageView;
 import javafx.application.Platform;
+import javafx.concurrent.Task;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
+import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.TreeCell;
+import javafx.scene.control.TreeItem;
+import javafx.scene.control.TreeView;
+import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
+import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
+import org.bytedeco.javacpp.indexer.UByteIndexer;
+import org.bytedeco.opencv.global.opencv_core;
+import org.bytedeco.opencv.global.opencv_imgcodecs;
+import org.bytedeco.opencv.opencv_core.Mat;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.ResourceBundle;
 
 public class DashboardController implements Initializable {
+
+    private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
 
     @FXML
     private Label welcomeLabel;
@@ -41,6 +67,22 @@ public class DashboardController implements Initializable {
 
     @FXML
     private Canvas gridOverlay;
+
+    @FXML
+    private TreeView<Path> folderTreeView;
+
+    private Path currentFolder;
+
+    private TreeItem<Path> rootItem;
+
+    private ProgressIndicator progressIndicator;
+
+    private StackPane loadingPane;
+
+    private Task<Image> imageLoadTask;
+
+    // 图像切换的时候，避免来回滚动
+    private boolean restoringSelection = false;
 
     public void setWelcomeMessage(String message) {
         if (welcomeLabel != null) {
@@ -63,7 +105,7 @@ public class DashboardController implements Initializable {
     }
 
     @FXML
-    private void resetView() throws IOException {
+    private void resetView() {
         Platform.runLater(() ->
                 zoomableView.fitImage(stackPane.getWidth(), stackPane.getHeight())
         );
@@ -84,6 +126,37 @@ public class DashboardController implements Initializable {
         );
         focusInZoomableView();
     }
+
+    @FXML
+    private void handleOpenFolder(javafx.event.ActionEvent event) {
+        // 创建目录选择对话框
+        DirectoryChooser directoryChooser = new DirectoryChooser();
+        directoryChooser.setTitle("选择图片文件夹");
+
+        // 设置初始目录（如果有）
+        if (currentFolder != null) {
+            directoryChooser.setInitialDirectory(currentFolder.toFile());
+        }
+
+        // 显示对话框
+        Stage stage = (Stage) scaleLabel.getScene().getWindow();
+        File selectedDirectory = directoryChooser.showDialog(stage);
+
+        if (selectedDirectory != null) {
+            currentFolder = selectedDirectory.toPath();
+            loadFolderTree(currentFolder);
+        }
+
+        // 保持焦点在ZoomableImageView
+        focusInZoomableView();
+    }
+
+    private void loadFolderTree(Path folderPath) {
+        rootItem = new FileTreeItem(folderPath);
+        folderTreeView.setRoot(rootItem);
+        rootItem.setExpanded(true); // 只展开根节点
+    }
+
 
     @FXML
     private void imageRemoveIn() throws Exception {
@@ -226,6 +299,12 @@ public class DashboardController implements Initializable {
         });
 
         focusInZoomableView();
+
+        // 初始化TreeView
+        initializeTreeView();
+
+        // 初始化loading
+        initLoadingIndicator();
     }
 
     private void drawGrid(double width, double height) {
@@ -248,6 +327,211 @@ public class DashboardController implements Initializable {
             for (double y = 0; y <= height; y += gridSize) {
                 gc.strokeLine(0, y, width, y);
             }
+        }
+    }
+
+    private void initializeTreeView() {
+        // 设置TreeView的单元格工厂，用于自定义显示
+        folderTreeView.setCellFactory(tv -> new TreeCell<Path>() {
+            @Override
+            protected void updateItem(Path item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
+                    setGraphic(null);
+                } else {
+                    // 显示文件名
+                    setText(item.getFileName().toString());
+                }
+            }
+        });
+
+        // 监听选择事件，当选择图片时在ImageView中显示
+        folderTreeView.getSelectionModel().selectedItemProperty().addListener(
+                (observable, oldValue, newValue) -> {
+                    if (newValue != null && newValue.getValue() != null) {
+                        if (restoringSelection) {
+                            return;
+                        }
+                        Path selectedPath = newValue.getValue();
+                        java.io.File selectedFile = selectedPath.toFile();
+
+                        // 如果是图片文件，在ZoomableImageView中显示
+                        if (selectedFile.isFile() && isImageFile(selectedFile)) {
+                            if (imageLoadTask != null && imageLoadTask.isRunning()) {
+                                restoringSelection = true;
+                                Platform.runLater(() -> {
+                                    folderTreeView.getSelectionModel().select(oldValue);
+                                    restoringSelection = false;
+                                });
+                                return;
+                            }
+                            showLoading();
+                            imageLoadTask = createSimpleLoadTask(selectedPath);
+
+                            new Thread(imageLoadTask, "ImageLoadThread").start();
+                        }
+                    }
+                }
+        );
+    }
+
+    private Task<Image> createSimpleLoadTask(Path selectedPath) {
+        return new Task<>() {
+            @Override
+            protected Image call() throws Exception {
+                BufferedImage bufferedImage =
+                        opencvRead(selectedPath.toAbsolutePath().toString());
+
+                if (bufferedImage == null) {
+                    throw new RuntimeException("读取图片失败");
+                }
+
+                return SwingFXUtils.toFXImage(bufferedImage, null);
+            }
+
+            @Override
+            protected void succeeded() {
+                Image fxImage = getValue();
+
+                ImageViewDTO dto = new ImageViewDTO(
+                        fxImage,
+                        selectedPath.toAbsolutePath().toString()
+                );
+
+                List<ImageViewDTO> images = new ArrayList<>();
+                images.add(dto);
+
+                zoomableView.init(images);
+                resetView();
+
+                hideLoading();
+                imageLoadTask = null;
+            }
+
+            @Override
+            protected void failed() {
+                Throwable e = getException();
+                log.error("加载图片失败", e);
+
+                showErrorAlert(
+                        "加载图片失败",
+                        e != null ? e.getMessage() : "未知错误"
+                );
+
+                hideLoading();
+                imageLoadTask = null;
+            }
+        };
+    }
+
+    private boolean isImageFile(java.io.File file) {
+        String name = file.getName().toLowerCase();
+        return name.endsWith(".jpg") || name.endsWith(".jpeg") ||
+                name.endsWith(".png") || name.endsWith(".tif") ||
+                name.endsWith(".bmp") || name.endsWith(".tiff");
+    }
+
+    private void initLoadingIndicator() {
+        progressIndicator = new ProgressIndicator();
+        progressIndicator.setProgress(-1); // 无限旋转
+        progressIndicator.setVisible(false);
+
+        loadingPane = new StackPane();
+        loadingPane.setStyle("-fx-background-color: rgba(255, 255, 255, 0.7);");
+        loadingPane.getChildren().add(progressIndicator);
+        loadingPane.setVisible(false);
+
+        // 将 loadingPane 添加到 stackPane（假设 stackPane 是主容器）
+        StackPane.setAlignment(progressIndicator, Pos.CENTER);
+        stackPane.getChildren().add(loadingPane);
+    }
+
+    // 显示加载动画的方法
+    private void showLoading() {
+        Platform.runLater(() -> {
+            loadingPane.setVisible(true);
+            progressIndicator.setVisible(true);
+
+            // 确保 loadingPane 覆盖整个 stackPane
+            loadingPane.prefWidthProperty().bind(stackPane.widthProperty());
+            loadingPane.prefHeightProperty().bind(stackPane.heightProperty());
+            loadingPane.toFront();
+        });
+    }
+
+    // 隐藏加载动画的方法
+    private void hideLoading() {
+        Platform.runLater(() -> {
+            loadingPane.setVisible(false);
+            progressIndicator.setVisible(false);
+        });
+    }
+
+    public BufferedImage opencvRead(String path) {
+        try {
+            byte[] data = Files.readAllBytes(Paths.get(path));
+            if (data.length == 0) return null;
+
+            // Create Mat that wraps raw bytes (no copy)
+            Mat encoded = new Mat(1, data.length, opencv_core.CV_8UC1);
+            encoded.data().put(data);
+
+            // Decode image (still no disk I/O)
+            Mat image = opencv_imgcodecs.imdecode(encoded, opencv_imgcodecs.IMREAD_UNCHANGED);
+            encoded.close(); // release early
+
+            if (image == null || image.empty()) {
+                image.close();
+                return null;
+            }
+
+            int width = image.cols();
+            int height = image.rows();
+            int channels = image.channels();
+
+            BufferedImage result = new BufferedImage(width, height, BufferedImage.TYPE_INT_ARGB);
+            int[] pixels = ((DataBufferInt) result.getRaster().getDataBuffer()).getData();
+
+            UByteIndexer idx = image.createIndexer();
+
+            if (channels == 4) {
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++) {
+                        int b = idx.get(y, x, 0) & 0xFF;
+                        int g = idx.get(y, x, 1) & 0xFF;
+                        int r = idx.get(y, x, 2) & 0xFF;
+                        int a = idx.get(y, x, 3) & 0xFF;
+                        pixels[y * width + x] = (a << 24) | (r << 16) | (g << 8) | b;
+                    }
+                }
+            } else if (channels == 3) {
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++) {
+                        int b = idx.get(y, x, 0) & 0xFF;
+                        int g = idx.get(y, x, 1) & 0xFF;
+                        int r = idx.get(y, x, 2) & 0xFF;
+                        pixels[y * width + x] = (0xFF << 24) | (r << 16) | (g << 8) | b;
+                    }
+                }
+            } else {
+                // grayscale
+                for (int y = 0; y < height; y++) {
+                    for (int x = 0; x < width; x++) {
+                        int gray = idx.get(y, x) & 0xFF;
+                        pixels[y * width + x] = (0xFF << 24) | (gray << 16) | (gray << 8) | gray;
+                    }
+                }
+            }
+
+            idx.close();
+            image.close();
+            return result;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
