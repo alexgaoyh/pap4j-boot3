@@ -1,8 +1,10 @@
 package cn.net.pap.example.javafx.view;
 
-import cn.net.pap.example.javafx.constant.JavaFxConstant;
+import cn.net.pap.example.javafx.dto.ImageViewDTO;
+import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
+import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Bounds;
 import javafx.geometry.Rectangle2D;
 import javafx.scene.Cursor;
@@ -20,7 +22,13 @@ import javafx.scene.shape.Line;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.StrokeType;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -33,7 +41,7 @@ public class ZoomableImageView extends StackPane {
     private List<Circle> controlPoints = new ArrayList<>(); // 8个控制点
     private Circle draggedControlPoint = null; // 当前被拖拽的控制点
 
-    private List<Image> imageList;
+    private List<ImageViewDTO> imageList;
 
     private int currentIndex = 0;
 
@@ -55,21 +63,29 @@ public class ZoomableImageView extends StackPane {
 
     public ZoomableImageView() {
         String desktop = System.getProperty("user.home") + File.separator + "Desktop";
-        Image image = new Image(JavaFxConstant.FILE_PROTOCOL2 + desktop + File.separator + "alexgaoyh.jpg");
-        List<Image> images = new ArrayList<Image>();
-        images.add(image);
-
-        init(images);
+        String imagePath = desktop + File.separator + "alexgaoyh.tif";
+        try (InputStream is = Files.newInputStream(Path.of(imagePath))) {
+            BufferedImage bufferedImage = ImageIO.read(is);
+            Image fxImage = SwingFXUtils.toFXImage(bufferedImage, null);
+            ImageViewDTO imageViewDTO = new ImageViewDTO(fxImage, imagePath);
+            List<ImageViewDTO> images = new ArrayList<ImageViewDTO>();
+            images.add(imageViewDTO);
+            init(images);
+        } catch (IOException e) {
+            Platform.runLater(() -> {
+                javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+                alert.setTitle("错误");
+                alert.setHeaderText(null);
+                alert.setContentText("图像加载异常:" + e.getMessage());
+                alert.showAndWait();
+            });
+        }
     }
 
-    public ZoomableImageView(List<Image> images) {
-        init(images);
-    }
-
-    public void init(List<Image> images) {
+    public void init(List<ImageViewDTO> images) {
         this.imageList = images;
         if (images != null && !images.isEmpty()) {
-            imageView.setImage(images.get(0));
+            imageView.setImage(images.get(0).getImage());
         }
 
         imageView.setPreserveRatio(true);
@@ -181,15 +197,24 @@ public class ZoomableImageView extends StackPane {
 
     private Cursor getCursorForControlPoint(int index) {
         switch (index) {
-            case 0: return Cursor.NW_RESIZE; // 左上角
-            case 1: return Cursor.N_RESIZE;  // 上中点
-            case 2: return Cursor.NE_RESIZE; // 右上角
-            case 3: return Cursor.E_RESIZE;  // 右中点
-            case 4: return Cursor.SE_RESIZE; // 右下角
-            case 5: return Cursor.S_RESIZE;  // 下中点
-            case 6: return Cursor.SW_RESIZE; // 左下角
-            case 7: return Cursor.W_RESIZE;  // 左中点
-            default: return Cursor.DEFAULT;
+            case 0:
+                return Cursor.NW_RESIZE; // 左上角
+            case 1:
+                return Cursor.N_RESIZE;  // 上中点
+            case 2:
+                return Cursor.NE_RESIZE; // 右上角
+            case 3:
+                return Cursor.E_RESIZE;  // 右中点
+            case 4:
+                return Cursor.SE_RESIZE; // 右下角
+            case 5:
+                return Cursor.S_RESIZE;  // 下中点
+            case 6:
+                return Cursor.SW_RESIZE; // 左下角
+            case 7:
+                return Cursor.W_RESIZE;  // 左中点
+            default:
+                return Cursor.DEFAULT;
         }
     }
 
@@ -262,7 +287,7 @@ public class ZoomableImageView extends StackPane {
                     // 但为了逻辑简单，这里仅锁定宽度，实际商用项目通常允许翻转(flip)
                     newWidth = 10;
                     // 如果是左侧拖拽(0,6,7)，当限制宽度时，X不能再变了
-                    if(index == 0 || index == 6 || index == 7) {
+                    if (index == 0 || index == 6 || index == 7) {
                         newX = rectStartX + rectStartWidth - 10;
                     }
                 }
@@ -270,7 +295,7 @@ public class ZoomableImageView extends StackPane {
                 if (newHeight < 10) {
                     newHeight = 10;
                     // 如果是上方拖拽(0,1,2)，当限制高度时，Y不能再变了
-                    if(index == 0 || index == 1 || index == 2) {
+                    if (index == 0 || index == 1 || index == 2) {
                         newY = rectStartY + rectStartHeight - 10;
                     }
                 }
@@ -544,9 +569,6 @@ public class ZoomableImageView extends StackPane {
      * 下一张
      **/
     public void nextImage() {
-        if (imageList == null || imageList.isEmpty()) return;
-        currentIndex = (currentIndex + 1) % imageList.size();
-        imageView.setImage(imageList.get(currentIndex));
         // 切换图像时清除选择框
         clearSelection();
     }
@@ -555,9 +577,6 @@ public class ZoomableImageView extends StackPane {
      * 上一张
      **/
     public void previousImage() {
-        if (imageList == null || imageList.isEmpty()) return;
-        currentIndex = (currentIndex - 1 + imageList.size()) % imageList.size();
-        imageView.setImage(imageList.get(currentIndex));
         // 切换图像时清除选择框
         clearSelection();
     }
@@ -568,7 +587,7 @@ public class ZoomableImageView extends StackPane {
     public void clearSelection() {
         // 选择框
         Rectangle2D selectionInImageCoordinates = getSelectionInImageCoordinates();
-        if(selectionInImageCoordinates != null) {
+        if (selectionInImageCoordinates != null) {
             // System.out.println(selectionInImageCoordinates.toString());
         }
 
@@ -651,6 +670,14 @@ public class ZoomableImageView extends StackPane {
         return imageView;
     }
 
+    public List<ImageViewDTO> getImageList() {
+        return imageList;
+    }
+
+    public int getCurrentIndex() {
+        return currentIndex;
+    }
+
     /**
      * 重新加载当前图像并刷新 UI
      */
@@ -661,32 +688,32 @@ public class ZoomableImageView extends StackPane {
 
         // 获取当前 Image 的加载源 URL
         // 注意：要确保您的 imageList 中的 Image 对象有有效的 URL
-        Image oldImage = imageList.get(currentIndex);
-        String imageURL = oldImage.getUrl();
+        ImageViewDTO oldImageDTO = imageList.get(currentIndex);
+        String imagePath = oldImageDTO.getImageAbsolutePath();
 
-        if (imageURL == null || imageURL.isEmpty()) {
-            // 如果无法获取URL (比如通过 Image(InputStream) 加载)，则使用最保守的刷新方法
-            // 这种情况下，您可能需要重新加载文件内容。
-            // 暂时跳过，我们假设您能够获取 URL
-            System.err.println("Error: Cannot reload image without a valid URL.");
-            return;
+        try (InputStream is = Files.newInputStream(Path.of(imagePath))) {
+            BufferedImage bufferedImage = ImageIO.read(is);
+            Image fxImage = SwingFXUtils.toFXImage(bufferedImage, null);
+            ImageViewDTO imageViewDTO = new ImageViewDTO(fxImage, imagePath);
+
+            // 1. 设置新的图像实例
+            imageView.setImage(fxImage);
+            // 2. 清除平移，回到 StackPane 居中默认位置
+            imageView.setScaleX(scaleX);
+            imageView.setScaleY(scaleY);
+            imageView.setTranslateX(translateX);
+            imageView.setTranslateY(translateY);
+            // 3. 更新 imageList 中的引用（可选，取决于您是否希望 imageList 保持最新）
+            imageList.set(currentIndex, imageViewDTO);
+        } catch (IOException e) {
+            Platform.runLater(() -> {
+                javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+                alert.setTitle("错误");
+                alert.setHeaderText(null);
+                alert.setContentText("图像加载异常:" + e.getMessage());
+                alert.showAndWait();
+            });
         }
-
-        // 关键步骤：创建一个新的 Image 实例，并明确禁用缓存
-        // JavaFX 看到这是一个新对象，会强制重新加载和渲染。
-        Image newImage = new Image(imageURL, false); // 第二个参数设置为 false 表示禁用内部缓存
-
-        // 1. 设置新的图像实例
-        imageView.setImage(newImage);
-
-        // 2. 清除平移，回到 StackPane 居中默认位置
-        imageView.setScaleX(scaleX);
-        imageView.setScaleY(scaleY);
-        imageView.setTranslateX(translateX);
-        imageView.setTranslateY(translateY);
-
-        // 3. 更新 imageList 中的引用（可选，取决于您是否希望 imageList 保持最新）
-        imageList.set(currentIndex, newImage);
 
     }
 

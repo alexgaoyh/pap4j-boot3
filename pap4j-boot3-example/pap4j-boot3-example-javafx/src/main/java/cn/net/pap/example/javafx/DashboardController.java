@@ -1,6 +1,5 @@
 package cn.net.pap.example.javafx;
 
-import cn.net.pap.example.javafx.constant.JavaFxConstant;
 import cn.net.pap.example.javafx.util.ImageMagickUtil;
 import cn.net.pap.example.javafx.view.ZoomableImageView;
 import javafx.application.Platform;
@@ -74,14 +73,14 @@ public class DashboardController implements Initializable {
     @FXML
     private void sizeView() throws IOException {
         Platform.runLater(() ->
-            {
-                ImageView imageView = zoomableView.getImageView();
-                imageView.setScaleX(1.0);
-                imageView.setScaleY(1.0);
-                imageView.setTranslateX(0);
-                imageView.setTranslateY(0);
-                zoomableView.updateScale(1.0);
-            }
+                {
+                    ImageView imageView = zoomableView.getImageView();
+                    imageView.setScaleX(1.0);
+                    imageView.setScaleY(1.0);
+                    imageView.setTranslateX(0);
+                    imageView.setTranslateY(0);
+                    zoomableView.updateScale(1.0);
+                }
         );
         focusInZoomableView();
     }
@@ -89,17 +88,20 @@ public class DashboardController implements Initializable {
     @FXML
     private void imageRemoveIn() throws Exception {
         ImageView imageView = zoomableView.getImageView();
-        String inputFilePathProtocol = imageView.getImage().getUrl();
         Rectangle2D rectangle2D = zoomableView.getSelectionInImageCoordinates();
-        String inputFilePath = inputFilePathProtocol.replaceFirst(JavaFxConstant.FILE_PROTOCOL2, "");
-        if(rectangle2D != null) {
-            ImageMagickUtil.magick_imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
-            zoomableView.clearSelection();
-            double scaleX = imageView.getScaleX();
-            double scaleY = imageView.getScaleY();
-            double translateX = imageView.getTranslateX();
-            double translateY = imageView.getTranslateY();
-            zoomableView.reloadCurrentImage(scaleX, scaleY, translateX, translateY);
+        String inputFilePath = zoomableView.getImageList().get(zoomableView.getCurrentIndex()).getImageAbsolutePath();
+        if (rectangle2D != null) {
+            ImageMagickUtil.ExecResult execResult = ImageMagickUtil.magick_imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
+            if (execResult.isSuccess()) {
+                zoomableView.clearSelection();
+                double scaleX = imageView.getScaleX();
+                double scaleY = imageView.getScaleY();
+                double translateX = imageView.getTranslateX();
+                double translateY = imageView.getTranslateY();
+                zoomableView.reloadCurrentImage(scaleX, scaleY, translateX, translateY);
+            } else {
+                showErrorAlert("图像处理失败", "执行图像操作时发生错误。\n原因: " + execResult.getStderr());
+            }
         } else {
             showErrorAlert("图像处理失败", "执行图像操作时发生错误。\n原因: " + "未获得有效矩形框");
         }
@@ -214,7 +216,7 @@ public class DashboardController implements Initializable {
             exitButton.setText("退出");
         }
         Platform.runLater(() ->
-            zoomableView.fitImage(stackPane.getWidth(), stackPane.getHeight())
+                zoomableView.fitImage(stackPane.getWidth(), stackPane.getHeight())
         );
         // 值单向绑定
         scaleLabel.textProperty().bind(zoomableView.scaleFactorProperty().multiply(100).asString("%.0f%%"));
@@ -227,7 +229,7 @@ public class DashboardController implements Initializable {
     }
 
     private void drawGrid(double width, double height) {
-        if(gridOverlay != null) {
+        if (gridOverlay != null) {
             gridOverlay.setWidth(width);
             gridOverlay.setHeight(height);
 

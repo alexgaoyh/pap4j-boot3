@@ -26,11 +26,21 @@ public class ImageMagickUtil {
 
     private static final Logger log = LoggerFactory.getLogger(ImageMagickUtil.class);
 
+    static {
+        try {
+            // 初始化拷贝可执行命令
+            getMagickPath(ApplicationProperties.getImageMagickPath());
+        } catch (Exception e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+
+
     /**
      * 获取ImageMagick可执行文件路径
      * 如果文件不存在，则从resources中提取到临时目录
      */
-    public static String getMagickPath(String extractDir) throws IOException {
+    public static String getMagickPath(String extractDir) throws Exception {
 
         String osName = System.getProperty("os.name").toLowerCase();
         String resourcePath;
@@ -62,7 +72,7 @@ public class ImageMagickUtil {
     /**
      * 从resources中提取文件到临时目录
      */
-    private static String extractResourceToTemp(String executeFilePath, String resourcePath, String fileName) throws IOException {
+    private static String extractResourceToTemp(String executeFilePath, String resourcePath, String fileName) throws Exception {
         // 创建临时目录（如果不存在）
         Path tempDir = Paths.get(executeFilePath, "");
         Files.createDirectories(tempDir);
@@ -257,25 +267,25 @@ public class ImageMagickUtil {
         }
     }
 
-    public static boolean magick_imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2) throws IOException {
+    public static ExecResult magick_imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2) throws IOException {
         try {
             String drawCommand = String.format("rectangle %.2f,%.2f %.2f,%.2f", x1, y1, x2, y2);
 
             String cmd = String.join(" ", "magick", inputPath, "-fill", "white", "-draw", "\"" + drawCommand + "\"", outputPath);
 
-            Map<String, String> envJavaHome = new HashMap<>();
+            Map<String, String> envHome = new HashMap<>();
             String oldPath = System.getenv("PATH");
-            envJavaHome.put("PATH", getMagickPath(ApplicationProperties.getImageMagickPath()) + File.pathSeparator + oldPath);
-            ExecResult execResult = execWithShell(cmd, envJavaHome, new File("."), 60000);
+            envHome.put("PATH", ApplicationProperties.getImageMagickPath() + File.pathSeparator + oldPath);
+            ExecResult execResult = execWithShell(cmd, envHome, new File("."), 60000);
 
             if (!execResult.isSuccess()) {
                 log.error("Magick failed: {}\n{}", cmd, execResult.getStderr());
             }
 
-            return execResult.isSuccess();
+            return execResult;
         } catch (IOException e) {
-            log.warn("Magick command failed: {}", e.getMessage());
-            return false;
+            log.warn("Magick command failed: {}", e);
+            return new ExecResult(999, "", e.getMessage(), true);
         } finally {
 
         }
