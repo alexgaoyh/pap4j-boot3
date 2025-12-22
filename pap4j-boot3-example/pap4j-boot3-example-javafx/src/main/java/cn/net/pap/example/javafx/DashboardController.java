@@ -152,9 +152,11 @@ public class DashboardController implements Initializable {
     }
 
     private void loadFolderTree(Path folderPath) {
-        rootItem = new FileTreeItem(folderPath);
-        folderTreeView.setRoot(rootItem);
-        rootItem.setExpanded(true); // 只展开根节点
+        if(folderPath != null) {
+            rootItem = new FileTreeItem(folderPath);
+            folderTreeView.setRoot(rootItem);
+            rootItem.setExpanded(true); // 只展开根节点
+        }
     }
 
 
@@ -179,6 +181,60 @@ public class DashboardController implements Initializable {
             showErrorAlert("图像处理失败", "执行图像操作时发生错误。\n原因: " + "未获得有效矩形框");
         }
         focusInZoomableView();
+    }
+
+    @FXML
+    private void handleRefreshSelectedNode() {
+        TreeItem<Path> selectedItem = folderTreeView.getSelectionModel().getSelectedItem();
+
+        if (selectedItem == null || !(selectedItem instanceof FileTreeItem)) {
+            loadFolderTree(currentFolder);
+            return;
+        }
+
+        FileTreeItem fileItem = (FileTreeItem) selectedItem;
+        Path selectedPath = fileItem.getValue();
+
+        // 保存当前选中路径
+        final Path pathToReselect = selectedPath;
+
+        // 确定要刷新的节点
+        FileTreeItem nodeToRefresh;
+        if (Files.isDirectory(selectedPath)) {
+            nodeToRefresh = fileItem;
+        } else {
+            nodeToRefresh = (FileTreeItem) fileItem.getParent();
+        }
+
+        if (nodeToRefresh != null) {
+            // 刷新节点
+            refreshNode(nodeToRefresh);
+
+            // 延迟重新选中（确保节点已刷新完成）
+            Platform.runLater(() -> {
+                findAndSelectPath(nodeToRefresh, pathToReselect);
+            });
+        }
+    }
+
+    private void refreshNode(FileTreeItem item) {
+        item.setExpanded(false);
+        item.getChildren().clear();
+        item.setExpanded(true);
+    }
+
+    private void findAndSelectPath(TreeItem<Path> startNode, Path targetPath) {
+        if (startNode.getValue().equals(targetPath)) {
+            folderTreeView.getSelectionModel().select(startNode);
+            return;
+        }
+
+        for (TreeItem<Path> child : startNode.getChildren()) {
+            if (child.getValue().equals(targetPath)) {
+                folderTreeView.getSelectionModel().select(child);
+                return;
+            }
+        }
     }
 
     private Stage findPrimaryStage() {

@@ -94,7 +94,21 @@
                 </BorderPane>
                 <AnchorPane>
                     <children>
-                        <Button text="去除图像内" onAction="#imageRemoveIn"/>
+                        <SplitPane dividerPositions="0.5" orientation="VERTICAL" AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0">
+                            <items>
+                                <AnchorPane>
+                                    <children>
+                                        <Button text="去除图像内" onAction="#imageRemoveIn" AnchorPane.topAnchor="0" AnchorPane.leftAnchor="0"/>
+                                    </children>
+                                </AnchorPane>
+
+                                <AnchorPane>
+                                    <children>
+                                        <Button text="目录刷新" onAction="#handleRefreshSelectedNode" AnchorPane.topAnchor="0" AnchorPane.leftAnchor="0"/>
+                                    </children>
+                                </AnchorPane>
+                            </items>
+                        </SplitPane>
                     </children>
                 </AnchorPane>
             </items>
