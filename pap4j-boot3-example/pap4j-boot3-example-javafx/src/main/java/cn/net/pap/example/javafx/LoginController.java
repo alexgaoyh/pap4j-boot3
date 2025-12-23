@@ -43,11 +43,6 @@ public class LoginController implements Initializable {
             loader.setCharset(StandardCharsets.UTF_8);
             Parent root = loader.load();
 
-            DashboardController controller = loader.getController();
-            if (controller != null) {
-                controller.setWelcomeMessage("欢迎回来，" + username + "！");
-            }
-
             Stage currentStage = (Stage) ((Button) event.getSource()).getScene().getWindow();
             boolean wasMaximized = currentStage.isMaximized();
 

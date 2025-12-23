@@ -70,13 +70,13 @@
                 </Menu>
             </menus>
         </MenuBar>
-        <SplitPane dividerPositions="0.2505567928730512, 0.7505567928730512" focusTraversable="true" prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS">
+        <SplitPane fx:id="rootSplitPane" dividerPositions="0.15, 0.85" focusTraversable="true" prefHeight="-1.0" prefWidth="-1.0" VBox.vgrow="ALWAYS">
             <items>
-                <VBox>
+                <VBox VBox.vgrow="ALWAYS">
                     <TreeView fx:id="folderTreeView" VBox.vgrow="ALWAYS">
                     </TreeView>
                 </VBox>
-                <BorderPane>
+                <BorderPane VBox.vgrow="ALWAYS" minHeight="0" minWidth="0">
                     <center>
                         <StackPane minWidth="0" minHeight="0" fx:id="stackPane">
                             <!--<Canvas fx:id="gridOverlay" pickOnBounds="false"></Canvas>-->
@@ -93,7 +93,7 @@
                         </HBox>
                     </bottom>
                 </BorderPane>
-                <AnchorPane>
+                <AnchorPane VBox.vgrow="ALWAYS" minHeight="0" minWidth="0">
                     <children>
                         <SplitPane dividerPositions="0.5" orientation="VERTICAL" AnchorPane.topAnchor="0" AnchorPane.bottomAnchor="0" AnchorPane.leftAnchor="0" AnchorPane.rightAnchor="0">
                             <items>

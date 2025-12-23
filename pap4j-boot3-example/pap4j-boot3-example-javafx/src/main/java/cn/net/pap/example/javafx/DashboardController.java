@@ -22,6 +22,7 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.SplitPane;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
@@ -59,13 +60,10 @@ public class DashboardController implements Initializable {
     private static final Logger log = LoggerFactory.getLogger(DashboardController.class);
 
     @FXML
-    private Label welcomeLabel;
+    private SplitPane rootSplitPane;
 
     @FXML
     private Label scaleLabel;
-
-    @FXML
-    private Button exitButton;
 
     @FXML
     private ZoomableImageView zoomableView;
@@ -91,18 +89,6 @@ public class DashboardController implements Initializable {
 
     // 图像切换的时候，避免来回滚动
     private boolean restoringSelection = false;
-
-    public void setWelcomeMessage(String message) {
-        if (welcomeLabel != null) {
-            welcomeLabel.setText(message);
-        }
-    }
-
-    @FXML
-    protected void onLogoutClick() {
-        Stage stage = (Stage) welcomeLabel.getScene().getWindow();
-        stage.close();
-    }
 
     @FXML
     private void onHandleRefresh(javafx.event.ActionEvent event) throws IOException {
@@ -180,52 +166,104 @@ public class DashboardController implements Initializable {
     }
 
     @FXML
-    private void imageRollback() throws Exception {
+    private void imageRollback() {
+        showLoading(); // 第一行立即显示 loading
+
+        ImageView imageView = zoomableView.getImageView();
         String inputFilePath = zoomableView.getImageList().get(zoomableView.getCurrentIndex()).getImageAbsolutePath();
         String recentSavedPath = PathHistoryManager.popLatestHistoricalFile(inputFilePath);
-        if(recentSavedPath != null && !recentSavedPath.isEmpty() && new File(recentSavedPath).exists()) {
-            try (FileChannel inChannel = FileChannel.open(Paths.get(recentSavedPath), StandardOpenOption.READ);
-                 FileChannel outChannel = FileChannel.open(Paths.get(inputFilePath), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-                long size = inChannel.size();
-                long transferred = 0;
-                while (transferred < size) {
-                    transferred += inChannel.transferTo(transferred, size - transferred, outChannel);
+
+        if (recentSavedPath == null || recentSavedPath.isEmpty() || !new File(recentSavedPath).exists()) {
+            showErrorAlert("图像处理失败", "无法回退。\n原因: 未对当前图像进行操作或上一步图像已删除");
+            hideLoading();
+            return;
+        }
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                // 耗时文件操作放后台
+                try (FileChannel inChannel = FileChannel.open(Paths.get(recentSavedPath), StandardOpenOption.READ);
+                     FileChannel outChannel = FileChannel.open(Paths.get(inputFilePath), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+
+                    long size = inChannel.size();
+                    long transferred = 0;
+                    while (transferred < size) {
+                        transferred += inChannel.transferTo(transferred, size - transferred, outChannel);
+                    }
                 }
+
+                Files.deleteIfExists(Paths.get(recentSavedPath));
+                return null;
             }
 
-            Files.deleteIfExists(Paths.get(recentSavedPath));
-
-            ImageView imageView = zoomableView.getImageView();
-            double scaleX = imageView.getScaleX();
-            double scaleY = imageView.getScaleY();
-            double translateX = imageView.getTranslateX();
-            double translateY = imageView.getTranslateY();
-            zoomableView.reloadCurrentImage(scaleX, scaleY, translateX, translateY);
-        } else {
-            showErrorAlert("图像处理失败", "无法回退。\n原因: " + "未对当前图像进行操作或上一步图像已删除");
-        }
-        focusInZoomableView();
-    }
-
-    @FXML
-    private void imageRemoveIn() throws Exception {
-        ImageView imageView = zoomableView.getImageView();
-        Rectangle2D rectangle2D = zoomableView.getSelectionInImageCoordinates();
-        String inputFilePath = zoomableView.getImageList().get(zoomableView.getCurrentIndex()).getImageAbsolutePath();
-        if (rectangle2D != null) {
-            ImageMagickUtil.ExecResult execResult = ImageMagickUtil.magick_imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
-            if (execResult.isSuccess()) {
-                zoomableView.clearSelection();
+            @Override
+            protected void succeeded() {
+                // UI 更新
                 double scaleX = imageView.getScaleX();
                 double scaleY = imageView.getScaleY();
                 double translateX = imageView.getTranslateX();
                 double translateY = imageView.getTranslateY();
                 zoomableView.reloadCurrentImage(scaleX, scaleY, translateX, translateY);
-            } else {
-                showErrorAlert("图像处理失败", "执行图像操作时发生错误。\n原因: " + execResult.getStderr());
+
+                hideLoading();
+                focusInZoomableView();
             }
+
+            @Override
+            protected void failed() {
+                Throwable e = getException();
+                showErrorAlert("图像处理失败", e != null ? e.getMessage() : "未知错误");
+                hideLoading();
+                focusInZoomableView();
+            }
+        };
+
+        new Thread(task, "ImageRollbackThread").start();
+    }
+
+
+    @FXML
+    private void imageRemoveIn() throws Exception {
+        showLoading();
+        ImageView imageView = zoomableView.getImageView();
+        Rectangle2D rectangle2D = zoomableView.getSelectionInImageCoordinates();
+        String inputFilePath = zoomableView.getImageList().get(zoomableView.getCurrentIndex()).getImageAbsolutePath();
+        if (rectangle2D != null) {
+            Task<Void> task = new Task<>() {
+                @Override
+                protected Void call() throws Exception {
+                    // 耗时操作放后台
+                    ImageMagickUtil.ExecResult execResult = ImageMagickUtil.magick_imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
+                    if (!execResult.isSuccess()) {
+                        throw new RuntimeException(execResult.getStderr());
+                    }
+                    return null;
+                }
+
+                @Override
+                protected void succeeded() {
+                    // 更新 UI
+                    zoomableView.clearSelection();
+                    double scaleX = imageView.getScaleX();
+                    double scaleY = imageView.getScaleY();
+                    double translateX = imageView.getTranslateX();
+                    double translateY = imageView.getTranslateY();
+                    zoomableView.reloadCurrentImage(scaleX, scaleY, translateX, translateY);
+                    hideLoading();
+                }
+
+                @Override
+                protected void failed() {
+                    Throwable e = getException();
+                    showErrorAlert("图像处理失败", e != null ? e.getMessage() : "未知错误");
+                    hideLoading();
+                }
+            };
+            new Thread(task, "ImageRemoveInThread").start();
         } else {
             showErrorAlert("图像处理失败", "执行图像操作时发生错误。\n原因: " + "未获得有效矩形框");
+            hideLoading();
         }
         focusInZoomableView();
     }
@@ -513,12 +551,6 @@ public class DashboardController implements Initializable {
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        if (welcomeLabel != null) {
-            welcomeLabel.setText("欢迎:");
-        }
-        if (exitButton != null) {
-            exitButton.setText("退出");
-        }
         Platform.runLater(() ->
                 zoomableView.fitImage(stackPane.getWidth(), stackPane.getHeight())
         );
@@ -539,6 +571,9 @@ public class DashboardController implements Initializable {
 
         // 添加快捷键
         addKeyboardShortcuts();
+
+        // 最大化最小化布局监听
+        initRootSplitPane();
     }
 
     private void drawGrid(double width, double height) {
@@ -711,6 +746,32 @@ public class DashboardController implements Initializable {
                 });
             }
         });
+    }
+
+    // 初始化 rootSplitPane 的布局，左中右的比例
+    private void initRootSplitPane() {
+        Platform.runLater(() -> {
+            Stage stage = (Stage) rootSplitPane.getScene().getWindow();
+            if (stage != null) {
+                // 初始设置 divider
+                rootSplitPane.setDividerPositions(0.15, 0.85);
+
+                // 监听最大化 / 最小化
+                stage.maximizedProperty().addListener((obs, wasMaximized, isMaximized) -> {
+                    // 延迟设置，确保布局完成
+                    Platform.runLater(() -> rootSplitPane.setDividerPositions(0.15, 0.85));
+                });
+
+                // 可选：监听宽高变化，也能保持比例
+                stage.widthProperty().addListener((obs, oldWidth, newWidth) ->
+                        Platform.runLater(() -> rootSplitPane.setDividerPositions(0.15, 0.85))
+                );
+                stage.heightProperty().addListener((obs, oldHeight, newHeight) ->
+                        Platform.runLater(() -> rootSplitPane.setDividerPositions(0.15, 0.85))
+                );
+            }
+        });
+
     }
 
     // 显示加载动画的方法
