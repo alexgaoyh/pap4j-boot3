@@ -269,6 +269,7 @@ public class ImageMagickUtil {
 
     public static ExecResult magick_imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2) throws IOException {
         try {
+            imageSaveInTmpFolder(inputPath);
             String drawCommand = String.format("rectangle %.2f,%.2f %.2f,%.2f", x1, y1, x2, y2);
 
             String cmd = String.join(" ", "magick", "\"" + inputPath + "\"", "-fill", "white", "-draw", "\"" + drawCommand + "\"", "\"" + outputPath + "\"");
@@ -289,6 +290,31 @@ public class ImageMagickUtil {
         } finally {
 
         }
+    }
+
+    /**
+     * 保存文件至临时文件夹
+     * @param inputPath
+     * @throws IOException
+     */
+    public static void imageSaveInTmpFolder(String inputPath) throws IOException {
+        File sourceFile = new File(inputPath);
+        if (!sourceFile.exists() || !sourceFile.isFile()) {
+            return;
+        }
+
+        File tmpDir = new File(ApplicationProperties.getImageTmpFolder());
+        if (!tmpDir.exists()) {
+            tmpDir.mkdirs();
+        }
+
+        long timestamp = System.currentTimeMillis();
+        String newFileName = timestamp + "_" + sourceFile.getName();
+
+        File targetFile = new File(tmpDir, newFileName);
+        Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
+        PathHistoryManager.registerHistoricalFile(sourceFile.getAbsolutePath(), targetFile.getAbsolutePath());
     }
 
 }

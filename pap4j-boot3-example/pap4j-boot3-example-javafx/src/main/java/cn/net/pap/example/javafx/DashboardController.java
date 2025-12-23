@@ -1,8 +1,10 @@
 package cn.net.pap.example.javafx;
 
+import cn.net.pap.example.javafx.config.ApplicationProperties;
 import cn.net.pap.example.javafx.dto.FileTreeItem;
 import cn.net.pap.example.javafx.dto.ImageViewDTO;
 import cn.net.pap.example.javafx.util.ImageMagickUtil;
+import cn.net.pap.example.javafx.util.PathHistoryManager;
 import cn.net.pap.example.javafx.view.ZoomableImageView;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -16,6 +18,7 @@ import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
@@ -43,6 +46,8 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -163,6 +168,34 @@ public class DashboardController implements Initializable {
         }
     }
 
+    @FXML
+    private void handleDelImageTmp() throws Exception {
+        // 先从 PathHistoryManager 中删除
+        PathHistoryManager.cleanupExpiredHistory(Duration.ofHours(24));
+        // 再读取文件夹下所有文件，找出指定时间之前的文件进行删除
+        PathHistoryManager.deleteFilesBefore(Paths.get(ApplicationProperties.getImageTmpFolder()), Duration.ofHours(24));
+        showSuccessAlert("临时文件夹删除", "操作成功。\n已删除24小时之前的临时图像信息");
+    }
+
+    @FXML
+    private void imageRollback() throws Exception {
+        String inputFilePath = zoomableView.getImageList().get(zoomableView.getCurrentIndex()).getImageAbsolutePath();
+        String recentSavedPath = PathHistoryManager.popLatestHistoricalFile(inputFilePath);
+        if(recentSavedPath != null && !recentSavedPath.isEmpty() && new File(recentSavedPath).exists()) {
+            Files.copy(Paths.get(recentSavedPath), Paths.get(inputFilePath), StandardCopyOption.REPLACE_EXISTING);
+            Files.deleteIfExists(Paths.get(recentSavedPath));
+
+            ImageView imageView = zoomableView.getImageView();
+            double scaleX = imageView.getScaleX();
+            double scaleY = imageView.getScaleY();
+            double translateX = imageView.getTranslateX();
+            double translateY = imageView.getTranslateY();
+            zoomableView.reloadCurrentImage(scaleX, scaleY, translateX, translateY);
+        } else {
+            showErrorAlert("图像处理失败", "无法回退。\n原因: " + "未对当前图像进行操作或上一步图像已删除");
+        }
+        focusInZoomableView();
+    }
 
     @FXML
     private void imageRemoveIn() throws Exception {
@@ -446,6 +479,21 @@ public class DashboardController implements Initializable {
         // 确保在 JavaFX 线程中执行 UI 更新
         Platform.runLater(() -> {
             javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
+            Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
+            alertStage.getIcons().add(ApplicationProperties.APP_ICON);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
+    }
+
+    private void showSuccessAlert(String title, String message) {
+        // 确保在 JavaFX 线程中执行 UI 更新
+        Platform.runLater(() -> {
+            javafx.scene.control.Alert alert = new javafx.scene.control.Alert(Alert.AlertType.INFORMATION);
+            Stage alertStage = (Stage) alert.getDialogPane().getScene().getWindow();
+            alertStage.getIcons().add(ApplicationProperties.APP_ICON);
             alert.setTitle(title);
             alert.setHeaderText(null);
             alert.setContentText(message);

@@ -1,5 +1,6 @@
 package cn.net.pap.example.javafx;
 
+import cn.net.pap.example.javafx.config.ApplicationProperties;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -16,6 +17,7 @@ import javafx.stage.Stage;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 import java.util.ResourceBundle;
 
 public class LoginController implements Initializable {
@@ -63,6 +65,8 @@ public class LoginController implements Initializable {
                 newStage.setWidth(currentStage.getWidth());
                 newStage.setHeight(currentStage.getHeight());
             }
+
+            newStage.getIcons().add(ApplicationProperties.APP_ICON);
 
             // 关闭旧窗口
             currentStage.close();

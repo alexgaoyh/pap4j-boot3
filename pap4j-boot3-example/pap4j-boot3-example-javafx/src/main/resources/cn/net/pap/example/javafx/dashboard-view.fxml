@@ -60,6 +60,7 @@
                 <Menu mnemonicParsing="false" text="Help">
                     <items>
 <!--                        <MenuItem mnemonicParsing="false" text="About MyHelloApp" />-->
+                        <MenuItem mnemonicParsing="false" text="Del Image Tmp" onAction="#handleDelImageTmp" />
                         <MenuItem mnemonicParsing="false" text="Refresh" onAction="#onHandleRefresh">
                             <accelerator>
                                 <KeyCodeCombination alt="UP" control="UP" meta="UP" shift="UP" shortcut="UP" code="F5" />
@@ -98,13 +99,22 @@
                             <items>
                                 <AnchorPane>
                                     <children>
-                                        <Button text="去除图像内" onAction="#imageRemoveIn" AnchorPane.topAnchor="0" AnchorPane.leftAnchor="0"/>
+                                        <HBox spacing="10" AnchorPane.topAnchor="10" AnchorPane.leftAnchor="10">
+                                            <children>
+                                                <Button text="回退" onAction="#imageRollback"/>
+                                                <Button text="去除图像内" onAction="#imageRemoveIn"/>
+                                            </children>
+                                        </HBox>
                                     </children>
                                 </AnchorPane>
 
                                 <AnchorPane>
                                     <children>
-                                        <Button text="目录刷新" onAction="#handleRefreshSelectedNode" AnchorPane.topAnchor="0" AnchorPane.leftAnchor="0"/>
+                                        <HBox spacing="10" AnchorPane.topAnchor="10" AnchorPane.leftAnchor="10">
+                                            <children>
+                                                <Button text="目录刷新" onAction="#handleRefreshSelectedNode" AnchorPane.topAnchor="0" AnchorPane.leftAnchor="0"/>
+                                            </children>
+                                        </HBox>
                                     </children>
                                 </AnchorPane>
                             </items>

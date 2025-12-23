@@ -1,6 +1,12 @@
 package cn.net.pap.example.javafx.config;
 
+import java.io.File;
+import java.io.IOException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Objects;
 import java.util.Properties;
 
 /**
@@ -9,6 +15,13 @@ import java.util.Properties;
 public class ApplicationProperties {
 
     private static final Properties PROPS = new Properties();
+
+    /**
+     * 图标
+     */
+    public static final javafx.scene.image.Image APP_ICON = new javafx.scene.image.Image(
+            Objects.requireNonNull(ApplicationProperties.class.getClassLoader().getResourceAsStream("alexgaoyh.png"))
+    );
 
     static {
         try (InputStream in = ApplicationProperties.class.getClassLoader().getResourceAsStream("application.properties")) {
@@ -41,6 +54,21 @@ public class ApplicationProperties {
             return path;
         } else {
             throw new UnsupportedOperationException("Unsupported operating system: " + osName);
+        }
+    }
+
+    /**
+     * 临时文件的目录
+     * @return
+     */
+    public static String getImageTmpFolder() {
+        try {
+            String tmpStr = getImageMagickPath() + File.separator + "pap4j-boot3-example-javafx";
+            Path tmpPath = Paths.get(tmpStr);
+            Files.createDirectories(tmpPath);
+            return tmpStr;
+        } catch (IOException e) {
+            throw new RuntimeException("无法创建临时目录", e);
         }
     }
 

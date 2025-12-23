@@ -1,5 +1,6 @@
 package cn.net.pap.example.javafx;
 
+import cn.net.pap.example.javafx.config.ApplicationProperties;
 import cn.net.pap.example.javafx.h2.H2ServerManager;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -32,13 +33,7 @@ public class MainApp extends Application {
         stage.setScene(scene);
 
         // 设置主窗口左上角图标（标题栏 / 任务栏 / Alt+Tab）
-        stage.getIcons().add(
-                new javafx.scene.image.Image(
-                        Objects.requireNonNull(
-                                MainApp.class.getClassLoader().getResourceAsStream("alexgaoyh.png")
-                        )
-                )
-        );
+        stage.getIcons().add(ApplicationProperties.APP_ICON);
 
         // 设置托盘图标
         URL icoURL = MainApp.class.getClassLoader().getResource("alexgaoyh.png");
