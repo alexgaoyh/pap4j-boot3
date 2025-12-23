@@ -858,6 +858,9 @@ public class ZoomableImageView extends StackPane {
         controlPoints.clear();
         gridContainer.getChildren().clear();
 
+        // 重置比例
+        updateScale(1.0);
+
         // 断开 Lambda 引用
         updateGrid = null;
     }

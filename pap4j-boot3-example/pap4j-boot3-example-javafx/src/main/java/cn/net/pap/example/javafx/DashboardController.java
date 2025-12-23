@@ -12,6 +12,7 @@ import javafx.fxml.FXMLLoader;
 import javafx.fxml.Initializable;
 import javafx.geometry.Pos;
 import javafx.geometry.Rectangle2D;
+import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
@@ -143,6 +144,9 @@ public class DashboardController implements Initializable {
         File selectedDirectory = directoryChooser.showDialog(stage);
 
         if (selectedDirectory != null) {
+            // 清空中间图像框
+            zoomableView.dispose();
+
             currentFolder = selectedDirectory.toPath();
             loadFolderTree(currentFolder);
         }
@@ -214,6 +218,119 @@ public class DashboardController implements Initializable {
             Platform.runLater(() -> {
                 findAndSelectPath(nodeToRefresh, pathToReselect);
             });
+        }
+    }
+
+    @FXML
+    private void handlePreviousImage() {
+        TreeItem<Path> selectedItem = folderTreeView.getSelectionModel().getSelectedItem();
+        if (selectedItem == null || selectedItem.getValue() == null) {
+            showErrorAlert("提示", "请先选择一张图片");
+            return;
+        }
+
+        // 获取当前选中的TreeItem
+        TreeItem<Path> currentItem = selectedItem;
+
+        // 如果是文件，先找到其父节点（目录）
+        TreeItem<Path> parentItem = currentItem.getParent();
+        if (parentItem == null) {
+            return;
+        }
+
+        // 获取父节点下的所有子节点（包括目录和文件）
+        List<TreeItem<Path>> allItems = new ArrayList<>();
+        getAllChildren(parentItem, allItems);
+
+        // 找到当前选中的项目在所有项目中的索引
+        int currentIndex = -1;
+        for (int i = 0; i < allItems.size(); i++) {
+            if (allItems.get(i) == currentItem) {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        if (currentIndex == -1) {
+            return;
+        }
+
+        // 查找前一个图片文件
+        for (int i = currentIndex - 1; i >= 0; i--) {
+            TreeItem<Path> item = allItems.get(i);
+            Path path = item.getValue();
+            if (path != null && isImageFile(path.toFile())) {
+                folderTreeView.getSelectionModel().select(item);
+                return;
+            }
+        }
+
+        // 如果没有找到前一个图片，提示已经是第一张
+        showErrorAlert("提示", "已经是第一张图片");
+    }
+
+    @FXML
+    private void handleNextImage() {
+        TreeItem<Path> selectedItem = folderTreeView.getSelectionModel().getSelectedItem();
+        if (selectedItem == null || selectedItem.getValue() == null) {
+            showErrorAlert("提示", "请先选择一张图片");
+            return;
+        }
+
+        // 获取当前选中的TreeItem
+        TreeItem<Path> currentItem = selectedItem;
+
+        // 如果是文件，先找到其父节点（目录）
+        TreeItem<Path> parentItem = currentItem.getParent();
+        if (parentItem == null) {
+            return;
+        }
+
+        // 获取父节点下的所有子节点（包括目录和文件）
+        List<TreeItem<Path>> allItems = new ArrayList<>();
+        getAllChildren(parentItem, allItems);
+
+        // 找到当前选中的项目在所有项目中的索引
+        int currentIndex = -1;
+        for (int i = 0; i < allItems.size(); i++) {
+            if (allItems.get(i) == currentItem) {
+                currentIndex = i;
+                break;
+            }
+        }
+
+        if (currentIndex == -1) {
+            return;
+        }
+
+        // 查找下一个图片文件
+        for (int i = currentIndex + 1; i < allItems.size(); i++) {
+            TreeItem<Path> item = allItems.get(i);
+            Path path = item.getValue();
+            if (path != null && isImageFile(path.toFile())) {
+                folderTreeView.getSelectionModel().select(item);
+                return;
+            }
+        }
+
+        // 如果没有找到下一个图片，提示已经是最后一张
+        showErrorAlert("提示", "已经是最后一张图片");
+    }
+
+    /**
+     * 递归获取所有子节点（包括嵌套的子节点）
+     */
+    private void getAllChildren(TreeItem<Path> parent, List<TreeItem<Path>> result) {
+        if (parent == null) {
+            return;
+        }
+
+        for (TreeItem<Path> child : parent.getChildren()) {
+            result.add(child);
+            // 如果子节点是目录，递归获取其子节点
+            if (child.getValue() != null && Files.isDirectory(child.getValue())) {
+                getAllChildren(child, result);
+            }
         }
     }
 
@@ -361,6 +478,9 @@ public class DashboardController implements Initializable {
 
         // 初始化loading
         initLoadingIndicator();
+
+        // 添加快捷键
+        addKeyboardShortcuts();
     }
 
     private void drawGrid(double width, double height) {
@@ -502,6 +622,37 @@ public class DashboardController implements Initializable {
         // 将 loadingPane 添加到 stackPane（假设 stackPane 是主容器）
         StackPane.setAlignment(progressIndicator, Pos.CENTER);
         stackPane.getChildren().add(loadingPane);
+    }
+
+    /**
+     * 快捷键
+     */
+    private void addKeyboardShortcuts() {
+        // 添加快捷键（initialize通常只调用一次）
+        Platform.runLater(() -> {
+            Scene scene = stackPane.getScene();
+            if (scene != null) {
+                // 直接添加，因为每次重新加载FXML都会创建新的控制器和场景
+                scene.setOnKeyPressed(event -> {
+                    // 只有当焦点不在文本输入控件时才响应
+                    Node focusOwner = scene.getFocusOwner();
+                    boolean isTextInput = focusOwner instanceof javafx.scene.control.TextInputControl;
+
+                    if (!isTextInput) {
+                        switch (event.getCode()) {
+                            case LEFT:
+                                handlePreviousImage();
+                                event.consume();
+                                break;
+                            case RIGHT:
+                                handleNextImage();
+                                event.consume();
+                                break;
+                        }
+                    }
+                });
+            }
+        });
     }
 
     // 显示加载动画的方法
