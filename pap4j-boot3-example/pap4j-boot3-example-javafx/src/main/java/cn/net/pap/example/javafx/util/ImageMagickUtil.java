@@ -315,12 +315,9 @@ public class ImageMagickUtil {
 
         File targetFile = new File(tmpDir, newFileName);
 
-        Path sourcePath = sourceFile.toPath();
-        Path targetPath = targetFile.toPath();
-
         // zero copy
-        try (FileChannel inChannel = FileChannel.open(sourcePath, StandardOpenOption.READ);
-             FileChannel outChannel = FileChannel.open(targetPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+        try (FileChannel inChannel = FileChannel.open(sourceFile.toPath(), StandardOpenOption.READ);
+             FileChannel outChannel = FileChannel.open(targetFile.toPath(), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
             long size = inChannel.size();
             long transferred = 0;
             while (transferred < size) {

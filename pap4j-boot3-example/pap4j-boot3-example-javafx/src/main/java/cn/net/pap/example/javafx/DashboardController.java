@@ -43,10 +43,12 @@ import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -182,7 +184,15 @@ public class DashboardController implements Initializable {
         String inputFilePath = zoomableView.getImageList().get(zoomableView.getCurrentIndex()).getImageAbsolutePath();
         String recentSavedPath = PathHistoryManager.popLatestHistoricalFile(inputFilePath);
         if(recentSavedPath != null && !recentSavedPath.isEmpty() && new File(recentSavedPath).exists()) {
-            Files.copy(Paths.get(recentSavedPath), Paths.get(inputFilePath), StandardCopyOption.REPLACE_EXISTING);
+            try (FileChannel inChannel = FileChannel.open(Paths.get(recentSavedPath), StandardOpenOption.READ);
+                 FileChannel outChannel = FileChannel.open(Paths.get(inputFilePath), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+                long size = inChannel.size();
+                long transferred = 0;
+                while (transferred < size) {
+                    transferred += inChannel.transferTo(transferred, size - transferred, outChannel);
+                }
+            }
+
             Files.deleteIfExists(Paths.get(recentSavedPath));
 
             ImageView imageView = zoomableView.getImageView();
