@@ -28,9 +28,17 @@ public class ApplicationProperties {
     public static String getImageMagickPath() {
         String osName = System.getProperty("os.name").toLowerCase();
         if (osName.contains("win")) {
-            return get("win.imagemagickpath");
+            String path = get("win.imagemagickpath");
+            if (path.contains("${user.home}")) {
+                path = path.replace("${user.home}", System.getProperty("user.home"));
+            }
+            return path;
         } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix") || osName.contains("mac")) {
-            return get("linux.imagemagickpath");
+            String path = get("linux.imagemagickpath");
+            if (path.contains("${user.home}")) {
+                path = path.replace("${user.home}", System.getProperty("user.home"));
+            }
+            return path;
         } else {
             throw new UnsupportedOperationException("Unsupported operating system: " + osName);
         }
