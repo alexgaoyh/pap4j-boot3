@@ -14,11 +14,13 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -312,8 +314,21 @@ public class ImageMagickUtil {
         String newFileName = timestamp + "_" + sourceFile.getName();
 
         File targetFile = new File(tmpDir, newFileName);
-        Files.copy(sourceFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
 
+        Path sourcePath = sourceFile.toPath();
+        Path targetPath = targetFile.toPath();
+
+        // zero copy
+        try (FileChannel inChannel = FileChannel.open(sourcePath, StandardOpenOption.READ);
+             FileChannel outChannel = FileChannel.open(targetPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            long size = inChannel.size();
+            long transferred = 0;
+            while (transferred < size) {
+                transferred += inChannel.transferTo(transferred, size - transferred, outChannel);
+            }
+        }
+
+        // 注册历史文件映射
         PathHistoryManager.registerHistoricalFile(sourceFile.getAbsolutePath(), targetFile.getAbsolutePath());
     }
 
