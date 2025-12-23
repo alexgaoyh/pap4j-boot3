@@ -1,6 +1,7 @@
 package cn.net.pap.example.javafx.view;
 
 import cn.net.pap.example.javafx.dto.ImageViewDTO;
+import cn.net.pap.example.javafx.util.ImageUtil;
 import javafx.application.Platform;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.SimpleDoubleProperty;
@@ -802,8 +803,8 @@ public class ZoomableImageView extends StackPane {
         ImageViewDTO oldImageDTO = imageList.get(currentIndex);
         String imagePath = oldImageDTO.getImageAbsolutePath();
 
-        try (InputStream is = Files.newInputStream(Path.of(imagePath))) {
-            BufferedImage bufferedImage = ImageIO.read(is);
+        try  {
+            BufferedImage bufferedImage = ImageUtil.opencvRead(imagePath);
             Image fxImage = SwingFXUtils.toFXImage(bufferedImage, null);
             ImageViewDTO imageViewDTO = new ImageViewDTO(fxImage, imagePath);
 
@@ -816,7 +817,7 @@ public class ZoomableImageView extends StackPane {
             imageView.setTranslateY(translateY);
             // 3. 更新 imageList 中的引用（可选，取决于您是否希望 imageList 保持最新）
             imageList.set(currentIndex, imageViewDTO);
-        } catch (IOException e) {
+        } catch (Exception e) {
             Platform.runLater(() -> {
                 javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
                 alert.setTitle("错误");
