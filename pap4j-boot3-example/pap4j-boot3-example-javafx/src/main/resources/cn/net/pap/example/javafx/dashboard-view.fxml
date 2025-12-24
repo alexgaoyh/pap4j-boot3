@@ -22,6 +22,7 @@
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.canvas.Canvas?>
 <?import javafx.scene.control.TreeView?>
+<?import javafx.scene.layout.TilePane?>
 <VBox prefHeight="600.0" prefWidth="900.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="cn.net.pap.example.javafx.DashboardController">
     <children>
         <MenuBar VBox.vgrow="NEVER">
@@ -79,8 +80,22 @@
                 <BorderPane VBox.vgrow="ALWAYS" minHeight="0" minWidth="0">
                     <center>
                         <StackPane minWidth="0" minHeight="0" fx:id="stackPane">
+                            <!-- 背景 grid 框 -->
                             <!--<Canvas fx:id="gridOverlay" pickOnBounds="false"></Canvas>-->
+
+                            <!-- 图像组件 -->
                             <ZoomableImageView fx:id="zoomableView"/>
+
+                            <!-- 缩略图组件，初始隐藏 -->
+                            <ScrollPane fx:id="thumbnailScrollPane" visible="false" managed="false" fitToWidth="true">
+                                <content>
+                                    <TilePane fx:id="thumbnailTilePane" hgap="10" vgap="10" tileAlignment="TOP_LEFT" prefColumns="0" prefTileWidth="200" prefTileHeight="200">
+                                        <padding>
+                                            <Insets top="10" right="10" bottom="10" left="10"/>
+                                        </padding>
+                                    </TilePane>
+                                </content>
+                            </ScrollPane>
                         </StackPane>
                     </center>
                     <bottom>

@@ -21,15 +21,21 @@ import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
+import javafx.scene.control.MenuItem;
 import javafx.scene.control.ProgressIndicator;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.SplitPane;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.image.WritableImage;
 import javafx.scene.layout.StackPane;
+import javafx.scene.layout.TilePane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
@@ -41,6 +47,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.nio.channels.FileChannel;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -49,6 +56,10 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 public class DashboardController implements Initializable {
 
@@ -62,6 +73,15 @@ public class DashboardController implements Initializable {
 
     @FXML
     private ZoomableImageView zoomableView;
+
+    @FXML
+    private ScrollPane thumbnailScrollPane;
+
+    @FXML
+    private TilePane thumbnailTilePane;
+
+    // 一个默认宽度，同 thumbnailTilePane prefTileWidth="200" prefTileHeight="200"
+    private static final Integer thumbnailScrollPaneWidth = 200;
 
     @FXML
     private StackPane stackPane;
@@ -608,9 +628,27 @@ public class DashboardController implements Initializable {
                 if (empty || item == null) {
                     setText(null);
                     setGraphic(null);
+                    setContextMenu(null);
                 } else {
                     // 显示文件名
                     setText(item.getFileName().toString());
+
+                    // 判断是否为文件夹
+                    if (Files.isDirectory(item)) {
+                        // 创建右键菜单
+                        ContextMenu folderMenu = new ContextMenu();
+
+                        MenuItem refreshItem = new MenuItem("缩略图");
+                        refreshItem.setOnAction(event -> {
+                            // 在这里处理刷新逻辑
+                            showThumbnails(item.toAbsolutePath().toAbsolutePath());
+                        });
+
+                        folderMenu.getItems().addAll(refreshItem);
+                        setContextMenu(folderMenu);
+                    } else {
+                        setContextMenu(null);
+                    }
                 }
             }
         });
@@ -792,6 +830,159 @@ public class DashboardController implements Initializable {
             loadingPane.setVisible(false);
             progressIndicator.setVisible(false);
         });
+    }
+
+    // 显示缩略图的方法（异步加载 + 加载动画）
+    private void showThumbnails(Path folder) {
+        // 显示加载动画
+        showLoading();
+
+        // 找到该文件夹在树中的节点
+        TreeItem<Path> folderItem = findTreeItem(folderTreeView.getRoot(), folder);
+        if (folderItem != null) {
+            folderItem.setExpanded(true); // 展开节点（如果是 FileTreeItem，这通常会触发子节点的加载）
+            folderTreeView.getSelectionModel().select(folderItem); // 选中该文件夹
+        }
+
+        // 隐藏单图，显示缩略图
+        zoomableView.setVisible(false);
+        zoomableView.setManaged(false);
+
+        thumbnailScrollPane.setVisible(true);
+        thumbnailScrollPane.setManaged(true);
+
+        thumbnailTilePane.getChildren().clear();
+
+        Task<Void> task = new Task<>() {
+            @Override
+            protected Void call() throws Exception {
+                // 1. 获取目录下所有图片路径
+                List<Path> imagePaths = new ArrayList<>();
+                try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder, "*.{jpg,jpeg,png,tif,tiff}")) {
+                    stream.forEach(imagePaths::add);
+                }
+
+                // 2. 创建一个固定大小的线程池（建议 CPU 核心数）
+                ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+                try {
+                    List<VBox> batch = new ArrayList<>();
+
+                    // 3. 提交所有异步任务
+                    List<CompletableFuture<VBox>> futures = imagePaths.stream()
+                            .map(file -> CompletableFuture.supplyAsync(() -> {
+                                // 此处执行耗时操作
+                                BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(file.toAbsolutePath().toString(), thumbnailScrollPaneWidth - 20);
+                                WritableImage fxImage = SwingFXUtils.toFXImage(lowMemoryThumbnail, null);
+                                // 构建 UI 组件（注意：虽然在异步线程，但只要不挂载到 Stage 上的 Node 是允许创建的）
+                                return createThumbContainer(file, fxImage);
+                            }, executor))
+                            .collect(Collectors.toList());
+
+                    // 4. 按顺序获取结果并分批更新 UI
+                    for (int i = 0; i < futures.size(); i++) {
+                        // join() 会阻塞直到该图片处理完成
+                        // 由于是按顺序 join，保证了 batch 里的顺序就是文件读取顺序
+                        VBox thumbContainer = futures.get(i).join();
+                        batch.add(thumbContainer);
+
+                        if (batch.size() >= 10 || i == futures.size() - 1) {
+                            List<VBox> toAdd = new ArrayList<>(batch);
+                            Platform.runLater(() -> {
+                                thumbnailTilePane.getChildren().addAll(toAdd);
+                                // 布局完成后滚动
+                                Platform.runLater(() -> thumbnailScrollPane.setVvalue(1.0));
+                            });
+                            batch.clear();
+                        }
+                    }
+                } finally {
+                    executor.shutdown(); // 关闭线程池
+                }
+                return null;
+            }
+
+            @Override
+            protected void succeeded() {
+                hideLoading();
+            }
+
+            @Override
+            protected void failed() {
+                Throwable e = getException();
+                showErrorAlert("缩略图处理失败", e != null ? e.getMessage() : "未知错误");
+                hideLoading();
+            }
+
+            @Override
+            protected void cancelled() {
+                hideLoading();
+            }
+        };
+
+        Thread thread = new Thread(task);
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /**
+     * 辅助方法：提取 UI 构建逻辑
+     */
+    private VBox createThumbContainer(Path file, WritableImage fxImage) {
+        ImageView thumb = new ImageView(fxImage);
+        thumb.setFitWidth(thumbnailScrollPaneWidth - 20);
+        thumb.setFitHeight(thumbnailScrollPaneWidth - 40);
+        thumb.setPreserveRatio(true);
+
+        Label nameLabel = new Label(file.getFileName().toString());
+        nameLabel.setStyle("-fx-font-size: 11px; -fx-text-fill: #333333;");
+        nameLabel.setWrapText(true);
+        nameLabel.setMaxWidth(thumbnailScrollPaneWidth);
+        nameLabel.setAlignment(Pos.CENTER);
+
+        VBox thumbContainer = new VBox(0);
+        thumbContainer.setAlignment(Pos.CENTER);
+        thumbContainer.getChildren().addAll(thumb, nameLabel);
+        thumbContainer.setOnMouseClicked(e -> showSingleImage(file));
+
+        return thumbContainer;
+    }
+
+    private void showSingleImage(Path file) {
+
+        // 隐藏缩略图，显示单图
+        thumbnailScrollPane.setVisible(false);
+        thumbnailScrollPane.setManaged(false);
+
+        zoomableView.setVisible(true);
+        zoomableView.setManaged(true);
+
+        TreeItem<Path> targetItem = findTreeItem(folderTreeView.getRoot(), file);
+        if (targetItem != null) {
+            // 选中该节点，这会自动触发之前定义的 selectedItemProperty 监听器
+            folderTreeView.getSelectionModel().select(targetItem);
+            // 让 TreeView 滚动到该位置
+            folderTreeView.scrollTo(folderTreeView.getSelectionModel().getSelectedIndex());
+        } else {
+            // 如果树中没找到（可能节点还没展开），可以直接手动调用加载逻辑
+            // 但为了保持一致性，建议确保树节点存在
+            showErrorAlert("打开图像失败", "树中没有找到当前图像，可能节点还没有打开，请先点击树节点确保图像节点存在!");
+        }
+    }
+
+    /**
+     * 递归搜索 TreeItem
+     */
+    private TreeItem<Path> findTreeItem(TreeItem<Path> root, Path targetPath) {
+        if (root == null) return null;
+        if (targetPath.equals(root.getValue())) {
+            return root;
+        }
+        for (TreeItem<Path> child : root.getChildren()) {
+            TreeItem<Path> result = findTreeItem(child, targetPath);
+            if (result != null) return result;
+        }
+        return null;
     }
 
 }
