@@ -45,26 +45,38 @@ public class ImageMagickUtil {
     public static String getMagickPath(String extractDir) throws Exception {
 
         String osName = System.getProperty("os.name").toLowerCase();
-        String resourcePath;
+        String osArch = System.getProperty("os.arch").toLowerCase();
+
+        String osDir;
+        String archDir;
         String executableName;
 
+        /* ---------------- OS 判断 ---------------- */
+
         if (osName.contains("win")) {
-            // Windows系统
-            resourcePath = "magick/win/magick.exe";
+            osDir = "win";
             executableName = "magick.exe";
-        } else if (osName.contains("nix") || osName.contains("nux") || osName.contains("aix") || osName.contains("mac")) {
-            // Linux/Unix/macOS系统
-            resourcePath = "magick/linux/magick";
+        } else if (osName.contains("linux")) {
+            osDir = "linux";
+            executableName = "magick";
+        } else if (osName.contains("mac")) {
+            osDir = "mac";
             executableName = "magick";
         } else {
-            throw new UnsupportedOperationException("Unsupported operating system: " + osName);
+            throw new UnsupportedOperationException("Unsupported OS: " + osName);
         }
 
-        // 从resources中提取文件到临时目录
-        String tempPath = extractResourceToTemp(extractDir, resourcePath, executableName);
+        if ("amd64".equals(osArch) || "x86_64".equals(osArch)) {
+            archDir = "x86_64";
+        } else if ("aarch64".equals(osArch) || "arm64".equals(osArch)) {
+            archDir = "arm64";
+        } else {
+            throw new UnsupportedOperationException("Only 64-bit architectures are supported, current arch: " + osArch);
+        }
 
-        // 设置执行权限（Linux/Unix/macOS）
-        if (!osName.contains("win")) {
+        String resourcePath = "magick/" + osDir + "/" + archDir + "/" + executableName;
+        String tempPath = extractResourceToTemp(extractDir, resourcePath, executableName);
+        if (!osDir.equals("win")) {
             setExecutablePermission(tempPath);
         }
 
