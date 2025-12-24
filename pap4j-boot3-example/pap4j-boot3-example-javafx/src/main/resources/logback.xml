@@ -29,5 +29,5 @@
         <appender-ref ref="FILE"/>
     </root>
     <!-- 你的包可以单独调 -->
-    <logger name="cn.net.pap.example" level="DEBUG"/>
+    <logger name="cn.net.pap.example" level="INFO"/>
 </configuration>

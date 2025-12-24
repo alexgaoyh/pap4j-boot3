@@ -33,15 +33,10 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.paint.Color;
 import javafx.stage.DirectoryChooser;
 import javafx.stage.Stage;
-import org.bytedeco.javacpp.indexer.UByteIndexer;
-import org.bytedeco.opencv.global.opencv_core;
-import org.bytedeco.opencv.global.opencv_imgcodecs;
-import org.bytedeco.opencv.opencv_core.Mat;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.awt.image.BufferedImage;
-import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
@@ -49,7 +44,6 @@ import java.nio.channels.FileChannel;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -235,7 +229,9 @@ public class DashboardController implements Initializable {
                 @Override
                 protected Void call() throws Exception {
                     // 耗时操作放后台
+                    long l = System.currentTimeMillis();
                     ImageMagickUtil.ExecResult execResult = ImageMagickUtil.magick_imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
+                    log.debug("imageRemoveIn.call : {}", System.currentTimeMillis() - l);
                     if (!execResult.isSuccess()) {
                         throw new RuntimeException(execResult.getStderr());
                     }
@@ -245,12 +241,14 @@ public class DashboardController implements Initializable {
                 @Override
                 protected void succeeded() {
                     // 更新 UI
+                    long l = System.currentTimeMillis();
                     zoomableView.clearSelection();
                     double scaleX = imageView.getScaleX();
                     double scaleY = imageView.getScaleY();
                     double translateX = imageView.getTranslateX();
                     double translateY = imageView.getTranslateY();
                     zoomableView.reloadCurrentImage(scaleX, scaleY, translateX, translateY);
+                    log.debug("imageRemoveIn.succeeded : {}", System.currentTimeMillis() - l);
                     hideLoading();
                 }
 
@@ -652,7 +650,7 @@ public class DashboardController implements Initializable {
             @Override
             protected Image call() throws Exception {
                 BufferedImage bufferedImage =
-                        ImageUtil.opencvRead(selectedPath.toAbsolutePath().toString());
+                        ImageUtil.read(selectedPath.toAbsolutePath().toString());
 
                 if (bufferedImage == null) {
                     throw new RuntimeException("读取图片失败");
