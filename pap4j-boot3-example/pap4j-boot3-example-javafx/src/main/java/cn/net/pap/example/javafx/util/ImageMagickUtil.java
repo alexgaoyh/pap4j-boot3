@@ -284,9 +284,11 @@ public class ImageMagickUtil {
     public static ExecResult magick_imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2) throws IOException {
         try {
             imageSaveInTmpFolder(inputPath);
-            String drawCommand = String.format("rectangle %.2f,%.2f %.2f,%.2f", x1, y1, x2, y2);
-
-            String cmd = String.join(" ", "magick", "\"" + inputPath + "\"", "-fill", "white", "-draw", "\"" + drawCommand + "\"", "\"" + outputPath + "\"");
+//            String drawCommand = String.format("rectangle %.2f,%.2f %.2f,%.2f", x1, y1, x2, y2);
+//            String cmd = String.join(" ", "magick", "\"" + inputPath + "\"", "-fill", "white", "-draw", "\"" + drawCommand + "\"", "\"" + outputPath + "\"");
+            // faster than before
+            String drawCommand = String.format("%.0fx%.0f+%.0f+%.0f", x2 - x1, y2 - y1, x1, y1);
+            String cmd = String.join(" ", "magick", "\"" + inputPath + "\"", "-region", drawCommand, "-fill", "white", "-colorize", "100", "+region", "\"" + outputPath + "\"");
 
             Map<String, String> envHome = new HashMap<>();
             String oldPath = System.getenv("PATH");
