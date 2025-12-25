@@ -314,6 +314,40 @@ public class ImageUtilTest {
     }
 
     /**
+     * 测试图像是 36.2MB 的 JPG， 如下单元测试先预热，然后执行进行验证。
+     * 使用 jconsole 来监控下面的单元测试，观察堆内存使用量，也能看出来区别。
+     * 	1、先执行5次基于采用的缩略图
+     * 	2、再执行5次普通的缩略图：原图图像读到内存，然后缩放绘制
+     * 	3、最后是预热完毕后的时长和内存的统计
+     * 基于采样的输出是 23024 bytes 和 10756 ms
+     * 基于默认的输出是 26080 bytes 和 17678 ms
+     * 内存节省 12%， 执行时间提升 39%
+     * @throws Exception
+     */
+    // @Test
+    public void bufferedImageCompareTest1() throws Exception {
+        // 预热一下
+        for(int i = 0; i < 5; i++) {
+            BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail("D:\\knowledge\\big-plane-yes.jpg", 100);
+        }
+        for(int i = 0; i < 5; i++) {
+            BufferedImage scaleImage = ImageUtil.scaleImage("D:\\knowledge\\big-plane-yes.jpg", 100);
+        }
+
+        long l = System.currentTimeMillis();
+        BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail("D:\\knowledge\\big-plane-yes.jpg", 100);
+        long l1 = System.currentTimeMillis();
+        System.out.println("Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(lowMemoryThumbnail).totalSize() + " bytes");
+        System.out.println(l1 - l);
+
+        long l2 = System.currentTimeMillis();
+        BufferedImage scaleImage = ImageUtil.scaleImage("D:\\knowledge\\big-plane-yes.jpg", 100);
+        long l3 = System.currentTimeMillis();
+        System.out.println("Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(scaleImage).totalSize() + " bytes");
+        System.out.println(l3 - l2);
+    }
+
+    /**
      * 根据两个点生成第三个点，构成仿射三角形
      * 方向为：从 p1 到 p2 的向量垂直旋转 90°
      */

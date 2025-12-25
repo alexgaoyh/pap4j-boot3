@@ -638,4 +638,28 @@ public class ImageUtil {
         }
     }
 
+    public static BufferedImage scaleImage(String imagePath, int targetWidth) throws IOException {
+        try {
+            // 1. 从文件路径读取BufferedImage
+            BufferedImage originalImage = ImageIO.read(new File(imagePath));
+
+            // 2. 计算缩放比例和目标高度
+            int originalWidth = originalImage.getWidth();
+            double scaleFactor = (double) targetWidth / originalWidth;
+            int targetHeight = (int) (originalImage.getHeight() * scaleFactor);
+
+            // 3. 创建缩放后的BufferedImage
+            BufferedImage scaledImage = new BufferedImage(targetWidth, targetHeight, originalImage.getType());
+
+            // 4. 绘制缩放后的图片
+            Graphics2D g2d = scaledImage.createGraphics();
+            g2d.drawImage(originalImage, 0, 0, targetWidth, targetHeight, null);
+            g2d.dispose();
+
+            return scaledImage;
+        } catch (Exception e) {
+            throw new IOException("图片缩放失败: " + e.getMessage(), e);
+        }
+    }
+
 }
