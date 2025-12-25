@@ -110,4 +110,24 @@ public class FilesTest {
         }
     }
 
+    // @Test
+    public void copyFileTest() throws Exception {
+        for(int i = 2; i < 200; i++) {
+            copyFile("D:\\knowledge\\600tiff\\1.tiff", "D:\\knowledge\\600tiff\\" + i + ".tiff");
+        }
+    }
+
+    public static void copyFile(String srcPath, String destPath) throws IOException {
+        Path source = Paths.get(srcPath);
+        Path target = Paths.get(destPath);
+
+        // 确保目标目录存在
+        Path parent = target.getParent();
+        if (parent != null) {
+            Files.createDirectories(parent);
+        }
+
+        Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+    }
+
 }
