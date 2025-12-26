@@ -7,6 +7,7 @@ import javax.imageio.ImageReader;
 import java.awt.*;
 import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
+import java.awt.image.PixelInterleavedSampleModel;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
@@ -322,6 +323,8 @@ public class ImageUtilTest {
      * 基于采样的输出是 23024 bytes 和 10756 ms
      * 基于默认的输出是 26080 bytes 和 17678 ms
      * 内存节省 12%， 执行时间提升 39%，并且前者在执行过程中堆的占用相对稳定
+     *  后者比前者多出来的内存开销，怀疑几乎全是 对象头、渲染缓存引用和内部关联对象 的重量。因为 Graphics2D 的操作改变了 BufferedImage 内部的状态，导致它关联了一系列复杂的“支撑对象”
+     *  Graphics2D 本身是一个临时对象（你调用了 dispose()），但它在 BufferedImage 内部留下的“足迹”（缓存和状态对象）是持久存在的。
      * @throws Exception
      */
     // @Test
@@ -345,6 +348,78 @@ public class ImageUtilTest {
         long l3 = System.currentTimeMillis();
         System.out.println("Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(scaleImage).totalSize() + " bytes");
         System.out.println(l3 - l2);
+
+        System.out.println("=== 方法1 (getLowMemoryThumbnail) 内存详情 ===");
+        System.out.println(org.openjdk.jol.info.GraphLayout.parseInstance(lowMemoryThumbnail).toFootprint());
+
+        System.out.println("\n=== 方法2 (scaleImage) 内存详情 ===");
+        System.out.println(org.openjdk.jol.info.GraphLayout.parseInstance(scaleImage).toFootprint());
+
+        BufferedImage img1 = lowMemoryThumbnail;
+        BufferedImage img2 = scaleImage;
+        System.out.println("=== 方法1: getLowMemoryThumbnail ===");
+        System.out.println("类型: " + img1.getType() + " (" + getTypeName(img1.getType()) + ")");
+        System.out.println("色彩模型: " + img1.getColorModel().getClass().getName());
+        System.out.println("像素位数: " + img1.getColorModel().getPixelSize());
+        System.out.println("Raster: " + img1.getRaster().getClass().getName());
+
+        System.out.println("\n=== 方法2: scaleImage ===");
+        System.out.println("类型: " + img2.getType() + " (" + getTypeName(img2.getType()) + ")");
+        System.out.println("色彩模型: " + img2.getColorModel().getClass().getName());
+        System.out.println("像素位数: " + img2.getColorModel().getPixelSize());
+        System.out.println("Raster: " + img2.getRaster().getClass().getName());
+
+        // 检查是否真的相同
+        System.out.println("\n=== 实际内存差异 ===");
+        System.out.println("img1.equals(img2): " + img1.equals(img2));
+        System.out.println("img1.getType() == img2.getType(): " + (img1.getType() == img2.getType()));
+
+        // 手动检查像素数据
+        System.out.println("\n=== 像素数据格式 ===");
+        System.out.println("img1 SampleModel: " + img1.getSampleModel().getClass().getName());
+        System.out.println("img2 SampleModel: " + img2.getSampleModel().getClass().getName());
+
+        // 添加以下代码来检查详细信息
+        System.out.println("\n=== 详细比较 ===");
+        System.out.println("img1 Raster: " + img1.getRaster());
+        System.out.println("img2 Raster: " + img2.getRaster());
+
+        System.out.println("\nimg1 SampleModel: " + img1.getSampleModel());
+        System.out.println("img2 SampleModel: " + img2.getSampleModel());
+
+        // 检查DataBuffer
+        java.awt.image.DataBuffer db1 = img1.getRaster().getDataBuffer();
+        java.awt.image.DataBuffer db2 = img2.getRaster().getDataBuffer();
+        System.out.println("\nimg1 DataBuffer: " + db1.getClass() + ", size: " + db1.getSize());
+        System.out.println("img2 DataBuffer: " + db2.getClass() + ", size: " + db2.getSize());
+
+        // 检查SampleModel的参数
+        java.awt.image.SampleModel sm1 = img1.getSampleModel();
+        java.awt.image.SampleModel sm2 = img2.getSampleModel();
+        if (sm1 instanceof PixelInterleavedSampleModel && sm2 instanceof PixelInterleavedSampleModel) {
+            PixelInterleavedSampleModel psm1 = (PixelInterleavedSampleModel) sm1;
+            PixelInterleavedSampleModel psm2 = (PixelInterleavedSampleModel) sm2;
+            System.out.println("\nPixelInterleavedSampleModel 参数比较:");
+            System.out.println("img1 扫描行跨距: " + psm1.getScanlineStride());
+            System.out.println("img2 扫描行跨距: " + psm2.getScanlineStride());
+            System.out.println("img1 像素跨距: " + psm1.getPixelStride());
+            System.out.println("img2 像素跨距: " + psm2.getPixelStride());
+        }
+    }
+
+    private static String getTypeName(int type) {
+        switch (type) {
+            case BufferedImage.TYPE_INT_RGB: return "TYPE_INT_RGB";
+            case BufferedImage.TYPE_INT_ARGB: return "TYPE_INT_ARGB";
+            case BufferedImage.TYPE_INT_ARGB_PRE: return "TYPE_INT_ARGB_PRE";
+            case BufferedImage.TYPE_3BYTE_BGR: return "TYPE_3BYTE_BGR";
+            case BufferedImage.TYPE_4BYTE_ABGR: return "TYPE_4BYTE_ABGR";
+            case BufferedImage.TYPE_BYTE_GRAY: return "TYPE_BYTE_GRAY";
+            case BufferedImage.TYPE_BYTE_INDEXED: return "TYPE_BYTE_INDEXED";
+            case BufferedImage.TYPE_USHORT_565_RGB: return "TYPE_USHORT_565_RGB";
+            case BufferedImage.TYPE_USHORT_555_RGB: return "TYPE_USHORT_555_RGB";
+            default: return "未知类型: " + type;
+        }
     }
 
     /**
