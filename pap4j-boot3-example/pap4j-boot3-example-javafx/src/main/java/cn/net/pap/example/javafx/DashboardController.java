@@ -1,5 +1,6 @@
 package cn.net.pap.example.javafx;
 
+import cn.net.pap.example.javafx.comparator.OSAlignedNaturalComparator;
 import cn.net.pap.example.javafx.config.ApplicationProperties;
 import cn.net.pap.example.javafx.dto.FileTreeItem;
 import cn.net.pap.example.javafx.dto.ImageViewDTO;
@@ -54,6 +55,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.CompletableFuture;
@@ -861,6 +864,7 @@ public class DashboardController implements Initializable {
                 try (DirectoryStream<Path> stream = Files.newDirectoryStream(folder, "*.{jpg,jpeg,png,tif,tiff}")) {
                     stream.forEach(imagePaths::add);
                 }
+                Collections.sort(imagePaths, new OSAlignedNaturalComparator<Path>());
 
                 // 2. 创建一个固定大小的线程池（建议 CPU 核心数）
                 ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());

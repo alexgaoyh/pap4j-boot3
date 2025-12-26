@@ -1,5 +1,6 @@
 package cn.net.pap.example.javafx.dto;
 
+import cn.net.pap.example.javafx.comparator.OSAlignedNaturalComparator;
 import javafx.scene.control.TreeItem;
 
 import java.io.File;
@@ -51,7 +52,7 @@ public class FileTreeItem extends TreeItem<Path> {
         Arrays.sort(files, (f1, f2) -> {
             if (f1.isDirectory() && !f2.isDirectory()) return -1;
             if (!f1.isDirectory() && f2.isDirectory()) return 1;
-            return f1.getName().compareToIgnoreCase(f2.getName());
+            return new OSAlignedNaturalComparator().compare(f1.getName(), f2.getName());
         });
 
         for (File file : files) {
