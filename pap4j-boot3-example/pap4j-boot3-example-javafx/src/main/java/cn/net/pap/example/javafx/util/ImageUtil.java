@@ -1,5 +1,11 @@
 package cn.net.pap.example.javafx.util;
 
+import javafx.embed.swing.SwingFXUtils;
+import javafx.scene.image.Image;
+import javafx.scene.image.WritableImage;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
@@ -12,6 +18,8 @@ import java.util.Iterator;
 
 public class ImageUtil {
 
+    private static final Logger log = LoggerFactory.getLogger(ImageUtil.class);
+
     /**
      * 图像读取
      * @param path
@@ -21,9 +29,32 @@ public class ImageUtil {
         try {
             return ImageIO.read(Paths.get(path).toFile());
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("ImageUtil.read", e);
             return null;
         }
+    }
+
+    /**
+     * 渲染图像
+     * @param path
+     * @param currShownImage
+     * @return
+     */
+    public static Image readFXImageWithCurrShownImage(String path, Image currShownImage) {
+        BufferedImage read = read(path);
+        if (read == null) {
+            return null;
+        }
+        int newWidth = read.getWidth();
+        int newHeight = read.getHeight();
+        WritableImage destImage = null;
+        if (currShownImage != null && currShownImage instanceof WritableImage) {
+            if ((int)currShownImage.getWidth() == newWidth &&
+                    (int)currShownImage.getHeight() == newHeight) {
+                destImage = (WritableImage)currShownImage;
+            }
+        }
+        return SwingFXUtils.toFXImage(read, destImage);
     }
 
     /**

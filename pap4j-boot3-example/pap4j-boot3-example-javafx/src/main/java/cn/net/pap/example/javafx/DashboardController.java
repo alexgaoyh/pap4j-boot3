@@ -697,6 +697,7 @@ public class DashboardController implements Initializable {
                 }
 
                 return SwingFXUtils.toFXImage(bufferedImage, null);
+                // return ImageUtil.readFXImageWithCurrShownImage(selectedPath.toAbsolutePath().toString(), zoomableView.getImageView().getImage());
             }
 
             @Override

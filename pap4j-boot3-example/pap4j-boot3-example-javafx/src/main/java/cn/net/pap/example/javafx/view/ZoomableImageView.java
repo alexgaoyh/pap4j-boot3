@@ -806,6 +806,7 @@ public class ZoomableImageView extends StackPane {
         try  {
             BufferedImage bufferedImage = ImageUtil.read(imagePath);
             Image fxImage = SwingFXUtils.toFXImage(bufferedImage, null);
+            // Image fxImage = ImageUtil.readFXImageWithCurrShownImage(imagePath, oldImageDTO.getImage());
             ImageViewDTO imageViewDTO = new ImageViewDTO(fxImage, imagePath);
 
             // 1. 设置新的图像实例
