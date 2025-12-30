@@ -53,6 +53,24 @@ public class ProcessExecUtils {
 
     }
 
+    /**
+     * vips call bat file
+     * @throws Exception
+     */
+    @Test
+    public void test2() throws Exception {
+        String userHome = System.getProperty("user.home");
+        Map<String, String> envHome = new HashMap<>();
+        String oldPath = System.getenv("PATH");
+        envHome.put("PATH", "D:\\vips-dev-8.18\\bin" + File.pathSeparator + oldPath);
+
+        String batPath = userHome + File.separator + "imageRemoveIn.bat";
+        String filePath = userHome + File.separator + "1.tiff";
+        String cmd = batPath + " " + filePath + " 200 200 2500 2500";
+        ExecResult execResult = execWithShell(cmd, envHome, new File(userHome), 60000);
+        System.out.println("ExitCode: " + execResult.toString());
+    }
+
     private static Map<String, String> mergeEnv(Map<String, String> extra) {
         // 拷贝当前进程环境（保留 PATH, HOME 等）
         Map<String, String> merged = new HashMap<>(System.getenv());
@@ -143,6 +161,15 @@ public class ProcessExecUtils {
 
         public boolean isSuccess() {
             return exitCode == 0;
+        }
+
+        @Override
+        public String toString() {
+            return "ExecResult{" +
+                    "exitCode=" + exitCode +
+                    ", stdout='" + stdout + '\'' +
+                    ", stderr='" + stderr + '\'' +
+                    '}';
         }
     }
 
