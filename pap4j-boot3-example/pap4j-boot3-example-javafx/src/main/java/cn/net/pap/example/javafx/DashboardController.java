@@ -2,9 +2,10 @@ package cn.net.pap.example.javafx;
 
 import cn.net.pap.example.javafx.comparator.OSAlignedNaturalComparator;
 import cn.net.pap.example.javafx.config.ApplicationProperties;
+import cn.net.pap.example.javafx.dto.ExecResult;
 import cn.net.pap.example.javafx.dto.FileTreeItem;
 import cn.net.pap.example.javafx.dto.ImageViewDTO;
-import cn.net.pap.example.javafx.util.ImageMagickUtil;
+import cn.net.pap.example.javafx.util.ImageProcessorContext;
 import cn.net.pap.example.javafx.util.ImageUtil;
 import cn.net.pap.example.javafx.util.PathHistoryManager;
 import cn.net.pap.example.javafx.view.ZoomableImageView;
@@ -21,7 +22,6 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -55,7 +55,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.ResourceBundle;
@@ -253,7 +252,7 @@ public class DashboardController implements Initializable {
                 protected Void call() throws Exception {
                     // 耗时操作放后台
                     long l = System.currentTimeMillis();
-                    ImageMagickUtil.ExecResult execResult = ImageMagickUtil.magick_imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
+                    ExecResult execResult = ImageProcessorContext.imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
                     log.debug("imageRemoveIn.call : {}", System.currentTimeMillis() - l);
                     if (!execResult.isSuccess()) {
                         throw new RuntimeException(execResult.getStderr());
