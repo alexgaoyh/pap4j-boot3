@@ -485,13 +485,12 @@ public class DashboardController implements Initializable {
 
         FXMLLoader loader = new FXMLLoader();
         // 尝试从文件系统加载（开发时热重载）
-        URL resourceUrl = getClass().getClassLoader().getResource("cn/net/pap/example/javafx/dashboard-view.fxml");
-        File fxmlFile = new File(resourceUrl.getFile());
+        File devFile = new File("src/main/resources/cn/net/pap/example/javafx/dashboard-view.fxml");
 
         URL fxmlUrl;
-        if (fxmlFile.exists()) {
-            System.out.println("从文件系统加载: " + fxmlFile.getAbsolutePath());
-            fxmlUrl = fxmlFile.toURI().toURL();
+        if (devFile.exists()) {
+            System.out.println("从文件系统加载: " + devFile.getAbsolutePath());
+            fxmlUrl = devFile.toURI().toURL();
         } else {
             System.out.println("从 Classpath 加载");
             fxmlUrl = getClass().getResource("dashboard-view.fxml");
