@@ -343,6 +343,7 @@ public class ZoomableImageView extends StackPane {
                 selectionRect.setWidth(newWidth);
                 selectionRect.setHeight(newHeight);
 
+                keepSelectionInsideImage();
                 updateMaskAndControlPoints();
                 e.consume();
             }
@@ -564,6 +565,7 @@ public class ZoomableImageView extends StackPane {
                 selectionRect.setWidth(width);
                 selectionRect.setHeight(height);
 
+                keepSelectionInsideImage();
                 updateMaskAndControlPoints();
             } else if (draggedControlPoint == null) {
                 // 平移图像
@@ -580,6 +582,8 @@ public class ZoomableImageView extends StackPane {
         mouseReleasedHandler = e -> {
             if (isSelecting) {
                 isSelecting = false;
+
+                keepSelectionInsideImage();
 
                 // 显示控制点
                 for (Circle cp : controlPoints) {
@@ -864,5 +868,52 @@ public class ZoomableImageView extends StackPane {
         // 断开 Lambda 引用
         updateGrid = null;
     }
+
+    /**
+     * 限制图像拖拽框的区域
+     */
+    private void keepSelectionInsideImage() {
+        if (imageView.getImage() == null) return;
+
+        Bounds imageBounds = imageView.getBoundsInParent();
+
+        double minX = imageBounds.getMinX();
+        double minY = imageBounds.getMinY();
+        double maxX = imageBounds.getMaxX();
+        double maxY = imageBounds.getMaxY();
+
+        double x = selectionRect.getX();
+        double y = selectionRect.getY();
+        double w = selectionRect.getWidth();
+        double h = selectionRect.getHeight();
+
+        // 修正 X / Y
+        if (x < minX) {
+            w -= (minX - x);
+            x = minX;
+        }
+        if (y < minY) {
+            h -= (minY - y);
+            y = minY;
+        }
+
+        // 修正 Width / Height
+        if (x + w > maxX) {
+            w = maxX - x;
+        }
+        if (y + h > maxY) {
+            h = maxY - y;
+        }
+
+        // 防止出现负数
+        if (w < 0) w = 0;
+        if (h < 0) h = 0;
+
+        selectionRect.setX(x);
+        selectionRect.setY(y);
+        selectionRect.setWidth(w);
+        selectionRect.setHeight(h);
+    }
+
 
 }
