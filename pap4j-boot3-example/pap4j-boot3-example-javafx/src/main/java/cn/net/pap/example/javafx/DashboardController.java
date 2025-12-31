@@ -31,7 +31,6 @@ import javafx.scene.control.SplitPane;
 import javafx.scene.control.TreeCell;
 import javafx.scene.control.TreeItem;
 import javafx.scene.control.TreeView;
-import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.StackPane;
@@ -102,7 +101,7 @@ public class DashboardController implements Initializable {
 
     private StackPane loadingPane;
 
-    private Task<Image> imageLoadTask;
+    private Task<ImageViewDTO> imageLoadTask;
 
     // 图像切换的时候，避免来回滚动
     private boolean restoringSelection = false;
@@ -245,14 +244,16 @@ public class DashboardController implements Initializable {
         showLoading();
         ImageView imageView = zoomableView.getImageView();
         Rectangle2D rectangle2D = zoomableView.getSelectionInImageCoordinates();
-        String inputFilePath = zoomableView.getImageList().get(zoomableView.getCurrentIndex()).getImageAbsolutePath();
+        ImageViewDTO imageViewDTO = zoomableView.getImageList().get(zoomableView.getCurrentIndex());
+        String inputFilePath = imageViewDTO.getImageAbsolutePath();
+        Rectangle2D reRectangle2D = ImageViewDTO.convertToOriginalRectangle(rectangle2D, imageViewDTO);
         if (rectangle2D != null) {
             Task<Void> task = new Task<>() {
                 @Override
                 protected Void call() throws Exception {
                     // 耗时操作放后台
                     long l = System.currentTimeMillis();
-                    ExecResult execResult = ImageProcessorContext.imageRemoveIn(inputFilePath, inputFilePath, rectangle2D.getMinX(), rectangle2D.getMinY(), rectangle2D.getMaxX(), rectangle2D.getMaxY());
+                    ExecResult execResult = ImageProcessorContext.imageRemoveIn(inputFilePath, inputFilePath, reRectangle2D.getMinX(), reRectangle2D.getMinY(), reRectangle2D.getMaxX(), reRectangle2D.getMaxY());
                     log.debug("imageRemoveIn.call : {}", System.currentTimeMillis() - l);
                     if (!execResult.isSuccess()) {
                         throw new RuntimeException(execResult.getStderr());
@@ -685,29 +686,16 @@ public class DashboardController implements Initializable {
         );
     }
 
-    private Task<Image> createSimpleLoadTask(Path selectedPath) {
+    private Task<ImageViewDTO> createSimpleLoadTask(Path selectedPath) {
         return new Task<>() {
             @Override
-            protected Image call() throws Exception {
-                BufferedImage bufferedImage =
-                        ImageUtil.read(selectedPath.toAbsolutePath().toString());
-
-                if (bufferedImage == null) {
-                    throw new RuntimeException("读取图片失败");
-                }
-
-                return SwingFXUtils.toFXImage(bufferedImage, null);
-                // return ImageUtil.readFXImageWithCurrShownImage(selectedPath.toAbsolutePath().toString(), zoomableView.getImageView().getImage());
+            protected ImageViewDTO call() throws Exception {
+                return ImageUtil.readFXImageEfficiently(selectedPath.toAbsolutePath().toString(), ApplicationProperties.getInt("image.processor.shown.targetWidth", Integer.MAX_VALUE));
             }
 
             @Override
             protected void succeeded() {
-                Image fxImage = getValue();
-
-                ImageViewDTO dto = new ImageViewDTO(
-                        fxImage,
-                        selectedPath.toAbsolutePath().toString()
-                );
+                ImageViewDTO dto = getValue();
 
                 List<ImageViewDTO> images = new ArrayList<>();
                 images.add(dto);

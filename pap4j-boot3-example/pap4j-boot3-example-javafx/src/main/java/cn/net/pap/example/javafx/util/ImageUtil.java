@@ -1,5 +1,6 @@
 package cn.net.pap.example.javafx.util;
 
+import cn.net.pap.example.javafx.dto.ImageViewDTO;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.scene.image.Image;
 import javafx.scene.image.PixelBuffer;
@@ -73,7 +74,7 @@ public class ImageUtil {
      * @return
      * @throws Exception
      */
-    public static Image readFXImageEfficiently(String path, int targetWidthLimit) throws Exception {
+    public static ImageViewDTO readFXImageEfficiently(String path, int targetWidthLimit) throws Exception {
         File file = new File(path);
 
         try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
@@ -130,7 +131,9 @@ public class ImageUtil {
             PixelBuffer<IntBuffer> pixelBuffer = new PixelBuffer<>(pixelBufferImage.getWidth(), pixelBufferImage.getHeight(), buffer, format);
 
             // 7. 返回 WritableImage
-            return new WritableImage(pixelBuffer);
+            Image writableImage = new WritableImage(pixelBuffer);
+
+            return new ImageViewDTO(writableImage, path, originalWidth, originalHeight, rawImage.getWidth());
         }
     }
 

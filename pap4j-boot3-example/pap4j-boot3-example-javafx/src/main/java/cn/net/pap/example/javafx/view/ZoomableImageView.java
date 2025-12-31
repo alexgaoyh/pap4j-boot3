@@ -1,5 +1,6 @@
 package cn.net.pap.example.javafx.view;
 
+import cn.net.pap.example.javafx.config.ApplicationProperties;
 import cn.net.pap.example.javafx.dto.ImageViewDTO;
 import cn.net.pap.example.javafx.util.ImageUtil;
 import javafx.application.Platform;
@@ -804,13 +805,10 @@ public class ZoomableImageView extends StackPane {
         String imagePath = oldImageDTO.getImageAbsolutePath();
 
         try  {
-            BufferedImage bufferedImage = ImageUtil.read(imagePath);
-            Image fxImage = SwingFXUtils.toFXImage(bufferedImage, null);
-            // Image fxImage = ImageUtil.readFXImageWithCurrShownImage(imagePath, oldImageDTO.getImage());
-            ImageViewDTO imageViewDTO = new ImageViewDTO(fxImage, imagePath);
+            ImageViewDTO imageViewDTO = ImageUtil.readFXImageEfficiently(imagePath, ApplicationProperties.getInt("image.processor.shown.targetWidth", Integer.MAX_VALUE));
 
             // 1. 设置新的图像实例
-            imageView.setImage(fxImage);
+            imageView.setImage(imageViewDTO.getImage());
             // 2. 清除平移，回到 StackPane 居中默认位置
             imageView.setScaleX(scaleX);
             imageView.setScaleY(scaleY);
