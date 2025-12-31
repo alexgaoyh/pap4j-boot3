@@ -1,6 +1,7 @@
 package cn.net.pap.example.javafx.dto;
 
 import cn.net.pap.example.javafx.comparator.OSAlignedNaturalComparator;
+import cn.net.pap.example.javafx.util.ImageUtil;
 import javafx.scene.control.TreeItem;
 
 import java.io.File;
@@ -56,7 +57,7 @@ public class FileTreeItem extends TreeItem<Path> {
         });
 
         for (File file : files) {
-            if (file.isDirectory() || isImageFile(file.getName())) {
+            if (file.isDirectory() || ImageUtil.isImageFile(file.getName().toLowerCase())) {
                 getChildren().add(new FileTreeItem(file.toPath()));
             }
         }
@@ -69,11 +70,4 @@ public class FileTreeItem extends TreeItem<Path> {
         return path == null || !Files.isDirectory(path);
     }
 
-    private boolean isImageFile(String fileName) {
-        String lower = fileName.toLowerCase();
-        return lower.endsWith(".jpg") || lower.endsWith(".jpeg")
-                || lower.endsWith(".png") || lower.endsWith(".bmp")
-                || lower.endsWith(".tif") || lower.endsWith(".tiff")
-                || lower.endsWith(".webp");
-    }
 }

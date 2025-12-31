@@ -180,4 +180,11 @@ public class ImageUtil {
         }
     }
 
+    public static boolean isImageFile(String fileName) {
+        String lower = fileName.toLowerCase();
+        return lower.endsWith(".jpg") || lower.endsWith(".jpeg")
+                || lower.endsWith(".png")
+                || lower.endsWith(".tif") || lower.endsWith(".tiff");
+    }
+
 }

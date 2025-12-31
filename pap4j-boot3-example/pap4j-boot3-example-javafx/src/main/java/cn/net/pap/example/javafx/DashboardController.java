@@ -361,7 +361,7 @@ public class DashboardController implements Initializable {
         for (int i = currentIndex - 1; i >= 0; i--) {
             TreeItem<Path> item = allItems.get(i);
             Path path = item.getValue();
-            if (path != null && isImageFile(path.toFile())) {
+            if (path != null && ImageUtil.isImageFile(path.toFile().getName().toLowerCase())) {
                 folderTreeView.getSelectionModel().select(item);
                 return;
             }
@@ -409,7 +409,7 @@ public class DashboardController implements Initializable {
         for (int i = currentIndex + 1; i < allItems.size(); i++) {
             TreeItem<Path> item = allItems.get(i);
             Path path = item.getValue();
-            if (path != null && isImageFile(path.toFile())) {
+            if (path != null && ImageUtil.isImageFile(path.toFile().getName().toLowerCase())) {
                 folderTreeView.getSelectionModel().select(item);
                 return;
             }
@@ -666,7 +666,7 @@ public class DashboardController implements Initializable {
                         java.io.File selectedFile = selectedPath.toFile();
 
                         // 如果是图片文件，在ZoomableImageView中显示
-                        if (selectedFile.isFile() && isImageFile(selectedFile)) {
+                        if (selectedFile.isFile() && ImageUtil.isImageFile(selectedFile.getName().toLowerCase())) {
                             if (imageLoadTask != null && imageLoadTask.isRunning()) {
                                 restoringSelection = true;
                                 Platform.runLater(() -> {
@@ -733,13 +733,6 @@ public class DashboardController implements Initializable {
                 imageLoadTask = null;
             }
         };
-    }
-
-    private boolean isImageFile(java.io.File file) {
-        String name = file.getName().toLowerCase();
-        return name.endsWith(".jpg") || name.endsWith(".jpeg") ||
-                name.endsWith(".png") || name.endsWith(".tif") ||
-                name.endsWith(".bmp") || name.endsWith(".tiff");
     }
 
     private void initLoadingIndicator() {
