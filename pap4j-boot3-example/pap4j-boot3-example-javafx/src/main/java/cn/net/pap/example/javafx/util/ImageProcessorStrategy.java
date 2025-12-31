@@ -7,6 +7,8 @@ import org.apache.commons.exec.DefaultExecutor;
 import org.apache.commons.exec.ExecuteException;
 import org.apache.commons.exec.ExecuteWatchdog;
 import org.apache.commons.exec.PumpStreamHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -16,14 +18,37 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Strategy
  */
 public interface ImageProcessorStrategy {
 
+    Logger log = LoggerFactory.getLogger(ImageProcessorStrategy.class);
+
     String PATH = System.getenv("PATH");
 
+    // 单例 CachedThreadPool 用于 IO 密集任务
+    ExecutorService IO_EXECUTOR = Executors.newCachedThreadPool();
+
+    /**
+     * 应用退出时调用
+     */
+    static void shutdownExecutor() {
+        log.info("{}", "Already Called ImageProcessorStrategy.shutdownExecutor");
+        IO_EXECUTOR.shutdown();
+        try {
+            if (!IO_EXECUTOR.awaitTermination(5, TimeUnit.SECONDS)) {
+                IO_EXECUTOR.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            IO_EXECUTOR.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
     /**
      * 去除区域内
      */

@@ -2,6 +2,7 @@ package cn.net.pap.example.javafx;
 
 import cn.net.pap.example.javafx.config.ApplicationProperties;
 import cn.net.pap.example.javafx.h2.H2ServerManager;
+import cn.net.pap.example.javafx.util.ImageProcessorStrategy;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.fxml.FXMLLoader;
@@ -139,6 +140,9 @@ public class MainApp extends Application {
         log.info("{}", H2ServerManager.getWebConsoleUrl());
         log.info("{}", H2ServerManager.getDatabaseUrl());
         H2ServerManager.stopServers();
+
+        // 关闭 图像那里的 IO 线程池
+        ImageProcessorStrategy.shutdownExecutor();
     }
 
 }

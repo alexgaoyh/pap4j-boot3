@@ -147,7 +147,7 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
                 } catch (IOException e) {
                     throw new CompletionException(e);
                 }
-            });
+            }, IO_EXECUTOR);
 
 //            String drawCommand = String.format("rectangle %.2f,%.2f %.2f,%.2f", x1, y1, x2, y2);
 //            String cmd = String.join(" ", "magick", "\"" + inputPath + "\"", "-fill", "white", "-draw", "\"" + drawCommand + "\"", "\"" + outputPath + "\"");

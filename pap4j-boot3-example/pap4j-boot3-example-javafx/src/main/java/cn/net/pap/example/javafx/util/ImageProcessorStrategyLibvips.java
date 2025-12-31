@@ -56,7 +56,7 @@ public class ImageProcessorStrategyLibvips implements ImageProcessorStrategy {
                 } catch (IOException e) {
                     throw new CompletionException(e);
                 }
-            });
+            }, IO_EXECUTOR);
 
             Map<String, String> envHome = new HashMap<>();
             envHome.put("PATH", libvipsPath + File.separator + "bin" + File.pathSeparator + PATH);
