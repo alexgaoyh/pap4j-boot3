@@ -22,6 +22,8 @@ import java.util.Map;
  */
 public interface ImageProcessorStrategy {
 
+    String PATH = System.getenv("PATH");
+
     /**
      * 去除区域内
      */

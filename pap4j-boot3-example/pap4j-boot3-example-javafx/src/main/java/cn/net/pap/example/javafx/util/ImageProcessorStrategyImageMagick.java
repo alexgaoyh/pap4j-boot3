@@ -15,6 +15,8 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * Strategy ImageMagick
@@ -136,9 +138,17 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
     }
 
     @Override
-    public cn.net.pap.example.javafx.dto.ExecResult imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2) {
+    public ExecResult imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2) {
         try {
-            ImageProcessorStrategy.imageSaveInTmpFolder(inputPath);
+            // 异步启动保存任务
+            CompletableFuture<Void> saveTask = CompletableFuture.runAsync(() -> {
+                try {
+                    ImageProcessorStrategy.imageSaveInTmpFolder(inputPath);
+                } catch (IOException e) {
+                    throw new CompletionException(e);
+                }
+            });
+
 //            String drawCommand = String.format("rectangle %.2f,%.2f %.2f,%.2f", x1, y1, x2, y2);
 //            String cmd = String.join(" ", "magick", "\"" + inputPath + "\"", "-fill", "white", "-draw", "\"" + drawCommand + "\"", "\"" + outputPath + "\"");
             // faster than before
@@ -146,8 +156,11 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
             String cmd = String.join(" ", "magick", "\"" + inputPath + "\"", "-region", drawCommand, "-fill", "white", "-colorize", "100", "+region", "\"" + outputPath + "\"");
 
             Map<String, String> envHome = new HashMap<>();
-            String oldPath = System.getenv("PATH");
-            envHome.put("PATH", ApplicationProperties.getImageMagickPath() + File.pathSeparator + oldPath);
+            envHome.put("PATH", ApplicationProperties.getImageMagickPath() + File.pathSeparator + PATH);
+
+            // 等保存任务完成后再执行命令 等待 imageSaveInTmpFolder 完成
+            saveTask.join();
+
             ExecResult execResult = ImageProcessorStrategy.execWithShell(cmd, envHome, new File("."), 60000);
 
             if (!execResult.isSuccess()) {
@@ -155,7 +168,7 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
             }
 
             return execResult;
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Magick command failed: {}", e);
             return new ExecResult(999, "", e.getMessage(), true);
         } finally {

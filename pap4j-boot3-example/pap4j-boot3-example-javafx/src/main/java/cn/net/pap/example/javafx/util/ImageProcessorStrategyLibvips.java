@@ -9,6 +9,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 
 /**
  * Strategy LibVips
@@ -47,11 +49,17 @@ public class ImageProcessorStrategyLibvips implements ImageProcessorStrategy {
     @Override
     public ExecResult imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2) {
         try {
-            ImageProcessorStrategy.imageSaveInTmpFolder(inputPath);
+            // 异步启动保存任务
+            CompletableFuture<Void> saveTask = CompletableFuture.runAsync(() -> {
+                try {
+                    ImageProcessorStrategy.imageSaveInTmpFolder(inputPath);
+                } catch (IOException e) {
+                    throw new CompletionException(e);
+                }
+            });
 
             Map<String, String> envHome = new HashMap<>();
-            String oldPath = System.getenv("PATH");
-            envHome.put("PATH", libvipsPath + File.separator + "bin" + File.pathSeparator + oldPath);
+            envHome.put("PATH", libvipsPath + File.separator + "bin" + File.pathSeparator + PATH);
 
             String commandFile = "imageRemoveIn";
             if(osDir.equals("win")) {
@@ -60,6 +68,10 @@ public class ImageProcessorStrategyLibvips implements ImageProcessorStrategy {
                 commandFile = commandFile + ".sh";
             }
             String cmd = String.join(" ", commandFile, "\"" + inputPath + "\"", x1 + "", y1 + "", x2 - x1 + "", y2 - y1 + "");
+
+            // 等保存任务完成后再执行命令 等待 imageSaveInTmpFolder 完成
+            saveTask.join();
+
             ExecResult execResult = ImageProcessorStrategy.execWithShell(cmd, envHome, new File(libvipsPath + File.separator + "bin"), 60000);
 
             if (!execResult.isSuccess()) {
@@ -67,7 +79,7 @@ public class ImageProcessorStrategyLibvips implements ImageProcessorStrategy {
             }
 
             return execResult;
-        } catch (IOException e) {
+        } catch (Exception e) {
             log.warn("Magick command failed: {}", e);
             return new ExecResult(999, "", e.getMessage(), true);
         } finally {
