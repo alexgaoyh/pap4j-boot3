@@ -3,7 +3,9 @@ package cn.net.pap.example.admin.controller;
 import cn.net.pap.example.admin.dto.ProcessResult;
 import cn.net.pap.example.admin.util.ProcessPoolUtil;
 import cn.net.pap.example.admin.util.ProcessPoolUtilExample;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.PreDestroy;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,7 +35,8 @@ public class ProcessPoolUtilController {
         executor.shutdown();
     }
 
-    @RequestMapping("/java")
+    @Operation(summary = "异步请求")
+    @GetMapping("/java")
     public String runJavaFuture() {
 
         String mainClass = ProcessPoolUtilExample.class.getName();

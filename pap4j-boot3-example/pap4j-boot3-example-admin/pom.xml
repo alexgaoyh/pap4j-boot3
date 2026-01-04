@@ -26,6 +26,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.5</version>
+        </dependency>
+
+        <dependency>
             <groupId>cn.net.pap.example</groupId>
             <artifactId>pap4j-boot3-example-bean</artifactId>
             <version>${project.parent.version}</version>
