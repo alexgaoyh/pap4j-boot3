@@ -36,6 +36,7 @@
         <module>pap4j-common-datasketches</module>
         <module>pap4j-common-tesseract</module>
         <module>pap4j-common-qlexpress</module>
+        <module>pap4j-common-worker</module>
     </modules>
 
     <properties>
