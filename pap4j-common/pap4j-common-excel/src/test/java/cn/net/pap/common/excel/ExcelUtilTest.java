@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -172,6 +174,19 @@ public class ExcelUtilTest {
     public void findHiddenRowsTest() {
         List<Integer> hiddenRows = ExcelUtil.findHiddenRows("C:\\Users\\86181\\Desktop\\扫描清单(1).xlsx", "Sheet1");
         System.out.println(hiddenRows);
+    }
+
+    // @Test
+    public void getRowListTest() throws Exception {
+        List<String> allLines = Files.readAllLines(Paths.get("C:\\Users\\86181\\Desktop\\2.txt"));
+
+        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList("C:\\Users\\86181\\Desktop\\aa.xlsx", "Sheet1", null);
+        for(Map<String, Object> row : sheet2) {
+            String input = row.get("分類").toString();
+            if(!allLines.contains(input)) {
+                System.out.println(input);
+            }
+        }
     }
 
 }
