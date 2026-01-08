@@ -1,6 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
 import java.io.ByteArrayOutputStream;
+
+import cn.net.pap.common.jsonorm.dto.CategoryDTO;
 import com.esotericsoftware.kryo.io.Input;
 import com.esotericsoftware.kryo.io.Output;
 import cn.net.pap.common.jsonorm.dto.HeadDTO;
@@ -25,6 +27,7 @@ import java.io.File;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 
 import static org.junit.Assert.assertEquals;
@@ -382,6 +385,17 @@ public class JacksonUtilTest {
                 kryoSerializeNs / 1_000_000.0 / LOOP);
         System.out.printf("Kryo deserialize avg = %.3f ms%n",
                 kryoDeserializeNs / 1_000_000.0 / LOOP);
+    }
+
+    @Test
+    public void categoryDTOTest() throws Exception {
+        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
+        String inputJSON = desktop + File.separator + "input.json";
+        if(new File(inputJSON).exists()) {
+            ObjectMapper objectMapper = new ObjectMapper();
+            CategoryDTO root = objectMapper.readValue(Files.readString(Paths.get(inputJSON)), CategoryDTO.class);
+            System.out.println(root);
+        }
     }
 
 
