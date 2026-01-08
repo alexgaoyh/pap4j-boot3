@@ -333,7 +333,7 @@ public class ExcelHierarchyReaderTest {
         mapper.enable(SerializationFeature.INDENT_OUTPUT);
 
         ObjectNode rootJson = mapper.createObjectNode();
-        rootJson.put("name", root.getNodeName());
+        rootJson.put("nodeName", root.getNodeName());
         rootJson.put("levelCode", root.getLevelCode());
         rootJson.put("depth", root.getDepth());
         rootJson.put("fullPath", root.getFullPath());
