@@ -398,5 +398,31 @@ public class JacksonUtilTest {
         }
     }
 
+    /**
+     * 深度优先
+     * @param root
+     * @return
+     */
+    public static List<CategoryDTO> flattenToDepthFirstList(CategoryDTO root) {
+        List<CategoryDTO> flattenedList = new ArrayList<>();
+        if (root != null) {
+            depthFirstTraverse(root, flattenedList);
+        }
+        return flattenedList;
+    }
+
+    private static void depthFirstTraverse(CategoryDTO node, List<CategoryDTO> result) {
+        if (node == null) {
+            return;
+        }
+        result.add(node);
+
+        if (node.getChildren() != null) {
+            for (CategoryDTO child : node.getChildren()) {
+                depthFirstTraverse(child, result);
+            }
+        }
+    }
+
 
 }
