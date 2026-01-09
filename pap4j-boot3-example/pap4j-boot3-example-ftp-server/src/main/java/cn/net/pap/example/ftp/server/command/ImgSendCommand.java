@@ -64,8 +64,8 @@ import javax.imageio.stream.ImageInputStream;
  *             ftpClient.setControlEncoding("UTF-8");
  *             ftpClient.enterLocalPassiveMode();
  *             ftpClient.connect(FTP_SERVER, FTP_PORT);
- *             ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
  *             boolean success = ftpClient.login(FTP_USER, FTP_PASSWORD);
+ *             ftpClient.setFileType(FTP.BINARY_FILE_TYPE);
  *
  *             try (InputStream inputStream = ftpClient.retrieveImgSendFileStream("big-plane-no.jpg")) {
  *                 ByteArrayOutputStream baos = new ByteArrayOutputStream();
