@@ -225,6 +225,68 @@ public class ImgSendCommand extends AbstractCommand {
         }
     }
 
+    /**
+     * 相比于前面的方法，不再返回 base64，因为 base64 会放大，所以下面这个方法，是直接返回流，然后同样可以解析使用。
+     * 单元测试方法如下，直接子采样图像之后返回。
+     * @Test
+     *     @Order(9)
+     *     public void testImgSend() throws Exception {
+     *         AutoCloseableFTPClient ftpClient = new AutoCloseableFTPClient();
+     *         try {
+     *             ftpClient.setControlEncoding("UTF-8");
+     *             ftpClient.enterLocalPassiveMode();
+     *             ftpClient.connect(FTP_SERVER, FTP_PORT);
+     *             ftpClient.enterLocalPassiveMode(); // 关键
+     *             boolean success = ftpClient.login(FTP_USER, FTP_PASSWORD);
+     *             // IMPORTANT , need after login method
+     *             ftpClient.setFileType(BINARY_FILE_TYPE);
+     *
+     *             try (InputStream rawStream = ftpClient.retrieveImgSendFileStream("/00035_00.jpg")) {
+     *                 if (rawStream == null) {
+     *                     throw new IOException("Cannot open input stream. Check FTP path or permissions.");
+     *                 }
+     *                 String desktop = System.getProperty("user.home") + File.separator + "Desktop";
+     *                 java.nio.file.Path targetPath = java.nio.file.Paths.get(desktop, "aaaaaaaaaa.jpg");
+     *                 java.nio.file.Files.createDirectories(targetPath.getParent());
+     *                 try (java.io.OutputStream outputStream = java.nio.file.Files.newOutputStream(targetPath)) {
+     *                     byte[] buffer = new byte[4096];
+     *                     int bytesRead;
+     *                     while ((bytesRead = rawStream.read(buffer)) != -1) {
+     *                         outputStream.write(buffer, 0, bytesRead);
+     *                     }
+     *                 }
+     *                 boolean completed = ftpClient.completePendingCommand();
+     *                 if (!completed) {
+     *                     throw new IOException("File transfer failed, incomplete command.");
+     *                 }
+     *             }
+     *
+     *         } finally {
+     *             if (ftpClient.isConnected()) {
+     *                 ftpClient.disconnect();
+     *             }
+     *         }
+     *     }
+     *
+     * @param inputFileStr
+     * @param targetWidth
+     * @return
+     * @throws IOException
+     */
+    public static InputStream convertOrigin(String inputFileStr, int targetWidth) throws IOException {
+        BufferedImage image = getLowMemoryThumbnail(inputFileStr, targetWidth);
+
+        String formatName = getFormatName(inputFileStr);
+        if (formatName == null || formatName.isEmpty()) {
+            throw new IllegalArgumentException("Invalid image format for file: " + inputFileStr);
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, formatName, baos);
+        // 直接返回原始二进制流
+        return new ByteArrayInputStream(baos.toByteArray());
+    }
+
     private static String getFormatName(String inputFileStr) {
         int idx = inputFileStr.lastIndexOf('.');
         if (idx < 0 || idx == inputFileStr.length() - 1) {
