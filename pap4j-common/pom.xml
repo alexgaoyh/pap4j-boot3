@@ -37,6 +37,7 @@
         <module>pap4j-common-tesseract</module>
         <module>pap4j-common-qlexpress</module>
         <module>pap4j-common-worker</module>
+        <module>pap4j-common-jdbc</module>
     </modules>
 
     <properties>
