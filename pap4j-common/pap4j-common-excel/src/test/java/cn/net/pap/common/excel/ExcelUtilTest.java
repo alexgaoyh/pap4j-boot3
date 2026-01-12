@@ -189,4 +189,16 @@ public class ExcelUtilTest {
         }
     }
 
+    // @Test
+    public void replaceTest() throws Exception {
+        String template = "UPDATE %s SET %s = '%s' WHERE %s = '%s';";
+
+        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList("C:\\Users\\86181\\Desktop\\aa.xlsx", "Sheet1", null);
+        for(Map<String, Object> row : sheet2) {
+            String jgjlbsh = row.get("加工记录标识号").toString();
+            String fl = row.get("分類").toString();
+            System.out.println(String.format(template, "asdf", "qer", fl, "book_id", jgjlbsh));
+        }
+    }
+
 }
