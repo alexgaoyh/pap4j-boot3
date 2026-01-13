@@ -49,7 +49,7 @@ public class ListMapGroupUtil {
         // 使用LinkedHashMap保持插入顺序
         Map<String, Map<String, Object>> groupMap = preserveOrder ? new LinkedHashMap<>() : new HashMap<>();
 
-        Map<String, Integer> orderMap = preserveOrder ? new LinkedHashMap<>() : null;
+        Map<String, Integer> orderMap = preserveOrder ? new LinkedHashMap<>() : new HashMap<>();
 
         for (Map<String, Object> item : dataList) {
             String groupKey = buildGroupKey(item, groupFields);
