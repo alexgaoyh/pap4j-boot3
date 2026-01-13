@@ -8,6 +8,7 @@ import cn.net.pap.common.excel.handle.ImageModifyHandler;
 import cn.net.pap.common.excel.handle.ImageModifyHandler2;
 import cn.net.pap.common.excel.jackson.ParentChildDeserializer;
 import cn.net.pap.common.excel.jackson.ParentChildSerializer;
+import cn.net.pap.common.excel.util.ListMapGroupUtil;
 import com.alibaba.excel.EasyExcel;
 import com.alibaba.excel.ExcelWriter;
 import com.alibaba.excel.write.metadata.WriteSheet;
@@ -199,6 +200,20 @@ public class ExcelUtilTest {
             String fl = row.get("分類").toString();
             System.out.println(String.format(template, "asdf", "qer", fl, "book_id", jgjlbsh));
         }
+    }
+
+    // @Test
+    public void groupRowTest() throws Exception {
+        List<Map<String, Object>> dataList = ExcelUtil.getRowList("C:\\Users\\86181\\Desktop\\aa.xlsx", "Sheet1", null);
+        List<Map<String, Object>> result = ListMapGroupUtil.groupByFields(
+                dataList,
+                new String[]{"tm", "bsh"},
+                new ListMapGroupUtil.GroupOptions()
+                        .setChildrenFieldName("details")
+                        .setKeepGroupFieldsInChildren(false)
+        );
+        ObjectMapper objectMapper = new ObjectMapper();
+        System.out.println(objectMapper.writeValueAsString(result));
     }
 
 }
