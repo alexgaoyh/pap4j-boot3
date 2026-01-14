@@ -38,6 +38,7 @@
         <module>pap4j-common-qlexpress</module>
         <module>pap4j-common-worker</module>
         <module>pap4j-common-jdbc</module>
+        <module>pap4j-common-md5-jmh</module>
     </modules>
 
     <properties>
