@@ -28,6 +28,12 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <spring-statemachine.version>4.0.1</spring-statemachine.version>
+        <default.skip>false</default.skip>
+        <dependency-check-maven.skip>${default.skip}</dependency-check-maven.skip>
+        <maven-gpg-plugin.skip>${default.skip}</maven-gpg-plugin.skip>
+        <maven-javadoc-plugin.skip>${default.skip}</maven-javadoc-plugin.skip>
+        <git-commit-id-maven-plugin.skip>${default.skip}</git-commit-id-maven-plugin.skip>
+        <maven-checkstyle-plugin.skip>${default.skip}</maven-checkstyle-plugin.skip>
     </properties>
 
     <licenses>
@@ -261,6 +267,7 @@
                 <configuration>
                     <retireJsUrl>file:///D:/jsrepository.json</retireJsUrl>
                     <autoUpdate>false</autoUpdate>
+                    <skip>${dependency-check-maven.skip}</skip>
                 </configuration>
                 <executions>
                     <execution>
@@ -296,6 +303,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>1.6</version>
+                <configuration>
+                    <skip>${maven-gpg-plugin.skip}</skip>
+                </configuration>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
@@ -314,6 +324,7 @@
                     <source>17</source>
                     <!--<target>17</target>-->
                     <additionalJOption>-Xdoclint:none</additionalJOption>
+                    <skip>${maven-javadoc-plugin.skip}</skip>
                 </configuration>
                 <executions>
                     <execution>
@@ -410,6 +421,7 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <skip>${git-commit-id-maven-plugin.skip}</skip>
                     <skipPoms>false</skipPoms>
                     <generateGitPropertiesFile>true</generateGitPropertiesFile>
                     <generateGitPropertiesFilename>${project.build.outputDirectory}/git.properties</generateGitPropertiesFilename>
@@ -424,6 +436,7 @@
                 <configuration>
                     <configLocation>checkstyle.xml</configLocation>
                     <failOnViolation>true</failOnViolation>
+                    <skip>${maven-checkstyle-plugin.skip}</skip>
                 </configuration>
                 <executions>
                     <execution>
