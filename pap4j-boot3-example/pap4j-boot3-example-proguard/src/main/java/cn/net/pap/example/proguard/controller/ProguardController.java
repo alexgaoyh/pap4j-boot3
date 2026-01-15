@@ -258,6 +258,22 @@ public class ProguardController {
         extList.add("D");
         proguard.setExtList(extList);
 
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+        abstractMap.put("long", 1l);
+        abstractMap.put("float", 1.23f);
+        abstractMap.put("boolean", true);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+        proguard.setAbstractList(arrayNode);
+
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard.setAbstractObj(objectNode);
+
         proguardService.saveAndFlush(proguard);
 
         proguard.setProguardName("update");
@@ -326,6 +342,12 @@ public class ProguardController {
 
         proguardService.timeout(proguard, timeoutMS);
         return proguard;
+    }
+
+    @GetMapping("dataSourcePrintProguardId")
+    public String dataSourcePrintProguardId(HttpServletRequest request, HttpServletResponse response) {
+        proguardService.dataSourcePrintProguardId();
+        return "success";
     }
 
 }

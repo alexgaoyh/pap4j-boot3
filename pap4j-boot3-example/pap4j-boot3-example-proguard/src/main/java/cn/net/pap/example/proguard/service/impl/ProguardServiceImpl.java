@@ -1,6 +1,7 @@
 package cn.net.pap.example.proguard.service.impl;
 
 import cn.net.pap.example.proguard.entity.Proguard;
+import cn.net.pap.example.proguard.repository.ProguardJDBCRepository;
 import cn.net.pap.example.proguard.repository.ProguardRepository;
 import cn.net.pap.example.proguard.service.IProguardService;
 import jakarta.persistence.EntityManager;
@@ -41,6 +42,9 @@ public class ProguardServiceImpl implements IProguardService {
 
     @Autowired
     private ProguardRepository proguardRepository;
+
+    @Autowired
+    private ProguardJDBCRepository proguardJDBCRepository;
 
     @Autowired
     private EntityManager entityManager;
@@ -337,6 +341,11 @@ public class ProguardServiceImpl implements IProguardService {
         } finally {
             shutdownExecutor(executor);
         }
+    }
+
+    @Override
+    public void dataSourcePrintProguardId() {
+        proguardJDBCRepository.dataSourcePrintProguardId();
     }
 
     /**

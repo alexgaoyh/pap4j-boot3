@@ -87,4 +87,6 @@ public interface IProguardService {
     Proguard sleep(Long timeMS);
 
     Proguard timeout(Proguard proguard, Long timeoutMS);
+
+    void dataSourcePrintProguardId();
 }
