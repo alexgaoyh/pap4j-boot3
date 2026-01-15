@@ -4,6 +4,10 @@ import java.sql.*;
 
 public class MysqlStreamTest {
 
+    /**
+     * 不建议生产使用，会长时间占用链接，可以换分页的方式来处理。
+     * @throws SQLException
+     */
     // @Test
     public void mStreamTest() throws SQLException {
         // 启用游标获取 设置默认获取大小
