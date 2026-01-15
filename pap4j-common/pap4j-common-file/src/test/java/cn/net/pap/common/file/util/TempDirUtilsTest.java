@@ -1,0 +1,110 @@
+package cn.net.pap.common.file.util;
+
+import org.junit.jupiter.api.Test;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class TempDirUtilsTest {
+
+    // @Test
+    public void test1() throws IOException {
+        TempDirUtils.withTempFile("myapp-", tempFile -> {
+            try {
+                Files.writeString(tempFile, "Hello, World!");
+                String content = Files.readString(tempFile);
+                System.out.println("文件内容: " + content);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    // @Test
+    public void test2() throws Exception {
+        Path customDir = Paths.get("d://");
+
+        String returnStr = TempDirUtils.withTempFile(customDir, "data-", tempFile -> {
+            try {
+                Files.writeString(tempFile, "{\"id\": 123, \"name\": \"test\"}");
+                return "success";
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+
+        assertTrue(returnStr.equals("success"));
+    }
+
+    // @Test
+    public void test3() throws IOException {
+        TempDirUtils.withTempDir("process-", tempDir -> {
+            try {
+                Path inputFile = tempDir.resolve("input.txt");
+                Path outputFile = tempDir.resolve("output.txt");
+                Path logFile = tempDir.resolve("logs/process.log");
+
+                Files.createDirectories(logFile.getParent());
+
+                Files.writeString(inputFile, "原始数据");
+                Files.writeString(outputFile, "处理后的数据");
+                Files.writeString(logFile, "处理日志");
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+    // @Test
+    public void test4() throws Exception {
+        Path workspace = Paths.get("d:/");
+
+        List<String> returnList = TempDirUtils.withTempDir(workspace, "batch-", tempDir -> {
+            try {
+                Path inputDir = tempDir.resolve("input");
+                Path outputDir = tempDir.resolve("output");
+                Path tempDir2 = tempDir.resolve("temp");
+
+                Files.createDirectories(inputDir);
+                Files.createDirectories(outputDir);
+                Files.createDirectories(tempDir2);
+
+                // 模拟创建多个输入文件
+                for (int i = 0; i < 3; i++) {
+                    Path file = inputDir.resolve("file" + i + ".txt");
+                    Files.writeString(file, "内容 " + i);
+                }
+
+                List<String> returnListInner = new ArrayList<>();
+                returnListInner.add("success");
+                return returnListInner;
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        assertTrue(returnList.contains("success"));
+    }
+
+    // @Test
+    public void test5() throws IOException {
+        try {
+            TempDirUtils.withTempDir("error-test-", tempDir -> {
+                try {
+                    int i = 1/0;
+                } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        } catch (Exception e) {
+            System.err.println("操作失败: " + e.getMessage());
+        }
+    }
+
+
+}
