@@ -109,42 +109,45 @@ class JdbcH2TemplateTest {
         AtomicInteger rowCount = new AtomicInteger(0);
 
         // 使用原生JDBC连接进行流式查询
-        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ResultSet rs = stmt.executeQuery("SELECT * FROM user_info ORDER BY id")) {
+        try (Connection conn = dataSource.getConnection();) {
 
-            // 关键：设置fetchSize启用流式获取
-            stmt.setFetchSize(1000);
+            try (Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);){
+                // 关键：设置fetchSize启用流式获取
+                stmt.setFetchSize(1000);
 
-            System.out.println("开始流式读取数据...");
-            long startTime = System.currentTimeMillis();
+                try (ResultSet rs = stmt.executeQuery("select * from user_info")) {
+                    System.out.println("开始流式读取数据...");
+                    long startTime = System.currentTimeMillis();
+                    while (rs.next()) {
+                        rowCount.incrementAndGet();
 
-            while (rs.next()) {
-                rowCount.incrementAndGet();
+                        // 模拟数据处理
+                        long id = rs.getLong("id");
+                        String name = rs.getString("name");
+                        String status = rs.getString("status");
 
-                // 模拟数据处理
-                long id = rs.getLong("id");
-                String name = rs.getString("name");
-                String status = rs.getString("status");
+                        // 验证数据
+                        assertNotNull(name);
+                        assertNotNull(status);
 
-                // 验证数据
-                assertNotNull(name);
-                assertNotNull(status);
+                        // 每处理10000条记录输出一次进度
+                        if (rowCount.get() % 10000 == 0) {
+                            System.out.printf("已处理 %d 条记录，当前ID: %d%n", rowCount.get(), id);
+                        }
+                    }
 
-                // 每处理10000条记录输出一次进度
-                if (rowCount.get() % 10000 == 0) {
-                    System.out.printf("已处理 %d 条记录，当前ID: %d%n", rowCount.get(), id);
+                    long endTime = System.currentTimeMillis();
+                    long endMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+
+                    System.out.printf("✅ 流式查询完成！\n");
+                    System.out.printf("总记录数: %d\n", rowCount.get());
+                    System.out.printf("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0);
+                    System.out.printf("内存增量: %.2f MB\n", (endMemory - startMemory) / (1024.0 * 1024.0));
+
+                    // 验证读取了所有记录
+                    assertEquals(100000, rowCount.get());
                 }
             }
-
-            long endTime = System.currentTimeMillis();
-            long endMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-
-            System.out.printf("✅ 流式查询完成！\n");
-            System.out.printf("总记录数: %d\n", rowCount.get());
-            System.out.printf("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0);
-            System.out.printf("内存增量: %.2f MB\n", (endMemory - startMemory) / (1024.0 * 1024.0));
-
-            // 验证读取了所有记录
-            assertEquals(100000, rowCount.get());
 
         } catch (SQLException e) {
             fail("流式查询失败: " + e.getMessage());
