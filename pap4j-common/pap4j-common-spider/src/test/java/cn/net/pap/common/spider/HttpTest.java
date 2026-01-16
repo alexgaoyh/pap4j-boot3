@@ -9,8 +9,12 @@ import org.jsoup.select.Elements;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.URI;
+import java.net.URL;
+import java.net.URLConnection;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -149,6 +153,38 @@ public class HttpTest {
             }
         }
         System.out.println(doc.body().html());
+    }
+
+    // @Test
+    public void downloadFileURLTest() {
+        try {
+            String ftpURL = "ftp://" +
+                    "bj" + ":" +
+                    "123456" + "@" +
+                    "192.168.1.115" + ":" +
+                    "21" + "/" +
+                    "600tiff/2.tiff";
+            URL url = new URL(ftpURL);
+            URLConnection connection = url.openConnection();
+
+            // 创建输出目录（如果不存在）
+            File outputFile = new File("d://222222.tiff");
+            outputFile.getParentFile().mkdirs();
+
+            // 使用try-with-resources确保流关闭
+            try (InputStream in = connection.getInputStream();
+                 FileOutputStream out = new FileOutputStream(outputFile)) {
+
+                byte[] buffer = new byte[4096];
+                int bytesRead;
+
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, bytesRead);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     /**
