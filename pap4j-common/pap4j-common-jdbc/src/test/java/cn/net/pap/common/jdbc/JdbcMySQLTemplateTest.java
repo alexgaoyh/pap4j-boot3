@@ -1,18 +1,31 @@
 package cn.net.pap.common.jdbc;
 
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 
 import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = JdbcMySQLTemplateTest.Config.class)
@@ -38,6 +51,9 @@ class JdbcMySQLTemplateTest {
     @Autowired
     JdbcTemplate jdbcTemplate;
 
+    @Autowired
+    DataSource dataSource;
+
     private boolean isDatabaseConnected() {
         try {
             jdbcTemplate.queryForObject("SELECT 1", Integer.class);
@@ -47,37 +63,120 @@ class JdbcMySQLTemplateTest {
         }
     }
 
-    @Test
-    void testUpdate1() {
-        if (!isDatabaseConnected()) {
-            return;
-        }
-
+    @BeforeEach
+    void setup() {
+        // 创建测试表并插入大数据量
         jdbcTemplate.execute("""
-                CREATE TABLE IF NOT EXISTS user_info (
-                    id BIGINT PRIMARY KEY,
-                    name VARCHAR(50),
-                    age INT,
-                    status VARCHAR(20)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+                    CREATE TABLE IF NOT EXISTS user_info (
+                        id BIGINT PRIMARY KEY,
+                        name VARCHAR(50),
+                        age INT,
+                        email VARCHAR(100),
+                        status VARCHAR(20),
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
                 """);
 
-        jdbcTemplate.update("INSERT INTO user_info VALUES (?, ?, ?, ?)", 1L, "alexgaoyh", 36, "INIT");
+        // 清空表数据
+        jdbcTemplate.update("DELETE FROM user_info");
+    }
 
-        List<Map<String, Object>> rows = jdbcTemplate.queryForList("SELECT * FROM user_info");
+    /**
+     * 插入大量测试数据
+     */
+    private void insertLargeTestData(int count) {
+        // 使用批量插入提高性能
+        jdbcTemplate.batchUpdate("INSERT INTO user_info (id, name, age, email, status) VALUES (?, ?, ?, ?, ?)", new BatchPreparedStatementSetter() {
+            @Override
+            public void setValues(PreparedStatement ps, int i) throws SQLException {
+                long id = i + 1L;
+                ps.setLong(1, id);
+                ps.setString(2, "User-" + id);
+                ps.setInt(3, 20 + (i % 50));
+                ps.setString(4, "user" + id + "@example.com");
+                ps.setString(5, i % 10 == 0 ? "INACTIVE" : "ACTIVE");
+            }
 
-        for (Map<String, Object> row : rows) {
-            Object whereValue = row.get("id");
-            String template = "UPDATE %s SET %s = '%s' WHERE %s = '%s';";
+            @Override
+            public int getBatchSize() {
+                return count;
+            }
+        });
+
+        System.out.println("✅ 插入 " + count + " 条测试数据完成");
+    }
+
+    @Test
+    @DisplayName("测试JDBC原生流式查询")
+    void testJdbcStreamingQuery() throws SQLException {
+        // 插入10万条测试数据
+        insertLargeTestData(100000);
+
+        long startMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+        AtomicInteger rowCount = new AtomicInteger(0);
+
+        // 使用原生JDBC连接进行流式查询
+        try (Connection conn = dataSource.getConnection();) {
+            conn.setAutoCommit(false);
+            try (Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);){
+                stmt.setFetchSize(Integer.MIN_VALUE);
+
+                try (ResultSet rs = stmt.executeQuery("select * from user_info")) {
+                    System.out.println("开始流式读取数据...");
+                    long startTime = System.currentTimeMillis();
+                    while (rs.next()) {
+                        rowCount.incrementAndGet();
+
+                        // 模拟数据处理
+                        long id = rs.getLong("id");
+                        String name = rs.getString("name");
+                        String status = rs.getString("status");
+
+                        // 验证数据
+                        assertNotNull(name);
+                        assertNotNull(status);
+
+                        // 每处理10000条记录输出一次进度
+                        if (rowCount.get() % 10000 == 0) {
+                            System.out.printf("已处理 %d 条记录，当前ID: %d%n", rowCount.get(), id);
+                        }
+                    }
+
+                    long endTime = System.currentTimeMillis();
+                    long endMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+
+                    System.out.printf("✅ 流式查询完成！\n");
+                    System.out.printf("总记录数: %d\n", rowCount.get());
+                    System.out.printf("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0);
+                    System.out.printf("内存增量: %.2f MB\n", (endMemory - startMemory) / (1024.0 * 1024.0));
+
+                    // 验证读取了所有记录
+                    assertEquals(100000, rowCount.get());
+                }
+            }
+
+        } catch (SQLException e) {
+            fail("流式查询失败: " + e.getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("根据数据库中的数据，模板化生成update语句")
+    void testUpdate1() {
+        jdbcTemplate.update("INSERT INTO user_info (id, name, age, email, status) VALUES (?, ?, ?, ?, ?)", 1L, "alexgaoyh", "36", "alexgaoyh@mail.com", "INIT");
+
+        var rows = jdbcTemplate.queryForList("SELECT * FROM user_info");
+
+        String template = "UPDATE %s SET %s = '%s' WHERE %s = '%s';";
+        for (var row : rows) {
             String table = "user_info";
             String setColumn = "status";
             String setValue = "UPDATED";
             String whereColumn = "id";
+            Object whereValue = row.get("ID");
             String updateSql = String.format(template, table, setColumn, setValue, whereColumn, whereValue);
             System.out.println(updateSql);
         }
-
-        jdbcTemplate.update("DROP TABLE IF EXISTS user_info");
-
     }
+
 }
