@@ -209,35 +209,37 @@ class JdbcH2TemplateTest {
         long startTime = System.currentTimeMillis();
         AtomicInteger rowCount = new AtomicInteger(0);
 
-        try (BufferedWriter writer = Files.newBufferedWriter(tempFile); Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ResultSet rs = stmt.executeQuery("SELECT id, name, age, email, status, created_at FROM user_info ORDER BY id")) {
+        try (BufferedWriter writer = Files.newBufferedWriter(tempFile); Connection conn = dataSource.getConnection();) {
+            try (Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ){
+                // 设置fetchSize启用流式
+                stmt.setFetchSize(2000);
+                try (ResultSet rs = stmt.executeQuery("SELECT id, name, age, email, status, created_at FROM user_info ORDER BY id")){
+                    // 写入CSV表头
+                    writer.write("ID,Name,Age,Email,Status,CreatedAt");
+                    writer.newLine();
 
-            // 设置fetchSize启用流式
-            stmt.setFetchSize(2000);
+                    System.out.println("开始流式导出到CSV...");
 
-            // 写入CSV表头
-            writer.write("ID,Name,Age,Email,Status,CreatedAt");
-            writer.newLine();
+                    while (rs.next()) {
+                        // 构建CSV行
+                        String csvLine = String.format("%d,%s,%d,%s,%s,%s", rs.getLong("id"), escapeCsv(rs.getString("name")), rs.getInt("age"), escapeCsv(rs.getString("email")), rs.getString("status"), rs.getTimestamp("created_at"));
 
-            System.out.println("开始流式导出到CSV...");
+                        writer.write(csvLine);
+                        writer.newLine();
 
-            while (rs.next()) {
-                // 构建CSV行
-                String csvLine = String.format("%d,%s,%d,%s,%s,%s", rs.getLong("id"), escapeCsv(rs.getString("name")), rs.getInt("age"), escapeCsv(rs.getString("email")), rs.getString("status"), rs.getTimestamp("created_at"));
+                        rowCount.incrementAndGet();
 
-                writer.write(csvLine);
-                writer.newLine();
+                        // 每10000行刷新一次缓冲区
+                        if (rowCount.get() % 10000 == 0) {
+                            writer.flush();
+                            System.out.printf("已导出 %d 条记录到CSV%n", rowCount.get());
+                        }
+                    }
 
-                rowCount.incrementAndGet();
-
-                // 每10000行刷新一次缓冲区
-                if (rowCount.get() % 10000 == 0) {
+                    // 最后刷新一次
                     writer.flush();
-                    System.out.printf("已导出 %d 条记录到CSV%n", rowCount.get());
                 }
             }
-
-            // 最后刷新一次
-            writer.flush();
 
         } catch (SQLException | IOException e) {
             fail("导出失败: " + e.getMessage());
@@ -275,34 +277,35 @@ class JdbcH2TemplateTest {
 
         System.out.printf("基准内存使用: %.2f MB\n", baselineMemory / (1024.0 * 1024.0));
 
-        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ResultSet rs = stmt.executeQuery("SELECT * FROM user_info")) {
+        try (Connection conn = dataSource.getConnection(); ) {
+            try (Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ){
+                stmt.setFetchSize(500);  // 设置较小的fetchSize
+                try (ResultSet rs = stmt.executeQuery("SELECT * FROM user_info")){
+                    int totalRows = 0;
+                    double maxMemoryIncrease = 0;
 
-            stmt.setFetchSize(500);  // 设置较小的fetchSize
+                    while (rs.next()) {
+                        totalRows++;
 
-            int totalRows = 0;
-            double maxMemoryIncrease = 0;
+                        // 每处理5000条记录检查一次内存
+                        if (totalRows % 5000 == 0) {
+                            long currentMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
+                            double memoryIncrease = (currentMemory - baselineMemory) / (1024.0 * 1024.0);
 
-            while (rs.next()) {
-                totalRows++;
+                            maxMemoryIncrease = Math.max(maxMemoryIncrease, memoryIncrease);
 
-                // 每处理5000条记录检查一次内存
-                if (totalRows % 5000 == 0) {
-                    long currentMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
-                    double memoryIncrease = (currentMemory - baselineMemory) / (1024.0 * 1024.0);
+                            // 关键断言：内存增长应该有限
+                            assertThat(memoryIncrease).withFailMessage("处理 %d 条记录后内存增长 %.2f MB，可能发生了全量加载", totalRows, memoryIncrease).isLessThan(50.0);  // 内存增长不应超过50MB
 
-                    maxMemoryIncrease = Math.max(maxMemoryIncrease, memoryIncrease);
+                            System.out.printf("已处理 %d 条记录，当前内存增量: %.2f MB\n", totalRows, memoryIncrease);
+                        }
+                    }
 
-                    // 关键断言：内存增长应该有限
-                    assertThat(memoryIncrease).withFailMessage("处理 %d 条记录后内存增长 %.2f MB，可能发生了全量加载", totalRows, memoryIncrease).isLessThan(50.0);  // 内存增长不应超过50MB
+                    System.out.printf("✅ 流式查询完成，共处理 %d 条记录，最大内存增量: %.2f MB\n", totalRows, maxMemoryIncrease);
 
-                    System.out.printf("已处理 %d 条记录，当前内存增量: %.2f MB\n", totalRows, memoryIncrease);
+                    assertEquals(150000, totalRows);
                 }
             }
-
-            System.out.printf("✅ 流式查询完成，共处理 %d 条记录，最大内存增量: %.2f MB\n", totalRows, maxMemoryIncrease);
-
-            assertEquals(150000, totalRows);
-
         }
     }
 
@@ -342,26 +345,26 @@ class JdbcH2TemplateTest {
         long streamingStart = System.currentTimeMillis();
         AtomicInteger streamingRowCount = new AtomicInteger(0);
 
-        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ResultSet rs = stmt.executeQuery("SELECT * FROM user_info ORDER BY id")) {
+        try (Connection conn = dataSource.getConnection(); ) {
+            try (Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ) {
+                stmt.setFetchSize(1000);
+                try (ResultSet rs = stmt.executeQuery("SELECT * FROM user_info ORDER BY id")){
+                    while (rs.next()) {
+                        streamingRowCount.incrementAndGet();
+                    }
+                }
+                long streamingEnd = System.currentTimeMillis();
+                long streamingTime = streamingEnd - streamingStart;
 
-            stmt.setFetchSize(1000);
+                System.out.println("\n📊 性能对比结果:");
+                System.out.printf("分页查询: %d 条记录，耗时 %.2f 秒\n", paginationRowCount, paginationTime / 1000.0);
+                System.out.printf("流式查询: %d 条记录，耗时 %.2f 秒\n", streamingRowCount.get(), streamingTime / 1000.0);
+                System.out.printf("性能提升: %.1f%%\n", ((double) (paginationTime - streamingTime) / paginationTime) * 100);
 
-            while (rs.next()) {
-                streamingRowCount.incrementAndGet();
+                // 验证两种方式都处理了所有记录
+                assertEquals(paginationRowCount, streamingRowCount.get());
             }
-
         }
-
-        long streamingEnd = System.currentTimeMillis();
-        long streamingTime = streamingEnd - streamingStart;
-
-        System.out.println("\n📊 性能对比结果:");
-        System.out.printf("分页查询: %d 条记录，耗时 %.2f 秒\n", paginationRowCount, paginationTime / 1000.0);
-        System.out.printf("流式查询: %d 条记录，耗时 %.2f 秒\n", streamingRowCount.get(), streamingTime / 1000.0);
-        System.out.printf("性能提升: %.1f%%\n", ((double) (paginationTime - streamingTime) / paginationTime) * 100);
-
-        // 验证两种方式都处理了所有记录
-        assertEquals(paginationRowCount, streamingRowCount.get());
     }
 
     /**
