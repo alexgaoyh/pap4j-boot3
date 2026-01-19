@@ -4,36 +4,52 @@ import cn.net.pap.example.admin.dto.ProcessResult;
 import cn.net.pap.example.admin.util.ProcessPoolUtil;
 import cn.net.pap.example.admin.util.ProcessPoolUtilExample;
 import io.swagger.v3.oas.annotations.Operation;
-import jakarta.annotation.PreDestroy;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 @RestController
 @RequestMapping("/processPoolUtil")
 public class ProcessPoolUtilController {
 
-    private final ExecutorService executor = Executors.newFixedThreadPool(5); // 最多同时 5 个子进程
+    @Configuration
+    public class ThreadPoolConfig {
+
+        @Bean(name = "processExecutor")
+        public static ThreadPoolTaskExecutor processExecutor() {
+            ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+            executor.setCorePoolSize(5);
+            executor.setMaxPoolSize(5);
+            executor.setQueueCapacity(100);
+            executor.setThreadNamePrefix("process-pool-");
+            // --- 关键配置 ---
+            // 设为 true，容器关闭时会等待任务完成
+            executor.setWaitForTasksToCompleteOnShutdown(true);
+            // 设置等待的最长时间（如果任务太长，不能无限等下去）
+            executor.setAwaitTerminationSeconds(6000);
+            // 设置拒绝策略。当队列满了且池也满了，由调用者线程执行，防止丢任务
+            executor.setRejectedExecutionHandler(new java.util.concurrent.ThreadPoolExecutor.CallerRunsPolicy());
+            executor.initialize();
+            return executor;
+        }
+    }
+
+    @Autowired
+    @Qualifier("processExecutor")
+    private ThreadPoolTaskExecutor executor;
 
     /**
-     * 最简单的“任务表”
+     * 最简单的“任务表”， 后续可以改为本地缓存
      */
     private final ConcurrentHashMap<String, ProcessResult> results = new ConcurrentHashMap<>();
-
-
-    /**
-     * Controller 销毁前关闭线程池，释放资源
-     */
-    @PreDestroy
-    public void shutdownExecutor() {
-        System.out.println("[ProcessController] Shutting down executor...");
-        executor.shutdown();
-    }
 
     @Operation(summary = "异步请求")
     @GetMapping("/java")
