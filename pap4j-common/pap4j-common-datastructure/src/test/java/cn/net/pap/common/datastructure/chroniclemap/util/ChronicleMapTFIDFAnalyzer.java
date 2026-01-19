@@ -34,7 +34,7 @@ public class ChronicleMapTFIDFAnalyzer implements AutoCloseable {
                 .of(String.class, TermStatDTO.class)
                 .name("term-statistics")
                 .entries(2_500_000)      // 预估词库大小
-                .averageKeySize(16)      // 词平均长度
+                .averageKeySize(32)      // 词平均长度，这里词的长度不一致，这里尽可能大一点
                 .averageValue(new TermStatDTO())
                 .createPersistedTo(new File(dir, "terms.dat"));
 
