@@ -5,9 +5,14 @@ import cn.net.pap.example.javafx.util.ImageUtil;
 import javafx.scene.control.TreeItem;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.List;
 
 /**
  * 目录树
@@ -46,20 +51,31 @@ public class FileTreeItem extends TreeItem<Path> {
             return;
         }
 
-        File[] files = parentPath.toFile().listFiles();
-        if (files == null) return;
-
-        // 文件夹排前，文件排后，名称忽略大小写排序
-        Arrays.sort(files, (f1, f2) -> {
-            if (f1.isDirectory() && !f2.isDirectory()) return -1;
-            if (!f1.isDirectory() && f2.isDirectory()) return 1;
-            return new OSAlignedNaturalComparator().compare(f1.getName(), f2.getName());
-        });
-
-        for (File file : files) {
-            if (file.isDirectory() || ImageUtil.isImageFile(file.getName().toLowerCase())) {
-                getChildren().add(new FileTreeItem(file.toPath()));
+        List<Path> dirs = new ArrayList<>();
+        List<Path> files = new ArrayList<>();
+        try (DirectoryStream<Path> stream = Files.newDirectoryStream(parentPath)) {
+            for (Path p : stream) {
+                if (Files.isDirectory(p)) {
+                    dirs.add(p);
+                } else if (ImageUtil.isImageFile(p.getFileName().toString().toLowerCase())) {
+                    files.add(p);
+                }
             }
+        } catch (IOException e) {
+            // 可记录日志
+            return;
+        }
+        Comparator<Path> nameComparator = Comparator.comparing( (Path p) -> p.getFileName().toString(), new OSAlignedNaturalComparator());
+
+        dirs.sort(nameComparator);
+        files.sort(nameComparator);
+
+        // 文件夹在前，文件在后
+        for (Path p : dirs) {
+            getChildren().add(new FileTreeItem(p));
+        }
+        for (Path p : files) {
+            getChildren().add(new FileTreeItem(p));
         }
     }
 
