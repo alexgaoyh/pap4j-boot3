@@ -8,9 +8,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.retry.annotation.EnableRetry;
 
 @SpringBootApplication(scanBasePackages = "cn.net.pap")
 @EnableJpaAuditing
+@EnableRetry
 public class Pap4jBoot3ExampleProguardApplication {
 
     public static class Pap4jCustomGenerator implements BeanNameGenerator {
