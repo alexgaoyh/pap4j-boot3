@@ -44,7 +44,7 @@ public class StaxXmlUtil {
                     depth = 1;
                     sb.append("<").append(nodeName);
                     for (int i = 0; i < reader.getAttributeCount(); i++) {
-                        sb.append(" ").append(reader.getAttributeLocalName(i)).append("=\"").append(reader.getAttributeValue(i)).append("\"");
+                        sb.append(" ").append(reader.getAttributeLocalName(i)).append("=\"").append(escapeXml(reader.getAttributeValue(i))).append("\"");
                     }
                     sb.append(">");
                 } else if (sb != null) {
@@ -53,13 +53,13 @@ public class StaxXmlUtil {
                             depth++;
                             sb.append("<").append(reader.getLocalName());
                             for (int i = 0; i < reader.getAttributeCount(); i++) {
-                                sb.append(" ").append(reader.getAttributeLocalName(i)).append("=\"").append(reader.getAttributeValue(i)).append("\"");
+                                sb.append(" ").append(reader.getAttributeLocalName(i)).append("=\"").append(escapeXml(reader.getAttributeValue(i))).append("\"");
                             }
                             sb.append(">");
                             break;
                         case XMLStreamConstants.CHARACTERS:
                         case XMLStreamConstants.CDATA: // 支持 CDATA
-                            sb.append(reader.getText());
+                            sb.append(escapeXml(reader.getText()));
                             break;
                         case XMLStreamConstants.END_ELEMENT:
                             sb.append("</").append(reader.getLocalName()).append(">");
@@ -83,6 +83,26 @@ public class StaxXmlUtil {
         return result;
     }
 
+    private static String escapeXml(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+        StringBuilder sb = new StringBuilder(text.length() + 16);
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case '&': sb.append("&amp;"); break;
+                case '<': sb.append("&lt;"); break;
+                case '>': sb.append("&gt;"); break;
+                case '"': sb.append("&quot;"); break;
+                case '\'': sb.append("&apos;"); break;
+                default: sb.append(c);
+            }
+        }
+        return sb.toString();
+    }
+
+
 
     /**
      * 获取某节点文本内容
@@ -100,7 +120,7 @@ public class StaxXmlUtil {
                     while (reader.hasNext()) {
                         event = reader.next();
                         if (event == XMLStreamConstants.CHARACTERS) {
-                            text += reader.getText();
+                            text += escapeXml(reader.getText());
                         } else if (event == XMLStreamConstants.END_ELEMENT && nodeName.equals(reader.getLocalName())) {
                             reader.close();
                             return text.trim();
@@ -143,11 +163,11 @@ public class StaxXmlUtil {
                         depth++;
                         sb.append("<").append(reader.getLocalName());
                         for (int i = 0; i < reader.getAttributeCount(); i++) {
-                            sb.append(" ").append(reader.getAttributeLocalName(i)).append("=\"").append(reader.getAttributeValue(i)).append("\"");
+                            sb.append(" ").append(reader.getAttributeLocalName(i)).append("=\"").append(escapeXml(reader.getAttributeValue(i))).append("\"");
                         }
                         sb.append(">");
                     } else if (event == XMLStreamConstants.CHARACTERS || event == XMLStreamConstants.CDATA) {
-                        sb.append(reader.getText());
+                        sb.append(escapeXml(reader.getText()));
                     } else if (event == XMLStreamConstants.END_ELEMENT) {
                         if (depth > 0) {
                             sb.append("</").append(reader.getLocalName()).append(">");
