@@ -4,6 +4,7 @@ import cn.net.pap.example.proguard.entity.AutoIncrePreKey;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 public interface IAutoIncrePreKeyService {
 
@@ -14,4 +15,7 @@ public interface IAutoIncrePreKeyService {
     AutoIncrePreKey saveAndFlushThrowIOException(AutoIncrePreKey entity) throws IOException;
 
     List<AutoIncrePreKey> findAll();
+
+    Map<String, List<AutoIncrePreKey>> batch(List<AutoIncrePreKey> autoIncrePreKeyList);
+
 }

@@ -5,18 +5,28 @@ import cn.net.pap.example.proguard.repository.AutoIncrePreKeyRepository;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.TransactionStatus;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
 
     @Autowired
     private AutoIncrePreKeyRepository autoIncrePreKeyRepository;
+
+    @Autowired
+    private PlatformTransactionManager transactionManager;
 
     @Override
     public AutoIncrePreKey saveAndFlush(AutoIncrePreKey entity) {
@@ -93,6 +103,47 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
     @Override
     public List<AutoIncrePreKey> findAll() {
         return autoIncrePreKeyRepository.findAll();
+    }
+
+    @Override
+    public Map<String, List<AutoIncrePreKey>> batch(List<AutoIncrePreKey> autoIncrePreKeyList) {
+
+        Map<String, List<AutoIncrePreKey>> returnMap = new HashMap<>();
+
+        List<AutoIncrePreKey> success = new ArrayList<>();
+        List<AutoIncrePreKey> failed = new ArrayList<>();
+
+        for (AutoIncrePreKey autoIncrePreKey : autoIncrePreKeyList) {
+            DefaultTransactionDefinition def = new DefaultTransactionDefinition();
+            // 明确指定：始终新事务
+            def.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
+            // 明确隔离级别
+            def.setIsolationLevel(TransactionDefinition.ISOLATION_READ_COMMITTED);
+            // 设置合理超时
+            def.setTimeout(30);  // 30秒
+
+            TransactionStatus status = null;
+            try {
+                status = transactionManager.getTransaction(def);
+
+                autoIncrePreKeyRepository.save(autoIncrePreKey);
+
+                transactionManager.commit(status);
+                success.add(autoIncrePreKey);
+
+            } catch (Exception e) {
+                if (status != null && !status.isCompleted()) {
+                    transactionManager.rollback(status);
+                }
+                failed.add(autoIncrePreKey);
+            } finally {
+
+            }
+        }
+
+        returnMap.put("success", success);
+        returnMap.put("failed", failed);
+        return returnMap;
     }
 
 }
