@@ -10,8 +10,11 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import javax.sql.DataSource;
 import java.sql.Connection;
@@ -21,6 +24,10 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -46,6 +53,11 @@ class JdbcMySQLTemplateTest {
         JdbcTemplate jdbcTemplate(DataSource ds) {
             return new JdbcTemplate(ds);
         }
+
+        @Bean
+        PlatformTransactionManager transactionManager(DataSource ds) {
+            return new DataSourceTransactionManager(ds);
+        }
     }
 
     @Autowired
@@ -53,6 +65,9 @@ class JdbcMySQLTemplateTest {
 
     @Autowired
     DataSource dataSource;
+
+    @Autowired
+    PlatformTransactionManager transactionManager;
 
     private boolean isDatabaseConnected() {
         try {
@@ -178,5 +193,61 @@ class JdbcMySQLTemplateTest {
             System.out.println(updateSql);
         }
     }
+
+    @Test
+    @DisplayName("幻读")
+    void phantomReadTest() throws Exception {
+
+        TransactionTemplate tx = new TransactionTemplate(transactionManager);
+
+        CountDownLatch t1Ready = new CountDownLatch(1);
+        CountDownLatch t2Done = new CountDownLatch(1);
+
+        // 先插入一条行，让 T1 的快照不为空
+        jdbcTemplate.update("INSERT INTO user_info (id, name, age, email, status) VALUES (?, ?, ?, ?, ?)", "1", "init-user", "2", "3", "INIT");
+
+        ExecutorService pool = Executors.newFixedThreadPool(2);
+
+        // T1：读取范围
+        Future<Integer> diffFuture = pool.submit(() -> tx.execute(status -> {
+            // 第一次查询
+            List<Long> first = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
+            System.out.println("T1 first = " + first);
+
+            t1Ready.countDown();
+
+            try {
+                t2Done.await();
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+
+            // 第二次查询
+            List<Long> second = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
+            System.out.println("T1 second = " + second);
+
+            return second.size() - first.size();
+        }));
+
+        // T2：插入新行
+        pool.submit(() -> {
+            try {
+                t1Ready.await();
+                tx.execute(status -> {
+                    jdbcTemplate.update("INSERT INTO user_info (id, name, age, email, status) VALUES (?, ?, ?, ?, ?)", "2", "insert-user", "2", "3", "INIT");
+                    return null;
+                });
+            } catch (InterruptedException ignored) {
+            } finally {
+                t2Done.countDown();
+            }
+        });
+
+        Integer diff = diffFuture.get();
+        pool.shutdown();
+
+        System.out.println("phantom diff = " + diff);
+    }
+
 
 }
