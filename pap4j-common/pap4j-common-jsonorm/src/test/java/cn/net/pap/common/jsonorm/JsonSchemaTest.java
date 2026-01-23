@@ -101,4 +101,31 @@ public class JsonSchemaTest {
         }
     }
 
+    @Test
+    public void generateCreateTableTest1() throws Exception {
+        String jsonSchema = """
+                {
+                  "type": "object",
+                  "required": ["name", "meta"],
+                  "properties": {
+                    "name": {
+                      "type": "string",
+                      "description": "姓名"
+                    },
+                    "age": {
+                      "type": "integer"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "addr": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+                """;
+        String createTableSQL = JsonSchemaUtil.generateCreateTable("user_info", jsonSchema);
+        System.out.println(createTableSQL);
+    }
+
 }
