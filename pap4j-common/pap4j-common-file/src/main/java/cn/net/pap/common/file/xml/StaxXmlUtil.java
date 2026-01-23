@@ -1,11 +1,15 @@
 package cn.net.pap.common.file.xml;
 
+import com.ibm.icu.text.BreakIterator;
+
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 public class StaxXmlUtil {
 
@@ -91,12 +95,23 @@ public class StaxXmlUtil {
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
             switch (c) {
-                case '&': sb.append("&amp;"); break;
-                case '<': sb.append("&lt;"); break;
-                case '>': sb.append("&gt;"); break;
-                case '"': sb.append("&quot;"); break;
-                case '\'': sb.append("&apos;"); break;
-                default: sb.append(c);
+                case '&':
+                    sb.append("&amp;");
+                    break;
+                case '<':
+                    sb.append("&lt;");
+                    break;
+                case '>':
+                    sb.append("&gt;");
+                    break;
+                case '"':
+                    sb.append("&quot;");
+                    break;
+                case '\'':
+                    sb.append("&apos;");
+                    break;
+                default:
+                    sb.append(c);
             }
         }
         return sb.toString();
@@ -211,4 +226,97 @@ public class StaxXmlUtil {
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
         }
     }
+
+    /**
+     * 使用 StAX 流式方式解析 XML，并将其转换为统一的展示结构：
+     * <p>
+     * 转换规则说明：
+     * 1. 根标签（rootTag）只作为最外层容器，不参与内容转换
+     * 2. keepOriginalTags 中的标签（如 anchor）保持原样输出（自闭合）
+     * 3. 其它所有标签统一转换为：
+     * <p type="原标签名" ...原有属性...>
+     * 4. 文本节点会被拆分成“逐字符包装”（由 wrapEachCharacter 实现）
+     *
+     * @param xmlString        原始 XML 字符串
+     * @param rootTag          根标签名（例如 content、body）
+     * @param keepOriginalTags 需要保持原样输出的标签集合（如 anchor、ref）
+     * @return 转换后的 XML 字符串
+     */
+    public static String parseXMLInRootAndOriginalTags(String xmlString, String rootTag, Set<String> keepOriginalTags) {
+        StringBuilder result = new StringBuilder("<").append(rootTag).append(">");
+        int charSeq = 0;
+        try {
+            XMLInputFactory factory = XMLInputFactory.newInstance();
+            // StAX 文本合并 连续的 CHARACTERS / CDATA 会自动合并 表情符号会以 完整字符串 传入
+            factory.setProperty(XMLInputFactory.IS_COALESCING, true);
+            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlString));
+
+            while (reader.hasNext()) {
+                int event = reader.next();
+
+                if (event == XMLStreamConstants.START_ELEMENT) {
+                    String tagName = reader.getLocalName();
+                    // 根标签：忽略
+                    if (rootTag.equals(tagName)) {
+                        continue;
+                    }
+                    // 原样保留的标签（如 anchor）
+                    if (keepOriginalTags.contains(tagName)) {
+                        result.append("<").append(tagName);
+                        for (int i = 0; i < reader.getAttributeCount(); i++) {
+                            result.append(" ").append(reader.getAttributeLocalName(i)).append("=\"").append(reader.getAttributeValue(i)).append("\"");
+                        }
+                        result.append("/>");
+                    } else {
+                        // 其它标签统一转为 p
+                        result.append("<p type=\"").append(tagName).append("\"");
+                        for (int i = 0; i < reader.getAttributeCount(); i++) {
+                            result.append(" ").append(reader.getAttributeLocalName(i)).append("=\"").append(reader.getAttributeValue(i)).append("\"");
+                        }
+                        result.append(">");
+                    }
+
+                } else if (event == XMLStreamConstants.END_ELEMENT) {
+                    String tagName = reader.getLocalName();
+                    if (!rootTag.equals(tagName) && !keepOriginalTags.contains(tagName)) {
+                        result.append("</p>");
+                    }
+                } else if (event == XMLStreamConstants.CHARACTERS) {
+                    String text = reader.getText();
+                    if (text != null && !text.trim().isEmpty()) {
+                        charSeq = wrapEachCharacter(text, result, charSeq);
+                    }
+                }
+            }
+            reader.close();
+            result.append("</").append(rootTag).append(">");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return xmlString;
+        }
+        return result.toString();
+    }
+
+    /**
+     * 将文本中的每个字符用p标签包裹，并添加序号
+     */
+    private static int wrapEachCharacter(String text, StringBuilder result, int startSeq) {
+        BreakIterator iterator = BreakIterator.getCharacterInstance(Locale.CHINA);
+        iterator.setText(text);
+
+        int start = iterator.first();
+        int end = iterator.next();
+        int seq = startSeq;
+
+        while (end != BreakIterator.DONE) {
+            String ch = text.substring(start, end);
+            result.append("<p type=\"char\" seq=\"").append(seq).append("\">").append(ch).append("</p>");
+            seq++;
+            start = end;
+            end = iterator.next();
+        }
+
+        return seq;
+    }
+
 }
