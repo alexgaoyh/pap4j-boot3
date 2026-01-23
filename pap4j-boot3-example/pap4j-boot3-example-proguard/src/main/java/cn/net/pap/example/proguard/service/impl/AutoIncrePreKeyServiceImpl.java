@@ -28,23 +28,25 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
     public AutoIncrePreKey saveAndFlushThrowRuntimeException(AutoIncrePreKey entity) throws RuntimeException {
         try {
             AutoIncrePreKey autoIncrePreKey = autoIncrePreKeyRepository.saveAndFlush(entity);
-            TransactionSynchronizationManager.registerSynchronization(
-                    new TransactionSynchronization() {
-                        @Override
-                        public void beforeCommit(boolean readOnly) {
-                            System.out.println("beforeCommit");
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(
+                        new TransactionSynchronization() {
+                            @Override
+                            public void beforeCommit(boolean readOnly) {
+                                System.out.println("beforeCommit");
+                            }
+                            @Override
+                            public void afterCommit() {
+                                System.out.println("afterCommit");
+                            }
+                            @Override
+                            public void afterCompletion(int status) {
+                                // value in org.springframework.transaction.support.TransactionSynchronization
+                                System.out.println("afterCompletion : " + status);
+                            }
                         }
-                        @Override
-                        public void afterCommit() {
-                            System.out.println("afterCommit");
-                        }
-                        @Override
-                        public void afterCompletion(int status) {
-                            // value in org.springframework.transaction.support.TransactionSynchronization
-                            System.out.println("afterCompletion : " + status);
-                        }
-                    }
-            );
+                );
+            }
             throw new RuntimeException("ASDF");
         } catch (RuntimeException e) {
             throw new RuntimeException(e);
@@ -63,23 +65,25 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
     public AutoIncrePreKey saveAndFlushThrowIOException(AutoIncrePreKey entity) throws IOException {
         try {
             AutoIncrePreKey autoIncrePreKey = autoIncrePreKeyRepository.saveAndFlush(entity);
-            TransactionSynchronizationManager.registerSynchronization(
-                    new TransactionSynchronization() {
-                        @Override
-                        public void beforeCommit(boolean readOnly) {
-                            System.out.println("beforeCommit");
+            if (TransactionSynchronizationManager.isActualTransactionActive()) {
+                TransactionSynchronizationManager.registerSynchronization(
+                        new TransactionSynchronization() {
+                            @Override
+                            public void beforeCommit(boolean readOnly) {
+                                System.out.println("beforeCommit");
+                            }
+                            @Override
+                            public void afterCommit() {
+                                System.out.println("afterCommit");
+                            }
+                            @Override
+                            public void afterCompletion(int status) {
+                                // value in org.springframework.transaction.support.TransactionSynchronization
+                                System.out.println("afterCompletion : " + status);
+                            }
                         }
-                        @Override
-                        public void afterCommit() {
-                            System.out.println("afterCommit");
-                        }
-                        @Override
-                        public void afterCompletion(int status) {
-                            // value in org.springframework.transaction.support.TransactionSynchronization
-                            System.out.println("afterCompletion : " + status);
-                        }
-                    }
-            );
+                );
+            }
             throw new IOException("ASDF");
         } catch (IOException e) {
             throw new IOException(e);
