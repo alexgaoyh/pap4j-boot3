@@ -379,7 +379,6 @@ public class ProguardController {
         return transactionTemplate.execute(status -> {
             try {
                 Object savedEntity = entityManager.merge(object);
-                entityManager.flush();
                 return savedEntity;
             } catch (Exception e) {
                 status.setRollbackOnly();
