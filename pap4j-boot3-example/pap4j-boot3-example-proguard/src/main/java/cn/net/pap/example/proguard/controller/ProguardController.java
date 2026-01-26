@@ -8,6 +8,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,7 @@ import org.springframework.http.CacheControl;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,6 +38,18 @@ public class ProguardController {
 
     @Autowired
     private DemoProperties demoProperties;
+
+    @Autowired
+    private Map<String, Class<?>> entityMappings;
+
+    @Autowired
+    private EntityManager entityManager;
+
+    @Autowired
+    private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
 
     @GetMapping(value = "/demoProperties", produces = "application/json;charset=UTF-8")
     public DemoProperties demoProperties() {
@@ -348,6 +362,28 @@ public class ProguardController {
     public String dataSourcePrintProguardId(HttpServletRequest request, HttpServletResponse response) {
         proguardService.dataSourcePrintProguardId();
         return "success";
+    }
+
+    /**
+     * 前端传递不同对象的 json ，然后持久化 DB
+     * 注意这里需要手动注册实体类，便于找到对应的对象
+     * @param entityName
+     * @param json
+     * @return
+     */
+    @PostMapping("/saveOrUpdateSignalCRUD/{entityName}")
+    public Object saveOrUpdateSignalCRUD(@PathVariable String entityName, @RequestBody String json) {
+        return transactionTemplate.execute(status -> {
+            try {
+                Class<?> entityClass = entityMappings.get(entityName);
+                Object savedEntity = entityManager.merge(objectMapper.readValue(json, entityClass));
+                entityManager.flush();
+                return savedEntity;
+            } catch (Exception e) {
+                status.setRollbackOnly();
+                throw new RuntimeException("保存失败: " + e.getMessage(), e);
+            }
+        });
     }
 
 }
