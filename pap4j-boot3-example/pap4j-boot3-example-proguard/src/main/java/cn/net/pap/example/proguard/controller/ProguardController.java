@@ -4,6 +4,7 @@ import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.properties.DemoProperties;
 import cn.net.pap.example.proguard.service.IProguardService;
 import cn.net.pap.example.proguard.util.SimpleRateLimiter;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -372,11 +373,12 @@ public class ProguardController {
      * @return
      */
     @PostMapping("/saveOrUpdateSignalCRUD/{entityName}")
-    public Object saveOrUpdateSignalCRUD(@PathVariable String entityName, @RequestBody String json) {
+    public Object saveOrUpdateSignalCRUD(@PathVariable String entityName, @RequestBody String json) throws JsonProcessingException {
+        Class<?> entityClass = entityMappings.get(entityName);
+        Object object = objectMapper.readValue(json, entityClass);
         return transactionTemplate.execute(status -> {
             try {
-                Class<?> entityClass = entityMappings.get(entityName);
-                Object savedEntity = entityManager.merge(objectMapper.readValue(json, entityClass));
+                Object savedEntity = entityManager.merge(object);
                 entityManager.flush();
                 return savedEntity;
             } catch (Exception e) {

@@ -1,5 +1,6 @@
 package cn.net.pap.example.proguard.config;
 
+import cn.net.pap.example.proguard.entity.AutoIncrePreKey;
 import cn.net.pap.example.proguard.entity.Proguard;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,6 +20,7 @@ public class EntityMappingConfig {
 
         // todo 手动注册
         mappings.put("proguard", Proguard.class);
+        mappings.put("autoIncrePreKey", AutoIncrePreKey.class);
 
         return mappings;
     }
