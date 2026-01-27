@@ -9,10 +9,12 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.retry.annotation.EnableRetry;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication(scanBasePackages = "cn.net.pap")
 @EnableJpaAuditing
 @EnableRetry
+@EnableAsync
 public class Pap4jBoot3ExampleProguardApplication {
 
     public static class Pap4jCustomGenerator implements BeanNameGenerator {

@@ -10,6 +10,8 @@ public interface IAutoIncrePreKeyService {
 
     AutoIncrePreKey saveAndFlush(AutoIncrePreKey entity);
 
+    List<AutoIncrePreKey> saveAndFlushBatch(List<AutoIncrePreKey> list);
+
     AutoIncrePreKey saveAndFlushThrowRuntimeException(AutoIncrePreKey entity) throws RuntimeException;
 
     AutoIncrePreKey saveAndFlushThrowIOException(AutoIncrePreKey entity) throws IOException;

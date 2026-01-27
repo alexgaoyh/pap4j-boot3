@@ -1,11 +1,12 @@
 package cn.net.pap.example.proguard.entity;
 
+import cn.net.pap.example.proguard.publisher.es.ElasticSearchIndexAware;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Comment;
 
 @Entity
 @Table(name = "autoIncrePreKey")
-public class AutoIncrePreKey {
+public class AutoIncrePreKey implements ElasticSearchIndexAware {
 
     @Id
     // 此处配合 AutoIncrePreKeyTest.preKeyTest 来验证主键是否能够保证连续的新增.
@@ -40,6 +41,11 @@ public class AutoIncrePreKey {
                 "id=" + id +
                 ", name='" + name + '\'' +
                 '}';
+    }
+
+    @Override
+    public String esIndex() {
+        return "auto_incre_pre_key";
     }
 
 }

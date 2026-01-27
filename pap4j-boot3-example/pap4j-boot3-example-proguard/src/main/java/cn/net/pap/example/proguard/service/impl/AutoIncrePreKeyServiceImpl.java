@@ -1,6 +1,8 @@
 package cn.net.pap.example.proguard.service.impl;
 
 import cn.net.pap.example.proguard.entity.AutoIncrePreKey;
+import cn.net.pap.example.proguard.publisher.es.ElasticSearchSyncEvent;
+import cn.net.pap.example.proguard.publisher.es.ElasticsearchDomainEventPublisher;
 import cn.net.pap.example.proguard.repository.AutoIncrePreKeyRepository;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.DefaultTransactionDefinition;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,9 +31,28 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    @Autowired
+    private ElasticsearchDomainEventPublisher elasticsearchDomainEventPublisher;
+
+    /**
+     *  @TransactionalEventListener , 增加全部的支持，我要知道操作的是哪个表，操作的数据，支持幂等的。
+     * @param entity
+     * @return
+     */
     @Override
+    @Transactional
     public AutoIncrePreKey saveAndFlush(AutoIncrePreKey entity) {
-        return autoIncrePreKeyRepository.saveAndFlush(entity);
+        AutoIncrePreKey autoIncrePreKey = autoIncrePreKeyRepository.saveAndFlush(entity);
+        elasticsearchDomainEventPublisher.publish(entity, ElasticSearchSyncEvent.SyncType.DELCREATE);
+        return autoIncrePreKey;
+    }
+
+    @Override
+    @Transactional
+    public List<AutoIncrePreKey> saveAndFlushBatch(List<AutoIncrePreKey> list) {
+        List<AutoIncrePreKey> autoIncrePreKeys = autoIncrePreKeyRepository.saveAll(list);
+        elasticsearchDomainEventPublisher.publish(list, ElasticSearchSyncEvent.SyncType.DELCREATE);
+        return autoIncrePreKeys;
     }
 
     @Override

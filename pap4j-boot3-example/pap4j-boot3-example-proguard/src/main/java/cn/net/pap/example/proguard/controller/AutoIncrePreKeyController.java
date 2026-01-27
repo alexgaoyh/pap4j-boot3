@@ -19,6 +19,26 @@ public class AutoIncrePreKeyController {
     @Autowired
     private IAutoIncrePreKeyService autoIncrePreKeyService;
 
+    @GetMapping("/saveAndFlush")
+    public String saveAndFlush() throws Exception {
+        AutoIncrePreKey autoIncrePreKey = new AutoIncrePreKey();
+        autoIncrePreKey.setName("runtimeException");
+        autoIncrePreKeyService.saveAndFlush(autoIncrePreKey);
+        return "success";
+    }
+
+    @GetMapping("/saveAndFlushBatch")
+    public String saveAndFlushBatch() throws Exception {
+        List<AutoIncrePreKey> autoIncrePreKeyList = new ArrayList<>();
+        for(int i = 45; i < 55; i++) {
+            AutoIncrePreKey autoIncrePreKey = new AutoIncrePreKey();
+            autoIncrePreKey.setName( "x".repeat(i+1));
+            autoIncrePreKeyList.add(autoIncrePreKey);
+        }
+        autoIncrePreKeyService.saveAndFlushBatch(autoIncrePreKeyList);
+        return "success";
+    }
+
     @GetMapping("/runtimeException")
     public String runtimeException() throws Exception {
         AutoIncrePreKey autoIncrePreKey = new AutoIncrePreKey();
