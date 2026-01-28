@@ -1,5 +1,7 @@
 package cn.net.pap.example.admin;
 
+import cn.net.pap.example.admin.util.DigestUtils;
+import cn.net.pap.example.admin.util.IntegrityVerifierUtil;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -7,10 +9,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
-import java.io.IOException;
 import java.io.InputStream;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 
 @SpringBootApplication(scanBasePackages = "cn.net.pap.example")
 public class Pap4jBoot3ExampleAdminApplication {
@@ -29,7 +28,7 @@ public class Pap4jBoot3ExampleAdminApplication {
 
                 for (Resource resource : resources) {
                     try (InputStream inputStream = resource.getInputStream()) {
-                        String md5 = calculateMD5(inputStream);
+                        String md5 = DigestUtils.calculateMD5(inputStream);
                         System.out.println(resource.getURL() + " -> MD5: " + md5);
                     } catch (Exception e) {
                         throw new RuntimeException("启动后校验失败,服务关闭：" + "Error processing file: " + resource.getFilename() + " - " + e.getMessage());
@@ -39,24 +38,10 @@ public class Pap4jBoot3ExampleAdminApplication {
                 throw new RuntimeException("启动后校验失败,服务关闭：" + e);
             }
 
+            System.out.println("====================================================");
+            new IntegrityVerifierUtil().verify();
+
         };
     }
 
-    private static String calculateMD5(InputStream inputStream) throws NoSuchAlgorithmException, IOException {
-        MessageDigest md = MessageDigest.getInstance("MD5");
-        byte[] buffer = new byte[8192];
-        int bytesRead;
-        while ((bytesRead = inputStream.read(buffer)) != -1) {
-            md.update(buffer, 0, bytesRead);
-        }
-        return bytesToHex(md.digest());
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
-    }
 }
