@@ -249,5 +249,13 @@ class JdbcMySQLTemplateTest {
         System.out.println("phantom diff = " + diff);
     }
 
+    @Test
+    public void jdbcTemplateTest() throws Exception {
+        int fetchSize = jdbcTemplate.getFetchSize();
+        int maxRows = jdbcTemplate.getMaxRows();
+        System.out.println("fetchSize = " + fetchSize);
+        System.out.println("maxRows = " + maxRows);
+    }
+
 
 }
