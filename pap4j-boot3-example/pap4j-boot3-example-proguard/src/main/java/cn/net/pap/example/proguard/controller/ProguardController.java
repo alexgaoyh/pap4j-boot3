@@ -139,6 +139,51 @@ public class ProguardController {
         return new ResponseEntity<>("pap.net.cn! " + now.toString(), headers, HttpStatus.OK);
     }
 
+    /**
+     * 实现字段 proguardIdx 针对每个 proguardName 分组自增，并保证高并发安全。
+     * 核心思路： 辅助表存储最新序号 建一个表 proguard_id_seq，每行记录一个 proguardName 的当前最大 seq 值。 事务 + 行级锁获取最新 seq
+     * 在创建新记录时，通过事务获取对应 user_id 的行。 使用 PESSIMISTIC_WRITE 锁住该行，确保同一时间只有一个线程可以更新 last_seq。
+     * 计算下一个 seq 并更新辅助表 下一个 seq = last_seq + 1 更新 user_seq 表的 last_seq 为新值
+     * @param proguardName
+     * @return
+     */
+    @GetMapping("/saveProguardWithIdxSeq")
+    public ResponseEntity<Proguard> saveProguardWithIdxSeq(@RequestParam(required = false, defaultValue = "proguardName") String proguardName) {
+        Proguard proguard = new Proguard();
+        proguard.setProguardId(System.currentTimeMillis());
+        proguard.setProguardName(proguardName);
+
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        extMap.put("threadId", Thread.currentThread().getName());
+        proguard.setExtMap(extMap);
+
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+        extList.add("B");
+        extList.add("C");
+        extList.add("D");
+        proguard.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+        abstractMap.put("long", 1l);
+        abstractMap.put("float", 1.23f);
+        abstractMap.put("boolean", true);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard.setAbstractObj(objectNode);
+        proguard.setAbstractList(arrayNode);
+
+        return new ResponseEntity<>(proguardService.saveProguardWithIdxSeq(proguard), HttpStatus.OK);
+    }
+
     @GetMapping("/saveAndFlush")
     public ResponseEntity<Proguard> saveAndFlush() {
         Proguard proguard = new Proguard();

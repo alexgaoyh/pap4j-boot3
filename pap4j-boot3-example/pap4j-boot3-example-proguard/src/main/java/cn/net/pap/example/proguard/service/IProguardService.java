@@ -89,4 +89,12 @@ public interface IProguardService {
     Proguard timeout(Proguard proguard, Long timeoutMS);
 
     void dataSourcePrintProguardId();
+
+    /**
+     * 根据 proguardName 来设置 proguardIdx 的值，做一个插入操作
+     * @param proguard
+     * @return
+     */
+    Proguard saveProguardWithIdxSeq(Proguard proguard);
+
 }

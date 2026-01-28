@@ -1,6 +1,8 @@
 package cn.net.pap.example.proguard.service.impl;
 
 import cn.net.pap.example.proguard.entity.Proguard;
+import cn.net.pap.example.proguard.entity.ProguardIdxSeq;
+import cn.net.pap.example.proguard.repository.ProguardIdxSeqRepository;
 import cn.net.pap.example.proguard.repository.ProguardJDBCRepository;
 import cn.net.pap.example.proguard.repository.ProguardRepository;
 import cn.net.pap.example.proguard.service.IProguardService;
@@ -42,6 +44,9 @@ public class ProguardServiceImpl implements IProguardService {
 
     @Autowired
     private ProguardRepository proguardRepository;
+
+    @Autowired
+    private ProguardIdxSeqRepository proguardIdxSeqRepository;
 
     @Autowired
     private ProguardJDBCRepository proguardJDBCRepository;
@@ -346,6 +351,27 @@ public class ProguardServiceImpl implements IProguardService {
     @Override
     public void dataSourcePrintProguardId() {
         proguardJDBCRepository.dataSourcePrintProguardId();
+    }
+
+    @Override
+    @Transactional
+    public Proguard saveProguardWithIdxSeq(Proguard proguard) {
+        ProguardIdxSeq proguardIdxSeq = proguardIdxSeqRepository.findById(proguard.getProguardName())
+                .orElseGet(() -> {
+                    ProguardIdxSeq proguardIdxSeqInsert = new ProguardIdxSeq();
+                    proguardIdxSeqInsert.setProguardName(proguard.getProguardName());
+                    proguardIdxSeqInsert.setProguardIdxLast(0);
+                    return proguardIdxSeqRepository.save(proguardIdxSeqInsert);
+                });
+
+        // 2. seq 自增
+        int nextSeq = proguardIdxSeq.getProguardIdxLast() + 1;
+        proguardIdxSeq.setProguardIdxLast(nextSeq);
+        proguardIdxSeqRepository.save(proguardIdxSeq); // 更新 last_seq
+
+        // 3. 保存业务表
+        proguard.setProguardIdx(nextSeq);
+        return proguardRepository.save(proguard);
     }
 
     /**
