@@ -2,6 +2,7 @@ package cn.net.pap.example.proguard.entity;
 
 import cn.net.pap.example.proguard.convert.JsonTypeConvert;
 import cn.net.pap.example.proguard.listener.TransactionCompletionListener;
+import com.fasterxml.jackson.annotation.JsonRawValue;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.*;
@@ -52,6 +53,14 @@ public class Proguard {
     @Convert(converter = cn.net.pap.example.proguard.convert.JacksonObjectNodeConverter.class)
     @Column(nullable = false, columnDefinition = "json")
     private ObjectNode abstractObj;
+
+    /**
+     * support json string
+     */
+    @Lob
+    @Column(name = "json_schema")
+    @JsonRawValue
+    private String jsonSchema;
 
     @org.hibernate.annotations.TenantId
     private String tenantId;
@@ -112,6 +121,14 @@ public class Proguard {
         this.abstractObj = abstractObj;
     }
 
+    public String getJsonSchema() {
+        return jsonSchema;
+    }
+
+    public void setJsonSchema(String jsonSchema) {
+        this.jsonSchema = jsonSchema;
+    }
+
     public String getTenantId() {
         return tenantId;
     }
@@ -125,10 +142,12 @@ public class Proguard {
         return "Proguard{" +
                 "proguardId=" + proguardId +
                 ", proguardName='" + proguardName + '\'' +
+                ", proguardIdx=" + proguardIdx +
                 ", extMap=" + extMap +
                 ", extList=" + extList +
                 ", abstractList=" + abstractList +
                 ", abstractObj=" + abstractObj +
+                ", jsonSchema='" + jsonSchema + '\'' +
                 ", tenantId='" + tenantId + '\'' +
                 '}';
     }

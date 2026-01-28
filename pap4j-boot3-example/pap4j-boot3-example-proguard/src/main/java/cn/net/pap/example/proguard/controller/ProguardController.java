@@ -432,4 +432,57 @@ public class ProguardController {
         });
     }
 
+    /**
+     * 增加一个字符串，里面直接存 json, 然后界面进行展示的时候还是原始 json
+     * @param request
+     * @param response
+     * @return
+     * @throws Exception
+     */
+    @GetMapping("saveJson")
+    public Proguard saveJson(HttpServletRequest request, HttpServletResponse response) throws Exception {
+        Proguard proguard = initProguard();
+        ObjectMapper mapper = new ObjectMapper();
+        String jsonStr = mapper.writeValueAsString(proguard);
+        proguard.setJsonSchema(jsonStr);
+        Proguard proguard1 = proguardService.saveAndFlush(proguard);
+        return proguard1;
+    }
+
+    public Proguard initProguard() {
+        Proguard proguard = new Proguard();
+        proguard.setProguardId(System.currentTimeMillis());
+        proguard.setProguardName(proguard.getProguardId() + "");
+
+        Map<String, Object> extMap = new HashMap<>();
+        extMap.put("timeswap", System.currentTimeMillis());
+        extMap.put("threadId", Thread.currentThread().getName());
+        proguard.setExtMap(extMap);
+
+        List<String> extList = new ArrayList<>();
+        extList.add("A");
+        extList.add("B");
+        extList.add("C");
+        extList.add("D");
+        proguard.setExtList(extList);
+
+        Map<String, Object> abstractMap = new HashMap<>();
+        abstractMap.put("extMap", extMap);
+        abstractMap.put("extList", extList);
+        abstractMap.put("long", 1l);
+        abstractMap.put("float", 1.23f);
+        abstractMap.put("boolean", true);
+
+        ObjectMapper mapper = new ObjectMapper();
+        ArrayNode arrayNode = mapper.createArrayNode();
+        JsonNode nestedObject = mapper.valueToTree(abstractMap);
+        arrayNode.add(nestedObject);
+
+        ObjectNode objectNode = mapper.valueToTree(abstractMap);
+        proguard.setAbstractObj(objectNode);
+        proguard.setAbstractList(arrayNode);
+
+        return proguard;
+    }
+
 }
