@@ -73,7 +73,8 @@ public class DataTraceIdUtilTest {
     @Test
     public void test4() {
         List<String> base62List = new ArrayList<>();
-        for(int i = 1; i < 20000; i++) {
+        // 3位最大值 238328
+        for(int i = 1; i < 238328; i++) {
             String base62 = toBase62(i, 3);
             base62List.add(base62);
         }
