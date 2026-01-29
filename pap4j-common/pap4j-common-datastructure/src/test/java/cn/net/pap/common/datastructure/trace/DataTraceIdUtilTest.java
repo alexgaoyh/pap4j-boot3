@@ -3,6 +3,7 @@ package cn.net.pap.common.datastructure.trace;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class DataTraceIdUtilTest {
@@ -67,6 +68,45 @@ public class DataTraceIdUtilTest {
             // 下一轮循环处理下一层
             currentLevel = nextLevel;
         }
+    }
+
+    @Test
+    public void test4() {
+        List<String> base62List = new ArrayList<>();
+        for(int i = 1; i < 20000; i++) {
+            String base62 = toBase62(i, 3);
+            base62List.add(base62);
+        }
+
+        // 创建按字典序排序的新集合
+        List<String> sortedList = new ArrayList<>(base62List);
+        Collections.sort(sortedList);
+
+        // 详细的比较信息
+        if (true) {
+            // 找出第一个不同的位置
+            for (int i = 0; i < Math.min(base62List.size(), sortedList.size()); i++) {
+                if (!base62List.get(i).equals(sortedList.get(i))) {
+                    System.out.println("第一个不同的位置索引: " + i);
+                    System.out.println("原始集合元素: " + base62List.get(i));
+                    System.out.println("排序集合元素: " + sortedList.get(i));
+                    break;
+                }
+            }
+        }
+
+    }
+
+    private static String toBase62(long value, int length) {
+        String BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        StringBuilder sb = new StringBuilder();
+        do {
+            int idx = (int) (value % 62);
+            sb.insert(0, BASE62.charAt(idx));
+            value /= 62;
+        } while (value > 0);
+        while (sb.length() < length) sb.insert(0, '0');
+        return sb.toString();
     }
 
 }
