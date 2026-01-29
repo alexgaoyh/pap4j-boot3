@@ -433,6 +433,23 @@ public class ProguardController {
     }
 
     /**
+     * 避免深度分页，增加延迟关联分页， 相关验证代码
+     * @param proguardName
+     * @param pageNumber
+     * @param pageSize
+     * @return
+     * @throws Exception
+     */
+    @GetMapping("pageByProguardNameDeepPaging")
+    public Page<Proguard> pageByProguardNameDeepPaging(@RequestParam(name = "proguardName", required = false) String proguardName,
+                                                       @RequestParam(name = "pageNumber", required = false, defaultValue = "1") Integer pageNumber,
+                                                       @RequestParam(name = "pageSize", required = false, defaultValue = "10") Integer pageSize) throws Exception {
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
+        Page<Proguard> proguards = proguardService.pageByProguardNameDeepPaging(proguardName, pageable);
+        return proguards;
+    }
+
+    /**
      * 增加一个字符串，里面直接存 json, 然后界面进行展示的时候还是原始 json
      * @param request
      * @param response

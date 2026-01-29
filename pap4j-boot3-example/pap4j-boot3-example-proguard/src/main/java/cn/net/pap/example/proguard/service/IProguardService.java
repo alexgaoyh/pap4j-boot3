@@ -97,4 +97,12 @@ public interface IProguardService {
      */
     Proguard saveProguardWithIdxSeq(Proguard proguard);
 
+    /**
+     * 避免深度分页，增加延迟关联分页
+     * @param proguardName
+     * @param pageable
+     * @return
+     */
+    Page<Proguard> pageByProguardNameDeepPaging(String proguardName, Pageable pageable);
+
 }

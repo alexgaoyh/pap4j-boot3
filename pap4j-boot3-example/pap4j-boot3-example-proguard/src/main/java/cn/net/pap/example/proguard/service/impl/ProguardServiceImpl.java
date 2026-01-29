@@ -374,6 +374,11 @@ public class ProguardServiceImpl implements IProguardService {
         return proguardRepository.save(proguard);
     }
 
+    @Override
+    public Page<Proguard> pageByProguardNameDeepPaging(String proguardName, Pageable pageable) {
+        return proguardRepository.pageByProguardNameDeepPaging(proguardName, pageable);
+    }
+
     /**
      * 安全关闭线程池
      */
