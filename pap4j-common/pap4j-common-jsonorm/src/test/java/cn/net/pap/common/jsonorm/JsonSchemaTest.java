@@ -1,6 +1,7 @@
 package cn.net.pap.common.jsonorm;
 
 import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
+import cn.net.pap.common.jsonorm.util.JsonSchemaFormatValidation;
 import cn.net.pap.common.jsonorm.util.JsonSchemaUtil;
 import cn.net.pap.common.jsonorm.util.dto.SchemaDTO;
 import org.everit.json.schema.Schema;
@@ -8,6 +9,7 @@ import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.FileNotFoundException;
@@ -15,6 +17,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class JsonSchemaTest {
 
@@ -126,6 +130,277 @@ public class JsonSchemaTest {
                 """;
         String createTableSQL = JsonSchemaUtil.generateCreateTable("user_info", jsonSchema);
         System.out.println(createTableSQL);
+    }
+
+    @Test
+    @DisplayName("条件验证")
+    public void conditionTest1() {
+        // 显式地告诉校验器使用 Draft 7（这是引入 if/then 的版本）。
+        String jsonSchema = """
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {
+                    "country": { "enum": ["US", "CA"] },
+                    "postal_code": { "type": "string" }
+                  },
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": { "country": { "const": "US" } }
+                      },
+                      "then": {
+                        "properties": {
+                          "postal_code": { "pattern": "^[0-9]{5}(-[0-9]{4})?$" }
+                        },
+                        "required": ["postal_code"]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": { "country": { "const": "CA" } }
+                      },
+                      "then": {
+                        "properties": {
+                          "postal_code": { "pattern": "^[A-Z][0-9][A-Z] [0-9][A-Z][0-9]$" }
+                        },
+                        "required": ["postal_code"]
+                      }
+                    }
+                  ]
+                }
+                """;
+        String jsonData = """
+                {
+                    "country":"US",
+                    "postal_code":"12345",
+                }
+                """;
+
+        Schema schema = SchemaLoader.load(new JSONObject(new JSONTokener(jsonSchema)));
+        try {
+            schema.validate(new JSONObject(new JSONTokener(jsonData)));
+        } catch (org.everit.json.schema.ValidationException e) {
+            System.err.println("数据验证失败，详细信息:");
+            e.getAllMessages().forEach(System.err::println);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+    }
+
+    @Test
+    @DisplayName("递归结构定义")
+    public void treeTest1() {
+        String jsonSchema = """
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["type"],
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "节点的类型标识"
+                    },
+                    "children": {
+                      "type": "array",
+                      "description": "子节点列表",
+                      "items": { "$ref": "#" }
+                    }
+                  }
+                }
+                """;
+        String jsonData = """
+                    {
+                      "type": "001",
+                      "children": [
+                        {
+                          "type": "001001"
+                        },
+                        {
+                          "type": "001002",
+                          "children": [
+                            {
+                              "type": "001002001"
+                            },
+                            {
+                              "type": "001002002"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                """;
+
+        Schema schema = SchemaLoader.load(new JSONObject(new JSONTokener(jsonSchema)));
+        try {
+            schema.validate(new JSONObject(new JSONTokener(jsonData)));
+        } catch (org.everit.json.schema.ValidationException e) {
+            System.err.println("数据验证失败，详细信息:");
+            e.getAllMessages().forEach(System.err::println);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("默认值")
+    public void defaultValueTest1() {
+        String jsonSchemaStr = """
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {
+                    "price": {
+                      "type": "number",
+                      "default": 10.5,
+                      "exclusiveMinimum": 0
+                    },
+                    "tags": {
+                      "type": "array",
+                      "default": ["general"],
+                      "items": { "type": "string" }
+                    }
+                  }
+                }
+                """;
+
+        JSONObject rawSchema = new JSONObject(new JSONTokener(jsonSchemaStr));
+        Schema schema = SchemaLoader.builder()
+                .schemaJson(rawSchema)
+                .useDefaults(true)
+                .build()
+                .load()
+                .build();
+
+        try {
+            JSONObject jsonData = new JSONObject("{}");
+            schema.validate(jsonData);
+            assertEquals(10.5, jsonData.getDouble("price"), "Price 应该被填充默认值 10.5");
+        } catch (org.everit.json.schema.ValidationException e) {
+            System.err.println("数据验证失败，详细信息:");
+            e.getAllMessages().forEach(System.err::println);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("模式组合与复用")
+    public void definitionsTest1() {
+        String jsonSchema = """
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "definitions": {
+                    "address": {
+                      "type": "object",
+                      "properties": {
+                        "street": { "type": "string" },
+                        "city": { "type": "string" }
+                      }
+                    }
+                  },
+                  "allOf": [
+                    { "$ref": "#/definitions/address" },
+                    { "required": ["street"] }
+                  ],
+                  "oneOf": [
+                    { "required": ["email"] },
+                    { "required": ["phone"] }
+                  ],
+                  "not": {
+                    "required": ["ssn"]
+                  }
+                }
+                """;
+        String jsonData = """
+                {
+                  "street": "001",
+                  "phone": "123"
+                }
+                """;
+
+        JSONObject rawSchema = new JSONObject(new JSONTokener(jsonData));
+        Schema schema = SchemaLoader.load(new JSONObject(new JSONTokener(jsonSchema)));
+
+        try {
+            schema.validate(rawSchema);
+        } catch (org.everit.json.schema.ValidationException e) {
+            System.err.println("数据验证失败，详细信息:");
+            e.getAllMessages().forEach(System.err::println);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("动态模板匹配")
+    public void patternPropertiesTest1() {
+        String jsonSchema = """
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "patternProperties": {
+                    "^S_": { "type": "string" },
+                    "^N_": { "type": "number" },
+                    "^(?![SN]_).*": { "type": "boolean" }
+                  }
+                }
+                """;
+        String jsonData = """
+                {
+                  "S_name": "001",
+                  "N_age": 123
+                }
+                """;
+
+        JSONObject rawSchema = new JSONObject(new JSONTokener(jsonData));
+        Schema schema = SchemaLoader.load(new JSONObject(new JSONTokener(jsonSchema)));
+
+        try {
+            schema.validate(rawSchema);
+        } catch (org.everit.json.schema.ValidationException e) {
+            System.err.println("数据验证失败，详细信息:");
+            e.getAllMessages().forEach(System.err::println);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("自定义验证")
+    public void customerFormatTest1() {
+        String jsonSchema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "password": {
+                      "type": "string",
+                      "format": "strong-password"
+                    }
+                  },
+                  "required": ["password"]
+                }
+                """;
+        String jsonData = """
+                {
+                  "password": "1Q2W!q@w"
+                }
+                """;
+
+        JSONObject rawSchema = new JSONObject(new JSONTokener(jsonData));
+        SchemaLoader.SchemaLoaderBuilder loaderBuilder = SchemaLoader.builder().schemaJson(new JSONObject(new JSONTokener(jsonSchema)));
+        loaderBuilder.addFormatValidator("strong-password", new JsonSchemaFormatValidation.StrongPasswordValidator());
+
+        try {
+            loaderBuilder.build().load().build().validate(rawSchema);
+        } catch (org.everit.json.schema.ValidationException e) {
+            System.err.println("数据验证失败，详细信息:");
+            e.getAllMessages().forEach(System.err::println);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }
