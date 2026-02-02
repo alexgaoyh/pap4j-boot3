@@ -4,6 +4,7 @@ import cn.net.pap.example.ftp.server.command.ContentCommand;
 import cn.net.pap.example.ftp.server.command.EncodingCommand;
 import cn.net.pap.example.ftp.server.command.ImgGetCommand;
 import cn.net.pap.example.ftp.server.command.ImgSendCommand;
+import cn.net.pap.example.ftp.server.command.LogbackSetCommand;
 import cn.net.pap.example.ftp.server.command.MonitorUsersCommand;
 import cn.net.pap.example.ftp.server.ftplet.RateLimitFtplet;
 import org.apache.ftpserver.FtpServer;
@@ -143,6 +144,7 @@ public class FtpServerConfig {
         factoryFactory.addCommand("SITE_MONITORUSERS", new MonitorUsersCommand());
         factoryFactory.addCommand("SITE_IMGGET", new ImgGetCommand());
         factoryFactory.addCommand("SITE_IMGSEND", new ImgSendCommand());
+        factoryFactory.addCommand("SITE_LOGBACKSET", new LogbackSetCommand());
 
 
         // 注册到 serverFactory
