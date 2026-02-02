@@ -4,6 +4,7 @@ import cn.net.pap.common.jsonorm.util.JacksonUtil;
 import cn.net.pap.common.jsonorm.util.JsonSchemaGeneratorUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -66,6 +67,31 @@ public class JsonSchemaGeneratorUtilTest {
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    @Test
+    @DisplayName("根据json-schema生成mock数据")
+    public void geneMockDataTest1() throws IOException {
+        String jsonSchema = """
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type": "object",
+                  "properties": {
+                    "price": {
+                      "type": "number",
+                      "default": 10.5,
+                      "exclusiveMinimum": 0
+                    },
+                    "tags": {
+                      "type": "array",
+                      "default": ["general"],
+                      "items": { "type": "string" }
+                    }
+                  }
+                }
+                """;
+        String reJson = JsonSchemaGeneratorUtil.generateJsonFromSchema(jsonSchema);
+        System.out.println(reJson);
     }
 
 }
