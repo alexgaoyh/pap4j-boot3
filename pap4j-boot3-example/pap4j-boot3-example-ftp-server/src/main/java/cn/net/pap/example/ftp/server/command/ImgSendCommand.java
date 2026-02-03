@@ -163,7 +163,7 @@ public class ImgSendCommand extends AbstractCommand {
             long transSz = 0L;
 
             try {
-                InputStream is = this.convert(session.getUser().getHomeDirectory() + File.separator + fileName, 1080);
+                InputStream is = this.convertOrigin(session.getUser().getHomeDirectory() + File.separator + fileName, 141);
                 Throwable var14 = null;
 
                 try {
