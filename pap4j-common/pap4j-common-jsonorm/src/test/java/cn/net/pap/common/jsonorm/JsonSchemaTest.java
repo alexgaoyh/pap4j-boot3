@@ -1,9 +1,20 @@
 package cn.net.pap.common.jsonorm;
 
+import cn.net.pap.common.jsonorm.dto.HeadDTO;
 import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.util.JsonSchemaFormatValidation;
 import cn.net.pap.common.jsonorm.util.JsonSchemaUtil;
 import cn.net.pap.common.jsonorm.util.dto.SchemaDTO;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.github.victools.jsonschema.generator.OptionPreset;
+import com.github.victools.jsonschema.generator.SchemaGenerator;
+import com.github.victools.jsonschema.generator.SchemaGeneratorConfig;
+import com.github.victools.jsonschema.generator.SchemaGeneratorConfigBuilder;
+import com.github.victools.jsonschema.generator.SchemaVersion;
+import com.github.victools.jsonschema.module.jackson.JacksonModule;
+import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidationModule;
+import jakarta.validation.constraints.Pattern;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
 import org.json.JSONException;
@@ -401,6 +412,28 @@ public class JsonSchemaTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    public void victoolsJsonSchemaTest1() {
+        SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(
+                SchemaVersion.DRAFT_7, OptionPreset.PLAIN_JSON)
+                .with(new JacksonModule())
+                .with(new JakartaValidationModule());
+
+        configBuilder.forFields()
+                .withInstanceAttributeOverride((node, field, config) -> {
+                    Pattern pattern = field.getAnnotationConsideringFieldAndGetter(Pattern.class);
+                    if (pattern != null) {
+                        ((ObjectNode) node).put("pattern", pattern.regexp());
+                    }
+                });
+
+        SchemaGeneratorConfig config = configBuilder.build();
+        SchemaGenerator generator = new SchemaGenerator(config);
+
+        JsonNode jsonSchema = generator.generateSchema(HeadDTO.class);
+        System.out.println(jsonSchema.toPrettyString());
     }
 
 }
