@@ -59,20 +59,17 @@ public class ZlibraryUtil {
         URL url = new URL(urlString);
         URLConnection con = url.openConnection();
         con.setConnectTimeout(5000 * 1000);
-        InputStream is = con.getInputStream();
-        byte[] bs = new byte[1024];
-        int len;
-        int i = filename.length();
         File dir = new File(baseSaveDir);
         if (!dir.exists()) {
             dir.mkdirs();
         }
-        OutputStream os = new FileOutputStream(baseSaveDir + File.separator + filename);
-        while ((len = is.read(bs)) != -1) {
-            os.write(bs, 0, len);
+        try (InputStream is = con.getInputStream(); OutputStream os = new FileOutputStream(baseSaveDir + File.separator + filename);){
+            byte[] bs = new byte[1024];
+            int len;
+            while ((len = is.read(bs)) != -1) {
+                os.write(bs, 0, len);
+            }
         }
-        os.close();
-        is.close();
     }
 
     public static void downloadNet(String urlToDownload, String saveFilePath, String fileName, String cookie) throws MalformedURLException {
@@ -85,16 +82,13 @@ public class ZlibraryUtil {
 
             int responseCode = connection.getResponseCode();
             if (responseCode == HttpURLConnection.HTTP_OK) {
-                InputStream inputStream = connection.getInputStream();
-                FileOutputStream outputStream = new FileOutputStream(saveFilePath + File.separator + fileName);
-
-                int bytesRead;
-                byte[] buffer = new byte[4096];
-                while ((bytesRead = inputStream.read(buffer)) != -1) {
-                    outputStream.write(buffer, 0, bytesRead);
+                try (InputStream inputStream = connection.getInputStream(); FileOutputStream outputStream = new FileOutputStream(saveFilePath + File.separator + fileName)) {
+                    int bytesRead;
+                    byte[] buffer = new byte[4096];
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, bytesRead);
+                    }
                 }
-                outputStream.close();
-                inputStream.close();
             } else {
             }
             connection.disconnect();

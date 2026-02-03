@@ -27,15 +27,12 @@ public class JsonORMUtil {
      */
     public static String readFileToString(File file) throws IOException {
         String JSON = "";
-        InputStream stream = new FileInputStream(file);
         String nextString = "";
-        try {
-            if (stream != null) {
-                InputStreamReader streamReader = new InputStreamReader(stream, "UTF-8");
-                BufferedReader reader = new BufferedReader(streamReader);
-                while ((nextString = reader.readLine()) != null)
-                    JSON = new StringBuilder().append(JSON).append(nextString).toString();
-            }
+        try (FileInputStream stream = new FileInputStream(file);
+             InputStreamReader streamReader = new InputStreamReader(stream, "UTF-8");
+             BufferedReader reader = new BufferedReader(streamReader)) {
+            while ((nextString = reader.readLine()) != null)
+                JSON = new StringBuilder().append(JSON).append(nextString).toString();
         } catch (Exception ex) {
             System.err.println(ex.getMessage());
         }

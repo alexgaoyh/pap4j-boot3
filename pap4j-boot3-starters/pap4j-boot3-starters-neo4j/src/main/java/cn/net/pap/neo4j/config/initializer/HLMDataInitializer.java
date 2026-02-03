@@ -26,37 +26,25 @@ public class HLMDataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        InputStreamReader isr = null;
-        BufferedReader br = null;
         try {
             ClassPathResource classPathResource = new ClassPathResource("HLM.txt");
-            InputStream inputStream = classPathResource.getInputStream();
-            isr = new InputStreamReader(inputStream);
-            br = new BufferedReader(isr);
-            String str;
-            while ((str = br.readLine()) != null) {
-                String[] spoArray = str.split(",");
-                HLMEntity sNode = new HLMEntity();
-                sNode.setName(spoArray[2]);
-                HLMEntity oNode = new HLMEntity();
-                oNode.setName(spoArray[0]);
-                sNode.addRelationship(spoArray[1], oNode);
+            try (InputStream inputStream = classPathResource.getInputStream();
+                 InputStreamReader isr = new InputStreamReader(inputStream);
+                 BufferedReader br = new BufferedReader(isr)){
+                String str;
+                while ((str = br.readLine()) != null) {
+                    String[] spoArray = str.split(",");
+                    HLMEntity sNode = new HLMEntity();
+                    sNode.setName(spoArray[2]);
+                    HLMEntity oNode = new HLMEntity();
+                    oNode.setName(spoArray[0]);
+                    sNode.addRelationship(spoArray[1], oNode);
 
-                hlmRepository.save(sNode);
+                    hlmRepository.save(sNode);
+                }
             }
         } catch (IOException e) {
             log.error("run", e);
-        } finally {
-            try {
-                if (br != null) {
-                    br.close();
-                }
-                if (isr != null) {
-                    isr.close();
-                }
-            } catch (IOException e) {
-                log.error("run", e);
-            }
         }
     }
 }

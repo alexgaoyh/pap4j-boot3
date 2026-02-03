@@ -118,18 +118,20 @@ public class Html2DocxUtils {
         } else {
         }
 
-        InputStream input = connection.getInputStream();
-        byte[] buffer = new byte[8192];
-        int bytesRead;
-        ByteArrayOutputStream output = new ByteArrayOutputStream();
-        while ((bytesRead = input.read(buffer)) != -1) {
-            output.write(buffer, 0, bytesRead);
-        }
-        input.close();
-        byte[] imageBytes = output.toByteArray();
-        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+        try (InputStream input = connection.getInputStream(); ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int bytesRead;
+            while ((bytesRead = input.read(buffer)) != -1) {
+                output.write(buffer, 0, bytesRead);
+            }
+            byte[] imageBytes = output.toByteArray();
+            String base64Image = Base64.getEncoder().encodeToString(imageBytes);
 
-        // 返回完整的Base64编码字符串，包括MIME类型
-        return mimeType + base64Image;
+            // 返回完整的Base64编码字符串，包括MIME类型
+            return mimeType + base64Image;
+        } finally {
+            connection.disconnect();
+        }
+
     }
 }

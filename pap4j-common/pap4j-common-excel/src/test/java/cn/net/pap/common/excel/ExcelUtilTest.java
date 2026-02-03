@@ -74,18 +74,19 @@ public class ExcelUtilTest {
     // @Test
     public void pictureExport() throws Exception {
         String tempFileName = "template.xlsx";
-        InputStream resourceAsStream = new FileInputStream(new File(tempFileName));
-        String fileName = "out.xlsx";
+        try(InputStream resourceAsStream = new FileInputStream(new File(tempFileName));) {
+            String fileName = "out.xlsx";
 
-        List<ExportDTO> dataList = new ArrayList<>();
-        dataList.add(new ExportDTO(new File("3.jpg")));
-        dataList.add(new ExportDTO(new File("2.jpg")));
-        dataList.add(new ExportDTO(new File("1.jpg")));
+            List<ExportDTO> dataList = new ArrayList<>();
+            dataList.add(new ExportDTO(new File("3.jpg")));
+            dataList.add(new ExportDTO(new File("2.jpg")));
+            dataList.add(new ExportDTO(new File("1.jpg")));
 
-        try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
-            WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler()).build();
-            FillConfig fillConfig0 = FillConfig.builder().forceNewRow(Boolean.TRUE).build();
-            excelWriter.fill(dataList, fillConfig0, writeSheet0);
+            try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
+                WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler()).build();
+                FillConfig fillConfig0 = FillConfig.builder().forceNewRow(Boolean.TRUE).build();
+                excelWriter.fill(dataList, fillConfig0, writeSheet0);
+            }
         }
 
     }
@@ -94,16 +95,17 @@ public class ExcelUtilTest {
     public void pictureExport2() throws Exception {
         // 合并后的单元格，每个单元格定义为  {picture1} {picture2} {picture3}
         String tempFileName = "template.xlsx";
-        InputStream resourceAsStream = new FileInputStream(new File(tempFileName));
-        String fileName = "out.xlsx";
+        try(InputStream resourceAsStream = new FileInputStream(new File(tempFileName));) {
+            String fileName = "out.xlsx";
 
-        try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
-            WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler2()).build();
-            Map<String, Object> map = new HashMap<>();
-            map.put("picture1", new File("1.jpg"));
-            map.put("picture2", new File("2.jpg"));
-            map.put("picture3", new File("3.jpg"));
-            excelWriter.fill(map, writeSheet0);
+            try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
+                WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler2()).build();
+                Map<String, Object> map = new HashMap<>();
+                map.put("picture1", new File("1.jpg"));
+                map.put("picture2", new File("2.jpg"));
+                map.put("picture3", new File("3.jpg"));
+                excelWriter.fill(map, writeSheet0);
+            }
         }
 
     }

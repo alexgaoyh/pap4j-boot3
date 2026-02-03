@@ -187,22 +187,22 @@ public class PDFUtil {
 
         byte[] inputContent = Files.readAllBytes(inputFile.getAbsoluteFile().toPath());
 
-        final InputStream colorSpaceProfileInputStream = PDFUtil.class.getClassLoader().getResourceAsStream("sRGB Color Space Profile.icm");
+        try(final InputStream colorSpaceProfileInputStream = PDFUtil.class.getClassLoader().getResourceAsStream("sRGB Color Space Profile.icm");) {
+            PDDocument doc = Loader.loadPDF(inputContent);
 
-        PDDocument doc = Loader.loadPDF(inputContent);
+            PDDocumentCatalog catalog = setCompliant(doc, PDF_PART, PDF_CONFORMANCE);
 
-        PDDocumentCatalog catalog = setCompliant(doc, PDF_PART, PDF_CONFORMANCE);
+            addOutputIntent(doc, catalog, colorSpaceProfileInputStream);
 
-        addOutputIntent(doc, catalog, colorSpaceProfileInputStream);
+            final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+            doc.setVersion(PDF_VERSION);
+            doc.save(byteArrayOutputStream);
+            doc.close();
 
-        final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        doc.setVersion(PDF_VERSION);
-        doc.save(byteArrayOutputStream);
-        doc.close();
-
-        final byte[] outputContent = byteArrayOutputStream.toByteArray();
-        try (final OutputStream outputStream = Files.newOutputStream(outputFile.toPath())) {
-            outputStream.write(outputContent);
+            final byte[] outputContent = byteArrayOutputStream.toByteArray();
+            try (final OutputStream outputStream = Files.newOutputStream(outputFile.toPath())) {
+                outputStream.write(outputContent);
+            }
         }
 
     }
