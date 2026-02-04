@@ -22,6 +22,9 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.expression.ExpressionParser;
+import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.expression.spel.support.StandardEvaluationContext;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
@@ -29,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class JsonSchemaTest {
@@ -434,6 +438,53 @@ public class JsonSchemaTest {
 
         JsonNode jsonSchema = generator.generateSchema(HeadDTO.class);
         System.out.println(jsonSchema.toPrettyString());
+    }
+
+    @Test
+    @DisplayName("测试：当 totalPrice 缺失时，应通过 SpEL 自动计算并成功通过 Schema 校验")
+    void testDynamicDefaultInjection() {
+        // 定义 JSON Schema (Draft 7) 设定 unitPrice, quantity 为必填，totalPrice 也必填（动态填充它）
+        String schemaRaw = """
+            {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "properties": {
+                "unitPrice": { "type": "number" },
+                "quantity": { "type": "integer" },
+                "totalPrice": { "type": "number" }
+              },
+              "required": ["unitPrice", "quantity", "totalPrice"]
+            }
+            """;
+        JSONObject rawSchema = new JSONObject(new JSONTokener(schemaRaw));
+        Schema schema = SchemaLoader.load(rawSchema);
+
+        // 准备初始输入数据 (故意缺失 totalPrice)
+        JSONObject inputData = new JSONObject();
+        inputData.put("unitPrice", 15.0);
+        inputData.put("quantity", 3);
+
+        // 定义 SpEL 动态规则映射 Key: 需要填充的字段路径, Value: SpEL 表达式
+        java.util.Map<String, String> rules = new java.util.HashMap<>();
+        rules.put("totalPrice", "#root['unitPrice'] * #root['quantity']");
+
+        // 执行 SpEL 计算逻辑 将 JSONObject 转为 Map 作为 SpEL 的评估上下文
+        ExpressionParser parser = new SpelExpressionParser();
+        StandardEvaluationContext context = new StandardEvaluationContext(inputData.toMap());
+
+        rules.forEach((path, expression) -> {
+            // 仅当字段缺失时才进行动态填充
+            if (!inputData.has(path)) {
+                Object calculatedValue = parser.parseExpression(expression).getValue(context);
+                inputData.put(path, calculatedValue);
+            }
+        });
+
+        // 验证结果 验证计算值是否正确 (15.0 * 3 = 45.0)
+        assertEquals(45.0, inputData.getDouble("totalPrice"), "SpEL 计算出的 totalPrice 应该为 45.0");
+
+        // 验证最终生成的 JSON 是否符合 Schema 约束 如果 totalPrice 没有被正确填充，这里会抛出 ValidationException
+        assertDoesNotThrow(() -> schema.validate(inputData), "填充后的 JSON 应该通过 Schema 校验");
     }
 
 }
