@@ -31,6 +31,8 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -451,7 +453,10 @@ public class JsonSchemaTest {
               "properties": {
                 "unitPrice": { "type": "number" },
                 "quantity": { "type": "integer" },
-                "totalPrice": { "type": "number" }
+                "totalPrice": { 
+                    "type": "number",
+                    "x-spel-default": "#root['unitPrice'] * #root['quantity']" 
+                }
               },
               "required": ["unitPrice", "quantity", "totalPrice"]
             }
@@ -464,9 +469,15 @@ public class JsonSchemaTest {
         inputData.put("unitPrice", 15.0);
         inputData.put("quantity", 3);
 
-        // 定义 SpEL 动态规则映射 Key: 需要填充的字段路径, Value: SpEL 表达式
-        java.util.Map<String, String> rules = new java.util.HashMap<>();
-        rules.put("totalPrice", "#root['unitPrice'] * #root['quantity']");
+        // 3. 动态从 Schema 提取 rules
+        Map<String, String> rules = new HashMap<>();
+        JSONObject properties = rawSchema.getJSONObject("properties");
+        for (String key : properties.keySet()) {
+            JSONObject fieldDef = properties.getJSONObject(key);
+            if (fieldDef.has("x-spel-default")) {
+                rules.put(key, fieldDef.getString("x-spel-default"));
+            }
+        }
 
         // 执行 SpEL 计算逻辑 将 JSONObject 转为 Map 作为 SpEL 的评估上下文
         ExpressionParser parser = new SpelExpressionParser();
