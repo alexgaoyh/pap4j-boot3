@@ -71,4 +71,28 @@ public class StaxXmlUtilTest {
         }
     }
 
+    @Test
+    public void test3() throws Exception {
+        String xml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <student>
+              <props>
+                <prop>一<class id="001">章</class>内容<anchor number="1"></anchor></prop>
+                <prop>二<glass id="002">章</glass>内容<anchor number="2"></anchor></prop>
+                <prop>三章内<asdfg id="003">容</asdfg><anchor number="3"></anchor></prop>
+              </props>
+              <propExts>
+                <propExt>1;2;3;4</propExt>
+                <propExt>q;w;e;r</propExt>
+                <propExt>a;s;d;f</propExt>
+              </propExts>
+            </student>
+        """;
+        List<String> props = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "prop");
+        List<String> propExts = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "propExt");
+        System.out.println(props);
+        System.out.println(propExts);
+
+    }
+
 }
