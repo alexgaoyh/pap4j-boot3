@@ -77,7 +77,7 @@ public class StaxXmlUtilTest {
             <?xml version="1.0" encoding="utf-8"?>
             <student>
               <props>
-                <prop>一<class id="001">章</class>内容<anchor number="1"></anchor></prop>
+                <prop>一<class id="001">章</class>内&gt;容<anchor number="1"></anchor></prop>
                 <prop>二<glass id="002">章</glass>内容<anchor number="2"></anchor></prop>
                 <prop>三章内<asdfg id="003">容</asdfg><anchor number="3"></anchor></prop>
               </props>
