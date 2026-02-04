@@ -6,7 +6,9 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class StaxXmlUtilTest {
 
@@ -73,6 +75,11 @@ public class StaxXmlUtilTest {
 
     @Test
     public void test3() throws Exception {
+        Set<String> keepOriginalTags = new HashSet<String>();
+        keepOriginalTags.add("class");
+        keepOriginalTags.add("glass");
+        keepOriginalTags.add("asdfg");
+        keepOriginalTags.add("anchor");
         String xml = """
             <?xml version="1.0" encoding="utf-8"?>
             <student>
@@ -92,6 +99,10 @@ public class StaxXmlUtilTest {
         List<String> propExts = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "propExt");
         System.out.println(props);
         System.out.println(propExts);
+        for(String prop : props) {
+            String s = StaxXmlUtil.parseXMLInRootAndOriginalTags(prop, "prop", keepOriginalTags);
+            System.out.println(s);
+        }
 
     }
 

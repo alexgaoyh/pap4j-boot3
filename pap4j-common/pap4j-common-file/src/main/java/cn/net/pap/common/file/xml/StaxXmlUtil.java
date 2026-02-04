@@ -310,7 +310,7 @@ public class StaxXmlUtil {
 
         while (end != BreakIterator.DONE) {
             String ch = text.substring(start, end);
-            result.append("<p type=\"char\" seq=\"").append(seq).append("\">").append(ch).append("</p>");
+            result.append("<p type=\"char\" seq=\"").append(seq).append("\">").append(escapeXml(ch)).append("</p>");
             seq++;
             start = end;
             end = iterator.next();
