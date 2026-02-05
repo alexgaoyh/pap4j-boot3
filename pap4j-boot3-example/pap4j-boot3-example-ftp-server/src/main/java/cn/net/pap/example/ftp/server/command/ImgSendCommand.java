@@ -12,6 +12,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 import java.util.Iterator;
 
+import cn.net.pap.example.ftp.server.dto.ImageThumbnailDTO;
 import org.apache.ftpserver.command.AbstractCommand;
 import org.apache.ftpserver.ftplet.DataConnection;
 import org.apache.ftpserver.ftplet.DataConnectionFactory;
@@ -147,7 +148,7 @@ public class ImgSendCommand extends AbstractCommand {
                 }
             }
 
-            session.write(LocalizedFtpReply.translate(session, request, context, 150, "IMGSEND", (String)null));
+            // session.write(LocalizedFtpReply.translate(session, request, context, 150, "IMGSEND", (String)null));
             boolean failure = false;
 
             DataConnection dataConnection;
@@ -162,7 +163,9 @@ public class ImgSendCommand extends AbstractCommand {
 
             long transSz = 0L;
 
-            try (InputStream is = this.convertOrigin(session.getUser().getHomeDirectory() + File.separator + fileName, 141);){
+            try {
+                ImageThumbnailDTO imageThumbnailDTO = this.convertOrigin(session.getUser().getHomeDirectory() + File.separator + fileName, 141);
+                InputStream is = imageThumbnailDTO.getInputStream();
                 Throwable var14 = null;
 
                 try {
@@ -176,6 +179,7 @@ public class ImgSendCommand extends AbstractCommand {
                     if (ftpStat != null) {
                         ftpStat.setDownload(session, file, transSz);
                     }
+                    session.write(new DefaultFtpReply(150, imageThumbnailDTO.getWidth() + ":" + imageThumbnailDTO.getHeight()));
                 } catch (Throwable var38) {
                     var14 = var38;
                     throw var38;
@@ -272,7 +276,7 @@ public class ImgSendCommand extends AbstractCommand {
      * @return
      * @throws IOException
      */
-    public static InputStream convertOrigin(String inputFileStr, int targetWidth) throws IOException {
+    public static ImageThumbnailDTO convertOrigin(String inputFileStr, int targetWidth) throws IOException {
         BufferedImage image = getLowMemoryThumbnail(inputFileStr, targetWidth);
 
         String formatName = getFormatName(inputFileStr);
@@ -283,7 +287,14 @@ public class ImgSendCommand extends AbstractCommand {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         ImageIO.write(image, formatName, baos);
         // 直接返回原始二进制流
-        return new ByteArrayInputStream(baos.toByteArray());
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(baos.toByteArray());
+
+        ImageThumbnailDTO imageThumbnailDTO = new ImageThumbnailDTO();
+        imageThumbnailDTO.setInputStream(byteArrayInputStream);
+        imageThumbnailDTO.setWidth(image.getWidth());
+        imageThumbnailDTO.setHeight(image.getHeight());
+
+        return imageThumbnailDTO;
     }
 
     private static String getFormatName(String inputFileStr) {
