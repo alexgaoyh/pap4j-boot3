@@ -1,10 +1,13 @@
 package cn.net.pap.example.proguard.controller;
 
+import cn.net.pap.example.proguard.autoclose.AutoCloseableFTPClient;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +26,7 @@ public class FtpController {
     private static final String FTP_USER = "bj";
     private static final String FTP_PASS = "123456";
     private static final String VIDEO_PATH = "test.mp4";
+    private static final String JPG_PATH = "big-plane-yes1.jpg";
 
     /**
      * ftp mp4 stream range
@@ -151,6 +155,58 @@ public class FtpController {
             cause = cause.getCause();
         }
         return false;
+    }
+
+    @GetMapping("/streamjpg")
+    public void streamJpg(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        response.setContentType(MediaType.IMAGE_JPEG_VALUE);
+        AutoCloseableFTPClient client = new AutoCloseableFTPClient();
+        InputStream in = null;
+        try {
+            client.connect(FTP_HOST, FTP_PORT);
+            client.login(FTP_USER, FTP_PASS);
+            client.enterLocalPassiveMode();
+            client.setFileType(FTP.BINARY_FILE_TYPE);
+            in = client.retrieveImgSendFileStream(JPG_PATH);
+            String replyString = client.getReplyString();
+            // 解析宽高信息
+            int width = 0;
+            int height = 0;
+            if (replyString != null && replyString.startsWith("150")) {
+                // 解析格式: "150 width:height"
+                String[] parts = replyString.split(" ");
+                if (parts.length > 1) {
+                    String metadata = parts[1];
+                    String[] dimensions = metadata.split(":");
+                    if (dimensions.length == 2) {
+                        try {
+                            width = Integer.parseInt(dimensions[0]);
+                            height = Integer.parseInt(dimensions[1]);
+                        } catch (NumberFormatException ignored) {
+                            // 解析失败，保持默认值
+                        }
+                    }
+                }
+            }
+            response.setHeader("X-Image-Width", String.valueOf(width));
+            response.setHeader("X-Image-Height", String.valueOf(height));
+
+            IOUtils.copy(in, response.getOutputStream());
+        } catch (Exception e) {
+            if (!isClientAbort(e)) {
+                e.printStackTrace(); // 可以捕获异常
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
+            }
+        } finally {
+            if (in != null) try {
+                in.close();
+            } catch (IOException ignored) {
+            }
+            if (client.isConnected()) try {
+                client.disconnect();
+            } catch (IOException ignored) {
+            }
+        }
     }
 
 
