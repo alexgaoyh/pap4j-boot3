@@ -35,4 +35,37 @@ public class JsonSchemaDBTest {
                 ORDINAL_POSITION;
             """;
 
+    /**
+     * kingbase 下，表字段信息查询。
+     */
+    public static final String tableColumnKingbase = """
+            SELECT
+                a.attname,
+                format_type(a.atttypid, a.atttypmod),
+            		CASE
+                    WHEN format_type(a.atttypid, a.atttypmod) LIKE '%(%' THEN
+                        regexp_replace(format_type(a.atttypid, a.atttypmod), '.*\\(([0-9]+).*', '\\1')
+                    ELSE NULL
+                END AS length_left,
+                CASE
+                    WHEN format_type(a.atttypid, a.atttypmod) LIKE '%,%' THEN
+                        regexp_replace(format_type(a.atttypid, a.atttypmod), '.*,([0-9]+)\\)', '\\1')
+                    ELSE NULL
+                END AS length_right,
+                a.attnotnull,
+                d.description
+            FROM
+                sys_catalog.sys_attribute a
+                JOIN sys_catalog.sys_class c ON a.attrelid = c.oid
+                JOIN sys_catalog.sys_namespace n ON c.relnamespace = n.oid
+                LEFT JOIN sys_catalog.sys_description d ON d.objoid = c.oid AND d.objsubid = a.attnum
+            WHERE
+                n.nspname = 'public'
+                AND c.relname = 'test'
+                AND a.attnum > 0
+                AND NOT a.attisdropped
+            ORDER BY
+                a.attnum;
+            """;
+
 }
