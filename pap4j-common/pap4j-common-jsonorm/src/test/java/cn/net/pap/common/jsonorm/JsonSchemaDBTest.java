@@ -53,11 +53,13 @@ public class JsonSchemaDBTest {
                     ELSE NULL
                 END AS length_right,
                 a.attnotnull,
+                sys_get_expr ( ad.adbin, ad.adrelid ) AS column_default,
                 d.description
             FROM
                 sys_catalog.sys_attribute a
                 JOIN sys_catalog.sys_class c ON a.attrelid = c.oid
                 JOIN sys_catalog.sys_namespace n ON c.relnamespace = n.oid
+                LEFT JOIN sys_catalog.sys_attrdef ad ON A.attrelid = ad.adrelid AND A.attnum = ad.adnum
                 LEFT JOIN sys_catalog.sys_description d ON d.objoid = c.oid AND d.objsubid = a.attnum
             WHERE
                 n.nspname = 'public'
