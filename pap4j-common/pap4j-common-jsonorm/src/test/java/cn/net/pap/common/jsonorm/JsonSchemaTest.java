@@ -498,4 +498,31 @@ public class JsonSchemaTest {
         assertDoesNotThrow(() -> schema.validate(inputData), "填充后的 JSON 应该通过 Schema 校验");
     }
 
+    @Test
+    @DisplayName("假定一个支持remote select的json schema")
+    public void shownSchemaRemoteSelect() {
+        String jsonSchema = """
+            {
+              "type": "object",
+              "properties": {
+                "user_id": {
+                  "title": "选择员工",
+                  "type": "string",
+                  "ui:widget": "RemoteSelect",
+                  "ui:options": {
+                    "remoteUrl": "/api/users",
+                    "mapping": {
+                      "email": "user_email",
+                      "phone": "user_phone"
+                    }
+                  }
+                },
+                "user_email": { "type": "string", "title": "邮箱" },
+                "user_phone": { "type": "string", "title": "电话" }
+              }
+            }
+            """;
+
+    }
+
 }
