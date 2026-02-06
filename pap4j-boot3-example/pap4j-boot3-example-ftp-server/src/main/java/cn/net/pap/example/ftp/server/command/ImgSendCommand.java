@@ -1,18 +1,7 @@
 package cn.net.pap.example.ftp.server.command;
 
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.InetAddress;
-import java.net.SocketException;
-import java.nio.charset.StandardCharsets;
-import java.util.Base64;
-import java.util.Iterator;
-
 import cn.net.pap.example.ftp.server.dto.ImageThumbnailDTO;
+import net.coobird.thumbnailator.Thumbnails;
 import org.apache.ftpserver.command.AbstractCommand;
 import org.apache.ftpserver.ftplet.DataConnection;
 import org.apache.ftpserver.ftplet.DataConnectionFactory;
@@ -24,7 +13,6 @@ import org.apache.ftpserver.impl.FtpIoSession;
 import org.apache.ftpserver.impl.FtpServerContext;
 import org.apache.ftpserver.impl.IODataConnectionFactory;
 import org.apache.ftpserver.impl.LocalizedDataTransferFtpReply;
-import org.apache.ftpserver.impl.LocalizedFtpReply;
 import org.apache.ftpserver.impl.ServerFtpStatistics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,6 +21,17 @@ import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
 import javax.imageio.stream.ImageInputStream;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.InetAddress;
+import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.Iterator;
 
 /**
  * 单元测试详见： pap-bean-ftp-starter ->  com.pap.ftp.ftp.AutoCloseableFTPClientTest
@@ -164,7 +163,7 @@ public class ImgSendCommand extends AbstractCommand {
             long transSz = 0L;
 
             try {
-                ImageThumbnailDTO imageThumbnailDTO = this.convertOrigin(session.getUser().getHomeDirectory() + File.separator + fileName, 141);
+                ImageThumbnailDTO imageThumbnailDTO = this.convertOriginJPG(session.getUser().getHomeDirectory() + File.separator + fileName, 141);
                 InputStream is = imageThumbnailDTO.getInputStream();
                 Throwable var14 = null;
 
@@ -337,6 +336,41 @@ public class ImgSendCommand extends AbstractCommand {
         } catch (IOException e) {
             return null;
         }
+    }
+
+    /**
+     * 不管入参是什么图像，强制返回的就是 jpg， 目前测试了 jpg tif 两种格式的图像，都能够正确的返回图像。
+     * @param inputFileStr
+     * @param targetWidth
+     * @return
+     * @throws IOException
+     */
+    public static ImageThumbnailDTO convertOriginJPG(String inputFileStr, int targetWidth) throws IOException {
+        File file = new File(inputFileStr);
+        if (file == null || !file.exists()) {
+            return null;
+        }
+        BufferedImage image = Thumbnails.of(file).size(targetWidth, Integer.MAX_VALUE)
+                .keepAspectRatio(true)
+                .outputFormat("jpg")
+                .outputQuality(0.7).asBufferedImage();
+
+        String formatName = getFormatName(inputFileStr);
+        if (formatName == null || formatName.isEmpty()) {
+            throw new IllegalArgumentException("Invalid image format for file: " + inputFileStr);
+        }
+
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", baos);
+        // 直接返回原始二进制流
+        ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(baos.toByteArray());
+
+        ImageThumbnailDTO imageThumbnailDTO = new ImageThumbnailDTO();
+        imageThumbnailDTO.setInputStream(byteArrayInputStream);
+        imageThumbnailDTO.setWidth(image.getWidth());
+        imageThumbnailDTO.setHeight(image.getHeight());
+
+        return imageThumbnailDTO;
     }
 
 }
