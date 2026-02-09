@@ -5,6 +5,8 @@ import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.util.JsonSchemaFormatValidation;
 import cn.net.pap.common.jsonorm.util.JsonSchemaUtil;
 import cn.net.pap.common.jsonorm.util.dto.SchemaDTO;
+import cn.net.pap.common.jsonorm.validator.CompositeJsonSchemaValidator;
+import cn.net.pap.common.jsonorm.validator.UniqueByFieldValidatorJsonSchema;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.victools.jsonschema.generator.OptionPreset;
@@ -17,6 +19,7 @@ import com.github.victools.jsonschema.module.jakarta.validation.JakartaValidatio
 import jakarta.validation.constraints.Pattern;
 import org.everit.json.schema.Schema;
 import org.everit.json.schema.loader.SchemaLoader;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
@@ -32,6 +35,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -522,6 +526,70 @@ public class JsonSchemaTest {
               }
             }
             """;
+
+    }
+
+    @Test
+    @DisplayName("json schema 的数组内对象的唯一性判断")
+    public void uniqueItemsTest1() throws Exception {
+        String jsonSchema = """
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "key" : { "type" : "string" },
+                      "value" : { "type" : "string" }
+                    }
+                  },
+                  "uniqueItems" : true
+                }
+                """;
+        String jsonData1 = """
+                [ { "key" : "1", "value" : "value1" }, { "key" : "1", "value" : "value2" } ]
+                """;
+        Schema schema = SchemaLoader.load(new JSONObject(new JSONTokener(jsonSchema)));
+        try {
+            schema.validate(new JSONArray(new JSONTokener(jsonData1.trim())));
+        } catch (org.everit.json.schema.ValidationException e) {
+            System.err.println("数据验证失败，详细信息:");
+            e.getAllMessages().forEach(System.err::println);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    @Test
+    @DisplayName("json schema 的数组内某一个字段的唯一性判断")
+    public void uniqueItemsTest2() throws Exception {
+        String jsonSchema = """
+                {
+                  "$schema": "http://json-schema.org/draft-07/schema#",
+                  "type" : "array",
+                  "items" : {
+                    "type" : "object",
+                    "properties" : {
+                      "key" : { "type" : "string" },
+                      "value" : { "type" : "string" }
+                    }
+                  }
+                }
+                """;
+        String jsonData1 = """
+                [ { "key" : "2", "value" : "value1" }, { "key" : "2", "value" : "value2" } ]
+                """;
+
+        Schema schema = SchemaLoader.load(new JSONObject(jsonSchema));
+        CompositeJsonSchemaValidator validator = new CompositeJsonSchemaValidator(schema, List.of(new UniqueByFieldValidatorJsonSchema("key")));
+        try {
+            validator.validate(new JSONArray(new JSONTokener(jsonData1.trim())));
+        } catch (org.everit.json.schema.ValidationException e) {
+            System.err.println("数据验证失败，详细信息:");
+            e.getAllMessages().forEach(System.err::println);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
     }
 
