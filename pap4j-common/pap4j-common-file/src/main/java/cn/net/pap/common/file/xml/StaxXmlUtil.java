@@ -7,8 +7,10 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 public class StaxXmlUtil {
@@ -20,6 +22,7 @@ public class StaxXmlUtil {
         factory = XMLInputFactory.newInstance();
         // 优化配置：合并连续文本、关闭命名空间（对应原逻辑）
         factory.setProperty(XMLInputFactory.IS_COALESCING, true);
+        // 禁用命名空间处理，只返回本地名称
         factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, false);
     }
 
@@ -295,6 +298,51 @@ public class StaxXmlUtil {
             return xmlString;
         }
         return result.toString();
+    }
+
+    /**
+     * 从XML字符串中提取指定元素的所有属性
+     *
+     * @param xmlString XML字符串
+     * @param elementName 元素名称
+     * @return 包含所有属性名和属性值的Map，如果未找到元素或没有属性则返回空Map
+     * @throws Exception XML解析异常
+     */
+    public static Map<String, String> extractAllAttributes(String xmlString, String elementName) {
+        Map<String, String> attributes = new HashMap<>();
+        if (xmlString == null || elementName == null || xmlString.trim().isEmpty()) {
+            return attributes;
+        }
+
+        XMLStreamReader reader = null;
+        try {
+            reader = factory.createXMLStreamReader(new StringReader(xmlString));
+            while (reader.hasNext()) {
+                int event = reader.next();
+
+                if (event == XMLStreamConstants.START_ELEMENT &&
+                    elementName.equals(reader.getLocalName())) {
+
+                    int attributeCount = reader.getAttributeCount();
+                    for (int i = 0; i < attributeCount; i++) {
+                        String attrName = reader.getAttributeLocalName(i);
+                        String attrValue = reader.getAttributeValue(i);
+                        attributes.put(attrName, attrValue);
+                    }
+                    break;
+                }
+            }
+            return attributes;
+        } catch (Exception e) {
+            throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                }
+            }
+        }
     }
 
     /**

@@ -8,6 +8,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 public class StaxXmlUtilTest {
@@ -102,6 +103,10 @@ public class StaxXmlUtilTest {
         for(String prop : props) {
             String s = StaxXmlUtil.parseXMLInRootAndOriginalTags(prop, "prop", keepOriginalTags);
             System.out.println(s);
+        }
+        for(String prop : props) {
+            Map<String, String> anchorAttrs = StaxXmlUtil.extractAllAttributes(prop, "anchor");
+            System.out.println(anchorAttrs);
         }
 
     }
