@@ -49,6 +49,11 @@ public final class XmlParseUtil {
         }
     }
 
+    public static Document getDocumentByContent(String xmlContent) throws Exception {
+        DocumentBuilder builder = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
+        return builder.parse(new java.io.ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8)));
+    }
+
     /**
      * w3c dom 节点解析，根据路径解析
      * @param document
@@ -133,6 +138,18 @@ public final class XmlParseUtil {
         }
 
         return result;
+    }
+
+    /**
+     * 使用XPath获取单个值
+     */
+    public static String getValueByXPath(Document doc, String xpath) {
+        try {
+            XPath xPath = XPathFactory.newInstance().newXPath();
+            return xPath.evaluate(xpath, doc);
+        } catch (Exception e) {
+            throw new RuntimeException("XPath查询失败: " + e.getMessage(), e);
+        }
     }
 
     /**

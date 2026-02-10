@@ -1,7 +1,9 @@
 package cn.net.pap.common.file;
 
 import cn.net.pap.common.file.xml.StaxXmlUtil;
+import cn.net.pap.common.file.xml.XmlParseUtil;
 import org.junit.jupiter.api.Test;
+import org.w3c.dom.Document;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -109,6 +111,34 @@ public class StaxXmlUtilTest {
             System.out.println(anchorAttrs);
         }
 
+    }
+
+    @Test
+    public void test4() {
+        String xml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <student>
+              <props>
+                <prop>一<class id="001">章</class>内&gt;容<anchor number="1"></anchor></prop>
+                <prop>二<glass id="002">章</glass>内容<anchor number="2"></anchor></prop>
+                <prop>三章内<asdfg id="003">容</asdfg><anchor number="3"></anchor></prop>
+              </props>
+              <propExts>
+                <propExt>1;2;3;4</propExt>
+                <propExt>q;w;e;r</propExt>
+                <propExt>a;s;d;f</propExt>
+              </propExts>
+            </student>
+        """;
+        try {
+            Document documentByContent = XmlParseUtil.getDocumentByContent(xml.trim());
+            List<String> paths = StaxXmlUtil.extractAllPaths(xml.trim());
+            for (String path : paths) {
+                System.out.println(path + " : " + XmlParseUtil.getValueByXPath(documentByContent, path));
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
 }

@@ -1,7 +1,12 @@
 package cn.net.pap.common.file.xml;
 
 import com.ibm.icu.text.BreakIterator;
+import org.xml.sax.Attributes;
+import org.xml.sax.InputSource;
+import org.xml.sax.helpers.DefaultHandler;
 
+import javax.xml.parsers.SAXParser;
+import javax.xml.parsers.SAXParserFactory;
 import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
@@ -12,6 +17,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.Stack;
 
 public class StaxXmlUtil {
 
@@ -365,6 +371,136 @@ public class StaxXmlUtil {
         }
 
         return seq;
+    }
+
+    /**
+     * 静态方法：解析XML并返回所有可能的XPath路径
+     * @param xmlContent XML字符串内容
+     * @return 所有路径的列表
+     */
+    public static List<String> extractAllPaths(String xmlContent) throws Exception {
+        SAXParserFactory factory = SAXParserFactory.newInstance();
+        SAXParser parser = factory.newSAXParser();
+        IndexedPathHandler handler = new IndexedPathHandler();
+        parser.parse(new InputSource(new StringReader(xmlContent)), handler);
+        return handler.getAllPaths();
+    }
+
+    /**
+     * SAX处理器 - 专门处理复杂XML结构
+     */
+    private static class IndexedPathHandler extends DefaultHandler {
+        private final List<String> allPaths = new ArrayList<>();
+        private final Stack<ElementContext> contextStack = new Stack<>();
+        private final Map<String, Integer> siblingCount = new HashMap<>();
+        private final StringBuilder textBuffer = new StringBuilder();
+        private boolean hasTextContent = false;
+
+        @Override
+        public void startElement(String uri, String localName,
+                                 String qName, Attributes attributes) {
+            // 处理上一个元素的文本内容
+            flushTextBuffer();
+
+            // 获取当前路径
+            String parentPath = contextStack.isEmpty() ? "" : contextStack.peek().fullPath;
+
+            // 构建当前元素的完整路径（带索引）
+            String elementPath = buildIndexedPath(parentPath, qName);
+
+            // 记录上下文
+            ElementContext context = new ElementContext(qName, elementPath);
+            contextStack.push(context);
+
+            // 添加元素路径
+            allPaths.add(elementPath);
+
+            // 添加属性路径
+            if (attributes != null) {
+                for (int i = 0; i < attributes.getLength(); i++) {
+                    String attrPath = elementPath + "/@" + attributes.getQName(i);
+                    allPaths.add(attrPath);
+                }
+            }
+
+            // 重置文本缓冲区
+            textBuffer.setLength(0);
+            hasTextContent = false;
+        }
+
+        @Override
+        public void characters(char[] ch, int start, int length) {
+            // 累积文本内容
+            String text = new String(ch, start, length);
+            if (!text.trim().isEmpty()) {
+                hasTextContent = true;
+                textBuffer.append(text);
+            }
+        }
+
+        @Override
+        public void endElement(String uri, String localName, String qName) {
+            // 处理当前元素的文本内容
+            flushTextBuffer();
+
+            // 弹出上下文
+            if (!contextStack.isEmpty()) {
+                contextStack.pop();
+            }
+        }
+
+        /**
+         * 构建带索引的路径
+         */
+        private String buildIndexedPath(String parentPath, String elementName) {
+            // 生成路径键（用于计数）
+            String pathKey = parentPath + "/" + elementName;
+
+            // 获取并增加计数
+            int index = siblingCount.getOrDefault(pathKey, 0) + 1;
+            siblingCount.put(pathKey, index);
+
+            // 构建带索引的路径
+            if (parentPath.isEmpty()) {
+                return "/" + elementName + "[" + index + "]";
+            } else {
+                return parentPath + "/" + elementName + "[" + index + "]";
+            }
+        }
+
+        /**
+         * 刷新文本缓冲区，添加text()路径
+         */
+        private void flushTextBuffer() {
+            if (hasTextContent && !contextStack.isEmpty()) {
+                String currentPath = contextStack.peek().fullPath;
+                allPaths.add(currentPath + "/text()");
+                hasTextContent = false;
+                textBuffer.setLength(0);
+            }
+        }
+
+        @Override
+        public void endDocument() {
+            flushTextBuffer();
+        }
+
+        public List<String> getAllPaths() {
+            return new ArrayList<>(allPaths);
+        }
+
+        /**
+         * 元素上下文类
+         */
+        private static class ElementContext {
+            final String name;
+            final String fullPath;
+
+            ElementContext(String name, String fullPath) {
+                this.name = name;
+                this.fullPath = fullPath;
+            }
+        }
     }
 
 }
