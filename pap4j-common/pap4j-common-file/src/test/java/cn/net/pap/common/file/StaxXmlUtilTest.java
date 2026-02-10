@@ -5,6 +5,7 @@ import cn.net.pap.common.file.xml.XmlParseUtil;
 import cn.net.pap.common.file.xml.xpath.ExtFunctionResolver;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
+import org.w3c.dom.NodeList;
 
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -194,6 +195,14 @@ public class StaxXmlUtilTest {
         assertTrue(result2.contains("一"));
         assertTrue(!result2.contains("<class id=\"001\">章</class>"));
         assertTrue(result2.contains("内>容"));
+
+        // 如果是多个值，那么循环解析，并且保证结构不发生变化。
+        NodeList propNodes = (NodeList) xpath.evaluate("/student[1]/props[1]/prop", doc, XPathConstants.NODESET);
+        for (int i = 0; i < propNodes.getLength(); i++) {
+            String propInnerXml = (String) xpath.evaluate("ext:inner-xml(.)", propNodes.item(i), XPathConstants.STRING);
+            assertTrue(propInnerXml.contains("</anchor>"));
+        }
+
 
     }
 

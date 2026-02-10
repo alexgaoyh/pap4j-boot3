@@ -57,8 +57,45 @@ public class InnerXmlFunction implements XPathFunction {
         }
     }
 
+    /**
+     * 如果传入数据是 <anchor number="1"></anchor>， 那么原封不动的输出，不会改为 <anchor number="1" />
+     * @param node
+     * @param transformer
+     * @param sb
+     * @throws Exception
+     */
     private void appendInnerXml(Node node, Transformer transformer, StringBuilder sb) throws Exception {
+        NodeList children = node.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            // 如果是空元素节点，手动输出 <tag ...></tag>
+            if (child.getNodeType() == Node.ELEMENT_NODE && !child.hasChildNodes()) {
+                sb.append("<").append(child.getNodeName());
+                if (child.hasAttributes()) {
+                    for (int j = 0; j < child.getAttributes().getLength(); j++) {
+                        Node attr = child.getAttributes().item(j);
+                        sb.append(" ")
+                                .append(attr.getNodeName())
+                                .append("=\"")
+                                .append(escapeXml(attr.getNodeValue()))
+                                .append("\"");
+                    }
+                }
+                sb.append("></").append(child.getNodeName()).append(">");
+            } else {
+                StringWriter writer = new StringWriter();
+                transformer.transform(new DOMSource(child), new StreamResult(writer));
+                sb.append(writer.toString());
+            }
+        }
+    }
 
+    private String escapeXml(String text) {
+        return text.replace("&", "&amp;").replace("<", "&lt;")
+                .replace(">", "&gt;").replace("\"", "&quot;");
+    }
+
+    private void appendInnerXml2(Node node, Transformer transformer, StringBuilder sb) throws Exception {
         NodeList children = node.getChildNodes();
         for (int i = 0; i < children.getLength(); i++) {
             StringWriter writer = new StringWriter();
@@ -66,5 +103,6 @@ public class InnerXmlFunction implements XPathFunction {
             sb.append(writer.toString());
         }
     }
+
 }
 
