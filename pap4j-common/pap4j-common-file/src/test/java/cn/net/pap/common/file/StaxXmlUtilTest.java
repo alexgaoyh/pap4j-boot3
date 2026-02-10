@@ -2,16 +2,27 @@ package cn.net.pap.common.file;
 
 import cn.net.pap.common.file.xml.StaxXmlUtil;
 import cn.net.pap.common.file.xml.XmlParseUtil;
+import cn.net.pap.common.file.xml.xpath.ExtFunctionResolver;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 
+import javax.xml.namespace.NamespaceContext;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.xpath.XPath;
+import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathFactory;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StaxXmlUtilTest {
 
@@ -139,6 +150,51 @@ public class StaxXmlUtilTest {
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    @Test
+    public void testInnerXml() throws Exception {
+        String xml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <student>
+              <props>
+                <prop>一<class id="001">章</class>内&gt;容<anchor number="1"></anchor></prop>
+                <prop>二<glass id="002">章</glass>内容<anchor number="2"></anchor></prop>
+                <prop>三章内<asdfg id="003">容</asdfg><anchor number="3"></anchor></prop>
+              </props>
+              <propExts>
+                <propExt>1;2;3;4</propExt>
+                <propExt>q;w;e;r</propExt>
+                <propExt>a;s;d;f</propExt>
+              </propExts>
+            </student>
+        """;
+
+        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(xml.trim().getBytes(StandardCharsets.UTF_8)));
+        XPath xpath = XPathFactory.newInstance().newXPath();
+        xpath.setXPathFunctionResolver(new ExtFunctionResolver());
+        xpath.setNamespaceContext(new NamespaceContext() {
+            @Override
+            public String getNamespaceURI(String prefix) {
+                if ("ext".equals(prefix)) {
+                    return ExtFunctionResolver.EXT_NS;
+                }
+                return null;
+            }
+            @Override public String getPrefix(String uri) { return null; }
+            @Override public Iterator<String> getPrefixes(String uri) { return null; }
+        });
+
+        String result = (String) xpath.evaluate("ext:inner-xml(/student[1]/props[1]/prop[1])", doc, XPathConstants.STRING);
+        assertTrue(result.contains("一"));
+        assertTrue(result.contains("<class id=\"001\">章</class>"));
+        assertTrue(result.contains("内&gt;容"));
+
+        String result2 = (String) xpath.evaluate("/student[1]/props[1]/prop[1]", doc, XPathConstants.STRING);
+        assertTrue(result2.contains("一"));
+        assertTrue(!result2.contains("<class id=\"001\">章</class>"));
+        assertTrue(result2.contains("内>容"));
+
     }
 
 }
