@@ -126,6 +126,46 @@ public class StaxXmlUtil {
         return sb.toString();
     }
 
+    public static String unescapeXml(String text) {
+        if (text == null || text.isEmpty()) {
+            return text;
+        }
+
+        // 这里用 StringBuilder 处理
+        StringBuilder sb = new StringBuilder(text.length());
+        int len = text.length();
+        for (int i = 0; i < len; i++) {
+            char c = text.charAt(i);
+            if (c == '&') {
+                // 尝试匹配 XML 实体
+                if (text.startsWith("&amp;", i)) {
+                    sb.append('&');
+                    i += 4; // 跳过 amp;
+                } else if (text.startsWith("&lt;", i)) {
+                    sb.append('<');
+                    i += 3; // 跳过 lt;
+                } else if (text.startsWith("&gt;", i)) {
+                    sb.append('>');
+                    i += 3; // 跳过 gt;
+                } else if (text.startsWith("&quot;", i)) {
+                    sb.append('"');
+                    i += 5; // 跳过 quot;
+                } else if (text.startsWith("&apos;", i)) {
+                    sb.append('\'');
+                    i += 5; // 跳过 apos;
+                } else {
+                    // 不认识的 &... 直接原样保留
+                    sb.append(c);
+                }
+            } else {
+                sb.append(c);
+            }
+        }
+
+        return sb.toString();
+    }
+
+
 
 
     /**
