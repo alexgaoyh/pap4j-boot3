@@ -3,6 +3,7 @@ package cn.net.pap.common.datastructure.collection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -131,6 +132,23 @@ public class CollectionUtil {
             }).filter(Objects::nonNull).collect(Collectors.toList());
         }).filter(batch -> !batch.isEmpty()).collect(Collectors.collectingAndThen(Collectors.toList(), Collections::unmodifiableList));
     }
+
+    /**
+     * 按照 Map.of("id", 1, "name", "D") 的思路，生成 LinkedHashMap 对象
+     * @param kv
+     * @return
+     */
+    public static Map<String, Object> ofOrdered(Object... kv) {
+        if (kv.length % 2 != 0) {
+            throw new IllegalArgumentException("key/value must be pairs");
+        }
+        Map<String, Object> map = new LinkedHashMap<>();
+        for (int i = 0; i < kv.length; i += 2) {
+            map.put(String.valueOf(kv[i]), kv[i + 1]);
+        }
+        return map;
+    }
+
 
     /**
      * 根据指定的顺序列表 orderList，对 mapList 中的元素按 map[key] 的值进行排序。 稳定排序
