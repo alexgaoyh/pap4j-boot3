@@ -462,6 +462,7 @@ public class ProguardController {
         ObjectMapper mapper = new ObjectMapper();
         String jsonStr = mapper.writeValueAsString(proguard);
         proguard.setJsonSchema(jsonStr);
+        // proguard.setJsonData(mapper.valueToTree(proguard.getAbstractList()));
         Proguard proguard1 = proguardService.saveAndFlush(proguard);
         return proguard1;
     }

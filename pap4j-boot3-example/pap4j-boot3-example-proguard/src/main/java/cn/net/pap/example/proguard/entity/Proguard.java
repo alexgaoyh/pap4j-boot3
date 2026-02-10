@@ -4,6 +4,7 @@ import cn.net.pap.example.proguard.convert.JsonConverter;
 import cn.net.pap.example.proguard.convert.JsonTypeConvert;
 import cn.net.pap.example.proguard.listener.TransactionCompletionListener;
 import com.fasterxml.jackson.annotation.JsonRawValue;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.*;
@@ -66,10 +67,9 @@ public class Proguard {
     /**
      * support json object
      */
-    @Column(name = "json_data", columnDefinition = "CLOB")
+    @Column(name = "json_data", columnDefinition = "json")
     @Convert(converter = JsonConverter.class)
-    @JsonRawValue
-    private Object jsonData;
+    private JsonNode jsonData;
 
     @org.hibernate.annotations.TenantId
     private String tenantId;
@@ -138,11 +138,11 @@ public class Proguard {
         this.jsonSchema = jsonSchema;
     }
 
-    public Object getJsonData() {
+    public JsonNode getJsonData() {
         return jsonData;
     }
 
-    public void setJsonData(Object jsonData) {
+    public void setJsonData(JsonNode jsonData) {
         this.jsonData = jsonData;
     }
 
