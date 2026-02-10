@@ -96,7 +96,7 @@ public class StaxXmlUtil {
         return result;
     }
 
-    private static String escapeXml(String text) {
+    public static String escapeXml(String text) {
         if (text == null || text.isEmpty()) {
             return text;
         }

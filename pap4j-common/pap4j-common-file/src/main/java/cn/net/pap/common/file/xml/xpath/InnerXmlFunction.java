@@ -1,5 +1,6 @@
 package cn.net.pap.common.file.xml.xpath;
 
+import cn.net.pap.common.file.xml.StaxXmlUtil;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
@@ -77,7 +78,7 @@ public class InnerXmlFunction implements XPathFunction {
                         sb.append(" ")
                                 .append(attr.getNodeName())
                                 .append("=\"")
-                                .append(escapeXml(attr.getNodeValue()))
+                                .append(StaxXmlUtil.escapeXml(attr.getNodeValue()))
                                 .append("\"");
                     }
                 }
@@ -88,11 +89,6 @@ public class InnerXmlFunction implements XPathFunction {
                 sb.append(writer.toString());
             }
         }
-    }
-
-    private String escapeXml(String text) {
-        return text.replace("&", "&amp;").replace("<", "&lt;")
-                .replace(">", "&gt;").replace("\"", "&quot;");
     }
 
     private void appendInnerXml2(Node node, Transformer transformer, StringBuilder sb) throws Exception {
