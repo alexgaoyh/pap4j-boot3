@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.*;
 
+import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
@@ -51,6 +53,32 @@ public class ProguardController {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @RequestMapping("/first")
+    public String first(HttpServletResponse resp) throws IOException {
+        Cookie userCookie = new Cookie("username", "alexgaoyh");
+        userCookie.setMaxAge(24 * 60 * 60); // 1天
+        userCookie.setPath("/");
+        Cookie tokenCookie = new Cookie("token", "pap.net.cn");
+        tokenCookie.setHttpOnly(true);
+        tokenCookie.setMaxAge(10); // 30分钟
+        tokenCookie.setPath("/");
+        resp.addCookie(userCookie);
+        resp.addCookie(tokenCookie);
+        return "{\"code\" : \"success\"}";
+    }
+
+    @RequestMapping("/second")
+    public String second(HttpServletRequest request) {
+        String resultStr = "";
+        Cookie[] cookies = request.getCookies();
+        if(cookies != null) {
+            for(Cookie cookie : cookies) {
+                resultStr = resultStr + cookie.getName().toString() + " : " + cookie.getValue().toString() + " ; ";
+            }
+        }
+        return "{\"code\" : \""+resultStr+"\"}";
+    }
 
     @GetMapping(value = "/demoProperties", produces = "application/json;charset=UTF-8")
     public DemoProperties demoProperties() {
