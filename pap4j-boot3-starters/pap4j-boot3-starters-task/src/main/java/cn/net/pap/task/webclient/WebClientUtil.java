@@ -1,6 +1,9 @@
 package cn.net.pap.task.webclient;
 
 import io.netty.channel.ChannelOption;
+import io.netty.handler.codec.http.cookie.ClientCookieDecoder;
+import io.netty.handler.codec.http.cookie.ClientCookieEncoder;
+import io.netty.handler.codec.http.cookie.Cookie;
 import io.netty.handler.timeout.ReadTimeoutException;
 import io.netty.handler.timeout.ReadTimeoutHandler;
 import io.netty.handler.timeout.WriteTimeoutHandler;
@@ -22,10 +25,13 @@ import reactor.netty.http.client.HttpClient;
 import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.tcp.TcpClient;
 
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Base64;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class WebClientUtil {
 
@@ -33,6 +39,9 @@ public class WebClientUtil {
     private static final HttpClient httpClient;
 
     static {
+        // 完整 Cookie 存储：域名 -> path -> cookie name -> Cookie。此处是全局的，后续可以尝试进行调整，比如上 redis
+        Map<String, Map<String, Map<String, Cookie>>> nettyCookieStore = new ConcurrentHashMap<>();
+
         // 创建连接池 ConnectionProvider
         ConnectionProvider provider = ConnectionProvider.builder("pap4j-boot3-task-webclient")
                 .maxConnections(2000)                        // 最大连接数（根据你业务调）
@@ -52,7 +61,31 @@ public class WebClientUtil {
 
         // 构建 HttpClient 并保留你的 responseTimeout
         httpClient = HttpClient.from(tcpClient)
-                .responseTimeout(Duration.ofMillis(10000));
+                .responseTimeout(Duration.ofMillis(10000))
+                .cookieCodec(ClientCookieEncoder.STRICT, ClientCookieDecoder.STRICT)
+                // 请求前注入 cookie
+                .doOnRequest((request, connection) -> {
+                    InetSocketAddress remoteAddress = (InetSocketAddress) connection.channel().remoteAddress();
+                    Map<String, Map<String, Cookie>> domainMap = nettyCookieStore.get(remoteAddress.toString());
+                    if (domainMap != null) {
+                        domainMap.forEach((cookiePath, cookieMap) -> {
+                            cookieMap.values().forEach(request::addCookie);
+                        });
+                    }
+                })
+                // 响应后存储 Set-Cookie
+                .doOnResponse((response, connection) -> {
+                    InetSocketAddress remoteAddress = (InetSocketAddress) connection.channel().remoteAddress();
+                    response.cookies().values().forEach(cookies -> {
+                        cookies.forEach(cookie -> {
+                            String cookiePath = cookie.path() != null ? cookie.path() : "/";
+                            nettyCookieStore
+                                    .computeIfAbsent(remoteAddress.toString(), k -> new ConcurrentHashMap<>())
+                                    .computeIfAbsent(cookiePath, k -> new ConcurrentHashMap<>())
+                                    .put(cookie.name(), cookie);
+                        });
+                    });
+                });
 
         // 初始化 WebClient
         webClient = WebClient.builder()

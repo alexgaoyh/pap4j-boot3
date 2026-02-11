@@ -255,7 +255,7 @@ public class WebClientTest {
      *         tokenCookie.setPath("/");
      *         resp.addCookie(userCookie);
      *         resp.addCookie(tokenCookie);
-     *         return "success";
+     *         return "{\"code\" : \"success\"}";
      *     }
      *
      *     @GetMapping("/second")
@@ -267,7 +267,7 @@ public class WebClientTest {
      *                 resultStr = resultStr + cookie.getName().toString() + " : " + cookie.getValue().toString() + " ; ";
      *             }
      *         }
-     *         return resultStr;
+     *         return "{\"code\" : \""+resultStr+"\"}";
      *     }
      * @throws Exception
      */
@@ -290,6 +290,25 @@ public class WebClientTest {
         HttpRequest request2 = HttpRequest.newBuilder().uri(URI.create("http://localhost:30000/second")).GET().build();
         HttpResponse<String> response2 = client.send(request2, HttpResponse.BodyHandlers.ofString());
         System.out.println("Response 2: " + response2.body());
+    }
+
+    /**
+     * 同上，验证对于同一个域名下的多次请求，cookie的连续性。区别是当前单元测试使用了 WebClient
+     * @throws Exception
+     */
+    @Test
+    public void httpClientCookieTest2() throws Exception {
+        Mono<WebClientBodyDTO> webClientBodyDTOMono1 = WebClientUtil.postMono("http://localhost:30000/first", "{}", null).flatMap(response -> handleResponse(response))
+                .onErrorResume(e -> {
+                    return Mono.empty();
+                });
+        System.out.println("Response 1: " + webClientBodyDTOMono1.block());
+        Mono<WebClientBodyDTO> webClientBodyDTOMono2 = WebClientUtil.postMono("http://localhost:30000/second", "{}", null).flatMap(response -> handleResponse(response))
+                .onErrorResume(e -> {
+                    e.printStackTrace();
+                    return Mono.empty();
+                });
+        System.out.println("Response 2: " + webClientBodyDTOMono2.block());
     }
 
     /**
