@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.3.xsd">
+
+    <!-- GraalVM internal shaded ICU4J dependency -->
+    <!-- todo Need to determine if there was a misjudgment -->
+    <suppress>
+        <notes>
+            GraalVM internal shaded ICU4J dependency.
+            False positive due to CPE string matching.
+            Not directly exposed to application layer.
+        </notes>
+        <packageUrl regex="true">pkg:maven/org\.graalvm\.shadowed/icu4j@.*</packageUrl>
+        <cve>CVE-2016-6293</cve>
+        <cve>CVE-2016-7415</cve>
+        <cve>CVE-2017-17484</cve>
+        <cve>CVE-2014-9911</cve>
+        <cve>CVE-2014-9654</cve>
+        <cve>CVE-2017-14952</cve>
+        <cve>CVE-2015-5922</cve>
+    </suppress>
+
+    <!-- Neo4j bolt connection 3.0.0 false positive -->
+    <!-- todo need upgrade -->
+    <suppress>
+        <notes>
+            Neo4j bolt connection 3.0.0 dependency.
+            False positive for CVE-2021-34371 in our usage scenario.
+        </notes>
+        <packageUrl regex="true">pkg:maven/org\.neo4j\.bolt/neo4j-bolt-connection(-.*)?@.*</packageUrl>
+        <cve>CVE-2021-34371</cve>
+    </suppress>
+
+</suppressions>

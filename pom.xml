@@ -273,6 +273,11 @@
                     <ossIndexServerId>ossindex</ossIndexServerId>
                     <!-- setting CVSS ：9.0+ fail -->
                     <!--<failBuildOnCVSS>9.0</failBuildOnCVSS>-->
+                    <suppressionFiles>
+                        <suppressionFile>
+                            ${maven.multiModuleProjectDirectory}/dependency-check-suppressions.xml
+                        </suppressionFile>
+                    </suppressionFiles>
                 </configuration>
                 <executions>
                     <execution>
