@@ -11,7 +11,10 @@ import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ClientResponse;
 import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
 import java.net.CookieHandler;
 import java.net.CookieManager;
 import java.net.CookiePolicy;
@@ -22,11 +25,13 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -287,5 +292,82 @@ public class WebClientTest {
         System.out.println("Response 2: " + response2.body());
     }
 
+    /**
+     * 高频异步接口调用单元测试
+     *
+     * 说明：
+     * 1. 使用 Reactor 的 Flux 实现异步、高频调用。
+     * 2. 每个请求使用 WebClientUtil.postMono 封装的静态方法。
+     * 3. 并行数由 parallelism 控制，防止线程过载。
+     * 4. delayElements(intervalMillis) 控制每个请求的发送间隔，实现持续高频请求。
+     * 5. 成功与失败请求分别计数，并将每个请求的返回结果存入线程安全列表 responseList。
+     * 6. blockLast() 阻塞等待所有请求完成，用于单元测试环境同步输出统计结果。
+     */
+    @Test
+    public void highFrequencyAsyncTest() {
+        String url = "http://127.0.0.1:30000/longtime";
+        int requestCount = 500;       // 总请求数
+        int parallelism = 20;         // 最大并发数
+        long intervalMillis = 50;     // 每个请求间隔 50ms
+
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
+
+        List<WebClientBodyDTO> responseList = new CopyOnWriteArrayList<>();
+
+        long startTime = System.currentTimeMillis();
+
+        // 生成动态参数的 Flux
+        Flux.range(0, requestCount)
+                .delayElements(Duration.ofMillis(intervalMillis)) // 高频请求间隔
+                .parallel(parallelism)
+                .runOn(Schedulers.boundedElastic())
+                .flatMap(i -> {
+                    String requestBody = "{\"param\":\"value" + i + "\"}"; // 动态请求体
+                    return WebClientUtil.postMono(url, requestBody, null)
+                            .flatMap(response -> handleResponse(response))
+                            .onErrorResume(e -> {
+                                errorCount.incrementAndGet();
+                                WebClientBodyDTO dto = new WebClientBodyDTO(null, e.getMessage(), null);
+                                responseList.add(dto);
+                                return Mono.empty();
+                            });
+                })
+                .sequential()
+                .doOnNext(dto -> {
+                    responseList.add(dto);
+                    if (!dto.getCode().isError()) {
+                        successCount.incrementAndGet();
+                    } else {
+                        errorCount.incrementAndGet();
+                    }
+                })
+                .blockLast(); // 阻塞等待所有请求完成
+
+        long endTime = System.currentTimeMillis();
+
+        System.out.println("===================================");
+        System.out.println("总请求数: " + requestCount);
+        System.out.println("成功: " + successCount.get());
+        System.out.println("失败: " + errorCount.get());
+        System.out.println("耗时(ms): " + (endTime - startTime));
+        System.out.println("===================================");
+
+        for (int i = 0; i < responseList.size(); i++) {
+            WebClientBodyDTO dto = responseList.get(i);
+            System.out.println("请求 #" + (i + 1) + " -> Code: " + dto.getCode() + ", Msg: " + dto.getMsg());
+        }
+    }
+
+    private Mono<WebClientBodyDTO> handleResponse(ClientResponse response) {
+        return response.bodyToMono(String.class)
+                .defaultIfEmpty("")
+                .map(body -> new WebClientBodyDTO(
+                        org.springframework.http.HttpStatus.valueOf(response.statusCode().value()), body, null
+                ))
+                .onErrorResume(e -> Mono.just(new WebClientBodyDTO(
+                        org.springframework.http.HttpStatus.valueOf(response.statusCode().value()), e.getMessage(), null
+                )));
+    }
 
 }
