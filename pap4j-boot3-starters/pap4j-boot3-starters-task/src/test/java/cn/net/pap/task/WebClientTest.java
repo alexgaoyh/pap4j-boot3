@@ -359,6 +359,55 @@ public class WebClientTest {
         }
     }
 
+    @Test
+    public void highFrequencyLoopTest() throws Exception {
+        String url = "http://127.0.0.1:30000/longtime";
+        int requestCount = 500; // 请求次数
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
+        List<WebClientBodyDTO> responseList = new CopyOnWriteArrayList<>();
+
+        long startTime = System.currentTimeMillis();
+
+        for (int i = 0; i < requestCount; i++) {
+            String requestBody = "{\"param\":\"value" + i + "\"}";
+
+            // 异步调用
+            WebClientUtil.postMono(url, requestBody, null)
+                    .flatMap(response -> handleResponse(response))
+                    .doOnNext(dto -> {
+                        responseList.add(dto);
+                        if (!dto.getCode().isError()) {
+                            successCount.incrementAndGet();
+                        } else {
+                            errorCount.incrementAndGet();
+                        }
+                    })
+                    .onErrorResume(e -> {
+                        errorCount.incrementAndGet();
+                        responseList.add(new WebClientBodyDTO(null, e.getMessage(), null));
+                        return Mono.empty();
+                    })
+                    .block(); // 如果希望同步等待每次请求完成，可以保留 block()
+        }
+
+        long endTime = System.currentTimeMillis();
+
+        System.out.println("===================================");
+        System.out.println("总请求数: " + requestCount);
+        System.out.println("成功: " + successCount.get());
+        System.out.println("失败: " + errorCount.get());
+        System.out.println("耗时(ms): " + (endTime - startTime));
+        System.out.println("===================================");
+
+        // 输出请求结果
+        for (int i = 0; i < responseList.size(); i++) {
+            WebClientBodyDTO dto = responseList.get(i);
+            System.out.println("请求 #" + (i + 1) + " -> Code: " + dto.getCode() + ", Msg: " + dto.getMsg());
+        }
+    }
+
+
     private Mono<WebClientBodyDTO> handleResponse(ClientResponse response) {
         return response.bodyToMono(String.class)
                 .defaultIfEmpty("")
