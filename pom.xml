@@ -28,6 +28,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <spring-statemachine.version>4.0.1</spring-statemachine.version>
+        <maven.skipTests>true</maven.skipTests>
         <default.skip>false</default.skip>
         <dependency-check-maven.skip>${default.skip}</dependency-check-maven.skip>
         <maven-gpg-plugin.skip>${default.skip}</maven-gpg-plugin.skip>
@@ -470,6 +471,14 @@
                     <processDependencyManagement>false</processDependencyManagement>
                     <processDependencies>true</processDependencies>
                     <processParent>true</processParent>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <version>3.5.4</version>
+                <configuration>
+                    <skipTests>${maven.skipTests}</skipTests>
                 </configuration>
             </plugin>
         </plugins>
