@@ -1,6 +1,7 @@
 package cn.net.pap.common.file;
 
 import cn.net.pap.common.file.xml.XmlParseUtil;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Node;
@@ -10,6 +11,8 @@ import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class XmlParseUtilTest {
 
@@ -74,5 +77,34 @@ public class XmlParseUtilTest {
         }
 
     }
+
+    @Test
+    @DisplayName("根据层级提取xml的结构并返回,获取XML指定层级的节点，保留完整根节点结构")
+    public void getNodesByLevelTest() throws Exception {
+        String xml = """
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <student>
+                      <props>
+                        <prop>一<class id="001">章</class>内&gt;容<anchor number="1"></anchor></prop>
+                        <prop>二<glass id="002">章</glass>内容<anchor number="2"></anchor></prop>
+                        <prop>三章内<asdfg id="003">容</asdfg><anchor number="3"></anchor></prop>
+                      </props>
+                      <propExts>
+                        <propExt>1;2;3;4</propExt>
+                        <propExt>q;w;e;r</propExt>
+                        <propExt>a;s;d;f</propExt>
+                      </propExts>
+                    </student>
+                """;
+        String nodesByLevel1 = XmlParseUtil.getXmlByLevel(xml.trim(), 1);
+        String nodesByLevel2 = XmlParseUtil.getXmlByLevel(xml.trim(), 2);
+        String nodesByLevel3 = XmlParseUtil.getXmlByLevel(xml.trim(), 3);
+        String nodesByLevel4 = XmlParseUtil.getXmlByLevel(xml.trim(), 4);
+        System.out.println("");
+        assertTrue(nodesByLevel1.equals("<student/>"));
+        assertTrue(nodesByLevel2.equals("<student><props/><propExts/></student>"));
+        assertTrue(nodesByLevel3.equals("<student><props><prop/><prop/><prop/></props><propExts><propExt/><propExt/><propExt/></propExts></student>"));
+    }
+
 
 }

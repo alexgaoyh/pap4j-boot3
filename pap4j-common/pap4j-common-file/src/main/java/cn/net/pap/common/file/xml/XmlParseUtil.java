@@ -10,6 +10,7 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.xpath.*;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.StringWriter;
@@ -65,6 +66,74 @@ public final class XmlParseUtil {
         XPath xpath = XPATH_FACTORY.newXPath();
         NodeList rootNodes = (NodeList) xpath.evaluate(root, document, XPathConstants.NODESET);
         return rootNodes;
+    }
+
+    /**
+     * 获取XML指定层级的节点，保留完整根节点结构
+     * @param xml XML字符串
+     * @param level 层级，从1开始
+     * @return 剪裁后的XML字符串
+     * @throws Exception
+     */
+    public static String getXmlByLevel(String xml, int level) throws Exception {
+        if (level < 1) {
+            throw new IllegalArgumentException("层级必须大于等于1");
+        }
+
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setNamespaceAware(true);
+        factory.setCoalescing(true);
+        factory.setIgnoringElementContentWhitespace(true);
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document document = builder.parse(new ByteArrayInputStream(xml.getBytes()));
+
+        // 复制根节点并剪裁到目标层级
+        Node rootCopy = copyNodeToLevel(document.getDocumentElement(), 1, level, document);
+
+        return nodeToString(rootCopy);
+    }
+
+    // 复制节点并剪裁到目标层级
+    private static Node copyNodeToLevel(Node node, int currentLevel, int targetLevel, Document doc) {
+        Element copy = doc.createElement(node.getNodeName());
+
+        // 复制属性
+        NamedNodeMap attrs = node.getAttributes();
+        if (attrs != null) {
+            for (int i = 0; i < attrs.getLength(); i++) {
+                Attr attr = (Attr) attrs.item(i);
+                copy.setAttribute(attrs.item(i).getNodeName(), attrs.item(i).getNodeValue());
+            }
+        }
+
+        NodeList children = node.getChildNodes();
+        if (currentLevel < targetLevel) {
+            // 遍历子节点
+            for (int i = 0; i < children.getLength(); i++) {
+                Node child = children.item(i);
+                if (child.getNodeType() == Node.ELEMENT_NODE) {
+                    if (currentLevel + 1 == targetLevel) {
+                        // 到目标层级，子节点只创建一次，不递归
+                        Element childCopy = doc.createElement(child.getNodeName());
+                        // 复制属性
+                        NamedNodeMap childAttrs = child.getAttributes();
+                        if (childAttrs != null) {
+                            for (int j = 0; j < childAttrs.getLength(); j++) {
+                                Attr attr = (Attr) childAttrs.item(j);
+                                childCopy.setAttribute(attr.getName(), attr.getValue());
+                            }
+                        }
+                        // 添加空文本节点避免自闭合
+                        childCopy.appendChild(doc.createTextNode(""));
+                        copy.appendChild(childCopy);
+                    } else {
+                        // 还没到目标层级，继续递归
+                        copy.appendChild(copyNodeToLevel(child, currentLevel + 1, targetLevel, doc));
+                    }
+                }
+            }
+        }
+        return copy;
     }
 
     /**
