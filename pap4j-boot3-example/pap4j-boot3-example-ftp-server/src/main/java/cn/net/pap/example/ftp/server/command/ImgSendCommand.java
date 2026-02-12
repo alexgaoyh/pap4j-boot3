@@ -284,6 +284,7 @@ public class ImgSendCommand extends AbstractCommand {
         }
 
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        // 注意上面的 BufferedImage image 是不包含图像类型信息的，这里的 formatName 可以设置为其他类型，便于进行图像预览。
         ImageIO.write(image, formatName, baos);
         // 直接返回原始二进制流
         ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(baos.toByteArray());
@@ -304,6 +305,13 @@ public class ImgSendCommand extends AbstractCommand {
         return inputFileStr.substring(idx + 1).toLowerCase();
     }
 
+    /**
+     * 经过压测，子采样的执行效率是比下面的Thumbnails库执行效率更高。建议优先使用当前方法。
+     * 压测代码详见： pap4j-common-md5-jmh cn.net.pap.common.md5.jmh.Md5FastBenchmark
+     * @param inputFileStr
+     * @param targetWidth
+     * @return
+     */
     public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {
         File file = new File(inputFileStr);
         if (file == null || !file.exists()) {
