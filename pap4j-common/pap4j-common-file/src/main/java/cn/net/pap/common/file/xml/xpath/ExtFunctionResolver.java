@@ -22,6 +22,10 @@ public class ExtFunctionResolver implements XPathFunctionResolver {
             // 使用场景：在处理 XML 文档时，需要获取某个节点的内部 XML 内容而不是整个节点。
             return new InnerXmlFunction();
         }
+        if (EXT_NS.equals(name.getNamespaceURI()) && "position-in-parent".equals(name.getLocalPart()) && arity == 1) {
+            // position-in-parent 函数：获取节点在其父节点中的位置
+            return new PositionInParentFunction();
+        }
         return null;
     }
 

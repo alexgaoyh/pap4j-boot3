@@ -11,6 +11,7 @@ import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
+import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
 import java.io.ByteArrayInputStream;
 import java.io.File;
@@ -203,6 +204,16 @@ public class StaxXmlUtilTest {
             assertTrue(propInnerXml.contains("</anchor>"));
         }
 
+        // xpath 语法， 获取符合条件的节点
+        XPathExpression propAnchorXpath = xpath.compile("/student/props/prop[anchor/@number='1']");
+        NodeList nodes = (NodeList) propAnchorXpath.evaluate(doc, XPathConstants.NODESET);
+        for (int i = 0; i < nodes.getLength(); i++) {
+            assertTrue(((String) xpath.evaluate("ext:inner-xml(.)", nodes.item(i), XPathConstants.STRING)).contains("</anchor>"));
+        }
+
+        // xpath 自定义函数，查询到的节点在父节点下的索引位置(从1开始)
+        String positions = (String) xpath.evaluate("ext:position-in-parent(/student/props/prop[anchor/@number='1'])", doc, XPathConstants.STRING);
+        assertTrue(positions.contains("1"));
 
     }
 
