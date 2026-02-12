@@ -266,6 +266,8 @@
                 <artifactId>dependency-check-maven</artifactId>
                 <version>12.1.1</version>
                 <configuration>
+                    <!-- retireJsUrl 指向本地文件，插件会直接使用你本地的 jsrepository.json 作为 JS 漏洞数据库。它不会再访问 Retire.js 官方 URL，也就不会更新漏洞信息。 -->
+                    <!-- https://raw.githubusercontent.com/RetireJS/retire.js/master/repository/jsrepository.json -->
                     <retireJsUrl>file:///D:/jsrepository.json</retireJsUrl>
                     <autoUpdate>false</autoUpdate>
                     <skip>${dependency-check-maven.skip}</skip>
