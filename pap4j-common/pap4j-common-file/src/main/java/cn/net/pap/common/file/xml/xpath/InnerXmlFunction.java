@@ -3,6 +3,7 @@ package cn.net.pap.common.file.xml.xpath;
 import cn.net.pap.common.file.xml.StaxXmlUtil;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
+import org.w3c.dom.Text;
 
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
@@ -97,6 +98,53 @@ public class InnerXmlFunction implements XPathFunction {
             StringWriter writer = new StringWriter();
             transformer.transform(new DOMSource(children.item(i)), new StreamResult(writer));
             sb.append(writer.toString());
+        }
+    }
+
+    /**
+     * 如果传入数据是 <anchor number="1"></anchor>， 那么原封不动的输出，不会改为 <anchor number="1" />
+     * 如果传入数据是 <anchor number="1" />， 那么原封不动的输出，不会改为 <anchor number="1"></anchor>
+     * @param node
+     * @param transformer
+     * @param sb
+     * @throws Exception
+     */
+    private void appendInnerXml3(Node node, Transformer transformer, StringBuilder sb) throws Exception {
+        NodeList children = node.getChildNodes();
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            // 如果是元素节点且没有子节点
+            if (child.getNodeType() == Node.ELEMENT_NODE && !child.hasChildNodes()) {
+                sb.append("<").append(child.getNodeName());
+                // 添加属性
+                if (child.hasAttributes()) {
+                    for (int j = 0; j < child.getAttributes().getLength(); j++) {
+                        Node attr = child.getAttributes().item(j);
+                        sb.append(" ")
+                                .append(attr.getNodeName())
+                                .append("=\"")
+                                .append(StaxXmlUtil.escapeXml(attr.getNodeValue()))
+                                .append("\"");
+                    }
+                }
+                // 使用DOM Level 3的isElementContentWhitespace来判断
+                // 如果下一个节点是空的文本节点，说明可能是自闭合格式
+                boolean isSelfClosed = true;
+                Node nextSibling = child.getNextSibling();
+                if (nextSibling != null && nextSibling.getNodeType() == Node.TEXT_NODE && !((Text) nextSibling).isElementContentWhitespace()) {
+                    // 如果有非空白文本节点，说明原始格式可能是分开标签
+                    isSelfClosed = false;
+                }
+                if (isSelfClosed) {
+                    sb.append(" />");
+                } else {
+                    sb.append("></").append(child.getNodeName()).append(">");
+                }
+            } else {
+                StringWriter writer = new StringWriter();
+                transformer.transform(new DOMSource(child), new StreamResult(writer));
+                sb.append(writer.toString());
+            }
         }
     }
 
