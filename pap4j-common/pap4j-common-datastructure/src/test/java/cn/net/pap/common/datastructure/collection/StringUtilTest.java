@@ -97,4 +97,36 @@ public class StringUtilTest {
         }
     }
 
+    record Segment(String fileName, int pageNum, String content){
+
+    };
+
+
+    @Test
+    public void anchorRegexSplitTest() {
+        String content = "<p data-sign=\"1\">一</p><p>\uD85D\uDC64</p><p>\uD83D\uDC68\u200D\uD83D\uDC68\u200D\uD83D\uDC66\u200D\uD83D\uDC66</p>...<anchor fileName=\"0030\" pageNum=\"30\" /><p data-sign=\"a\">请</p><p>安</p><p>找</p>...<anchor fileName=\"0031\" pageNum=\"31\" />";
+        Pattern anchorPattern = Pattern.compile(
+                "<anchor\\s+" +
+                "(?=[^>]*fileName=\"(.*?)\")" +
+                "(?=[^>]*pageNum=\"(\\d+)\")" +
+                "[^>]*/>"
+        );
+        java.util.regex.Matcher matcher = anchorPattern.matcher(content);
+
+        List<Segment> segments = new ArrayList<>();
+        int lastIndex = 0;
+
+        while (matcher.find()) {
+            String fileName = matcher.group(1);
+            int pageNum = Integer.parseInt(matcher.group(2));
+            String segmentContent = content.substring(lastIndex, matcher.start()).trim();
+            segments.add(new Segment(fileName, pageNum, segmentContent));
+            lastIndex = matcher.end();
+        }
+
+        for (Segment seg : segments) {
+            System.out.println(seg);
+        }
+    }
+
 }
