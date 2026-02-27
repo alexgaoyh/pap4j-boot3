@@ -2,7 +2,9 @@ package cn.net.pap.common.file.xml;
 
 import cn.net.pap.common.file.xml.record.Segment;
 import cn.net.pap.common.file.xml.record.Tag;
+import org.apache.commons.io.input.BOMInputStream;
 import org.w3c.dom.*;
+import org.xml.sax.InputSource;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -12,11 +14,13 @@ import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.xpath.*;
+import java.io.BufferedInputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.StringReader;
 import java.io.StringWriter;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -41,12 +45,11 @@ public final class XmlParseUtil {
      */
     public static Document getDocumentByPath(String filePath) throws IOException {
         try {
-            String xmlContent = Files.readString(Path.of(filePath), StandardCharsets.UTF_8);
-            // 处理 BOM 头
-            xmlContent = xmlContent.startsWith("\uFEFF") ? xmlContent.substring(1) : xmlContent;
-
-            var builder = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
-            return builder.parse(new java.io.ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8)));
+            // 优化对照结果详见： W3CDocumentXmlParseMemoryTest.java
+            DocumentBuilder builder = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
+            try (InputStream is = new BufferedInputStream(Files.newInputStream(Path.of(filePath))); BOMInputStream bomIn = BOMInputStream.builder().setInputStream(is).get()) {
+                return builder.parse(bomIn);
+            }
         } catch (Exception e) {
             throw new IOException("Failed to parse XML document", e);
         }
@@ -54,11 +57,16 @@ public final class XmlParseUtil {
 
     public static Document getDocumentByContent(String xmlContent) throws Exception {
         DocumentBuilder builder = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
-        return builder.parse(new java.io.ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8)));
+        // 核心优化：使用 StringReader 和 InputSource 替代 getBytes()。 优化对照结果详见： W3CDocumentXmlParseMemoryTest.java
+        try (StringReader reader = new StringReader(xmlContent)) {
+            InputSource inputSource = new InputSource(reader);
+            return builder.parse(inputSource);
+        }
     }
 
     /**
      * w3c dom 节点解析，根据路径解析
+     *
      * @param document
      * @param root
      * @return
@@ -72,7 +80,8 @@ public final class XmlParseUtil {
 
     /**
      * 获取XML指定层级的节点，保留完整根节点结构
-     * @param xml XML字符串
+     *
+     * @param xml   XML字符串
      * @param level 层级，从1开始
      * @return 剪裁后的XML字符串
      * @throws Exception
@@ -126,7 +135,7 @@ public final class XmlParseUtil {
                             }
                         }
                         // 添加空文本节点避免自闭合
-                        if(!allowSelfClosing) {
+                        if (!allowSelfClosing) {
                             childCopy.appendChild(doc.createTextNode(""));
                         }
                         copy.appendChild(childCopy);
@@ -180,6 +189,7 @@ public final class XmlParseUtil {
 
     /**
      * 锚点切分，
+     *
      * @param xmlString
      * @return
      */
@@ -520,10 +530,11 @@ public final class XmlParseUtil {
 
     /**
      * 使用XPath修改XML文件中的节点属性或文本内容
+     *
      * @param filePath XML文件的绝对路径
-     * @param updates 要修改的XPath表达式和值的映射
-     *                key: XPath表达式 (如: "//server/@port", "//title/text()")
-     *                value: 新的值
+     * @param updates  要修改的XPath表达式和值的映射
+     *                 key: XPath表达式 (如: "//server/@port", "//title/text()")
+     *                 value: 新的值
      * @throws Exception 如果操作失败
      */
     public static void updateXmlByXPath(String filePath, Map<String, String> updates) throws Exception {
@@ -592,10 +603,14 @@ public final class XmlParseUtil {
         }
     }
 
-    /** 匹配普通 XML 标签 */
+    /**
+     * 匹配普通 XML 标签
+     */
     private static final Pattern TAG_PATTERN = Pattern.compile("<(/?)([a-zA-Z0-9:_-]+)(\\s[^<>]*?)?>");
 
-    /** 匹配 anchor 标签（自闭合） */
+    /**
+     * 匹配 anchor 标签（自闭合）
+     */
     private static final Pattern ANCHOR_PATTERN = Pattern.compile("<anchor([^>]*)/>");
 
     /**
