@@ -52,28 +52,30 @@ public class XmlParseUtilTest {
         String secondNodeName = "parent";
         String desktop = System.getProperty("user.home") + File.separator + "Desktop";
 
-        Document documentByPath = XmlParseUtil.getDocumentByPath(desktop + File.separator + "input.xml");
+        if(new File(desktop + File.separator + "input.xml").exists()) {
+            Document documentByPath = XmlParseUtil.getDocumentByPath(desktop + File.separator + "input.xml");
 
-        NodeList firstResultList = XmlParseUtil.parseChild(documentByPath, "/root/" + firstNodeName);
+            NodeList firstResultList = XmlParseUtil.parseChild(documentByPath, "/root/" + firstNodeName);
 
-        for (int i = 0; i < firstResultList.getLength(); i++) {
-            NodeList secondResultList = XmlParseUtil.parseChild(documentByPath, "/root/" + firstNodeName + "[" + i + "]/" + secondNodeName);
-            for (int j = 0; j < secondResultList.getLength(); j++) {
-                Node secondNode = secondResultList.item(j);
-                StringBuilder sb = new StringBuilder();
-                for(int k = 0; k < secondNode.getChildNodes().getLength(); k++) {
-                    Node thirdNode = secondNode.getChildNodes().item(k);
-                    if (thirdNode.getNodeType() == Node.ELEMENT_NODE) {
-                        sb.append(XmlParseUtil.getInnerContent(thirdNode) + "\n");
+            for (int i = 0; i < firstResultList.getLength(); i++) {
+                NodeList secondResultList = XmlParseUtil.parseChild(documentByPath, "/root/" + firstNodeName + "[" + i + "]/" + secondNodeName);
+                for (int j = 0; j < secondResultList.getLength(); j++) {
+                    Node secondNode = secondResultList.item(j);
+                    StringBuilder sb = new StringBuilder();
+                    for(int k = 0; k < secondNode.getChildNodes().getLength(); k++) {
+                        Node thirdNode = secondNode.getChildNodes().item(k);
+                        if (thirdNode.getNodeType() == Node.ELEMENT_NODE) {
+                            sb.append(XmlParseUtil.getInnerContent(thirdNode) + "\n");
+                        }
                     }
-                }
-                Map<String, String> anchorMap = XmlParseUtil.splitByAnchor(sb.toString());
-                for (Map.Entry<String, String> entry : anchorMap.entrySet()) {
-                    String key = entry.getKey();
-                    String value = entry.getValue();
-                    System.out.println(key + "=" + value);
-                }
+                    Map<String, String> anchorMap = XmlParseUtil.splitByAnchor(sb.toString());
+                    for (Map.Entry<String, String> entry : anchorMap.entrySet()) {
+                        String key = entry.getKey();
+                        String value = entry.getValue();
+                        System.out.println(key + "=" + value);
+                    }
 
+                }
             }
         }
 
@@ -97,10 +99,10 @@ public class XmlParseUtilTest {
                       </propExts>
                     </student>
                 """;
-        String nodesByLevel1 = XmlParseUtil.getXmlByLevel(xml.trim(), 1);
-        String nodesByLevel2 = XmlParseUtil.getXmlByLevel(xml.trim(), 2);
-        String nodesByLevel3 = XmlParseUtil.getXmlByLevel(xml.trim(), 3);
-        String nodesByLevel4 = XmlParseUtil.getXmlByLevel(xml.trim(), 4);
+        String nodesByLevel1 = XmlParseUtil.getXmlByLevel(xml.trim(), 1, true);
+        String nodesByLevel2 = XmlParseUtil.getXmlByLevel(xml.trim(), 2, true);
+        String nodesByLevel3 = XmlParseUtil.getXmlByLevel(xml.trim(), 3, true);
+        String nodesByLevel4 = XmlParseUtil.getXmlByLevel(xml.trim(), 4, true);
         System.out.println("");
         assertTrue(nodesByLevel1.equals("<student/>"));
         assertTrue(nodesByLevel2.equals("<student><props/><propExts/></student>"));

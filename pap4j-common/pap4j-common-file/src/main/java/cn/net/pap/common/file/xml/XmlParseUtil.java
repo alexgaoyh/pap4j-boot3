@@ -77,7 +77,7 @@ public final class XmlParseUtil {
      * @return 剪裁后的XML字符串
      * @throws Exception
      */
-    public static String getXmlByLevel(String xml, int level) throws Exception {
+    public static String getXmlByLevel(String xml, int level, Boolean allowSelfClosing) throws Exception {
         if (level < 1) {
             throw new IllegalArgumentException("层级必须大于等于1");
         }
@@ -90,13 +90,13 @@ public final class XmlParseUtil {
         Document document = builder.parse(new ByteArrayInputStream(xml.getBytes()));
 
         // 复制根节点并剪裁到目标层级
-        Node rootCopy = copyNodeToLevel(document.getDocumentElement(), 1, level, document);
+        Node rootCopy = copyNodeToLevel(document.getDocumentElement(), 1, level, document, allowSelfClosing);
 
         return nodeToString(rootCopy);
     }
 
     // 复制节点并剪裁到目标层级
-    private static Node copyNodeToLevel(Node node, int currentLevel, int targetLevel, Document doc) {
+    private static Node copyNodeToLevel(Node node, int currentLevel, int targetLevel, Document doc, Boolean allowSelfClosing) {
         Element copy = doc.createElement(node.getNodeName());
 
         // 复制属性
@@ -126,11 +126,13 @@ public final class XmlParseUtil {
                             }
                         }
                         // 添加空文本节点避免自闭合
-                        childCopy.appendChild(doc.createTextNode(""));
+                        if(!allowSelfClosing) {
+                            childCopy.appendChild(doc.createTextNode(""));
+                        }
                         copy.appendChild(childCopy);
                     } else {
                         // 还没到目标层级，继续递归
-                        copy.appendChild(copyNodeToLevel(child, currentLevel + 1, targetLevel, doc));
+                        copy.appendChild(copyNodeToLevel(child, currentLevel + 1, targetLevel, doc, allowSelfClosing));
                     }
                 }
             }
