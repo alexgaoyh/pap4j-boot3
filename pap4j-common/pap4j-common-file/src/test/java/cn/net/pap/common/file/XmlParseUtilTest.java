@@ -1,6 +1,7 @@
 package cn.net.pap.common.file;
 
 import cn.net.pap.common.file.xml.XmlParseUtil;
+import cn.net.pap.common.file.xml.record.Segment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
@@ -106,5 +107,14 @@ public class XmlParseUtilTest {
         assertTrue(nodesByLevel3.equals("<student><props><prop/><prop/><prop/></props><propExts><propExt/><propExt/><propExt/></propExts></student>"));
     }
 
+    @Test
+    @DisplayName("xml字符串分割anchor，同时补充缺失节点")
+    public void splitAnchorTest() throws Exception {
+        String xml = """
+                    二<glass id="002">章</glass><class id="002">内容<anchor fileName="1" pageNum="1" />测试</class>正文<anchor fileName="2" pageNum="2" />结尾
+                """;
+        List<Segment> segments = XmlParseUtil.splitByAnchorAddMissingNode(xml.trim());
+        segments.forEach(System.out::println);
+    }
 
 }

@@ -1,5 +1,7 @@
 package cn.net.pap.common.file.xml;
 
+import cn.net.pap.common.file.xml.record.Segment;
+import cn.net.pap.common.file.xml.record.Tag;
 import org.w3c.dom.*;
 
 import javax.xml.parsers.DocumentBuilder;
@@ -586,6 +588,96 @@ public final class XmlParseUtil {
             StreamResult result = new StreamResult(new File(filePath));
             transformer.transform(source, result);
         }
+    }
+
+    /** 匹配普通 XML 标签 */
+    private static final Pattern TAG_PATTERN = Pattern.compile("<(/?)([a-zA-Z0-9:_-]+)(\\s[^<>]*?)?>");
+
+    /** 匹配 anchor 标签（自闭合） */
+    private static final Pattern ANCHOR_PATTERN = Pattern.compile("<anchor([^>]*)/>");
+
+    /**
+     * 根据 anchor 标签切割 XML，并自动补齐缺失节点
+     */
+    public static List<Segment> splitByAnchorAddMissingNode(String xml) {
+        List<Segment> result = new ArrayList<>();
+        // 用栈维护当前未闭合的标签
+        Deque<Tag> stack = new ArrayDeque<>();
+        // 当前 segment 内容
+        StringBuilder current = new StringBuilder();
+        Matcher matcher = TAG_PATTERN.matcher(xml);
+        int last = 0;
+        while (matcher.find()) {
+            // 追加标签前的普通文本
+            current.append(xml, last, matcher.start());
+            last = matcher.end();
+            String fullTag = matcher.group();
+            // ===== 判断是否为 anchor =====
+            Matcher anchorMatcher = ANCHOR_PATTERN.matcher(fullTag);
+            if (anchorMatcher.matches()) {
+                Map<String, String> attrs = parseAttrs(anchorMatcher.group(1));
+                // anchor 之前的内容是一个完整 segment
+                if (current.length() > 0) {
+                    // 自动补齐未关闭标签
+                    appendClosing(stack, current);
+                    result.add(new Segment(attrs.get("fileName"), attrs.get("pageNum"), current.toString()));
+                }
+                // 清空当前内容
+                current = new StringBuilder();
+                // 新 segment 继承父节点结构
+                appendOpening(stack, current);
+                continue;
+            }
+            // ===== 普通 XML 标签处理 =====
+            boolean isClose = "/".equals(matcher.group(1));
+            String name = matcher.group(2);
+            if (!isClose) {
+                // 遇到开始标签，压栈
+                stack.push(new Tag(name));
+            } else {
+                // 遇到结束标签，出栈
+                if (!stack.isEmpty()) {
+                    stack.pop();
+                }
+            }
+            current.append(fullTag);
+        }
+        // 追加剩余文本
+        current.append(xml.substring(last));
+        return result;
+    }
+
+    /**
+     * 在 segment 末尾补齐未关闭标签
+     */
+    private static void appendClosing(Deque<Tag> stack, StringBuilder sb) {
+        for (Tag t : stack) {
+            sb.append("</").append(t.name()).append(">");
+        }
+    }
+
+    /**
+     * 在新 segment 开头继承父节点结构
+     */
+    private static void appendOpening(Deque<Tag> stack, StringBuilder sb) {
+        List<Tag> list = new ArrayList<>(stack);
+        Collections.reverse(list);
+        for (Tag t : list) {
+            // 如果未来需要继承属性，可以在这里扩展
+            sb.append("<").append(t.name()).append(">");
+        }
+    }
+
+    /**
+     * 解析 anchor 的属性
+     */
+    private static Map<String, String> parseAttrs(String attrText) {
+        Map<String, String> map = new HashMap<>();
+        Matcher m = Pattern.compile("(\\w+)=\"([^\"]*)\"").matcher(attrText);
+        while (m.find()) {
+            map.put(m.group(1), m.group(2));
+        }
+        return map;
     }
 
 }
