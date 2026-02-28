@@ -1,5 +1,6 @@
 package cn.net.pap.example.proguard.controller;
 
+import com.sun.management.OperatingSystemMXBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -9,6 +10,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+import java.lang.management.MemoryUsage;
 import java.lang.management.ThreadInfo;
 import java.lang.management.ThreadMXBean;
 import java.util.LinkedHashMap;
@@ -168,4 +171,82 @@ public class ThreadLeakDemoController {
                         LinkedHashMap::new
                 ));
     }
+
+    /**
+     * 【系统级内存监控接口】
+     * * <p><strong>核心功能：</strong><br>
+     * 获取操作系统维度的物理内存状态及当前 Java 进程的虚拟内存占用，
+     * 弥补了标准 JVM 堆监控（Heap Metrics）无法观测到本地内存（Native Memory）的盲区。</p>
+     *
+     * <p><strong>可解决的具体问题：</strong>
+     * <ul>
+     * <li><strong>定位线程泄露：</strong> 线程栈（Thread Stack）是在堆外分配的。如果堆内存稳定，但“当前进程占用虚拟内存”持续线性上涨，说明存在线程泄露。</li>
+     * <li><strong>排查堆外内存溢出：</strong> 监控 DirectBuffer、MappedByteBuffer 或本地库（如 OpenCV、libvips）导致的 Native Memory 占用异常。</li>
+     * <li><strong>预防容器 OOM Killer：</strong> 在 Docker/K8s 环境下，当进程 RSS 接近容器 Limit 时，可提前感知并触发预警或降级，防止进程被系统强制杀掉。</li>
+     * <li><strong>诊断系统级内存争抢：</strong> 即使 Java 进程正常，也能发现宿主机上其他进程是否占满了内存，导致 Java 进程由于 SWAP 交换而变慢。</li>
+     * </ul>
+     * </p>
+     *
+     * @return 包含系统总内存、剩余内存、利用率及当前进程虚拟内存占用的 Map
+     */
+    @GetMapping("/getMemorySystemInfo")
+    public Map<String, Object> getMemorySystemInfo() {
+        OperatingSystemMXBean osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();
+        MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+
+        Map<String, Object> metrics = new LinkedHashMap<>();
+
+        // ==========================================
+        // 1. JVM 堆内存指标 (Heap Memory) - 纯 Java 对象
+        // ==========================================
+        MemoryUsage heapUsage = memoryMXBean.getHeapMemoryUsage();
+        long heapMax = heapUsage.getMax();
+        long heapCommitted = heapUsage.getCommitted();
+        long heapUsed = heapUsage.getUsed();
+
+        // JVM 启动参数 -Xmx 设定的最大上限。如果对象实在放不下，会报 OOM: Java heap space。
+        metrics.put("JVM最大堆内存(MB)", heapMax / 1024 / 1024.0);
+
+        // JVM 当前已经向操作系统申请到的堆内存大小（动态变化，通常在 -Xms 和 -Xmx 之间）。
+        metrics.put("JVM已分配堆内存(MB)", heapCommitted / 1024 / 1024.0);
+
+        // 当前真正在使用的堆内存（实际存放 Java 对象的空间）。
+        // 排查价值：每次 GC 后这个值会下降。如果它呈锯齿状平稳，说明 Java 对象正常回收。
+        metrics.put("JVM已使用堆内存(MB)", heapUsed / 1024 / 1024.0);
+
+        // 堆内存压力评估指标
+        metrics.put("JVM堆内存使用率", String.format("%.2f%%", (double) heapUsed / heapMax * 100));
+
+
+        // ==========================================
+        // 2. 进程级与系统级物理/虚拟内存指标 (Native & OS)
+        // ==========================================
+        long processMemory = osBean.getCommittedVirtualMemorySize();
+        long totalPhysicalMemory = osBean.getTotalPhysicalMemorySize();
+        long freePhysicalMemory = osBean.getFreePhysicalMemorySize();
+
+        // 这是操作系统为当前运行的 Java 进程**承诺分配（Committed）**的虚拟内存总量。
+        // 它包含了什么： 它不仅包含我们在 JVM 启动参数中设置的堆内存（-Xms, -Xmx），还包含了所有的堆外内存（Native Memory）。
+        // 具体包括： 每一个线程的线程栈（Thread Stack）。 NIO 使用的直接内存（Direct Buffer）。
+        // 关键点： 在处理高保真扫描图像时，如果底层调用了 libvips、OpenCV 或 libjpeg-turbo 等底层 C/C++ 库，这些库通过 JNI 直接向操作系统申请的内存，全部都会统计在这个值里，
+        // 而不会出现在 JVM 的堆内存监控中。
+        // 排查价值： 【核心比对法】将此值减去上方的“JVM已使用堆内存”。
+        // 如果 JVM 堆内存一直很平稳，但这个“虚拟内存”指标却像爬楼梯一样不断上涨，
+        // 说明你的应用存在堆外内存泄露（例如：底层图像处理库的内存未释放，或者局部线程池未关闭导致线程持续堆积）。
+        metrics.put("当前进程占用总虚拟内存(MB)", processMemory / 1024 / 1024.0);
+
+        // 服务器主板上插着的物理内存条的总容量（即机器的真实物理上限，例如 16GB 或 32GB）。
+        metrics.put("系统总物理内存(GB)", totalPhysicalMemory / 1024 / 1024 / 1024.0);
+
+        // 操作系统当前完全空闲、未被任何人使用的物理内存大小。
+        // 排查价值： 这是服务器的生命安全线。
+        // 当这个值开始逼近 0 时，Linux 系统会为了自保开始使用 SWAP（将硬盘当内存用），导致系统性能断崖式下跌。
+        // 如果彻底耗尽，操作系统会触发 OOM Killer，直接暴力杀死消耗内存最大的进程（通常就是你的 Java 进程），这会导致应用在没有任何异常日志的情况下突然崩溃。
+        metrics.put("系统剩余物理内存(GB)", freePhysicalMemory / 1024 / 1024 / 1024.0);
+
+        metrics.put("系统整体内存利用率", String.format("%.2f%%", (1 - (double) freePhysicalMemory / totalPhysicalMemory) * 100));
+
+        return metrics;
+    }
+
 }
