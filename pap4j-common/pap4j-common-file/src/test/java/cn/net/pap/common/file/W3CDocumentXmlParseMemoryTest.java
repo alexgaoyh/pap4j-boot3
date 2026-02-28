@@ -17,6 +17,21 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * org.w3c.dom.Document 大文件解析内存溢出（OOM）隐患排查与流式优化验证
+ * 1. 问题背景 (Background)
+ * 在 Review XmlParseUtil 的底层文件解析逻辑（getDocumentByPath / getDocumentByContent）时，发现原代码存在严重的**“内存双重冗余拷贝”**问题。
+ * 处理大文件时，系统会先将文件全量加载为 Java String（UTF-16 编码导致内存翻倍），随后又强制调用 getBytes() 生成完整的 byte[] 数组。
+ * 这种非流式的处理方式在解析 50MB 以上的大型 XML 时，会在喂给 DOM 解析器之前就额外吃掉近 200MB 内存。
+ * 在高并发场景下极易触发频繁的 Full GC 甚至引发 OutOfMemoryError。
+ * <p>
+ * 2. 优化与测试方案设计 (Solution & Test Design)
+ * 代码重构：将文件读取和字符串读取全面重构为纯流式处理（Zero-copy 零拷贝）。
+ * 使用 InputStream 配合 BOMInputStream（处理 BOM 头），以及 StringReader 配合 InputSource，让解析器直接消费底层流，彻底消除中间无用的缓冲变量。
+ * <p>
+ * 基准测试验证 (XmlParseMemoryTest)：
+ * <p>
+ * 造数逻辑：使用 @TempDir 动态生成包含 100 万个子节点、大小约 50MB - 60MB 的极端 XML 测试文件。
+ * <p>
+ * 精准监控：为了排除垃圾回收（GC）的干扰，未采用粗糙的 Runtime.freeMemory()，而是引入 JVM 底层的 ThreadMXBean.getThreadAllocatedBytes()，精确测量方法执行周期内真正在堆上分配的对象内存总量。
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class W3CDocumentXmlParseMemoryTest {
