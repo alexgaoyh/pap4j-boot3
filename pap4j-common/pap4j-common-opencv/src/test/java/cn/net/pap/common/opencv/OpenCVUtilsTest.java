@@ -18,14 +18,19 @@ public class OpenCVUtilsTest {
 
     // @Test
     void testOpenCVLoaded() {
-        String version = Core.VERSION;
-        System.out.println("OpenCV version: " + version);
-        assertNotNull(version);
+        Mat mat = null;
+        try {
+            String version = Core.VERSION;
+            System.out.println("OpenCV version: " + version);
+            assertNotNull(version);
 
-        Mat mat = OpenCVUtils.eye(3, 3, CvType.CV_8UC1);
-        assertFalse(mat.empty());
-        assertEquals(3, mat.rows());
-        assertEquals(3, mat.cols());
+            mat = OpenCVUtils.eye(3, 3, CvType.CV_8UC1);
+            assertFalse(mat.empty());
+            assertEquals(3, mat.rows());
+            assertEquals(3, mat.cols());
+        } finally {
+            if (mat != null) mat.release();
+        }
     }
 
     // @Test
@@ -84,19 +89,28 @@ public class OpenCVUtilsTest {
      */
     // @Test
     public void imgCompare() {
-        Mat image1 = OpenCVUtils.imread("pap1.jpg");
-        Mat image2 = OpenCVUtils.imread("pap2.jpg");
+        Mat image1 = null;
+        Mat image2 = null;
+        Mat difference = null;
+        try {
+            image1 = OpenCVUtils.imread("pap1.jpg");
+            image2 = OpenCVUtils.imread("pap2.jpg");
 
-        Imgproc.cvtColor(image1, image1, Imgproc.COLOR_BGR2GRAY);
-        Imgproc.cvtColor(image2, image2, Imgproc.COLOR_BGR2GRAY);
+            Imgproc.cvtColor(image1, image1, Imgproc.COLOR_BGR2GRAY);
+            Imgproc.cvtColor(image2, image2, Imgproc.COLOR_BGR2GRAY);
 
-        Mat difference = new Mat();
-        Core.absdiff(image1, image2, difference);
+            difference = new Mat();
+            Core.absdiff(image1, image2, difference);
 
-        Imgcodecs.imwrite("diff.jpg", difference);
+            Imgcodecs.imwrite("diff.jpg", difference);
 
-        Imgproc.threshold(difference, difference, 128, 255, Imgproc.THRESH_BINARY);
-        Imgcodecs.imwrite("tdiff.jpg", difference);
+            Imgproc.threshold(difference, difference, 128, 255, Imgproc.THRESH_BINARY);
+            Imgcodecs.imwrite("tdiff.jpg", difference);
+        } finally {
+            if (image1 != null) image1.release();
+            if (image2 != null) image2.release();
+            if (difference != null) difference.release();
+        }
     }
 
     /**
@@ -111,58 +125,88 @@ public class OpenCVUtilsTest {
 
     // @Test
     public void rotate1Test() {
-        // 读取图像
-        Mat src = Imgcodecs.imread("input.jpg");
-        // 旋转角度 非90度的倍数
-        double angle = 45.0;
-        // 获取图像中心
-        org.opencv.core.Point center = new org.opencv.core.Point(src.width() / 2.0, src.height() / 2.0);
-        // 生成旋转矩阵
-        Mat rotationMatrix = Imgproc.getRotationMatrix2D(center, angle, 1.0);
-        // 计算旋转后的图像尺寸
-        org.opencv.core.Size size = new org.opencv.core.Size(src.width(), src.height());
-        // 进行仿射变换（旋转），使用双三次插值
-        Mat rotated = new Mat();
-        Imgproc.warpAffine(src, rotated, rotationMatrix, size, Imgproc.INTER_CUBIC);
-        // 保存结果
-        Imgcodecs.imwrite("output.jpg", rotated);
+        Mat src = null;
+        Mat rotationMatrix = null;
+        Mat rotated = null;
+        try {
+            // 读取图像
+            src = Imgcodecs.imread("input.jpg");
+            // 旋转角度 非90度的倍数
+            double angle = 45.0;
+            // 获取图像中心
+            org.opencv.core.Point center = new org.opencv.core.Point(src.width() / 2.0, src.height() / 2.0);
+            // 生成旋转矩阵
+            rotationMatrix = Imgproc.getRotationMatrix2D(center, angle, 1.0);
+            // 计算旋转后的图像尺寸
+            org.opencv.core.Size size = new org.opencv.core.Size(src.width(), src.height());
+            // 进行仿射变换（旋转），使用双三次插值
+            rotated = new Mat();
+            Imgproc.warpAffine(src, rotated, rotationMatrix, size, Imgproc.INTER_CUBIC);
+            // 保存结果
+            Imgcodecs.imwrite("output.jpg", rotated);
+        } finally {
+            if (src != null) src.release();
+            if (rotationMatrix != null) rotationMatrix.release();
+            if (rotated != null) rotated.release();
+        }
     }
 
     // @Test
     public void rotate2Test() {
-        Mat src = OpenCVUtils.imread("input.jpg");
-        Mat rotated = new Mat();
-        Core.transpose(src, rotated);
-        // 第三个参数为 1、-1、0，对应不同的90倍旋转的参数。
-        Core.flip(rotated, rotated, 1);
-        Imgcodecs.imwrite("out.jpg", rotated);
+        Mat src = null;
+        Mat rotated = null;
+        try {
+            src = OpenCVUtils.imread("input.jpg");
+            rotated = new Mat();
+            Core.transpose(src, rotated);
+            // 第三个参数为 1、-1、0，对应不同的90倍旋转的参数。
+            Core.flip(rotated, rotated, 1);
+            Imgcodecs.imwrite("out.jpg", rotated);
+        } finally {
+            if (src != null) src.release();
+            if (rotated != null) rotated.release();
+        }
     }
 
     // @Test
     public void stitchImagesByPointTest() {
-        // 读取两张图像
-        Mat imageA = OpenCVUtils.imread("left.jpg");
-        Mat imageB = OpenCVUtils.imread("right.jpg");
+        Mat imageA = null;
+        Mat imageB = null;
+        Mat result = null;
+        try {
+            // 读取两张图像
+            imageA = OpenCVUtils.imread("left.jpg");
+            imageB = OpenCVUtils.imread("right.jpg");
 
-        // 定义每张图像的 i 和 j 点
-        Point iA = new Point(100, 0); // 图像 A 的 i 点
-        Point jA = new Point(100, 200); // 图像 A 的 j 点
-        Point iB = new Point(0, 0);   // 图像 B 的 i 点
-        Point jB = new Point(0, 400);  // 图像 B 的 j 点
+            // 定义每张图像的 i 和 j 点
+            Point iA = new Point(100, 0); // 图像 A 的 i 点
+            Point jA = new Point(100, 200); // 图像 A 的 j 点
+            Point iB = new Point(0, 0);   // 图像 B 的 i 点
+            Point jB = new Point(0, 400);  // 图像 B 的 j 点
 
-        // 拼接图像
-        Mat result = OpenCVUtils.stitchImagesByPoint(imageA, imageB, iA, jA, iB, jB);
+            // 拼接图像
+            result = OpenCVUtils.stitchImagesByPoint(imageA, imageB, iA, jA, iB, jB);
 
-        // 保存拼接后的图像
-        Imgcodecs.imwrite("stitched_image.jpg", result);
+            // 保存拼接后的图像
+            Imgcodecs.imwrite("stitched_image.jpg", result);
+        } finally {
+            if (imageA != null) imageA.release();
+            if (imageB != null) imageB.release();
+            if (result != null) result.release();
+        }
     }
 
     // @Test
     public void jp2TojpgTest() throws Exception {
-        long start = System.currentTimeMillis();
-        Mat imageJP2 = OpenCVUtils.imread("jp2.jp2");
-        boolean success = Imgcodecs.imwrite("jpg.jpg", imageJP2);
-        System.out.println("" + success + (System.currentTimeMillis() - start));
+        Mat imageJP2 = null;
+        try {
+            long start = System.currentTimeMillis();
+            imageJP2 = OpenCVUtils.imread("jp2.jp2");
+            boolean success = Imgcodecs.imwrite("jpg.jpg", imageJP2);
+            System.out.println("" + success + (System.currentTimeMillis() - start));
+        } finally {
+            if (imageJP2 != null) imageJP2.release();
+        }
     }
 
     // @Test
