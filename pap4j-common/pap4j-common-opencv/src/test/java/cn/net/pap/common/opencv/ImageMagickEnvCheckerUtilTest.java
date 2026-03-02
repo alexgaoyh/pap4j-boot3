@@ -1,5 +1,6 @@
 package cn.net.pap.common.opencv;
 
+import cn.net.pap.common.opencv.dto.ProcessResult;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,6 +9,10 @@ import java.awt.geom.Point2D;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -23,33 +28,30 @@ public class ImageMagickEnvCheckerUtilTest {
     }
 
     private static void checkMagickEnv() {
-        ProcessBuilder processBuilder = new ProcessBuilder("magick", "--version");
+        // 构建检查命令
+        List<String> command = Arrays.asList("magick", "--version");
+        // 由于是短暂的初始化检查，分配一个专属的单线程池，用完即毁
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+
         try {
-            Process process = processBuilder.start();
-
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                String line = reader.readLine();
-                boolean hasValidOutput = line != null && line.toLowerCase().contains("imagemagick");
-
-                boolean exited = process.waitFor(10, TimeUnit.SECONDS); // 可能被中断
-                if (!exited) {
-                    process.destroy();
-                    log.warn("Magick check timed out");
-                    envMagickBool = false;
-                    return;
-                }
-
-                int exitCode = process.exitValue();
-                envMagickBool = exited && exitCode == 0 && hasValidOutput;
-                log.info("Magick check result: available={}", envMagickBool);
+            ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
+            // 解析执行结果：退出码为 0，且输出内容包含 imagemagick
+            boolean isSuccess = result.getExitCode() == 0;
+            boolean hasValidOutput = result.getOutput() != null && result.getOutput().toLowerCase().contains("imagemagick");
+            envMagickBool = isSuccess && hasValidOutput;
+            if (envMagickBool) {
+                log.info("Magick check result: available=true");
+            } else {
+                log.warn("Magick check failed or not found. ExitCode={}, Output=\n{}", result.getExitCode(), result.getOutput());
             }
-        } catch (IOException e) {
-            log.warn("Magick command not found", e);
+        } catch (Exception e) {
+            log.error("Magick environment check encountered an unexpected error", e);
             envMagickBool = false;
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt(); // 恢复中断状态
-            log.warn("Magick check interrupted", e);
-            envMagickBool = false;
+        } finally {
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
+            }
         }
     }
 
@@ -215,176 +217,64 @@ public class ImageMagickEnvCheckerUtilTest {
 
     // magick input.jpg +level 10%,100%,1.1 output.jpg
 
-    // @Test
-    public void streamTest() throws IOException, InterruptedException {
-        ProcessBuilder processBuilder = new ProcessBuilder("magick", "no-exist.jpg", "no-exist-output.jpg");
-        Process process = null;
-
+    @Test
+    public void streamTest() {
+        List<String> command = Arrays.asList("magick", "no-exist.jpg", "no-exist-output.jpg");
+        // 由于是短暂的初始化检查，分配一个专属的单线程池，用完即毁
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
         try {
-            process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    errorOutput.append(line).append("\n");
-                }
-            }
-
-            int timeout = 30; // 超时时间(秒)
-            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
-            }
-
-            int exitCode = process.exitValue();
-            String stderr = errorOutput.toString().trim();
-
-            if (exitCode != 0 && !stderr.isEmpty()) {
-                // 仅消费 InputStream 防止阻塞
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (stdReader.readLine() != null) {
-                        // 不记录输出，只清空流
-                    }
-                }
-                log.error("Magick convert failed with exit code {}: {}", exitCode, stderr);
-                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
-            } else {
-                // 没有错误输出 → 读取 InputStream 作为有效输出
-                StringBuilder stdOutput = new StringBuilder();
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = stdReader.readLine()) != null) {
-                        stdOutput.append(line).append("\n");
-                    }
-                }
-                log.info("Magick convert succeeded: {}", stdOutput.toString().trim());
-            }
-
-        } catch (IOException e) {
-            log.warn("Magick command not found or execution failed", e);
-            throw e;
+            ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
+            log.info("Magick convert msg: {}", result.getOutput());
+        } catch (Exception e) {
+            log.error("Magick environment check encountered an unexpected error", e);
+            envMagickBool = false;
         } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly(); // 确保进程被终止
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
             }
         }
     }
 
-    // @Test
+    @Test
     public void tiffCompressionTest() throws IOException, InterruptedException {
-        ProcessBuilder processBuilder = new ProcessBuilder("magick", "identify", "-format", "%[compression]", "C:\\Users\\86181\\Desktop\\input.tif");
-        Process process = null;
-
+        List<String> command = Arrays.asList("magick", "identify", "-format", "%[compression]", "C:\\Users\\86181\\Desktop\\input.tiff");
+        // 由于是短暂的初始化检查，分配一个专属的单线程池，用完即毁
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
         try {
-            process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    errorOutput.append(line).append("\n");
-                }
-            }
-
-            int timeout = 30; // 超时时间(秒)
-            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
-            }
-
-            int exitCode = process.exitValue();
-            String stderr = errorOutput.toString().trim();
-
-            if (exitCode != 0 && !stderr.isEmpty()) {
-                // 仅消费 InputStream 防止阻塞
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (stdReader.readLine() != null) {
-                        // 不记录输出，只清空流
-                    }
-                }
-                log.error("Magick identify format failed with exit code {}: {}", exitCode, stderr);
-                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
-            } else {
-                // 没有错误输出 → 读取 InputStream 作为有效输出
-                StringBuilder stdOutput = new StringBuilder();
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = stdReader.readLine()) != null) {
-                        stdOutput.append(line).append("\n");
-                    }
-                }
-                log.info("Magick identify format succeeded: {}", stdOutput.toString().trim());
-            }
-
-        } catch (IOException e) {
-            log.warn("Magick command not found or execution failed", e);
-            throw e;
+            ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
+            log.info("Magick convert msg: {}", result.getOutput());
+        } catch (Exception e) {
+            log.error("Magick environment check encountered an unexpected error", e);
+            envMagickBool = false;
         } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly(); // 确保进程被终止
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
             }
         }
     }
 
-    // @Test
+    @Test
     public void batTest() throws IOException, InterruptedException {
-        ProcessBuilder processBuilder = new ProcessBuilder("cmd.exe", "/c", "D:\\knowledge\\add_watermark.bat", "D:\\knowledge\\input.jpg", "D:\\knowledge\\args2.jpg", "D:\\knowledge\\watermark.png");
-        Process process = null;
+        List<String> command = Arrays.asList(
+                "cmd.exe", "/c",
+                "D:\\knowledge\\add_watermark.bat",
+                "D:\\knowledge\\input.jpg",
+                "D:\\knowledge\\args2.jpg",
+                "D:\\knowledge\\watermark.png"
+        );
 
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
         try {
-            process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    errorOutput.append(line).append("\n");
-                }
-            }
-
-            int timeout = 30; // 超时时间(秒)
-            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
-            }
-
-            int exitCode = process.exitValue();
-            String stderr = errorOutput.toString().trim();
-
-            if (exitCode != 0 && !stderr.isEmpty()) {
-                // 仅消费 InputStream 防止阻塞
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (stdReader.readLine() != null) {
-                        // 不记录输出，只清空流
-                    }
-                }
-                log.error("add_watermark bat failed with exit code {}: {}", exitCode, stderr);
-                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
-            } else {
-                // 没有错误输出 → 读取 InputStream 作为有效输出
-                StringBuilder stdOutput = new StringBuilder();
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = stdReader.readLine()) != null) {
-                        stdOutput.append(line).append("\n");
-                    }
-                }
-                log.info("add_watermark bat operate succeeded: {}", stdOutput.toString().trim());
-            }
-
-        } catch (IOException e) {
-            log.warn("add_watermark bat command not found or execution failed", e);
-            throw e;
+            ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
+            log.info("add_watermark bat operate succeeded: {}", result.getOutput().trim());
+        } catch (Exception e) {
+            log.error("add_watermark bat failed", e);
         } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly(); // 确保进程被终止
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
             }
         }
     }

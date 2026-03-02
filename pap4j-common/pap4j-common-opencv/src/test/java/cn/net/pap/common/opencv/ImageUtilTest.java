@@ -12,6 +12,7 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 
@@ -263,11 +264,11 @@ public class ImageUtilTest {
 
         System.out.println(String.format("\"%d,%d %d,%d %d,%d %d,%d %d,%d %d,%d\"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y));
 
-        ProcessBuilder magickCommand = new ProcessBuilder(
+        List<String> command = Arrays.asList(
                 "magick", "right.jpg", "-distort", "Affine",
                 String.format("\" %d,%d %d,%d %d,%d %d,%d %d,%d %d,%d \"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y), "transformedB.jpg"
         );
-        String commandStr = String.join(" ", magickCommand.command());
+        String commandStr = String.join(" ", command);
         System.out.println(commandStr);
 
         // 一个拼接命令 需要首先计算出来拼接后的图像的大小，然后映射点的话，只取一组映射点的 X坐标，然后设置一个偏移，即可完成拼接. 需要动态算出来图像的尺寸.

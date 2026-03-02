@@ -1,5 +1,6 @@
 package cn.net.pap.common.opencv;
 
+import cn.net.pap.common.opencv.dto.ProcessResult;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
@@ -10,7 +11,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -59,7 +63,7 @@ public class ImageMagickCannyHougeAngleTest {
     }
 
     public static String angleInfoStrList(String inputPath, String tmpCannyPath, Integer minLength) throws Exception {
-        ProcessBuilder processBuilder = new ProcessBuilder(
+        List<String> command  = Arrays.asList(
                 "magick",
                 inputPath,
                 "-canny", "0x1+10%+30%",
@@ -69,54 +73,17 @@ public class ImageMagickCannyHougeAngleTest {
                 "-hough-lines", "9x9+" + minLength,
                 "MVG:-"
         );
-        Process process = null;
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
         try {
-            process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    errorOutput.append(line).append("\n");
-                }
-            }
-
-            int timeout = 30; // 超时时间(秒)
-            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
-            }
-
-            int exitCode = process.exitValue();
-            String stderr = errorOutput.toString().trim();
-
-            if (exitCode != 0 && !stderr.isEmpty()) {
-                // 仅消费 InputStream 防止阻塞
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (stdReader.readLine() != null) {
-                        // 不记录输出，只清空流
-                    }
-                }
-                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
-            } else {
-                // 没有错误输出 → 读取 InputStream 作为有效输出
-                StringBuilder stdOutput = new StringBuilder();
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = stdReader.readLine()) != null) {
-                        stdOutput.append(line).append("\n");
-                    }
-                }
-                return stdOutput.toString();
-            }
-
-        } catch (IOException e) {
-            throw e;
+            ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
+            System.out.println(result);
+            return result.getOutput();
+        } catch (Exception e) {
+            return "false";
         } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly(); // 确保进程被终止
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
             }
         }
     }
@@ -486,7 +453,7 @@ public class ImageMagickCannyHougeAngleTest {
         //  borderStart 减去 width
         // magick leftrighttop.jpg -fill red -draw "rectangle 0,822 592,832" leftrighttopbottom.jpg
 
-        ProcessBuilder processBuilder = new ProcessBuilder(
+        List<String> command = Arrays.asList(
                 "magick",
                 inputPath,
                 "-fill", "white",
@@ -499,7 +466,7 @@ public class ImageMagickCannyHougeAngleTest {
                 "\"",
                 removedPath
         );
-        System.out.println(String.join(" ", processBuilder.command()));
+        System.out.println(String.join(" ", command));
     }
 
     /**
@@ -513,7 +480,7 @@ public class ImageMagickCannyHougeAngleTest {
      */
     public static void geneColProjection(String inputPath, String projectionPath, String type) throws Exception {
 
-        ProcessBuilder processBuilder = new ProcessBuilder(
+        List<String> command = Arrays.asList(
                 "magick",
                 inputPath,
                 "-threshold", "50%",
@@ -521,53 +488,15 @@ public class ImageMagickCannyHougeAngleTest {
                 (type.equals("col") ? "1x\\!" : "x1\\!"),
                 projectionPath
         );
-        Process process = null;
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
         try {
-            process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    errorOutput.append(line).append("\n");
-                }
-            }
-
-            int timeout = 30; // 超时时间(秒)
-            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
-            }
-
-            int exitCode = process.exitValue();
-            String stderr = errorOutput.toString().trim();
-
-            if (exitCode != 0 && !stderr.isEmpty()) {
-                // 仅消费 InputStream 防止阻塞
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (stdReader.readLine() != null) {
-                        // 不记录输出，只清空流
-                    }
-                }
-                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
-            } else {
-                // 没有错误输出 → 读取 InputStream 作为有效输出
-                StringBuilder stdOutput = new StringBuilder();
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = stdReader.readLine()) != null) {
-                        stdOutput.append(line).append("\n");
-                    }
-                }
-            }
-
-        } catch (IOException e) {
-            throw e;
+            ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
+        } catch (Exception e) {
+            e.printStackTrace();
         } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly(); // 确保进程被终止
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
             }
         }
     }
