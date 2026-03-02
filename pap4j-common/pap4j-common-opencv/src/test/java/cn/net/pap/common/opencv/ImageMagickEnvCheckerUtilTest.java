@@ -13,9 +13,9 @@ import java.util.concurrent.TimeUnit;
 /**
  * ImageMagick 环境验证 工具类
  */
-public class ImageMagickEnvCheckerUtil {
+public class ImageMagickEnvCheckerUtilTest {
 
-    private static final Logger log = LoggerFactory.getLogger(ImageMagickEnvCheckerUtil.class);
+    private static final Logger log = LoggerFactory.getLogger(ImageMagickEnvCheckerUtilTest.class);
     private static Boolean envMagickBool = null;
 
     static {
