@@ -35,6 +35,26 @@ public class ProcessPoolUtil {
         return run(cmd, timeoutSec, executor);
     }
 
+    /**
+     * 执行通用的外部系统命令 (List 形式)
+     * 例如: Arrays.asList("magick", "input.jpg", "-resize", "100x100", "output.jpg")
+     *
+     * @param command    命令列表（第一个元素是可执行程序，后面是参数）
+     * @param timeoutSec 超时时间(秒)
+     * @param executor   外部传入的线程池，用于异步读取流
+     * @return 进程执行结果
+     */
+    public static ProcessResult runCommand(List<String> command, long timeoutSec, ExecutorService executor) {
+        if (executor == null) {
+            throw new IllegalArgumentException("ExecutorService 不能为空，必须由外部传入！");
+        }
+        if (command == null || command.isEmpty()) {
+            throw new IllegalArgumentException("执行命令不能为空！");
+        }
+        return run(command, timeoutSec, executor);
+    }
+
+
     private static ProcessResult run(List<String> command, long timeoutSec, ExecutorService executor) {
         Process process = null;
         // 使用线程安全的 StringBuffer 替代 StringBuilder
