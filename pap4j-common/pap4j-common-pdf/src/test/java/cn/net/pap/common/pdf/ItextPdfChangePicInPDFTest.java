@@ -1,5 +1,6 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.pdf.dto.ProcessResult;
 import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.parser.PdfImageObject;
 import org.junit.jupiter.api.Test;
@@ -12,7 +13,10 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -101,58 +105,19 @@ public class ItextPdfChangePicInPDFTest {
         if(tempInputFile.length() < 0.2 * 1024 * 1024) {
             defaultQuality = "100";
         }
-        ProcessBuilder processBuilder = new ProcessBuilder("magick", tempInputFile.getAbsolutePath(), "-quality", defaultQuality, tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat));
-        Process process = null;
+        List<String> command = Arrays.asList("magick", tempInputFile.getAbsolutePath(), "-quality", defaultQuality, tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat));
 
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
         try {
-            process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    errorOutput.append(line).append("\n");
-                }
-            }
-
-            int timeout = 30; // 超时时间(秒)
-            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
-            }
-
-            int exitCode = process.exitValue();
-            String stderr = errorOutput.toString().trim();
-
-            if (exitCode != 0 && !stderr.isEmpty()) {
-                // 仅消费 InputStream 防止阻塞
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (stdReader.readLine() != null) {
-                        // 不记录输出，只清空流
-                    }
-                }
-                log.error("Magick convert failed with exit code {}: {}", exitCode, stderr);
-                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
-            } else {
-                // 没有错误输出 → 读取 InputStream 作为有效输出
-                StringBuilder stdOutput = new StringBuilder();
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = stdReader.readLine()) != null) {
-                        stdOutput.append(line).append("\n");
-                    }
-                }
-                log.info("Magick convert succeeded: {}", stdOutput.toString().trim());
-            }
+            ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
             return Files.readAllBytes(Paths.get(tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat)));
         } catch (IOException e) {
             log.warn("Magick command not found or execution failed", e);
             throw e;
         } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly(); // 确保进程被终止
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
             }
             tempInputFile.delete();
             new File(tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat)).delete();
