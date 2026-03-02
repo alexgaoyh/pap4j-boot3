@@ -13,6 +13,8 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.OutputStream;
+import java.io.UnsupportedEncodingException;
 import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
@@ -49,13 +51,61 @@ public interface ImageProcessorStrategy {
             Thread.currentThread().interrupt();
         }
     }
+
     /**
      * 去除区域内
      */
     ExecResult imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2);
 
+    // ==========================================
+    // 新增：容量限制的输出流，完美替换 ByteArrayOutputStream 防止 OOM
+    // ==========================================
+    class BoundedOutputStream extends OutputStream {
+        private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        private final int maxSize = 5 * 1024 * 1024; // 限制最大 5MB
+        private boolean truncated = false;
+
+        @Override
+        public void write(int b) {
+            if (baos.size() < maxSize) {
+                baos.write(b);
+            } else if (!truncated) {
+                writeWarning();
+            }
+        }
+
+        @Override
+        public void write(byte[] b, int off, int len) {
+            if (baos.size() < maxSize) {
+                int allowed = Math.min(len, maxSize - baos.size());
+                baos.write(b, off, allowed);
+                if (allowed < len && !truncated) {
+                    writeWarning();
+                }
+            }
+        }
+
+        private void writeWarning() {
+            truncated = true;
+            try {
+                baos.write("\n[WARNING] Output truncated due to exceeding max length.\n".getBytes(StandardCharsets.UTF_8));
+            } catch (IOException ignored) {
+            }
+        }
+
+        public String toString(String charset) throws UnsupportedEncodingException {
+            return baos.toString(charset);
+        }
+
+        @Override
+        public void close() throws IOException {
+            baos.close();
+        }
+    }
+
     /**
      * exec
+     *
      * @param extra
      * @return
      */
@@ -69,8 +119,10 @@ public interface ImageProcessorStrategy {
     }
 
     private static ExecResult exec(CommandLine cmdLine, Map<String, String> envVars, File workingDir, long timeoutMs, boolean isWindows) throws IOException {
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        ByteArrayOutputStream errStream = new ByteArrayOutputStream();
+
+        // 使用防 OOM 的 BoundedOutputStream
+        BoundedOutputStream outStream = new BoundedOutputStream();
+        BoundedOutputStream errStream = new BoundedOutputStream();
 
         PumpStreamHandler streamHandler = new PumpStreamHandler(outStream, errStream);
         DefaultExecutor executor = new DefaultExecutor();
@@ -111,7 +163,8 @@ public interface ImageProcessorStrategy {
                     if (watchdog.isWatching()) {
                         watchdog.stop();
                     }
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
             try {
                 outStream.close();
@@ -157,6 +210,7 @@ public interface ImageProcessorStrategy {
 
     /**
      * 保存文件至临时文件夹
+     *
      * @param inputPath
      * @throws IOException
      */
