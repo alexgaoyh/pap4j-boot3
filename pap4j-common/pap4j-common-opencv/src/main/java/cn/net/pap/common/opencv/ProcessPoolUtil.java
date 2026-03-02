@@ -12,6 +12,7 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
+ * 建议优先使用  org.apache.commons commons-exec
  * 静态外部进程工具类
  * 注意：ExecutorService 由外部传入，调用方负责 shutdown
  */
