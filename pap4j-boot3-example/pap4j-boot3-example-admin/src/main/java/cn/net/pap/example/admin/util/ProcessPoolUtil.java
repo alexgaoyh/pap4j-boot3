@@ -72,7 +72,7 @@ public class ProcessPoolUtil {
             final Process finalProcess = process;
 
             // 处理跨平台运行时的流编码问题
-            Charset charset = isWindows() ? Charset.forName("GBK") : Charset.forName("UTF-8");
+            Charset charset = Charset.defaultCharset();
 
             // 1. 将读取任务提交给外部传入的线程池，并获取 Future 句柄
             Future<?> streamReaderFuture = executor.submit(() -> {
@@ -170,13 +170,6 @@ public class ProcessPoolUtil {
             cmd.addAll(Arrays.asList(args));
         }
         return cmd;
-    }
-
-    /**
-     * 判断是否 Windows 系统
-     */
-    private static boolean isWindows() {
-        return System.getProperty("os.name").toLowerCase().contains("win");
     }
 
 }
