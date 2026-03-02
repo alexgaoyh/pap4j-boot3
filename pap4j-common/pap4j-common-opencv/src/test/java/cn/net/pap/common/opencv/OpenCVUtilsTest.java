@@ -1,5 +1,6 @@
 package cn.net.pap.common.opencv;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Core;
 import org.opencv.core.CvType;
@@ -168,6 +169,57 @@ public class OpenCVUtilsTest {
     public void autoCorrectionGetAngle2Test() throws Exception {
         Double v = OpenCVUtils.autoCorrectionGetAngle2("edges.png");
         System.out.println(v);
+    }
+
+    // @Test
+    @DisplayName("对照函数，Mat对象的release调用：不调用release，会有 cv::OutOfMemoryError")
+    public void testMatReleaseMemoryLeakTrue() {
+        OpenCVUtils.empty();
+        System.out.println("--- 开始执行内存泄露测试 ---");
+        try {
+            // 模拟处理 10000 图像
+            for (int i = 1; i <= 10000; i++) {
+                // 模拟创建一个 1080p 的全高清彩色图像 (1920x1080, 3通道)
+                // 每一张图在原生内存中大约占用: 1920 * 1080 * 3 字节 ≈ 6.2 MB
+                Mat frame = new Mat(1080, 1920, CvType.CV_8UC3);
+                // 【致命错误】：没有调用 frame.release()
+                // 每 100 次打印一次进度
+                if (i % 100 == 0) {
+                    System.out.println("已处理 " + i + " 帧，预计原生内存已占用: " + (i * 6.2) + " MB");
+                }
+            }
+        } catch (Throwable t) {
+            // 捕获 Throwable 是因为内存溢出通常抛出的是 java.lang.OutOfMemoryError，而不是 Exception
+            System.err.println("程序崩溃！捕获到异常/错误: " + t.getMessage());
+        }
+        System.out.println("--- 内存泄露测试结束 ---");
+    }
+
+    // @Test
+    @DisplayName("对照函数，Mat对象的release调用：调用release，正常执行完毕")
+    public void testMatReleaseMemoryLeakFalse() {
+        OpenCVUtils.empty();
+        System.out.println("--- 开始执行内存安全测试 ---");
+        try {
+            for (int i = 1; i <= 10000; i++) {
+                Mat frame = null;
+                try {
+                    frame = new Mat(1080, 1920, CvType.CV_8UC3);
+                } finally {
+                    // 【正确做法】：无论处理是否成功，确保释放该帧占据的原生内存
+                    if (frame != null) {
+                        frame.release();
+                    }
+                }
+                if (i % 1000 == 0) {
+                    System.out.println("已安全处理 " + i + " 帧。");
+                }
+            }
+            System.out.println("成功处理全部 10000 帧，没有发生内存崩溃！");
+        } catch (Throwable t) {
+            System.err.println("发生意外异常: " + t.getMessage());
+        }
+        System.out.println("--- 内存安全测试结束 ---");
     }
 
 

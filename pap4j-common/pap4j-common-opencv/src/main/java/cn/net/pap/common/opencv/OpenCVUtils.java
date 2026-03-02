@@ -47,6 +47,14 @@ public class OpenCVUtils {
     }
 
     /**
+     * 显示调用一下，初始化加载 library。
+     * @return
+     */
+    public static Boolean empty() {
+        return true;
+    }
+
+    /**
      * 大图找小图
      *
      * @param sourceImg   原始大图   image abs path test image(https://sm.ms/image/S4wj2dLm5N1pM8c)
