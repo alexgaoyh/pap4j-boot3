@@ -1,6 +1,8 @@
 package cn.net.pap.example.admin.util;
 
 import cn.net.pap.example.admin.dto.ProcessResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -18,15 +20,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class ProcessPoolUtil {
 
+    private static final Logger log = LoggerFactory.getLogger(ProcessPoolUtil.class);
+
     // 防止 OOM，限制最大读取日志大小（例如：最大 5MB）
     public static final int MAX_OUTPUT_LENGTH = 5 * 1024 * 1024;
 
     /**
+     * NOT SUPPORT IN FAT JAR
      * @param mainClass  目标执行类
      * @param args       参数
      * @param timeoutSec 超时时间(秒)
      * @param executor   外部传入的线程池，用于异步读取流
      */
+    @Deprecated
     public static ProcessResult runJavaClass(String mainClass, String[] args, long timeoutSec, ExecutorService executor) {
         if (executor == null) {
             throw new IllegalArgumentException("ExecutorService 不能为空，必须由外部传入！");
@@ -86,7 +92,7 @@ public class ProcessPoolUtil {
                         }
                     }
                 } catch (Exception e) {
-                    System.err.println("[ProcessPoolUtil] 读取流异常: " + e.getMessage());
+                    log.error("[ProcessPoolUtil] 读取流异常", e);
                 }
             });
 
@@ -118,7 +124,7 @@ public class ProcessPoolUtil {
             return new ProcessResult(process.exitValue(), out.toString());
 
         } catch (InterruptedException e) {
-            System.err.println("[ProcessPoolUtil] 收到主线程中断信号，正在强杀子进程...");
+            log.error("[ProcessPoolUtil] 收到主线程中断信号，正在强杀子进程...", e);
             if (process != null) {
                 process.destroyForcibly();
             }

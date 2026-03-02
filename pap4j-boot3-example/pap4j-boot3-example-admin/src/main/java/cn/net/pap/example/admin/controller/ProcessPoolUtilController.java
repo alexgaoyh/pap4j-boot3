@@ -42,44 +42,59 @@ public class ProcessPoolUtilController {
             executor.initialize();
             return executor;
         }
+
+        @Bean(name = "testExecutorService")
+        public static ExecutorService testExecutorService() {
+            return Executors.newCachedThreadPool();
+        }
+
     }
 
     @Autowired
     @Qualifier("processExecutor")
     private ThreadPoolTaskExecutor executor;
 
+    @Autowired
+    private ExecutorService testExecutorService;
+
     /**
      * 最简单的“任务表”， 后续可以改为本地缓存
      */
     private final ConcurrentHashMap<String, ProcessResult> results = new ConcurrentHashMap<>();
 
+    /**
+     * NOT SUPPORT IN FAT JAR
+     * @return
+     */
     @Operation(summary = "异步请求")
     @GetMapping("/java")
     public String runJavaFuture() {
-        ExecutorService executorService = Executors.newCachedThreadPool();
+        String mainClass = ProcessPoolUtilExample.class.getName();
 
-        try {
-            String mainClass = ProcessPoolUtilExample.class.getName();
+        String taskId = UUID.randomUUID().toString();
+        ProcessResult result = new ProcessResult();
+        results.put(taskId, result);
 
-            String taskId = UUID.randomUUID().toString();
-            ProcessResult result = new ProcessResult();
-            results.put(taskId, result);
+        executor.execute(() -> {
+            ProcessResult r = ProcessPoolUtil.runJavaClass(
+                    mainClass, null, 0, testExecutorService
+            );
+            result.exitCode = r.getExitCode();
+            result.output = r.getOutput();
+            result.finished = r.isFinished();
+        });
 
-            executor.execute(() -> {
-                ProcessResult r = ProcessPoolUtil.runJavaClass(
-                        mainClass, null, 0, executorService
-                );
-                result.exitCode = r.getExitCode();
-                result.output = r.getOutput();
-                result.finished = r.isFinished();
-            });
+        return taskId;
+    }
 
-            return taskId;
-        } finally {
-            if (executorService != null && !executorService.isShutdown()) {
-                executorService.shutdown();
-            }
-        }
+    /**
+     * NOT SUPPORT IN FAT JAR
+     * @return
+     */
+    @Operation(summary = "异步请求")
+    @GetMapping("/javaResults")
+    public ConcurrentHashMap<String, ProcessResult> runJavaFutureResults() {
+        return results;
     }
 
 }
