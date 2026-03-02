@@ -118,13 +118,17 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
         if (!file.setExecutable(true)) {
             // 如果Java的setExecutable失败，尝试使用chmod命令
             try {
-                ProcessBuilder processBuilder = new ProcessBuilder("chmod", "+x", filePath);
-                Process process = processBuilder.start();
-                int exitCode = process.waitFor();
-                process.getErrorStream().transferTo(System.err);
+                // 注意：由于是交由 Shell 解析 (sh -c)，最好用双引号或单引号把 filePath 包裹起来， 防止路径中存在空格导致 chmod 将其识别为多个文件。
+                String command = "chmod +x \"" + filePath + "\"";
 
-                if (exitCode != 0) {
-                    System.err.println("Warning: Failed to set executable permission for: " + filePath + " . error： " + process.getErrorStream());
+                // 直接调用现有的静态方法，默认附带 10 秒超时控制
+                ExecResult result = ImageProcessorStrategy.execWithShell(command, null);
+
+                // 根据 ExecResult 判断执行情况 (假设 ExecResult 有类似 getExitCode 和 getErrStream 的 getter)
+                if (result.getExitCode() != 0) {
+                    System.err.println("Warning: Failed to set executable permission for: " + filePath
+                            + " . Exit code: " + result.getExitCode()
+                            + " . Error: " + result.getStdout()); // 请根据你 ExecResult 类的实际 getter 方法名进行调整
                 }
             } catch (Exception e) {
                 System.err.println("Warning: Failed to set executable permission: " + e.getMessage());
