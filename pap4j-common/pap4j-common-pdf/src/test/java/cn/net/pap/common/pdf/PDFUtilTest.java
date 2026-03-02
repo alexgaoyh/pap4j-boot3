@@ -369,25 +369,6 @@ public class PDFUtilTest {
     }
 
     // @Test
-    public void magickTest() {
-        try {
-            String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
-            desktop = desktop + "temp" + File.separator;
-            List<Path> jpgFiles = Files.list(Paths.get(desktop))
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().toLowerCase().endsWith(".jpg"))
-                    .collect(Collectors.toList());
-            for(Path jpgFile : jpgFiles) {
-                String command = "magick "+jpgFile.toString()+" -fill white -draw \"rectangle %[fx:w*0.80],%[fx:h*0.9] %[w],%[h]\" " + jpgFile.toString();
-                magickCommand(command);
-            }
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    // @Test
     public void convertImagesToPDFTest() {
         try {
             String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
@@ -511,59 +492,6 @@ public class PDFUtilTest {
                 byteArrayOutputStream.write(buffer, 0, bytesRead);
             }
             return byteArrayOutputStream.toByteArray();
-        }
-    }
-
-    private void magickCommand(String command) throws IOException, InterruptedException {
-        String[] commandSplit = command.split(" ");
-        ProcessBuilder processBuilder = new ProcessBuilder(commandSplit);
-        Process process = null;
-        try {
-            process = processBuilder.start();
-
-            StringBuilder errorOutput = new StringBuilder();
-            try (BufferedReader reader = new BufferedReader(new InputStreamReader(process.getErrorStream()))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    errorOutput.append(line).append("\n");
-                }
-            }
-            int timeout = 30; // 超时时间(秒)
-            boolean finished = process.waitFor(timeout, TimeUnit.SECONDS);
-
-            if (!finished) {
-                process.destroyForcibly();
-                throw new RuntimeException(String.format("Process timed out after %d seconds", timeout));
-            }
-
-            int exitCode = process.exitValue();
-            String stderr = errorOutput.toString().trim();
-
-            if (exitCode != 0 && !stderr.isEmpty()) {
-                // 仅消费 InputStream 防止阻塞
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    while (stdReader.readLine() != null) {
-                        // 不记录输出，只清空流
-                    }
-                }
-                throw new RuntimeException(String.format("Process failed with exit code %d: %s", exitCode, stderr));
-            } else {
-                // 没有错误输出 → 读取 InputStream 作为有效输出
-                StringBuilder stdOutput = new StringBuilder();
-                try (BufferedReader stdReader = new BufferedReader(new InputStreamReader(process.getInputStream()))) {
-                    String line;
-                    while ((line = stdReader.readLine()) != null) {
-                        stdOutput.append(line).append("\n");
-                    }
-                }
-            }
-
-        } catch (IOException e) {
-            throw e;
-        } finally {
-            if (process != null && process.isAlive()) {
-                process.destroyForcibly(); // 确保进程被终止
-            }
         }
     }
 
