@@ -59,6 +59,32 @@ public class ImageMagickEnvCheckerUtilTest {
         return envMagickBool;
     }
 
+    // @Test
+    public void commandTest1() {
+
+        String[] command1 = {"echo", "Hello"};
+        String[] command2 = {"echo", "World"};
+        String[] command3 = {"echo1", "World"};
+        String[] command4 = {"magick", "jpg.jp2", "-density", "300", "-units", " PixelsPerInch", "jpg.jpg"};
+
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        try {
+            for (String[] command : new String[][]{command1, command2, command3, command4}) {
+                ProcessResult result = ProcessPoolUtil.runCommand(Arrays.stream(command).toList(), 10, tempExecutor);
+                long start = System.currentTimeMillis();
+                System.out.println((result.exitCode == 0) + " : " + (System.currentTimeMillis() - start));
+            }
+        } catch (Exception e) {
+        } finally {
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
+            }
+        }
+
+
+    }
+
     // ---- 命令汇总
     // 获取图像DPI  :  magick identify -format "%x - %y" input.jpg
     // 获取图像像素  :  magick identify -format "%w - %h" input.jpg
