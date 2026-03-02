@@ -12,6 +12,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 
+/**
+ * 演示和测试在 Spring Boot 应用关闭时，如何优雅地处理线程池中未执行完毕的任务，并提取任务的业务标识（ID）以便进行后续的补偿操作。
+ */
 @Service
 public class LeakyTaskService {
 
