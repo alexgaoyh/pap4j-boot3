@@ -7,13 +7,18 @@ import org.slf4j.LoggerFactory;
 
 import java.awt.geom.Point2D;
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * ImageMagick 环境验证 工具类
@@ -81,9 +86,42 @@ public class ImageMagickEnvCheckerUtilTest {
                 tempExecutor.shutdownNow();
             }
         }
-
-
     }
+
+    // @Test
+    public void magickTest() {
+        try {
+            String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
+            desktop = desktop + "temp" + File.separator;
+            List<Path> jpgFiles = Files.list(Paths.get(desktop))
+                    .filter(Files::isRegularFile)
+                    .filter(path -> path.toString().toLowerCase().endsWith(".jpg"))
+                    .collect(Collectors.toList());
+            for(Path jpgFile : jpgFiles) {
+                String command = "magick "+jpgFile.toString()+" -fill white -draw \"rectangle %[fx:w*0.80],%[fx:h*0.9] %[w],%[h]\" " + jpgFile.toString();
+                magickCommand(command);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void magickCommand(String command) throws IOException, InterruptedException {
+        String[] commandSplit = command.split(" ");
+        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        try {
+            ProcessResult result = ProcessPoolUtil.runCommand(Arrays.stream(commandSplit).toList(), 10, tempExecutor);
+        } catch (Exception e) {
+            e.printStackTrace();
+        } finally {
+            // 务必关闭临时线程池，防止内存/线程泄漏
+            if (tempExecutor != null) {
+                tempExecutor.shutdownNow();
+            }
+        }
+    }
+
 
     // ---- 命令汇总
     // 获取图像DPI  :  magick identify -format "%x - %y" input.jpg
