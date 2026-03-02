@@ -15,6 +15,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @RestController
 @RequestMapping("/processPoolUtil")
@@ -54,23 +56,30 @@ public class ProcessPoolUtilController {
     @Operation(summary = "异步请求")
     @GetMapping("/java")
     public String runJavaFuture() {
+        ExecutorService executorService = Executors.newCachedThreadPool();
 
-        String mainClass = ProcessPoolUtilExample.class.getName();
+        try {
+            String mainClass = ProcessPoolUtilExample.class.getName();
 
-        String taskId = UUID.randomUUID().toString();
-        ProcessResult result = new ProcessResult();
-        results.put(taskId, result);
+            String taskId = UUID.randomUUID().toString();
+            ProcessResult result = new ProcessResult();
+            results.put(taskId, result);
 
-        executor.execute(() -> {
-            ProcessResult r = ProcessPoolUtil.runJavaClass(
-                    mainClass, null, 0
-            );
-            result.exitCode = r.getExitCode();
-            result.output = r.getOutput();
-            result.finished = r.isFinished();
-        });
+            executor.execute(() -> {
+                ProcessResult r = ProcessPoolUtil.runJavaClass(
+                        mainClass, null, 0, executorService
+                );
+                result.exitCode = r.getExitCode();
+                result.output = r.getOutput();
+                result.finished = r.isFinished();
+            });
 
-        return taskId;
+            return taskId;
+        } finally {
+            if (executorService != null && !executorService.isShutdown()) {
+                executorService.shutdown();
+            }
+        }
     }
 
 }
