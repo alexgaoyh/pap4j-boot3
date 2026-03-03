@@ -41,26 +41,45 @@ public class AsyncController {
         return "direct";
     }
 
+    /**
+     * 异步多线程环境下的上下文传递（Context Propagation）
+     * 在实际业务中，由于 Spring 的 @Async 会把任务交给全新的线程去执行，而 ThreadLocal 默认是线程隔离的，所以主线程的数据通常会“传不过去”。这段代码就是为了解决这个问题。
+     * <p>
+     * 演示与测试异步环境下的上下文（ThreadLocal）安全传递机制。
+     * <p>
+     * 执行流程：
+     * 1. 【初始化】：主线程（Tomcat工作线程）接收请求，将关键参数放入 ContextHolder（基于 ThreadLocal）。
+     * 2. 【触发异步】：调用被 @Async 注解标记的方法，将耗时任务提交给自定义的异步线程池。
+     * 3. 【非阻塞响应】：主线程不等待异步任务完成，直接向客户端返回 "success"。
+     * 4. 【安全清理】：使用 finally 块强制清空主线程的 ContextHolder。防止因 Tomcat 线程池复用导致的数据串号（下一个请求读到上一个请求的数据）以及内存泄漏（OOM）。
+     *
+     * @return 响应字符串 "success"
+     * @throws Exception 处理过程中的通用异常
+     */
     @GetMapping(value = "/async", produces = "application/json;charset=UTF-8")
     public String async() throws Exception {
         String requestParam = "cn.net.pap.example.async";
 
-        ContextHolder.set(requestParam);
+        try {
+            ContextHolder.set(requestParam);
 
-        AsyncService asyncService = applicationContext.getBean(AsyncService.class);
-        Method method = AsyncService.class.getMethod("asyncMethod");
-        Object obj = method.invoke(asyncService);
-        if(obj instanceof CompletableFuture) {
-            CompletableFuture<String> future = (CompletableFuture<String>) obj;
-            future.thenAccept(result -> {
-                System.out.println("执行异步方法，返回参数：" + result + " ; 传递的参数：" + requestParam);
-            }).exceptionally(ex -> {
-                ex.printStackTrace();
-                return null;
-            });
+            AsyncService asyncService = applicationContext.getBean(AsyncService.class);
+            Method method = AsyncService.class.getMethod("asyncMethod");
+            Object obj = method.invoke(asyncService);
+            if(obj instanceof CompletableFuture) {
+                CompletableFuture<String> future = (CompletableFuture<String>) obj;
+                future.thenAccept(result -> {
+                    System.out.println("执行异步方法，返回参数：" + result + " ; 传递的参数：" + requestParam);
+                }).exceptionally(ex -> {
+                    ex.printStackTrace();
+                    return null;
+                });
+            }
+
+            return "success";
+        } finally {
+            ContextHolder.clear();
         }
-
-        return "success";
     }
 
     @GetMapping("/async-data")
