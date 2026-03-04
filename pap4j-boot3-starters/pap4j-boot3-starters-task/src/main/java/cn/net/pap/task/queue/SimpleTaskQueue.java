@@ -16,7 +16,8 @@ public class SimpleTaskQueue {
 
     private static final SimpleTaskQueue INSTANCE = new SimpleTaskQueue();
 
-    private final BlockingQueue<SimpleTaskQueueDTO> queue = new LinkedBlockingQueue<SimpleTaskQueueDTO>();
+    // 限制队列长度
+    private final BlockingQueue<SimpleTaskQueueDTO> queue = new LinkedBlockingQueue<SimpleTaskQueueDTO>(3);
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
@@ -28,8 +29,13 @@ public class SimpleTaskQueue {
         return INSTANCE;
     }
 
-    public void addTask(SimpleTaskQueueDTO task) {
-        queue.offer(task);
+    /**
+     * 因为限制了队列长度，所以这里增加一下返回值。
+     * @param task
+     * @return
+     */
+    public boolean addTask(SimpleTaskQueueDTO task) {
+        return queue.offer(task);
     }
 
     public Thread startConsumer() {

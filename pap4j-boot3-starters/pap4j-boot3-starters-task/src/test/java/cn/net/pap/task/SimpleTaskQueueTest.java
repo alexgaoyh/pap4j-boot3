@@ -20,10 +20,10 @@ public class SimpleTaskQueueTest {
 
         Thread consumerThread = queue.startConsumer();
 
-        queue.addTask(new SimpleTaskQueueDTO("1", "task 1"));
-        queue.addTask(new SimpleTaskQueueDTO("2", "task 2"));
-        queue.addTask(new SimpleTaskQueueDTO("3", "task 3"));
-        queue.addTask(new SimpleTaskQueueDTO("4", "task 4"));
+        boolean b1 = queue.addTask(new SimpleTaskQueueDTO("1", "task 1"));
+        boolean b2 = queue.addTask(new SimpleTaskQueueDTO("2", "task 2"));
+        boolean b3 = queue.addTask(new SimpleTaskQueueDTO("3", "task 3"));
+        boolean b4 = queue.addTask(new SimpleTaskQueueDTO("4", "task 4"));
 
         // 稍等线程完全退出
         consumerThread.join(500);
@@ -36,7 +36,7 @@ public class SimpleTaskQueueTest {
     void testInterruptedException() throws InterruptedException {
         SimpleTaskQueue queue = SimpleTaskQueue.getInstance();
         SimpleTaskQueueDTO task = new SimpleTaskQueueDTO("1", "This should not run");
-        queue.addTask(task);
+        boolean b5 = queue.addTask(task);
 
         // 启动消费者线程
         Thread consumerThread = queue.startConsumer();
