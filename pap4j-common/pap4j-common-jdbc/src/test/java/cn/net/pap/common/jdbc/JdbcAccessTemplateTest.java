@@ -22,12 +22,15 @@ import java.util.List;
 @ContextConfiguration(classes = JdbcAccessTemplateTest.Config.class)
 public class JdbcAccessTemplateTest {
 
+    static {
+        System.setProperty("hsqldb.method_class_names", "net.ucanaccess.*");
+    }
+
     @Configuration
     static class Config {
 
         @Bean
         DataSource dataSource() {
-            System.setProperty("hsqldb.method_class_names", "net.ucanaccess.*");
             return DataSourceBuilder.create().driverClassName("net.ucanaccess.jdbc.UcanaccessDriver")
                     .url("jdbc:ucanaccess://" + "C:\\Users\\86181\\Desktop\\test.mdb" + ";sysline=true").build();
         }
@@ -53,7 +56,7 @@ public class JdbcAccessTemplateTest {
     @DisplayName("查询数据")
     void testJdbcStreamingQuery() throws SQLException {
         try {
-            String sql = "SELECT ID as id, 文字 as temp FROM tableName";
+            String sql = "SELECT ID as id, 文字 as temp FROM [tableName]";
             List<TestRecord> testRecordList = jdbcTemplate.query(sql, new DataClassRowMapper<>(TestRecord.class));
             if (testRecordList != null && testRecordList.size() > 0) {
                 for (TestRecord testRecord : testRecordList) {

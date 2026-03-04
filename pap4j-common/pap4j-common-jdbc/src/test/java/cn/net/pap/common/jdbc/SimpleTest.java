@@ -10,13 +10,16 @@ import java.util.List;
 
 public class SimpleTest {
 
+    static {
+        System.setProperty("hsqldb.method_class_names", "net.ucanaccess.*");
+    }
+
     public record TestRecord(String id, String temp) {
     }
 
     @Test
     @DisplayName("手动初始化并查询数据")
     void testStandaloneJdbcQuery() throws Exception {
-        System.setProperty("hsqldb.method_class_names", "net.ucanaccess.*");
         String dbPath = "C:\\Users\\86181\\Desktop\\test.mdb";
         String url = "jdbc:ucanaccess://" + dbPath + ";sysline=true;memory=false";
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
@@ -24,7 +27,7 @@ public class SimpleTest {
         dataSource.setUrl(url);
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
         try {
-            String sql = "SELECT ID as id, 文字 as temp FROM CZYX";
+            String sql = "SELECT ID as id, 文字 as temp FROM [CZYX]";
             List<TestRecord> testRecordList = jdbcTemplate.query(sql, new DataClassRowMapper<>(TestRecord.class));
             if (testRecordList != null && !testRecordList.isEmpty()) {
                 testRecordList.forEach(System.out::println);
