@@ -32,7 +32,7 @@ public class JdbcAccessTemplateTest {
         @Bean
         DataSource dataSource() {
             return DataSourceBuilder.create().driverClassName("net.ucanaccess.jdbc.UcanaccessDriver")
-                    .url("jdbc:ucanaccess://" + "C:\\Users\\86181\\Desktop\\test.mdb" + ";sysline=true").build();
+                    .url("jdbc:ucanaccess://" + "C:\\Users\\86181\\Desktop\\test.mdb" + ";memory=false;singleConnection=true").build();
         }
 
         @Bean
