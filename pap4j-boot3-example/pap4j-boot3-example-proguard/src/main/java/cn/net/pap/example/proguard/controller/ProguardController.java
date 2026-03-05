@@ -92,15 +92,23 @@ public class ProguardController {
 
     @GetMapping(value = "/batch", produces = "application/json;charset=UTF-8")
     public String batch() {
+        boolean acquired = false; // 记录是否成功获取许可。谁获取，谁释放；未获取，不释放。
         try {
-            if(SimpleRateLimiter.tryAcquire("123") <= 1) {
-                System.out.println("1");
+            if(SimpleRateLimiter.tryAcquire("123", 1)) {
+                acquired = true; // 拿到许可了！
+                System.out.println("执行业务逻辑...");
                 Thread.sleep(1000);
+            } else {
+                // 这里是被限流的逻辑，比如返回个 "请稍后再试"
+                System.out.println("被限流了");
             }
         } catch (Exception e) {
 
         } finally {
-            SimpleRateLimiter.release("123");
+            // 核心：只有真正拿到了许可的线程，才能去释放！
+            if (acquired) {
+                SimpleRateLimiter.release("123");
+            }
         }
         return "pap.net.cn!";
     }
