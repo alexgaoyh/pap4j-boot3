@@ -8,7 +8,10 @@ import java.util.concurrent.atomic.AtomicReference;
  * - release 返回 boolean 表示是否成功释放
  * - 可选 成功完成时自动尝试移除 map 中的已完成条目（避免内存泄漏）
  * - safeForceReset 只有在非 RUNNING 时才移除，避免并发导致同时两个 RUNNING
+ *
+ *  @deprecated 请使用 {@link cn.net.pap.common.datastructure.lock.IdempotentTaskLock} 替代
  */
+@Deprecated
 public class HashMapRateLimiter {
 
     private enum State {
