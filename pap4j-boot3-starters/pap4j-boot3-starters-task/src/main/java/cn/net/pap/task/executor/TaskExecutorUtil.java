@@ -33,12 +33,37 @@ public class TaskExecutorUtil {
     public static final Integer queueCapacityTimes = 2 * 100;
 
     /**
+     * 任务结果封装
+     * @param <V>
+     */
+    public static class TaskResult<V> {
+        private final TaskEnums status;
+        private final V data; // 真正存储 future.get() 的返回值
+
+        public TaskResult(TaskEnums status, V data) {
+            this.status = status;
+            this.data = data;
+        }
+
+        public TaskEnums getStatus() { return status; }
+        public V getData() { return data; }
+
+        @Override
+        public String toString() {
+            return "TaskResult{" +
+                    "status=" + status +
+                    ", data=" + data +
+                    '}';
+        }
+    }
+
+    /**
      * 执行
      *
      * @param beanName
      * @param tasks
      */
-    public static <V> List<TaskEnums> executeTasks(String beanName, List<PapCallable<V>> tasks) {
+    public static <V> List<TaskResult<V>> executeTasks(String beanName, List<PapCallable<V>> tasks) {
         if (tasks == null || tasks.isEmpty()) {
             return new ArrayList<>();
         }
@@ -56,7 +81,7 @@ public class TaskExecutorUtil {
         executor.initialize();
 
         // 初始化一个与 tasks 等长的 List，默认填满 unknown，防止被异常中断掩盖真实状态
-        List<TaskEnums> results = new ArrayList<>(Collections.nCopies(tasks.size(), TaskEnums.NOT_EXECUTED));
+        List<TaskResult<V>> results = new ArrayList<>(Collections.nCopies(tasks.size(), new TaskResult<>(TaskEnums.NOT_EXECUTED, null)));
 
         List<Future<V>> futures = new ArrayList<>();
         try {
@@ -70,9 +95,9 @@ public class TaskExecutorUtil {
                     // 包含了所有的 Exception 和所有的 Error
                     futures.add(null); // 用 null 占位，保证 futures 长度与 tasks 对齐
                     if (e instanceof TaskRejectedException) {
-                        results.set(idx, TaskEnums.REJECT);
+                        results.set(idx, new TaskResult<>(TaskEnums.REJECT, null));
                     } else {
-                        results.set(idx, TaskEnums.UNKNOWN);
+                        results.set(idx, new TaskResult<>(TaskEnums.UNKNOWN, null));
                     }
                 }
             }
@@ -83,22 +108,22 @@ public class TaskExecutorUtil {
                     continue; // 说明在 submit 阶段就失败了，直接跳过
                 }
                 try {
-                    future.get(10, TimeUnit.MINUTES); // 等待任务完成
-                    results.set(idx, TaskEnums.SUCCESS);
+                    V resultData = future.get(10, TimeUnit.MINUTES); // 等待任务完成
+                    results.set(idx, new TaskResult<>(TaskEnums.SUCCESS, resultData));
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     log.error("Task interrupted ", e);
-                    results.set(idx, TaskEnums.INTERRUPTED); // 记录异常状态
+                    results.set(idx, new TaskResult<>(TaskEnums.INTERRUPTED, null)); // 记录异常状态
                     // break 跳出循环。当前线程的中断标志已被置为 true，若继续循环，后续所有的 future.get() 都会不经等待瞬间抛出 InterruptedException，从而导致疯狂刷屏报错的“日志风暴”。跳出后，剩余任务会保持默认的 unknown 状态。
                     break;
                 } catch (ExecutionException e) {
                     log.error("Task execution failed ", e);
                     Throwable cause = e.getCause();
                     String msg = (cause != null) ? cause.getMessage() : e.getMessage();
-                    results.set(idx, TaskEnums.EXECUTION_FAILED); // 记录异常状态
+                    results.set(idx, new TaskResult<>(TaskEnums.EXECUTION_FAILED, null)); // 记录异常状态
                 } catch (TimeoutException e) {
                     log.error("Task execution timeout at index {}", idx, e);
-                    results.set(idx, TaskEnums.TIMEOUT);
+                    results.set(idx, new TaskResult<>(TaskEnums.TIMEOUT, null));
                     future.cancel(true); // 尝试强杀还在跑的超时任务
                 }
             }

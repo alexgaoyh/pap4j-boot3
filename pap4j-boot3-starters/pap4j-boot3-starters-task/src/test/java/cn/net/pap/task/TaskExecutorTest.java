@@ -31,7 +31,7 @@ public class TaskExecutorTest {
             tasks.add(new PapCallableImpl(taskDTO));
         }
 
-        List<TaskEnums> taskEnums = TaskExecutorUtil.executeTasks("PAP-THREAD-BEAN_NAME", tasks);
+        List<TaskExecutorUtil.TaskResult<TaskDTO>> taskEnums = TaskExecutorUtil.executeTasks("PAP-THREAD-BEAN_NAME", tasks);
         System.out.println(taskEnums);
     }
 
@@ -47,7 +47,7 @@ public class TaskExecutorTest {
         }
 
         // 声明一个数组用于在内部线程中接收返回值
-        final List<TaskEnums>[] resultHolder = new List[1];
+        final List<TaskExecutorUtil.TaskResult<TaskDTO>>[] resultHolder = new List[1];
 
         // 2. 另起一个线程（模拟正在处理业务逻辑的 Web 线程），去执行批量任务
         Thread executeThread = new Thread(() -> {
@@ -66,17 +66,17 @@ public class TaskExecutorTest {
         executeThread.join();
 
         // 6. 获取结果并验证
-        List<TaskEnums> results = resultHolder[0];
+        List<TaskExecutorUtil.TaskResult<TaskDTO>> results = resultHolder[0];
         System.out.println("最终的任务状态列表: ");
         for (int i = 0; i < results.size(); i++) {
-            System.out.println("任务[" + i + "]: " + results.get(i).getException());
+            System.out.println("任务[" + i + "]: " + results.get(i).getStatus().getException());
         }
 
         // ===== 核心断言：验证 break 的作用 =====
         int notExecutedCount = 0;
-        for (TaskEnums status : results) {
+        for (TaskExecutorUtil.TaskResult<TaskDTO> taskResult : results) {
             // 如果 break 生效，跳出循环后，剩余没被 get() 遍历到的任务必定保持初始值 "Task not executed"
-            if ("Task not executed".equals(status.getException())) {
+            if ("Task not executed".equals(taskResult.getStatus().getException())) {
                 notExecutedCount++;
             }
         }
