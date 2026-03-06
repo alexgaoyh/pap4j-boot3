@@ -44,7 +44,7 @@ public class TaskExecutorUtil {
         }
 
         ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
-        int availableProcessors = 1;
+        int availableProcessors = Runtime.getRuntime().availableProcessors();
         executor.setCorePoolSize(availableProcessors * corePoolSizeTimes);
         executor.setMaxPoolSize(availableProcessors * maxPoolSizeTimes);
         executor.setQueueCapacity(availableProcessors * queueCapacityTimes);
@@ -56,7 +56,7 @@ public class TaskExecutorUtil {
         executor.initialize();
 
         // 初始化一个与 tasks 等长的 List，默认填满 unknown，防止被异常中断掩盖真实状态
-        List<TaskEnums> results = new ArrayList<>(Collections.nCopies(tasks.size(), TaskEnums.unknown("Task not executed")));
+        List<TaskEnums> results = new ArrayList<>(Collections.nCopies(tasks.size(), TaskEnums.NOT_EXECUTED));
 
         List<Future<V>> futures = new ArrayList<>();
         try {
@@ -70,9 +70,9 @@ public class TaskExecutorUtil {
                     // 包含了所有的 Exception 和所有的 Error
                     futures.add(null); // 用 null 占位，保证 futures 长度与 tasks 对齐
                     if (e instanceof TaskRejectedException) {
-                        results.set(idx, TaskEnums.reject(((TaskRejectedException) e).getMessage()));
+                        results.set(idx, TaskEnums.REJECT);
                     } else {
-                        results.set(idx, TaskEnums.unknown(e.getMessage()));
+                        results.set(idx, TaskEnums.UNKNOWN);
                     }
                 }
             }
@@ -88,16 +88,17 @@ public class TaskExecutorUtil {
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                     log.error("Task interrupted ", e);
-                    results.set(idx, TaskEnums.unknown(e.getMessage())); // 记录异常状态
+                    results.set(idx, TaskEnums.INTERRUPTED); // 记录异常状态
+                    // break 跳出循环。当前线程的中断标志已被置为 true，若继续循环，后续所有的 future.get() 都会不经等待瞬间抛出 InterruptedException，从而导致疯狂刷屏报错的“日志风暴”。跳出后，剩余任务会保持默认的 unknown 状态。
                     break;
                 } catch (ExecutionException e) {
                     log.error("Task execution failed ", e);
                     Throwable cause = e.getCause();
                     String msg = (cause != null) ? cause.getMessage() : e.getMessage();
-                    results.set(idx, TaskEnums.unknown(msg)); // 记录异常状态
+                    results.set(idx, TaskEnums.EXECUTION_FAILED); // 记录异常状态
                 } catch (TimeoutException e) {
                     log.error("Task execution timeout at index {}", idx, e);
-                    results.set(idx, TaskEnums.unknown("Timeout waiting for task result"));
+                    results.set(idx, TaskEnums.TIMEOUT);
                     future.cancel(true); // 尝试强杀还在跑的超时任务
                 }
             }
