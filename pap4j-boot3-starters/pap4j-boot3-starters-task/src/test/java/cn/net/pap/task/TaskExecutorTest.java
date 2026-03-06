@@ -28,7 +28,7 @@ public class TaskExecutorTest {
             tasks.add(new PapCallableImpl(taskDTO));
         }
 
-        TaskEnums taskEnums = TaskExecutorUtil.executeTasks("PAP-THREAD-BEAN_NAME", tasks);
+        List<TaskEnums> taskEnums = TaskExecutorUtil.executeTasks("PAP-THREAD-BEAN_NAME", tasks);
         System.out.println(taskEnums);
     }
 
