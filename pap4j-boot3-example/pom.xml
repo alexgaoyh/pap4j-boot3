@@ -29,6 +29,7 @@
         <module>pap4j-boot3-example-webhook</module>
         <module>pap4j-boot3-example-apitester</module>
         <module>pap4j-boot3-example-devtools</module>
+        <module>pap4j-boot3-example-websocket</module>
     </modules>
 
     <properties>
