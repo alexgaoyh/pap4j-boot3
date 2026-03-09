@@ -58,7 +58,7 @@ public class H2ServerManager {
                 System.out.println("尝试启动 TCP 服务器，端口: " + tcpPort);
                 return Server.createTcpServer("-tcpPort", String.valueOf(tcpPort), "-tcpAllowOthers", "-ifNotExists").start();
             } catch (SQLException e) {
-                if (e.getMessage().contains("Port is already in use")) {
+                if (e.getMessage().contains("Port is already in use") || e.getMessage().contains("port may be in use")) {
                     System.out.println("端口 " + tcpPort + " 被占用，尝试下一个端口...");
                     lastException = e;
                     tcpPort++; // 端口递增
