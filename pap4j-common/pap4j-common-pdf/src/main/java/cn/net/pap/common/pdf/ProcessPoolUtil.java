@@ -87,7 +87,7 @@ public class ProcessPoolUtil {
                     process.destroyForcibly();
                     // 2. 超时发生，取消异步读取任务（相当于 interrupt）
                     streamReaderFuture.cancel(true);
-                    return new ProcessResult(-1, out + "\nTIMEOUT_OR_KILLED");
+                    return new ProcessResult(isFinished, -1, out + "\nTIMEOUT_OR_KILLED");
                 }
             } else {
                 // 这个方法会响应中断并抛出 InterruptedException
@@ -105,7 +105,7 @@ public class ProcessPoolUtil {
                 // 忽略 ExecutionException 和 InterruptedException
             }
 
-            return new ProcessResult(process.exitValue(), out.toString());
+            return new ProcessResult(isFinished, process.exitValue(), out.toString());
 
         } catch (InterruptedException e) {
             log.error("[ProcessPoolUtil] 收到主线程中断信号，正在强杀子进程...", e);
@@ -114,10 +114,10 @@ public class ProcessPoolUtil {
             }
             // 重新设置中断状态，好让上层调用者（如线程池）知道线程已被中断
             Thread.currentThread().interrupt();
-            return new ProcessResult(-1, out + "\nEXECUTION_INTERRUPTED");
+            return new ProcessResult(false, -1, out + "\nEXECUTION_INTERRUPTED");
 
         } catch (Exception e) {
-            return new ProcessResult(-1, out + "\nERROR: " + e.getMessage());
+            return new ProcessResult(false, -1, out + "\nERROR: " + e.getMessage());
         } finally {
             if (process != null) {
                 closeQuietly(process.getInputStream());

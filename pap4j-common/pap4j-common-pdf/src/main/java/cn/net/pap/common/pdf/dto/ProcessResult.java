@@ -11,7 +11,8 @@ public class ProcessResult {
     public ProcessResult() {
     }
 
-    public ProcessResult(Integer exitCode, String output) {
+    public ProcessResult(boolean finished, Integer exitCode, String output) {
+        this.finished = finished;
         this.exitCode = exitCode;
         this.output = output;
     }
