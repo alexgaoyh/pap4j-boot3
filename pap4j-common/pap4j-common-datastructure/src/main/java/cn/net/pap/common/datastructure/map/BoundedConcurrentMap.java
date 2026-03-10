@@ -26,6 +26,14 @@ public class BoundedConcurrentMap<K, V> {
     /**
      * 尝试放入元素（普通 put 的安全替代品）
      *
+     * map.mappingCount() 和 map.putIfAbsent() 之间是 非原子操作。
+     *
+     * 高并发下，多个线程可能同时通过 map.mappingCount() < maxCapacity 的检查，然后几乎同时调用 putIfAbsent。
+     *
+     * 这就导致最终容量略微超过 maxCapacity，但不会大幅超过（比如 100 → 101~102）。
+     *
+     * 这正是你测试里提到的 “软限制(Soft Bound)” 的特性。
+     *
      * @return true: 放入或更新成功；false: 容量已满，拒绝放入新元素。
      */
     public boolean tryPut(K key, V value) {
