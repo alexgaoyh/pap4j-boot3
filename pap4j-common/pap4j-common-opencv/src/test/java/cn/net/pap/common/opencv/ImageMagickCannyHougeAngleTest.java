@@ -2,6 +2,8 @@ package cn.net.pap.common.opencv;
 
 import cn.net.pap.common.opencv.dto.ProcessResult;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -15,6 +17,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -24,6 +28,8 @@ import java.util.regex.Pattern;
  * 拿着 hough-lines 来进行分析，分析过程包含当前图像是横版还是竖版，然后算出来主要的图像信息，然后分析倾斜角度。
  */
 public class ImageMagickCannyHougeAngleTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ImageMagickCannyHougeAngleTest.class);
 
     /**
      * 图像的倾斜角度
@@ -73,7 +79,14 @@ public class ImageMagickCannyHougeAngleTest {
                 "-hough-lines", "9x9+" + minLength,
                 "MVG:-"
         );
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
             System.out.println(result);
@@ -83,7 +96,18 @@ public class ImageMagickCannyHougeAngleTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
@@ -488,7 +512,14 @@ public class ImageMagickCannyHougeAngleTest {
                 (type.equals("col") ? "1x\\!" : "x1\\!"),
                 projectionPath
         );
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
         } catch (Exception e) {
@@ -496,7 +527,18 @@ public class ImageMagickCannyHougeAngleTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }

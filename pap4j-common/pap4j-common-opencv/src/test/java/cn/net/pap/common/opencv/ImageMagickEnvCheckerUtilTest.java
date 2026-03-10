@@ -17,6 +17,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
@@ -36,7 +38,14 @@ public class ImageMagickEnvCheckerUtilTest {
         // 构建检查命令
         List<String> command = Arrays.asList("magick", "--version");
         // 由于是短暂的初始化检查，分配一个专属的单线程池，用完即毁
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
 
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
@@ -55,7 +64,18 @@ public class ImageMagickEnvCheckerUtilTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
@@ -72,7 +92,15 @@ public class ImageMagickEnvCheckerUtilTest {
         String[] command3 = {"echo1", "World"};
         String[] command4 = {"magick", "jpg.jp2", "-density", "300", "-units", " PixelsPerInch", "jpg.jpg"};
 
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
+
         try {
             for (String[] command : new String[][]{command1, command2, command3, command4}) {
                 ProcessResult result = ProcessPoolUtil.runCommand(Arrays.stream(command).toList(), 10, tempExecutor);
@@ -83,7 +111,18 @@ public class ImageMagickEnvCheckerUtilTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
@@ -109,7 +148,14 @@ public class ImageMagickEnvCheckerUtilTest {
 
     private void magickCommand(String command) throws IOException, InterruptedException {
         String[] commandSplit = command.split(" ");
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(Arrays.stream(commandSplit).toList(), 10, tempExecutor);
         } catch (Exception e) {
@@ -117,7 +163,18 @@ public class ImageMagickEnvCheckerUtilTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
@@ -285,7 +342,14 @@ public class ImageMagickEnvCheckerUtilTest {
     public void streamTest() {
         List<String> command = Arrays.asList("magick", "no-exist.jpg", "no-exist-output.jpg");
         // 由于是短暂的初始化检查，分配一个专属的单线程池，用完即毁
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
             log.info("Magick convert msg: {}", result.getOutput());
@@ -295,7 +359,18 @@ public class ImageMagickEnvCheckerUtilTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
@@ -304,7 +379,14 @@ public class ImageMagickEnvCheckerUtilTest {
     public void tiffCompressionTest() throws IOException, InterruptedException {
         List<String> command = Arrays.asList("magick", "identify", "-format", "%[compression]", "C:\\Users\\86181\\Desktop\\input.tiff");
         // 由于是短暂的初始化检查，分配一个专属的单线程池，用完即毁
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
             log.info("Magick convert msg: {}", result.getOutput());
@@ -314,7 +396,18 @@ public class ImageMagickEnvCheckerUtilTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }
@@ -329,7 +422,14 @@ public class ImageMagickEnvCheckerUtilTest {
                 "D:\\knowledge\\watermark.png"
         );
 
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
             log.info("add_watermark bat operate succeeded: {}", result.getOutput().trim());
@@ -338,7 +438,18 @@ public class ImageMagickEnvCheckerUtilTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
         }
     }

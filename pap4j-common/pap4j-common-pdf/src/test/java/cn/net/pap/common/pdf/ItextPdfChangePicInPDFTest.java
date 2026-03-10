@@ -17,6 +17,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -107,7 +109,14 @@ public class ItextPdfChangePicInPDFTest {
         }
         List<String> command = Arrays.asList("magick", tempInputFile.getAbsolutePath(), "-quality", defaultQuality, tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat));
 
-        ExecutorService tempExecutor = Executors.newSingleThreadExecutor();
+        ExecutorService tempExecutor = new ThreadPoolExecutor(
+                1,
+                1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "magick-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
             return Files.readAllBytes(Paths.get(tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat)));
@@ -117,7 +126,18 @@ public class ItextPdfChangePicInPDFTest {
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {
-                tempExecutor.shutdownNow();
+                tempExecutor.shutdown(); // 停止接收新任务
+                try {
+                    // 等待 30 秒，给正在运行的任务一点时间
+                    if (!tempExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                        tempExecutor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    tempExecutor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
             tempInputFile.delete();
             new File(tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat)).delete();
