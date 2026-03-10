@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import java.io.IOException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 
@@ -165,27 +167,45 @@ public class PoolingHttpClientConnectionManagerTest {
 
     @Test
     public void getBatchTest() {
-        ExecutorService executorService = Executors.newFixedThreadPool(100);
-        IntStream.range(5000, 11000).forEach(index -> {
-            executorService.submit(() -> {
-                String url = "http://127.0.0.1:8080/direct?index=" +  index;
-                String response = sendGetRequest(url);
-                if (response != null) {
-                    logger.info("请求成功，响应内容: {}", response);
-                } else {
-                    //System.out.println(1);
-                    logger.error("请求失败，未获取到有效响应");
-                }
-            });
-        });
-
-        // 关闭线程池
-        executorService.shutdown();
+        ExecutorService executor = new ThreadPoolExecutor(
+                100,
+                100,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(6000),
+                r -> new Thread(r, "concurrent-soft-bound-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
-            executorService.awaitTermination(Integer.MAX_VALUE, TimeUnit.MINUTES);
-        } catch (InterruptedException e) {
-            logger.error("线程池关闭异常: {}", e.getMessage(), e);
+            IntStream.range(5000, 11000).forEach(index -> {
+                executor.submit(() -> {
+                    String url = "http://127.0.0.1:8080/direct?index=" +  index;
+                    String response = sendGetRequest(url);
+                    if (response != null) {
+                        logger.info("请求成功，响应内容: {}", response);
+                    } else {
+                        //System.out.println(1);
+                        logger.error("请求失败，未获取到有效响应");
+                    }
+                });
+            });
+        } finally {
+            // 关闭线程池
+            executor.shutdown();
+            try {
+                // 等待 2 秒让未完成的任务结束
+                if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    logger.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                logger.error("关闭线程池时被中断", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
+
+
     }
 
 

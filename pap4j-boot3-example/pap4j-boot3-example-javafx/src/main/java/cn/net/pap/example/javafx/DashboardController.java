@@ -58,8 +58,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.ResourceBundle;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 public class DashboardController implements Initializable {
@@ -846,8 +847,15 @@ public class DashboardController implements Initializable {
                 }
                 Collections.sort(imagePaths, new OSAlignedNaturalComparator<Path>());
 
-                // 2. 创建一个固定大小的线程池（建议 CPU 核心数）
-                ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+                // 2. 创建一个固定大小的线程池（建议 CPU 核心数） 做了 队列限制 + 拒绝策略，业务层需要注意
+                ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                        Runtime.getRuntime().availableProcessors(),
+                        Runtime.getRuntime().availableProcessors(),
+                        0L, TimeUnit.MILLISECONDS,
+                        new LinkedBlockingQueue<>(1000),
+                        r -> new Thread(r, "image-thumbnail-executor"),
+                        new ThreadPoolExecutor.AbortPolicy()
+                );
 
                 try {
                     List<VBox> batch = new ArrayList<>();
@@ -882,6 +890,17 @@ public class DashboardController implements Initializable {
                     }
                 } finally {
                     executor.shutdown(); // 关闭线程池
+                    try {
+                        // 等待 N 秒，给正在运行的任务一点时间
+                        if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                            log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                            executor.shutdownNow(); // 超时强制关闭
+                        }
+                    } catch (InterruptedException e) {
+                        log.error("关闭线程池时被中断", e);
+                        executor.shutdownNow();
+                        Thread.currentThread().interrupt();
+                    }
                 }
                 return null;
             }

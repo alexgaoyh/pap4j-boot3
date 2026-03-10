@@ -3,11 +3,24 @@
         "-//Checkstyle//DTD Checkstyle Configuration 1.3//EN"
         "https://checkstyle.org/dtds/configuration_1_3.dtd">
 <module name="Checker">
+
+    <module name="SuppressionSingleFilter">
+        <property name="id" value="Executors-FixedThreadPool-Forbidden"/>
+        <property name="files" value="ThreadLeakDemoController\.java|ExecutorServiceTest\.java"/>
+    </module>
+
     <module name="TreeWalker">
         <!-- 禁止直接实例化 CheckStyleDTO -->
         <module name="IllegalInstantiation">
             <property name="id" value="CheckStyleDTO-Instantiation-Forbidden"/>
             <property name="classes" value="cn.net.pap.common.datastructure.checkstyle.CheckStyleDTO"/>
+        </module>
+        <!-- 禁止使用 Executors.newFixedThreadPool -->
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="Executors-FixedThreadPool-Forbidden"/>
+            <property name="format" value="Executors\s*\.\s*newFixedThreadPool\s*\("/>
+            <property name="message" value="禁止使用 Executors.newFixedThreadPool，建议使用 ThreadPoolExecutor 自定义线程池参数以避免 OOM 风险。"/>
+            <property name="ignoreComments" value="true"/>
         </module>
     </module>
 </module>

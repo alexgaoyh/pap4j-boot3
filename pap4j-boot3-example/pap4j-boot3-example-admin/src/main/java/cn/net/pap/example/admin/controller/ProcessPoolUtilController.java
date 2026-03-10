@@ -4,6 +4,9 @@ import cn.net.pap.example.admin.dto.ProcessResult;
 import cn.net.pap.example.admin.util.ProcessPoolUtil;
 import cn.net.pap.example.admin.util.ProcessPoolUtilExample;
 import io.swagger.v3.oas.annotations.Operation;
+import jakarta.annotation.PreDestroy;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -14,13 +17,16 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/processPoolUtil")
 public class ProcessPoolUtilController {
+
+    private static final Logger log = LoggerFactory.getLogger(ProcessPoolUtilController.class);
 
     @Configuration
     public class ThreadPoolConfig {
@@ -43,9 +49,19 @@ public class ProcessPoolUtilController {
             return executor;
         }
 
-        @Bean(name = "testExecutorService")
-        public static ExecutorService testExecutorService() {
-            return Executors.newCachedThreadPool();
+        @Bean(name = "testThreadPoolExecutor")
+        public static ThreadPoolExecutor testThreadPoolExecutor() {
+            return new ThreadPoolExecutor(
+                    5,
+                    20,
+                    60L, TimeUnit.SECONDS,
+                    new ArrayBlockingQueue<>(200),
+                    r -> {
+                        Thread t = new Thread(r, "process-pool-thread");
+                        return t;
+                    },
+                    new ThreadPoolExecutor.AbortPolicy()
+            );
         }
 
     }
@@ -55,7 +71,44 @@ public class ProcessPoolUtilController {
     private ThreadPoolTaskExecutor executor;
 
     @Autowired
-    private ExecutorService testExecutorService;
+    private ThreadPoolExecutor testThreadPoolExecutor;
+
+    /**
+     * 容器关闭前执行的清理逻辑
+     * 无需继承接口，Spring 会自动扫描并执行标注了 @PreDestroy 的方法
+     */
+    @PreDestroy
+    public void shutdownPools() {
+        log.info("检测到项目关闭，正在清理线程资源...");
+
+        // 1. 处理自定义的 ThreadPoolExecutor (testThreadPoolExecutor)
+        if (testThreadPoolExecutor != null && !testThreadPoolExecutor.isShutdown()) {
+            testThreadPoolExecutor.shutdown(); // 停止接收新任务
+            try {
+                // 等待 30 秒，给正在运行的任务一点时间
+                if (!testThreadPoolExecutor.awaitTermination(30, TimeUnit.SECONDS)) {
+                    log.warn("部分线程池任务未在 30 秒内结束，强制关闭");
+                    testThreadPoolExecutor.shutdownNow(); // 超时强制关闭
+                }
+            } catch (InterruptedException e) {
+                log.error("关闭线程池时被中断", e);
+                testThreadPoolExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
+
+        // 2. 对于 processExecutor (ThreadPoolTaskExecutor)
+        // 虽然在 @Bean 配置了 waitForTasksToCompleteOnShutdown，
+        // 但显式调用 destroy() 可以确保立即触发 Spring 的销毁逻辑
+        if (executor != null) {
+            executor.destroy();
+        }
+
+        // 3. 清理结果缓存，防止内存残留
+        results.clear();
+
+        log.info("所有线程池已安全退出。");
+    }
 
     /**
      * 最简单的“任务表”， 后续可以改为本地缓存
@@ -77,7 +130,7 @@ public class ProcessPoolUtilController {
 
         executor.execute(() -> {
             ProcessResult r = ProcessPoolUtil.runJavaClass(
-                    mainClass, null, 0, testExecutorService
+                    mainClass, null, 0, testThreadPoolExecutor
             );
             result.exitCode = r.getExitCode();
             result.output = r.getOutput();

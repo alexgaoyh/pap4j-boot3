@@ -4,6 +4,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
@@ -28,6 +30,9 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +42,8 @@ import static org.junit.jupiter.api.Assertions.fail;
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = JdbcMySQLTemplateTest.Config.class)
 class JdbcMySQLTemplateTest {
+
+    private static final Logger log = LoggerFactory.getLogger(JdbcMySQLTemplateTest.class);
 
     @Configuration
     static class Config {
@@ -206,47 +213,70 @@ class JdbcMySQLTemplateTest {
         // 先插入一条行，让 T1 的快照不为空
         jdbcTemplate.update("INSERT INTO user_info (id, name, age, email, status) VALUES (?, ?, ?, ?, ?)", "1", "init-user", "2", "3", "INIT");
 
-        ExecutorService pool = Executors.newFixedThreadPool(2);
+        ExecutorService pool = new ThreadPoolExecutor(
+                2,
+                2,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "pool-test-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
 
-        // T1：读取范围
-        Future<Integer> diffFuture = pool.submit(() -> tx.execute(status -> {
-            // 第一次查询
-            List<Long> first = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
-            System.out.println("T1 first = " + first);
+        try {
+            // T1：读取范围
+            Future<Integer> diffFuture = pool.submit(() -> tx.execute(status -> {
+                // 第一次查询
+                List<Long> first = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
+                System.out.println("T1 first = " + first);
 
-            t1Ready.countDown();
+                t1Ready.countDown();
 
+                try {
+                    t2Done.await();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+
+                // 第二次查询
+                List<Long> second = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
+                System.out.println("T1 second = " + second);
+
+                return second.size() - first.size();
+            }));
+
+            // T2：插入新行
+            pool.submit(() -> {
+                try {
+                    t1Ready.await();
+                    tx.execute(status -> {
+                        jdbcTemplate.update("INSERT INTO user_info (id, name, age, email, status) VALUES (?, ?, ?, ?, ?)", "2", "insert-user", "2", "3", "INIT");
+                        return null;
+                    });
+                } catch (InterruptedException ignored) {
+                } finally {
+                    t2Done.countDown();
+                }
+            });
+
+            Integer diff = diffFuture.get();
+
+
+            System.out.println("phantom diff = " + diff);
+        } finally {
+            pool.shutdown();
             try {
-                t2Done.await();
+                // 等待 2 秒让未完成的任务结束
+                if (!pool.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    pool.shutdownNow();
+                }
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                log.error("关闭线程池时被中断", e);
+                pool.shutdownNow();
+                Thread.currentThread().interrupt();
             }
-
-            // 第二次查询
-            List<Long> second = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
-            System.out.println("T1 second = " + second);
-
-            return second.size() - first.size();
-        }));
-
-        // T2：插入新行
-        pool.submit(() -> {
-            try {
-                t1Ready.await();
-                tx.execute(status -> {
-                    jdbcTemplate.update("INSERT INTO user_info (id, name, age, email, status) VALUES (?, ?, ?, ?, ?)", "2", "insert-user", "2", "3", "INIT");
-                    return null;
-                });
-            } catch (InterruptedException ignored) {
-            } finally {
-                t2Done.countDown();
-            }
-        });
-
-        Integer diff = diffFuture.get();
-        pool.shutdown();
-
-        System.out.println("phantom diff = " + diff);
+        }
     }
 
     @Test

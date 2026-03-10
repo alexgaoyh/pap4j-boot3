@@ -4,16 +4,23 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * BoundedConcurrentMap 的单元测试
  */
 class BoundedConcurrentMapTest {
+
+    private static final Logger log = LoggerFactory.getLogger(BoundedConcurrentMapTest.class);
 
     private BoundedConcurrentMap<String, Integer> boundedMap;
     private final long MAX_CAPACITY = 3; // 为了方便单线程测试边界，容量设置小一点
@@ -114,36 +121,58 @@ class BoundedConcurrentMapTest {
         BoundedConcurrentMap<String, Integer> concurrentMap = new BoundedConcurrentMap<>(maxCap);
 
         int threadCount = 500; // 模拟 500 个并发线程疯狂塞入不同数据
-        ExecutorService executorService = Executors.newFixedThreadPool(50);
+        ExecutorService executor = new ThreadPoolExecutor(
+                50,
+                50,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(threadCount),
+                r -> new Thread(r, "concurrent-soft-bound-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         CountDownLatch latch = new CountDownLatch(threadCount);
         AtomicInteger successCount = new AtomicInteger(0);
 
-        for (int i = 0; i < threadCount; i++) {
-            final int index = i;
-            executorService.execute(() -> {
-                try {
-                    // 尝试放入 500 个不同的 Key
-                    boolean success = concurrentMap.tryPut("Key-" + index, index);
-                    if (success) {
-                        successCount.incrementAndGet();
+        try {
+            for (int i = 0; i < threadCount; i++) {
+                final int index = i;
+                executor.execute(() -> {
+                    try {
+                        // 尝试放入 500 个不同的 Key
+                        boolean success = concurrentMap.tryPut("Key-" + index, index);
+                        if (success) {
+                            successCount.incrementAndGet();
+                        }
+                    } finally {
+                        latch.countDown();
                     }
-                } finally {
-                    latch.countDown();
+                });
+            }
+
+            latch.await(); // 等待所有线程执行完毕
+
+            long actualSize = concurrentMap.mappingCount();
+            System.out.println("并发塞入 500 个元素，最大容量限制: " + maxCap + "，最终 Map 实际大小: " + actualSize);
+            System.out.println("成功写入次数: " + successCount.get());
+
+            // 【核心断言】
+            // 由于是高并发下的软限制 (微小的时间差内可能有几个线程同时通过了 if 校验)，
+            // 最终的 size 可能会稍微大于 100 (比如 101, 102)，但这对于防 OOM 来说是完全达标的。
+            // 我们断言实际大小一定远小于总并发数(500)，且大致在 maxCap 附近。
+            Assertions.assertTrue(actualSize >= maxCap && actualSize <= maxCap + 50, "实际大小应该被软限制在接近最大容量的范围内");
+        } finally {
+            executor.shutdown();
+            try {
+                // 等待 2 秒让未完成的任务结束
+                if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    executor.shutdownNow();
                 }
-            });
+            } catch (InterruptedException e) {
+                log.error("关闭线程池时被中断", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
-
-        latch.await(); // 等待所有线程执行完毕
-        executorService.shutdown();
-
-        long actualSize = concurrentMap.mappingCount();
-        System.out.println("并发塞入 500 个元素，最大容量限制: " + maxCap + "，最终 Map 实际大小: " + actualSize);
-        System.out.println("成功写入次数: " + successCount.get());
-
-        // 【核心断言】
-        // 由于是高并发下的软限制 (微小的时间差内可能有几个线程同时通过了 if 校验)，
-        // 最终的 size 可能会稍微大于 100 (比如 101, 102)，但这对于防 OOM 来说是完全达标的。
-        // 我们断言实际大小一定远小于总并发数(500)，且大致在 maxCap 附近。
-        Assertions.assertTrue(actualSize >= maxCap && actualSize <= maxCap + 50, "实际大小应该被软限制在接近最大容量的范围内");
     }
 }

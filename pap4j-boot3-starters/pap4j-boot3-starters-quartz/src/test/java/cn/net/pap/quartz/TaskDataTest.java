@@ -2,6 +2,7 @@ package cn.net.pap.quartz;
 
 import cn.net.pap.quartz.util.BeanMethodInvoker;
 import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.runner.RunWith;
 import cn.net.pap.quartz.entity.TaskData;
 import cn.net.pap.quartz.service.ITaskDataService;
@@ -17,7 +18,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -39,7 +41,32 @@ public class TaskDataTest {
     @Autowired
     private ApplicationContext applicationContext;
 
-    private ExecutorService executorService = Executors.newFixedThreadPool(20);
+    public static final ExecutorService executor = new ThreadPoolExecutor(
+            20,
+            20,
+            0L, TimeUnit.MILLISECONDS,
+            new LinkedBlockingQueue<>(10),
+            r -> new Thread(r, "countdownlatch-test-executor"),
+            new ThreadPoolExecutor.AbortPolicy()
+    );
+
+    @AfterAll
+    public static void shutdown() {
+        executor.shutdown();
+        try {
+            // 等待 2 秒让未完成的任务结束
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                logger.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            logger.error("关闭线程池时被中断", e);
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
+    }
 
     @Test
     public void testSingleThreadProcessing() {
@@ -73,7 +100,7 @@ public class TaskDataTest {
         CountDownLatch endLatch = new CountDownLatch(threadCount);
 
         for (int i = 0; i < threadCount; i++) {
-            executorService.submit(() -> {
+            executor.submit(() -> {
                 try {
                     startLatch.await(); // 等待所有线程就绪
                     taskDataService.processBatchSafely();

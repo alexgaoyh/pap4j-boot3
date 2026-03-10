@@ -3,17 +3,44 @@ package cn.net.pap.common.datastructure.executor;
 import cn.net.pap.common.datastructure.cpu.CpuInfoUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
+/**
+ * 两个单元测试虽然任务提交方式不同（parallelStream vs for循环），但由于最终都把任务提交到同一个固定大小的线程池执行，因此实际并发模型和执行效率几乎完全一致。
+ */
 public class CompletableFutureTest {
 
-    private static final ExecutorService executor = Executors.newFixedThreadPool(6);
+    private static final Logger log = LoggerFactory.getLogger(CompletableFutureTest.class);
+
+    private static final ExecutorService executor = new ThreadPoolExecutor(
+                6,
+                6,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(10),
+        r -> new Thread(r, "completable-future-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+    );
 
     @AfterAll
     public static void shutdown() {
         executor.shutdown();
+        try {
+            // 等待 2 秒让未完成的任务结束
+            if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            log.error("关闭线程池时被中断", e);
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+
     }
 
     public static String doWork(String input) {
@@ -53,6 +80,7 @@ public class CompletableFutureTest {
     }
 
     public static <T> void executeTask(Callable<T> task, TaskCallback<T> callback, CountDownLatch latch) {
+        // CompletableFuture 的并发执行能力取决于其绑定的 Executor 线程池大小，而不是任务提交方式（如 parallelStream 或循环提交），因此在并发设计中应重点关注线程池配置。
         CompletableFuture.supplyAsync(() -> {
             try {
                 return task.call();

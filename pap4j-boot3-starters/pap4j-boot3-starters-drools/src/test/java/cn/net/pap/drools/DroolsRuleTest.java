@@ -10,6 +10,8 @@ import org.kie.api.builder.Message;
 import org.kie.api.builder.Results;
 import org.kie.api.io.ResourceType;
 import org.kie.api.runtime.KieSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -23,12 +25,17 @@ import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {DroolsApplication.class})
 public class DroolsRuleTest {
+
+    private static final Logger log = LoggerFactory.getLogger(DroolsRuleTest.class);
 
     @Autowired
     private IDroolsRuleService droolsRuleService;
@@ -109,7 +116,14 @@ public class DroolsRuleTest {
 
     @Test
     public void countDownLatchTest() throws Exception {
-        ExecutorService executor = Executors.newFixedThreadPool(100);
+        ExecutorService executor = new ThreadPoolExecutor(
+                100,
+                100,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(100),
+                r -> new Thread(r, "countdownlatch-test-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         CountDownLatch latch = new CountDownLatch(100);
 
         org.kie.internal.utils.KieHelper kieHelper1 = new org.kie.internal.utils.KieHelper();
@@ -120,41 +134,56 @@ public class DroolsRuleTest {
         kieHelper2.addContent(read("spring.drl"), ResourceType.DRL);
         KieBase kieBase2 = kieHelper2.build();
 
-        for (int i = 1; i <= 100; i++) {
-            int finalI = -1;
-            double randomNumber = new Random().nextDouble();
-            if (randomNumber < 0.5) {
-                finalI = 1;
-            } else {
-                finalI = 2;
-            }
-            int request = finalI;
-
-            executor.execute(() -> {
-                if(request == 1) {
-                    KieSession kieSession = kieBase1.newKieSession();
-                    OrderDTO order = new OrderDTO();
-                    order.setPrice(new BigDecimal((int)(Math.random() * (100)) + 100));
-                    kieSession.insert(order);
-                    kieSession.fireAllRules();
-                    kieSession.dispose();
-                    System.out.println("指定规则引擎后的结果：" + order.getDiscount());
+        try {
+            for (int i = 1; i <= 100; i++) {
+                int finalI = -1;
+                double randomNumber = new Random().nextDouble();
+                if (randomNumber < 0.5) {
+                    finalI = 1;
                 } else {
-                    KieSession kieSession = kieBase2.newKieSession();
-                    OrderDTO order = new OrderDTO();
-                    order.setPrice(new BigDecimal((int)(Math.random() * (100)) + 100));
-                    kieSession.setGlobal("droolsRuleService", droolsRuleService);
-                    kieSession.insert(order);
-                    kieSession.fireAllRules();
-                    kieSession.dispose();
-                    System.out.println("指定规则引擎后的结果：" + order.getMessage());
+                    finalI = 2;
                 }
-                latch.countDown();
-            });
-        }
+                int request = finalI;
 
-        latch.await();
-        executor.shutdown();
+                executor.execute(() -> {
+                    if(request == 1) {
+                        KieSession kieSession = kieBase1.newKieSession();
+                        OrderDTO order = new OrderDTO();
+                        order.setPrice(new BigDecimal((int)(Math.random() * (100)) + 100));
+                        kieSession.insert(order);
+                        kieSession.fireAllRules();
+                        kieSession.dispose();
+                        System.out.println("指定规则引擎后的结果：" + order.getDiscount());
+                    } else {
+                        KieSession kieSession = kieBase2.newKieSession();
+                        OrderDTO order = new OrderDTO();
+                        order.setPrice(new BigDecimal((int)(Math.random() * (100)) + 100));
+                        kieSession.setGlobal("droolsRuleService", droolsRuleService);
+                        kieSession.insert(order);
+                        kieSession.fireAllRules();
+                        kieSession.dispose();
+                        System.out.println("指定规则引擎后的结果：" + order.getMessage());
+                    }
+                    latch.countDown();
+                });
+            }
+
+            latch.await();
+        } finally {
+            executor.shutdown();
+            try {
+                // 等待 2 秒让未完成的任务结束
+                if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                log.error("关闭线程池时被中断", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
 

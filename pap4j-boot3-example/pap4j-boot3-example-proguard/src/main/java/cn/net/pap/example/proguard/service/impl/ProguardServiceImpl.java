@@ -28,9 +28,11 @@ import java.sql.Statement;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
@@ -309,7 +311,17 @@ public class ProguardServiceImpl implements IProguardService {
 
     @Override
     public Proguard timeout(Proguard proguard, Long timeMS) {
-        ExecutorService executor = Executors.newCachedThreadPool();
+        ExecutorService executor = new ThreadPoolExecutor(
+                5,
+                20,
+                60L, TimeUnit.SECONDS,
+                new ArrayBlockingQueue<>(200),
+                r -> {
+                    Thread t = new Thread(r, "proguard-timeout-thread");
+                    return t;
+                },
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         try {
             Future<Proguard> future = executor.submit(() ->
                     transactionTemplate.execute(status -> {
@@ -390,6 +402,7 @@ public class ProguardServiceImpl implements IProguardService {
         try {
             // 等待现有任务完成
             if (!executor.awaitTermination(120, TimeUnit.SECONDS)) {
+                logger.warn("部分线程池任务未在 120 秒内结束，强制关闭");
                 // 超时后强制关闭
                 executor.shutdownNow();
                 // 再次等待
@@ -398,6 +411,7 @@ public class ProguardServiceImpl implements IProguardService {
                 }
             }
         } catch (InterruptedException e) {
+            logger.error("关闭线程池时被中断", e);
             // 如果等待过程中被中断，也强制关闭
             executor.shutdownNow();
             // 保持中断状态

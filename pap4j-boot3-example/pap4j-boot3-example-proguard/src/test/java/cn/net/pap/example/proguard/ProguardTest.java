@@ -18,6 +18,8 @@ import org.hibernate.Session;
 import org.hibernate.StatelessSession;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
@@ -37,6 +39,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
 public class ProguardTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ProguardTest.class);
 
     @Autowired
     ProguardRepository proguardRepository;
@@ -435,55 +439,99 @@ public class ProguardTest {
     // @Test
     public void updateIdxTest() throws InterruptedException {
         int numThreads = 10000;
-        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                numThreads,
+                numThreads,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "updateidx-test-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         String seqName = "testSync";
         CountDownLatch latch = new CountDownLatch(numThreads);
-        List<Future<Integer>> futures1 = new ArrayList<>();
-        for (int i = 0; i < numThreads; i++) {
-            int finalI = i;
-            CountDownLatch finalLatch = latch;
-            futures1.add(executorService.submit(() -> {
-                try {
-                    return get_sync(seqName, finalI);
-                } finally {
-                    finalLatch.countDown();
-                }
-            }));
-        }
-        latch.await();
-        for (int i = 0; i < numThreads; i++) {
-            // assertEquals(String.valueOf(i), futures1.get(i).get());
-        }
-        executorService.shutdown();
+        try {
+            List<Future<Integer>> futures1 = new ArrayList<>();
+            for (int i = 0; i < numThreads; i++) {
+                int finalI = i;
+                CountDownLatch finalLatch = latch;
+                futures1.add(executor.submit(() -> {
+                    try {
+                        return get_sync(seqName, finalI);
+                    } finally {
+                        finalLatch.countDown();
+                    }
+                }));
+            }
+            latch.await();
+            for (int i = 0; i < numThreads; i++) {
+                // assertEquals(String.valueOf(i), futures1.get(i).get());
+            }
 
-        Proguard proguardByProguardId = proguardRepository.getProguardByProguardId(1l);
-        assertEquals(proguardByProguardId.getProguardIdx(), numThreads);
+            Proguard proguardByProguardId = proguardRepository.getProguardByProguardId(1l);
+            assertEquals(proguardByProguardId.getProguardIdx(), numThreads);
+        } finally {
+            executor.shutdown();
+            try {
+                // 等待 2 秒让未完成的任务结束
+                if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                log.error("关闭线程池时被中断", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
-    // @Test
+    @Test
     public void testStringLockFailure() throws InterruptedException {
         int numThreads = 1000;
-        ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                numThreads,
+                numThreads,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "stringlockfailure-test-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         String seqName = "testSync";
         CountDownLatch latch = new CountDownLatch(numThreads);
         List<Integer> results = Collections.synchronizedList(new ArrayList<>());
 
-        for (int i = 0; i < numThreads; i++) {
-            int finalI = i;
-            executorService.submit(() -> {
-                try {
-                    Integer syncInt = get_sync(new String(seqName), finalI);
-                    results.add(syncInt);
-                } finally {
-                    latch.countDown();
+        try {
+            for (int i = 0; i < numThreads; i++) {
+                int finalI = i;
+                executor.submit(() -> {
+                    try {
+                        Integer syncInt = get_sync(new String(seqName), finalI);
+                        results.add(syncInt);
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+
+            latch.await();
+
+            assertNotEquals(numThreads, results.get(results.size() - 1));
+        } finally {
+            executor.shutdown();
+            try {
+                // 等待 2 秒让未完成的任务结束
+                if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    executor.shutdownNow();
                 }
-            });
+            } catch (InterruptedException e) {
+                log.error("关闭线程池时被中断", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
-
-        latch.await();
-        executorService.shutdown();
-
-        assertNotEquals(numThreads, results.get(results.size() - 1));
     }
 
     private Proguard geneEntity() {

@@ -7,6 +7,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -24,9 +26,13 @@ import java.time.Instant;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class HttpTest {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpTest.class);
 
     private static final Clock clock = Clock.systemUTC();
 
@@ -67,20 +73,42 @@ public class HttpTest {
     public void request() throws Exception {
         OkHttpClient httpClient = new OkHttpClient.Builder().readTimeout(30, TimeUnit.SECONDS).build();
 
-        ExecutorService executor = Executors.newFixedThreadPool(50);
+        ExecutorService executor = new ThreadPoolExecutor(
+                50,
+                50,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(100),
+                r -> new Thread(r, "request-test-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
         CountDownLatch latch = new CountDownLatch(2000);
 
-        for (int idx = 0; idx < 2000; idx++) {
-            int requestIdx = idx;
-            executor.execute(() -> {
-                String url = "/api?_t=" + getCurrentTimestampSinceEpochInMillis();
-                request(httpClient, url, "\\dir\\" + String.format("%06d.jpg", requestIdx), requestIdx + "");
-                latch.countDown();
-            });
-        }
+        try {
+            for (int idx = 0; idx < 2000; idx++) {
+                int requestIdx = idx;
+                executor.execute(() -> {
+                    String url = "/api?_t=" + getCurrentTimestampSinceEpochInMillis();
+                    request(httpClient, url, "\\dir\\" + String.format("%06d.jpg", requestIdx), requestIdx + "");
+                    latch.countDown();
+                });
+            }
 
-        latch.await();
-        executor.shutdown();
+            latch.await();
+        } finally {
+            executor.shutdown();
+            try {
+                // 等待 2 秒让未完成的任务结束
+                if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                log.error("关闭线程池时被中断", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+        }
 
     }
 

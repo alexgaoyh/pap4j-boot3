@@ -20,8 +20,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.StandardOpenOption;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -34,7 +34,17 @@ public interface ImageProcessorStrategy {
     String PATH = System.getenv("PATH");
 
     // 单例 CachedThreadPool 用于 IO 密集任务
-    ExecutorService IO_EXECUTOR = Executors.newCachedThreadPool();
+    ThreadPoolExecutor IO_EXECUTOR = new ThreadPoolExecutor(
+            5,
+            20,
+            60L, TimeUnit.SECONDS,
+            new ArrayBlockingQueue<>(200),
+            r -> {
+                Thread t = new Thread(r, "image-processor-thread");
+                return t;
+            },
+            new ThreadPoolExecutor.AbortPolicy()
+    );
 
     /**
      * 应用退出时调用
@@ -44,9 +54,11 @@ public interface ImageProcessorStrategy {
         IO_EXECUTOR.shutdown();
         try {
             if (!IO_EXECUTOR.awaitTermination(5, TimeUnit.SECONDS)) {
+                log.warn("部分线程池任务未在 5 秒内结束，强制关闭");
                 IO_EXECUTOR.shutdownNow();
             }
         } catch (InterruptedException e) {
+            log.error("关闭线程池时被中断", e);
             IO_EXECUTOR.shutdownNow();
             Thread.currentThread().interrupt();
         }

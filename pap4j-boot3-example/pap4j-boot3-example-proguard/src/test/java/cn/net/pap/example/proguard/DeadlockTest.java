@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -24,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
 class DeadlockTest {
 
+    private static final Logger log = LoggerFactory.getLogger(DeadlockTest.class);
+
     @Autowired
     private IProguardService proguardService;
 
@@ -32,53 +36,74 @@ class DeadlockTest {
         init(); // 初始化数据
 
         CountDownLatch latch = new CountDownLatch(2); // 用于确保两个事务同时启动
-        ExecutorService executor = Executors.newFixedThreadPool(2);
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                2,
+                2,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "test-deadlock-executor"),
+                new ThreadPoolExecutor.AbortPolicy()
+        );
 
         boolean deadlockOccurred = false;
         int attempt = 0;
         final int MAX_ATTEMPTS = 99999; // 最大尝试次数
 
-        while (!deadlockOccurred && attempt < MAX_ATTEMPTS) {
-            attempt++;
-            System.out.println("Attempt " + attempt + " to trigger deadlock...");
+        try {
+            while (!deadlockOccurred && attempt < MAX_ATTEMPTS) {
+                attempt++;
+                System.out.println("Attempt " + attempt + " to trigger deadlock...");
 
-            CountDownLatch finalLatch = latch;
-            Callable<Void> task1 = () -> {
-                finalLatch.countDown();
-                finalLatch.await(); // 等待所有线程就绪
+                CountDownLatch finalLatch = latch;
+                Callable<Void> task1 = () -> {
+                    finalLatch.countDown();
+                    finalLatch.await(); // 等待所有线程就绪
 
-                proguardService.checkDeadLock(1l, 2l);
+                    proguardService.checkDeadLock(1l, 2l);
 
-                return null;
-            };
+                    return null;
+                };
 
-            Callable<Void> task2 = () -> {
-                finalLatch.countDown();
-                finalLatch.await(); // 等待所有线程就绪
+                Callable<Void> task2 = () -> {
+                    finalLatch.countDown();
+                    finalLatch.await(); // 等待所有线程就绪
 
-                proguardService.checkDeadLock(2l, 1l);
+                    proguardService.checkDeadLock(2l, 1l);
 
-                return null;
-            };
+                    return null;
+                };
 
-            Future<Void> future1 = executor.submit(task1);
-            Future<Void> future2 = executor.submit(task2);
+                Future<Void> future1 = executor.submit(task1);
+                Future<Void> future2 = executor.submit(task2);
 
-            try {
-                future1.get();
-                future2.get();
-                latch = new CountDownLatch(2); // 重置 CountDownLatch
-            } catch (ExecutionException e) {
-                if (e.getCause() instanceof RuntimeException) {
-                    System.err.println("Deadlock detected: " + e.getCause().getMessage());
-                    deadlockOccurred = true; // 假设死锁发生
+                try {
+                    future1.get();
+                    future2.get();
+                    latch = new CountDownLatch(2); // 重置 CountDownLatch
+                } catch (ExecutionException e) {
+                    if (e.getCause() instanceof RuntimeException) {
+                        System.err.println("Deadlock detected: " + e.getCause().getMessage());
+                        deadlockOccurred = true; // 假设死锁发生
+                    }
                 }
             }
+
+            assertTrue(deadlockOccurred, "Deadlock did not occur within " + MAX_ATTEMPTS + " attempts.");
+        } finally {
+            executor.shutdown();
+            try {
+                // 等待 2 秒让未完成的任务结束
+                if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    executor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                log.error("关闭线程池时被中断", e);
+                executor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
-
-        executor.shutdownNow();
-
-        assertTrue(deadlockOccurred, "Deadlock did not occur within " + MAX_ATTEMPTS + " attempts.");
     }
 
     void init() {

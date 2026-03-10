@@ -4,10 +4,15 @@ import cn.net.pap.example.admin.dto.ProcessResult;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -18,23 +23,47 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 public class ProcessPoolUtilTest {
 
+    private static final Logger log = LoggerFactory.getLogger(ProcessPoolUtilTest.class);
+
     // ==========================================
     // 全局测试用线程池
     // ==========================================
-    private static ExecutorService testExecutorService;
+    private static ThreadPoolExecutor testThreadPoolExecutor;
 
     @BeforeAll
     public static void setUp() {
         // 在所有测试用例执行前，初始化一个用于读取流的线程池
-        // 这里使用 CachedThreadPool 足够满足测试中短生命周期异步任务的需求
-        testExecutorService = Executors.newCachedThreadPool();
+        testThreadPoolExecutor = new ThreadPoolExecutor(5, 20, 60L, TimeUnit.SECONDS, new ArrayBlockingQueue<>(10), new ThreadFactory() {
+            private final AtomicInteger threadNumber = new AtomicInteger(1);
+
+            @Override
+            public Thread newThread(Runnable r) {
+                Thread t = new Thread(r, "process-pool-thread-" + threadNumber.getAndIncrement());
+                t.setUncaughtExceptionHandler((thread, e) -> {
+                    log.error("线程池 {} 发生未捕获异常: ", thread.getName(), e);
+                });
+                return t;
+            }
+        }, new ThreadPoolExecutor.AbortPolicy());
     }
 
     @AfterAll
     public static void tearDown() {
         // 在所有测试用例执行完毕后，关闭线程池，释放资源
-        if (testExecutorService != null && !testExecutorService.isShutdown()) {
-            testExecutorService.shutdown();
+        if (testThreadPoolExecutor != null && !testThreadPoolExecutor.isShutdown()) {
+            testThreadPoolExecutor.shutdown();
+            try {
+                // 等待 2 秒让未完成的任务结束
+                if (!testThreadPoolExecutor.awaitTermination(2, TimeUnit.SECONDS)) {
+                    // 超时后强制关闭，这会向所有池中线程发送 Interrupt 信号
+                    log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                    testThreadPoolExecutor.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                log.error("关闭线程池时被中断", e);
+                testThreadPoolExecutor.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
     }
 
@@ -80,8 +109,8 @@ public class ProcessPoolUtilTest {
     public void testNormalExecution() {
         String mainClass = NormalTask.class.getName();
 
-        // 传入 testExecutorService
-        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 5, testExecutorService);
+        // 传入 testThreadPoolExecutor
+        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 5, testThreadPoolExecutor);
 
         assertEquals(0, result.getExitCode(), "正常执行的退出码应为 0");
         assertTrue(result.getOutput().contains("Hello from subprocess!"), "应能读取到标准输出");
@@ -92,8 +121,8 @@ public class ProcessPoolUtilTest {
         String mainClass = SleepTask.class.getName();
         long startTime = System.currentTimeMillis();
 
-        // 传入 testExecutorService，设置 2 秒超时
-        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 2, testExecutorService);
+        // 传入 testThreadPoolExecutor，设置 2 秒超时
+        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 2, testThreadPoolExecutor);
         long duration = System.currentTimeMillis() - startTime;
 
         assertEquals(-1, result.getExitCode(), "超时被强杀的退出码约定为 -1");
@@ -106,8 +135,8 @@ public class ProcessPoolUtilTest {
     public void testOomPreventionTruncation() {
         String mainClass = HugeOutputTask.class.getName();
 
-        // 传入 testExecutorService
-        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 10, testExecutorService);
+        // 传入 testThreadPoolExecutor
+        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 10, testThreadPoolExecutor);
 
         assertEquals(0, result.getExitCode(), "进程应正常结束退出码为 0");
 
@@ -122,8 +151,8 @@ public class ProcessPoolUtilTest {
     public void testErrorStreamMerged() {
         String mainClass = ErrorTask.class.getName();
 
-        // 传入 testExecutorService
-        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 5, testExecutorService);
+        // 传入 testThreadPoolExecutor
+        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 5, testThreadPoolExecutor);
 
         assertEquals(1, result.getExitCode(), "异常退出的进程码应为 1");
         assertTrue(result.getOutput().contains("This is an error stream message."), "错误流应被合并并读取到");
@@ -137,8 +166,8 @@ public class ProcessPoolUtilTest {
 
         // 在新线程中执行
         Thread executorThread = new Thread(() -> {
-            // 传入 testExecutorService
-            ProcessResult res = ProcessPoolUtil.runJavaClass(mainClass, null, 10, testExecutorService);
+            // 传入 testThreadPoolExecutor
+            ProcessResult res = ProcessPoolUtil.runJavaClass(mainClass, null, 10, testThreadPoolExecutor);
             resultRef.set(res);
             latch.countDown();
         });
