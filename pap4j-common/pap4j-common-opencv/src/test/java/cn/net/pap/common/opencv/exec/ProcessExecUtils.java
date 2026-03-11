@@ -145,7 +145,7 @@ public class ProcessExecUtils {
         }
 
         // 避免写死 "gbk" 导致在英文版 Windows 下抛错
-        String charset = isWindows ? Charset.defaultCharset().name() : StandardCharsets.UTF_8.name();
+        String charset = isWindows ? System.getProperty("sun.jnu.encoding", "GBK") : StandardCharsets.UTF_8.name();
         return new ExecResult(exitCode, outStream.toString(charset), errStream.toString(charset), isTimeout);
     }
 
