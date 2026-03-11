@@ -7,6 +7,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadFactory;
@@ -104,6 +106,20 @@ public class ProcessPoolUtilTest {
     // ==========================================
     // 测试用例
     // ==========================================
+
+    @Test
+    public void testChinese() {
+        List<String> commandList;
+        boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+        if (isWindows) {
+            commandList = Arrays.asList("cmd.exe", "/c", "echo 中文!");
+        } else {
+            commandList = Arrays.asList("/bin/sh", "-c", "echo 中文!");
+        }
+        ProcessResult result = ProcessPoolUtil.runCommand(commandList, 5, testThreadPoolExecutor);
+        assertEquals(0, result.getExitCode(), "正常执行的退出码应为 0");
+        assertTrue(result.getOutput().contains("中文!"), "应能读取到标准输出");
+    }
 
     @Test
     public void testNormalExecution() {

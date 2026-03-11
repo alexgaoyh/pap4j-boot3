@@ -73,7 +73,9 @@ public class ProcessPoolUtil {
             final Process finalProcess = process;
 
             // 处理跨平台运行时的流编码问题
-            Charset charset = Charset.defaultCharset();
+            boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+            String charsetName = isWindows ? System.getProperty("sun.jnu.encoding", "GBK") : "UTF-8";
+            Charset charset = Charset.forName(charsetName);
 
             // 1. 将读取任务提交给外部传入的线程池，并获取 Future 句柄
             Future<?> streamReaderFuture = executor.submit(() -> {
