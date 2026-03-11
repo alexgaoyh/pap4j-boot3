@@ -12,6 +12,7 @@ import org.slf4j.LoggerFactory;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
@@ -55,6 +56,7 @@ public class ProcessExecUtils {
 
     /**
      * vips call bat file
+     *
      * @throws Exception
      */
     @Test
@@ -81,31 +83,70 @@ public class ProcessExecUtils {
     }
 
     private static ExecResult exec(CommandLine cmdLine, Map<String, String> envVars, File workingDir, long timeoutMs, boolean isWindows) throws IOException {
-        ByteArrayOutputStream outStream = new ByteArrayOutputStream();
-        ByteArrayOutputStream errStream = new ByteArrayOutputStream();
+        // 防OOM, 使用匿名内部类重写 write 方法，将最大输出限制为 5MB
+        final int MAX_OUTPUT_SIZE = 5 * 1024 * 1024;
+        ByteArrayOutputStream outStream = new ByteArrayOutputStream() {
+            @Override
+            public synchronized void write(byte[] b, int off, int len) {
+                if (count >= MAX_OUTPUT_SIZE) return;
+                super.write(b, off, Math.min(len, MAX_OUTPUT_SIZE - count));
+            }
+
+            @Override
+            public synchronized void write(int b) {
+                if (count < MAX_OUTPUT_SIZE) super.write(b);
+            }
+        };
+        ByteArrayOutputStream errStream = new ByteArrayOutputStream() {
+            @Override
+            public synchronized void write(byte[] b, int off, int len) {
+                if (count >= MAX_OUTPUT_SIZE) return;
+                super.write(b, off, Math.min(len, MAX_OUTPUT_SIZE - count));
+            }
+
+            @Override
+            public synchronized void write(int b) {
+                if (count < MAX_OUTPUT_SIZE) super.write(b);
+            }
+        };
 
         PumpStreamHandler streamHandler = new PumpStreamHandler(outStream, errStream);
-        DefaultExecutor executor = new DefaultExecutor();
+
+        // 使用 1.5.0 推荐的 Builder 替代 new DefaultExecutor()
+        DefaultExecutor executor = DefaultExecutor.builder().get();
         if (workingDir != null) {
             executor.setWorkingDirectory(workingDir);
         }
         executor.setStreamHandler(streamHandler);
 
+        ExecuteWatchdog watchdog = null;
         if (timeoutMs > 0) {
-            executor.setWatchdog(new ExecuteWatchdog(timeoutMs));
+            watchdog = new ExecuteWatchdog(timeoutMs);
+            executor.setWatchdog(watchdog);
         }
 
         // 注意：execute 使用 Map<String,String> 环境
         Map<String, String> envToUse = envVars; // 假设调用方已经合并了
         int exitCode;
+        boolean isTimeout = false;
+
         try {
+            log.debug("执行命令: {}", cmdLine.toString());
             exitCode = executor.execute(cmdLine, envToUse);
         } catch (ExecuteException e) {
             exitCode = e.getExitValue();
+            // 超时校验与日志精确区分是进程报错还是被 Watchdog 超时强杀
+            if (watchdog != null && watchdog.killedProcess()) {
+                isTimeout = true;
+                log.warn("命令执行超时({}ms被强杀): {}", timeoutMs, cmdLine.toString());
+            } else {
+                log.warn("命令执行异常退出 (ExitCode: {}): {}", exitCode, cmdLine.toString());
+            }
         }
 
-        String charset = isWindows ? "gbk" : StandardCharsets.UTF_8.name();
-        return new ExecResult(exitCode, outStream.toString(charset), errStream.toString(charset));
+        // 避免写死 "gbk" 导致在英文版 Windows 下抛错
+        String charset = isWindows ? Charset.defaultCharset().name() : StandardCharsets.UTF_8.name();
+        return new ExecResult(exitCode, outStream.toString(charset), errStream.toString(charset), isTimeout);
     }
 
     /**
@@ -140,11 +181,16 @@ public class ProcessExecUtils {
         private final int exitCode;
         private final String stdout;
         private final String stderr;
+        /**
+         * 是否超时的标识
+         */
+        private final boolean isTimeout;
 
-        public ExecResult(int exitCode, String stdout, String stderr) {
+        public ExecResult(int exitCode, String stdout, String stderr, boolean isTimeout) {
             this.exitCode = exitCode;
             this.stdout = stdout;
             this.stderr = stderr;
+            this.isTimeout = isTimeout;
         }
 
         public int getExitCode() {
@@ -159,16 +205,21 @@ public class ProcessExecUtils {
             return stderr;
         }
 
+        public boolean isTimeout() {
+            return isTimeout;
+        }
+
         public boolean isSuccess() {
-            return exitCode == 0;
+            return exitCode == 0 && !isTimeout;
         }
 
         @Override
         public String toString() {
             return "ExecResult{" +
                     "exitCode=" + exitCode +
-                    ", stdout='" + stdout + '\'' +
-                    ", stderr='" + stderr + '\'' +
+                    ", isTimeout=" + isTimeout +
+                    ", stdoutLength=" + (stdout != null ? stdout.length() : 0) +
+                    ", stderrLength=" + (stderr != null ? stderr.length() : 0) +
                     '}';
         }
     }
