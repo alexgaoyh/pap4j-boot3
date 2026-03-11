@@ -9,42 +9,6 @@ import java.util.function.Predicate;
 public class RetryUtil {
 
     /**
-     * 重试 工具类
-     *
-     * @param maxRetries  最大重试次数·
-     * @param delayMillis 延迟时长
-     * @param task        任务  () -> performOperation()    任务会抛出异常。
-     * @param
-     * @return
-     * @throws Exception
-     */
-    public static Boolean retry(int maxRetries, long delayMillis, Callable<Boolean> task) throws Exception {
-        int retryCount = 0;
-
-        while (retryCount < maxRetries) {
-            try {
-                Boolean call = task.call();
-                if (call) {
-                    return call;
-                } else {
-                    retryCount++;
-
-                    if (retryCount < maxRetries) {
-                        waitBeforeRetry(delayMillis);
-                    } else {
-                        return false;
-                    }
-                }
-            } catch (Exception e) {
-                return false;
-            }
-        }
-
-        throw new IllegalStateException("Should not reach here");
-    }
-
-
-    /**
      * 泛型重试方法
      *
      * @param maxRetries  最大重试次数
@@ -59,7 +23,8 @@ public class RetryUtil {
         int retryCount = 0;
         Exception lastException = null;
 
-        while (retryCount < maxRetries) {
+        // 在循环条件中增加对线程中断状态的检查，防止死循环
+        while (retryCount < maxRetries && !Thread.currentThread().isInterrupted()) {
             try {
                 T result = task.call();
                 if (validator == null || validator.test(result)) {
@@ -77,6 +42,11 @@ public class RetryUtil {
                     waitBeforeRetry(delayMillis);
                 }
             }
+        }
+
+        // 如果是被中断导致退出循环，抛出中断异常
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException("Retry was interrupted.");
         }
 
         // 如果重试完毕仍然失败，抛出最后一次异常
@@ -101,13 +71,15 @@ public class RetryUtil {
      * @return 任务最终返回值
      * @throws Exception 如果重试完毕仍失败，将抛出最后一次异常
      */
+    @SafeVarargs // 消除泛型可变参数带来的堆污染编译警告
     public static <T> T retryTWithBackoff(int maxRetries, long delayMillis, Callable<T> task, Predicate<T> validator,
                                           double backoffRatio, Class<? extends Exception>... backoffExceptions) throws Exception {
         int retryCount = 0;
         Exception lastException = null;
         long currentDelay = delayMillis;
 
-        while (retryCount < maxRetries) {
+        // 增加对线程中断状态的检查
+        while (retryCount < maxRetries && !Thread.currentThread().isInterrupted()) {
             try {
                 T result = task.call();
                 if (validator == null || validator.test(result)) {
@@ -137,6 +109,11 @@ public class RetryUtil {
                     }
                 }
             }
+        }
+
+        // 处理中断
+        if (Thread.currentThread().isInterrupted()) {
+            throw new InterruptedException("Retry was interrupted.");
         }
 
         // 如果重试完毕仍然失败，抛出最后一次异常
@@ -172,6 +149,8 @@ public class RetryUtil {
             Thread.sleep(delayMillis);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            // 如果在这里被中断，不应该默默吃掉异常。抛出运行时异常，让外层循环能立刻感知并退出。
+            throw new IllegalStateException("Thread was interrupted during retry wait.", e);
         }
     }
 
