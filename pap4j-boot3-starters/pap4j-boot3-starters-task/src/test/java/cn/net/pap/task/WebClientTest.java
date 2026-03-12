@@ -212,6 +212,17 @@ public class WebClientTest {
         System.out.println("===================================");
     }
 
+    @Test
+    public void postBodyObjectSimpleBlindlyTest() throws Exception {
+        WebClientUtil.empty();
+        long s = System.nanoTime();
+        // 调用基于 WebClient 的盲发工具类
+        boolean b = WebClientUtil.postBodyObjectSimpleBlindly("http://127.0.0.1:30000/echo/jsonSleep", "{\"a\":\"a\",\"b\":1}", null);
+        // 等待1秒，防止主线程立刻结束导致后台 Reactor 线程还没来得及发出请求就被杀掉
+        Thread.sleep(1000);
+        System.out.println("同步返回结果: " + b + "，主线程耗时 (秒): " + (System.nanoTime() - s) / 1_000_000_000.0);
+    }
+
 
     /**
      * 类似转发操作

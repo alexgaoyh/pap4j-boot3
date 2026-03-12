@@ -257,6 +257,56 @@ public class WebClientUtil {
         return response;
     }
 
+    public static void empty() {
+
+    }
+
+    /**
+     * 极简异步 POST (JSON) - 盲发模式 (Fire-and-forget)
+     * 复用全局配置的 webClient (包含连接池、Cookie存储、拦截器等机制)
+     *
+     * @param url      请求地址
+     * @param bodyJSON 请求体 JSON 字符串
+     * @param headers  额外的 HTTP 头 (可选，允许为 null)
+     * @return 只要没有发生同步构建异常，就返回 true
+     */
+    public static boolean postBodyObjectSimpleBlindly(String url, String bodyJSON, HttpHeaders headers) {
+        try {
+            // 直接复用在 static 代码块中初始化好的全局 webClient
+            webClient.post()
+                    .uri(url)
+                    .headers(h -> {
+                        if (headers != null && !headers.isEmpty()) {
+                            h.addAll(headers);
+                        }
+                    })
+                    // 你的全局配置中已经有了 defaultHeader(CONTENT_TYPE, JSON)，这里其实可以省略，
+                    // 但显式指定更稳妥，避免后续全局配置修改导致意外
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .bodyValue(bodyJSON == null ? "" : bodyJSON)
+                    .retrieve()
+                    // 彻底丢弃响应体，这对于节省内存非常关键
+                    .bodyToMono(Void.class)
+                    /*
+                     * 核心机制：响应式流的终点必须有订阅者。
+                     * 这里提供两个空的 Lambda：吞掉成功和失败的信号，不干扰主线程
+                     */
+                    .subscribe(
+                            success -> {},
+                            error -> {
+                                // 虽然是盲发，但在排查问题时，如果完全没有日志可能会很痛苦。
+                                // 这里你可以选择保留一句很轻量的 debug 或 trace 级别的日志。
+                                // 如果追求绝对零开销，可以连下面这行注释掉。
+                                // log.debug("盲发 POST 请求异步执行异常, URL: {}", url, error);
+                            }
+                    );
+            return true;
+        } catch (Exception e) {
+            // 吞掉同步构建异常（例如传入了非法的 url 字符串）
+            return false;
+        }
+    }
+
     /**
      * 创建响应拦截器 示例 响应体转大写。
      *
