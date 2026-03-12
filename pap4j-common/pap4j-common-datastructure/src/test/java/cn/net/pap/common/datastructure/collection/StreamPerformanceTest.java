@@ -8,11 +8,19 @@ import org.junit.jupiter.api.TestMethodOrder;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 验证 Stream 与 ParallelStream 性能差异的单元测试
@@ -145,4 +153,79 @@ public class StreamPerformanceTest {
             System.out.println("实际结论：在当前高并发测试中，Parallel 依然没有落后。这极其罕见，通常是因为你的机器 CPU 极其强悍。但在真实的 Web 高并发生产环境中，依然强烈建议避免这种嵌套并发造成的资源争抢风险。\n");
         }
     }
+
+    @Test
+    @DisplayName("测试：将 parallelStream 丢入自定义 ForkJoinPool 中执行，实现资源隔离")
+    void testParallelStreamInCustomPool() {
+        // 1. 准备测试数据 (模拟 100 个需要重度计算的任务)
+        List<Integer> largeList = IntStream.range(0, 100).boxed().toList();
+
+        // 2. 用于收集实际执行任务的线程名称，验证是否被隔离
+        Set<String> threadNames = ConcurrentHashMap.newKeySet();
+
+        // 3. 创建一个自定义的 ForkJoinPool，分配 4 个核心
+        // 为了演示效果，我们传入一个自定义的 ThreadFactory，给线程打上专属标签
+        ForkJoinPool.ForkJoinWorkerThreadFactory customFactory = pool -> {
+            ForkJoinWorkerThread worker = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
+            worker.setName("CustomBizPool-Worker-" + worker.getPoolIndex());
+            return worker;
+        };
+        ForkJoinPool customThreadPool = new ForkJoinPool(4, customFactory, null, false);
+
+        System.out.println("开始执行被隔离的并行任务...");
+        long startTime = System.currentTimeMillis();
+
+        try {
+            // 4. 【核心黑魔法】将 parallelStream 提交到自定义线程池
+            List<String> result = customThreadPool.submit(() -> largeList.parallelStream().map(item -> heavyCpuCalculation(item, threadNames)) // 模拟耗时计算并记录线程名
+                    .toList()).get(); // 阻塞等待执行结果
+
+            long costTime = System.currentTimeMillis() - startTime;
+            System.out.printf("任务执行完毕，总耗时: %d 毫秒%n", costTime);
+            System.out.printf("共处理了 %d 条数据%n", result.size());
+
+            // 5. 打印并验证参与计算的线程
+            System.out.println("\n=== 实际参与计算的线程列表 ===");
+            threadNames.forEach(System.out::println);
+
+            // 6. 断言 (Assertions) 验证隔离是否成功
+            // 验证1：必须有我们自定义前缀的线程参与了工作
+            boolean usedCustomPool = threadNames.stream().anyMatch(name -> name.startsWith("CustomBizPool-Worker-"));
+            assertTrue(usedCustomPool, "任务没有使用自定义线程池执行！");
+
+            // 验证2：绝对不能有公共池 (commonPool) 的线程参与工作
+            boolean usedCommonPool = threadNames.stream().anyMatch(name -> name.contains("commonPool"));
+            assertFalse(usedCommonPool, "发生了资源泄漏，公共 ForkJoinPool 被占用了！");
+
+            // 验证3：主线程 (main) 也不应该参与计算（因为我们通过 submit 交出去了）
+            assertFalse(threadNames.contains("main"), "主线程不应参与具体计算！");
+
+            System.out.println("\n测试通过：成功实现了 ParallelStream 的线程池物理隔离！");
+
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        } finally {
+            // 7. 优雅关闭线程池
+            customThreadPool.shutdown();
+        }
+    }
+
+    /**
+     * 模拟重度 CPU 计算的方法
+     */
+    private String heavyCpuCalculation(Integer item, Set<String> threadNames) {
+        // 记录当前执行此任务的线程名称
+        String currentThreadName = Thread.currentThread().getName();
+        threadNames.add(currentThreadName);
+
+        try {
+            // 模拟单个任务极其耗时 (比如复杂的加密算法，耗时 10 毫秒)
+            Thread.sleep(10);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        return "Result_" + item;
+    }
+
 }
