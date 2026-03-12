@@ -52,6 +52,17 @@ public class EchoController {
         return Map.of("echo", "echo", "method", "POST", "contentType", "application/json", "body", body);
     }
 
+    @PostMapping(value = "/jsonSleep", consumes = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, Object> postJsonSleep(@RequestBody Map<String, Object> body) {
+        log.info("POST JSON body: {}", body);
+        try {
+            Thread.sleep(2000);
+        } catch (Exception e) {
+
+        }
+        return Map.of("echo", "echo", "method", "POST", "contentType", "application/json", "body", body);
+    }
+
     @PostMapping(value = "/form", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Map<String, Object> postForm(@RequestParam Map<String, String> params) {
         log.info("POST FORM params: {}", params);
