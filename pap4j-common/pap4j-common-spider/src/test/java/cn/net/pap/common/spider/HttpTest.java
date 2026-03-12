@@ -240,4 +240,36 @@ public class HttpTest {
         return doc.html();
     }
 
+    /**
+     * 极简异步 POST (JSON)
+     * * @param url      请求地址
+     * @param jsonBody 请求体
+     */
+    public static boolean sendPostBlindly(String url, String jsonBody) {
+        try {
+            HttpClient CLIENT = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(1)).build();
+            HttpRequest request = HttpRequest.newBuilder()
+                    .uri(URI.create(url))
+                    .header("Content-Type", "application/json")
+                    .POST(HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody))
+                    .timeout(Duration.ofSeconds(3))
+                    .build();
+            // 发送即结束
+            CLIENT.sendAsync(request, HttpResponse.BodyHandlers.discarding());
+            return true;
+        } catch (Exception ignore) {
+            // 默默吞掉异常
+            return false;
+        }
+    }
+
+    // @Test
+    public void sendPostBlindlyTest() throws Exception {
+        long s = System.nanoTime();
+        boolean b = sendPostBlindly("http://127.0.0.1:30000/echo/jsonSleep", "{\"a\":\"a\",\"b\":1}");
+        Thread.sleep(1000);  // 等待1秒
+        System.out.println(b + " 秒: " + (System.nanoTime() - s) / 1_000_000_000.0);
+    }
+
+
 }
