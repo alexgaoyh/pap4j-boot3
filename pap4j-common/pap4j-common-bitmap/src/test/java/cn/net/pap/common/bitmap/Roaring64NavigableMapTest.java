@@ -1,5 +1,7 @@
 package cn.net.pap.common.bitmap;
 
+import cn.net.pap.common.bitmap.exception.Roaring64NavigableMapException;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
@@ -58,6 +60,70 @@ public class Roaring64NavigableMapTest {
             System.out.println(valueList);
         }
 
+    }
+
+    @Test
+    public void testSerialize_NullBitmap_ThrowsException() {
+        // 测试 serialize 方法的 if (bitmap == null) 分支
+        Roaring64NavigableMapException exception = Assertions.assertThrows(
+                Roaring64NavigableMapException.class,
+                () -> Roaring64NavigableMapUtil.serialize(null),
+                "Expected serialize(null) to throw, but it didn't"
+        );
+        Assertions.assertEquals("Bitmap cannot be null", exception.getMessage());
+    }
+
+    @Test
+    public void testDeserialize_NullEncrypt_ThrowsException() {
+        // 测试 deserialize 方法的 if (encrypt == null) 分支
+        Roaring64NavigableMapException exception = Assertions.assertThrows(
+                Roaring64NavigableMapException.class,
+                () -> Roaring64NavigableMapUtil.deserialize(null),
+                "Expected deserialize(null) to throw, but it didn't"
+        );
+        Assertions.assertEquals("Serialized string cannot be null", exception.getMessage());
+    }
+
+    @Test
+    public void testGetPageOrderByAdded_OutOfBounds_ReturnsEmptyList() {
+        // 测试 getPageOrderByAdded 方法的 if(pageNumber * pageSize > map.getLongCardinality()) 分支
+        Roaring64NavigableMap map = new Roaring64NavigableMap();
+        map.add(1L);
+        map.add(2L);
+        map.add(3L); // 当前总容量为 3
+
+        // 请求第 2 页，每页 2 条，2 * 2 = 4 > 3，触发 if 分支
+        List<Long> result = Roaring64NavigableMapUtil.getPageOrderByAdded(map, 2, 2);
+
+        Assertions.assertNotNull(result);
+        Assertions.assertTrue(!result.isEmpty(), "Result should be last page list");
+
+        List<Long> result2 = Roaring64NavigableMapUtil.getPageOrderByAdded(map, 0, 0);
+        Assertions.assertTrue(result2.isEmpty(), "Result should be empty");
+
+        List<Long> result3 = Roaring64NavigableMapUtil.getPageOrderByAdded(map, 3, 2);
+        Assertions.assertTrue(result3.isEmpty(), "Result should be empty");
+
+    }
+
+    @Test
+    public void testGetPageOrderByAddedReverse_OutOfBounds_ReturnsEmptyList() {
+        // 测试 getPageOrderByAddedReverse 方法的 if(pageNumber * pageSize > map.getLongCardinality()) 分支
+        Roaring64NavigableMap map = new Roaring64NavigableMap();
+        map.add(10L);
+        map.add(20L); // 当前总容量为 2
+
+        // 请求第 2 页，每页 2 条，2 * 2 = 4 > 2，触发 if 分支
+        List<Long> result = Roaring64NavigableMapUtil.getPageOrderByAddedReverse(map, 2, 2);
+
+        Assertions.assertNotNull(result);
+        Assertions.assertTrue(result.isEmpty(), "Result should be an empty list");
+
+        List<Long> result2 = Roaring64NavigableMapUtil.getPageOrderByAddedReverse(map, 0, 0);
+        Assertions.assertTrue(result2.isEmpty(), "Result should be empty");
+
+        List<Long> result3 = Roaring64NavigableMapUtil.getPageOrderByAddedReverse(map, 3, 2);
+        Assertions.assertTrue(result3.isEmpty(), "Result should be empty");
     }
 
 }

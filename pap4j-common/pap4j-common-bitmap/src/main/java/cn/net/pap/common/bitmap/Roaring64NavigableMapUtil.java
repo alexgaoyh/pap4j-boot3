@@ -19,7 +19,7 @@ public class Roaring64NavigableMapUtil {
             bitmap.serialize(dos);
             return Base64.getEncoder().encodeToString(bos.toByteArray());
         } catch (IOException e) {
-            throw new Roaring64NavigableMapException("Error occurred during serialization: " + e.getMessage());
+            throw new Roaring64NavigableMapException("Error occurred during serialization", e);
         }
     }
 
@@ -33,7 +33,7 @@ public class Roaring64NavigableMapUtil {
             bitmap.deserialize(dis);
             return bitmap;
         } catch (IOException e) {
-            throw new Roaring64NavigableMapException("Error occurred during deserialization: " + e.getMessage());
+            throw new Roaring64NavigableMapException("Error occurred during deserialization", e);
         }
     }
 
@@ -45,12 +45,19 @@ public class Roaring64NavigableMapUtil {
      * @return
      */
     public static List<Long> getPageOrderByAdded(Roaring64NavigableMap map, long pageNumber, long pageSize) {
-        if(pageNumber * pageSize > map.getLongCardinality()) {
+        if (pageNumber < 1 || pageSize < 1) {
+            return new ArrayList<>();
+        }
+        long startRank = (pageNumber - 1) * pageSize;
+        long totalSize = map.getLongCardinality();
+
+        // 把 if 条件改成判断 startRank 是否大于等于总数
+        if (startRank >= totalSize) {
             return new ArrayList<>();
         }
         List<Long> page = new ArrayList<>(Integer.parseInt(pageSize + ""));
-        long startRank = (pageNumber - 1) * pageSize;
-        long endRank = startRank + pageSize - 1;
+        // 给 endRank 加一个限制，不能超过最大索引 (totalSize - 1)
+        long endRank = Math.min(startRank + pageSize - 1, totalSize - 1);
 
         for (long rank = startRank; rank <= endRank; rank++) {
             long value = map.select(rank);
@@ -68,7 +75,10 @@ public class Roaring64NavigableMapUtil {
      * @return
      */
     public static List<Long> getPageOrderByAddedReverse(Roaring64NavigableMap map, long pageNumber, long pageSize) {
-        if(pageNumber * pageSize > map.getLongCardinality()) {
+        if (pageNumber < 1 || pageSize < 1) {
+            return new ArrayList<>();
+        }
+        if((pageNumber - 1) * pageSize >= map.getLongCardinality()) {
             return new ArrayList<>();
         }
         List<Long> page = new ArrayList<>(Integer.parseInt(pageSize + ""));

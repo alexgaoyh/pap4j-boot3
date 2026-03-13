@@ -12,15 +12,15 @@ import java.util.Iterator;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class MD5StoreUtilTest {
+public class MD5StoreUtilTest {
 
     @BeforeEach
-    void setUp() {
+    public void setUp() {
         MD5StoreUtil.clear();
     }
 
     @Test
-    void testAddAndContains() {
+    public void testAddAndContains() {
         String md5 = "d41d8cd98f00b204e9800998ecf8427e";
 
         MD5StoreUtil.add(md5);
@@ -31,24 +31,24 @@ class MD5StoreUtilTest {
     }
 
     @Test
-    void testAddWithInvalidMD5() {
+    public void testAddWithInvalidMD5() {
         assertThrows(IllegalArgumentException.class, () -> {
             MD5StoreUtil.add("invalidmd5");
         });
     }
 
     @Test
-    void testContainsWithInvalidMD5() {
+    public void testContainsWithInvalidMD5() {
         assertFalse(MD5StoreUtil.contains("invalidmd5"));
     }
 
     @Test
-    void testRemoveWithInvalidMD5() {
+    public void testRemoveWithInvalidMD5() {
         MD5StoreUtil.remove("invalidmd5");
     }
 
     @Test
-    void testSizeAndIsEmpty() {
+    public void testSizeAndIsEmpty() {
         assertTrue(MD5StoreUtil.isEmpty());
         assertEquals(0, MD5StoreUtil.size());
 
@@ -60,7 +60,7 @@ class MD5StoreUtilTest {
     }
 
     @Test
-    void testClear() {
+    public void testClear() {
         String md5 = "d41d8cd98f00b204e9800998ecf8427e";
         MD5StoreUtil.add(md5);
 
@@ -72,7 +72,7 @@ class MD5StoreUtilTest {
     }
 
     @Test
-    void testAddAllAndContainsAll() {
+    public void testAddAllAndContainsAll() {
         String md5_1 = "d41d8cd98f00b204e9800998ecf8427e";
         String md5_2 = "e2fc714c4727ee9395f324cd2e7f331f";
 
@@ -80,22 +80,25 @@ class MD5StoreUtilTest {
 
         assertTrue(MD5StoreUtil.containsAll(Arrays.asList(md5_1, md5_2)));
         assertFalse(MD5StoreUtil.containsAll(Arrays.asList(md5_1, "invalidmd5")));
+        assertFalse(MD5StoreUtil.containsAll(Arrays.asList(md5_1, "12345678901234567890123456789012")));
     }
 
     @Test
-    void testIterator() {
+    public void testIterator() {
         String md5_1 = "d41d8cd98f00b204e9800998ecf8427e";
         String md5_2 = "e2fc714c4727ee9395f324cd2e7f331f";
 
         MD5StoreUtil.addAll(Arrays.asList(md5_1, md5_2));
 
         Iterator<String> iterator = MD5StoreUtil.iterator();
+        assertTrue(iterator.hasNext(), "Iterator should have at least one element to cover next()");
         assertTrue(iterator.hasNext());
+        assertNotNull(iterator.next());
         assertTrue(iterator.hasNext());
     }
 
     @Test
-    void testEstimatedMemoryUsage() {
+    public void testEstimatedMemoryUsage() {
         String md5 = "d41d8cd98f00b204e9800998ecf8427e";
         MD5StoreUtil.add(md5);
 
@@ -104,7 +107,7 @@ class MD5StoreUtilTest {
     }
 
     @Test
-    void testToMD5Hex() {
+    public void testToMD5Hex() {
         long high64 = 0xabcdefabcdefabcdL;
         long low64 = 0x1234567890abcdefL;
 
@@ -113,7 +116,7 @@ class MD5StoreUtilTest {
     }
 
     @Test
-    void testAddAllWithInvalidMD5() {
+    public void testAddAllWithInvalidMD5() {
         String md5_1 = "d41d8cd98f00b204e9800998ecf8427e";
         String invalidMd5 = "invalidmd5";
         MD5StoreUtil.addAll(Arrays.asList(md5_1, invalidMd5));
@@ -124,7 +127,7 @@ class MD5StoreUtilTest {
 
     @Test
     @DisplayName("测试序列化到字节数组和反序列化")
-    void testSerializeToBytesAndBack() throws IOException {
+    public void testSerializeToBytesAndBack() throws IOException {
         String md5_1 = "d41d8cd98f00b204e9800998ecf8427e";
         MD5StoreUtil.add(md5_1);
 
@@ -143,7 +146,7 @@ class MD5StoreUtilTest {
 
     @Test
     @DisplayName("测试序列化到文件和从文件反序列化")
-    void testSerializeToFileAndBack() throws IOException {
+    public void testSerializeToFileAndBack() throws IOException {
         String md5_1 = "d41d8cd98f00b204e9800998ecf8427e";
         MD5StoreUtil.add(md5_1);
 
