@@ -1,5 +1,8 @@
 package cn.net.pap.common.file.util;
 
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -12,6 +15,16 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TempDirUtilsTest {
+
+    @BeforeEach
+    void setUp() {
+        System.setProperty("temp.dir.utils.dev", "false");
+    }
+
+    @AfterEach
+    void tearDown() {
+        System.clearProperty("temp.dir.utils.dev");
+    }
 
     // @Test
     public void test1() throws IOException {
@@ -98,6 +111,24 @@ public class TempDirUtilsTest {
                 try {
                     int i = 1/0;
                 } catch (Exception e) {
+                    throw new RuntimeException(e);
+                }
+            });
+        } catch (Exception e) {
+            System.err.println("操作失败: " + e.getMessage());
+        }
+    }
+
+    @Test
+    @DisplayName("test6")
+    public void test6() throws IOException {
+        try {
+            TempDirUtils.withTempFile("myapp-", tempFile -> {
+                try {
+                    Files.writeString(tempFile, "Hello, World!");
+                    String content = Files.readString(tempFile);
+                    System.out.println("文件内容: " + content);
+                } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             });

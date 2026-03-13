@@ -17,6 +17,10 @@ public final class TempDirUtils {
         throw new UnsupportedOperationException("工具类禁止实例化");
     }
 
+    // ========== 调试开关 ==========
+    // 通过 JVM 参数 -Dkeep.temp.files=true 控制是否保留临时文件。 System.setProperty("temp.dir.utils.dev", "true");
+    private static volatile boolean KEEP_TEMP_FILES = Boolean.getBoolean("temp.dir.utils.dev");
+
     // ========== 默认临时目录下的临时文件 ==========
 
     /**
@@ -30,7 +34,11 @@ public final class TempDirUtils {
         try {
             consumer.accept(tempFile);
         } finally {
-            Files.deleteIfExists(tempFile);
+            if (!KEEP_TEMP_FILES) {
+                Files.deleteIfExists(tempFile);
+            } else {
+                System.out.println("调试模式保留临时文件: " + tempFile.toAbsolutePath());
+            }
         }
     }
 
@@ -46,7 +54,11 @@ public final class TempDirUtils {
         try {
             return function.apply(tempFile);
         } finally {
-            Files.deleteIfExists(tempFile);
+            if (!KEEP_TEMP_FILES) {
+                Files.deleteIfExists(tempFile);
+            } else {
+                System.out.println("调试模式保留临时文件: " + tempFile.toAbsolutePath());
+            }
         }
     }
 
@@ -65,7 +77,11 @@ public final class TempDirUtils {
         try {
             consumer.accept(tempFile);
         } finally {
-            Files.deleteIfExists(tempFile);
+            if (!KEEP_TEMP_FILES) {
+                Files.deleteIfExists(tempFile);
+            } else {
+                System.out.println("调试模式保留临时文件: " + tempFile.toAbsolutePath());
+            }
         }
     }
 
@@ -83,7 +99,11 @@ public final class TempDirUtils {
         try {
             return function.apply(tempFile);
         } finally {
-            Files.deleteIfExists(tempFile);
+            if (!KEEP_TEMP_FILES) {
+                Files.deleteIfExists(tempFile);
+            } else {
+                System.out.println("调试模式保留临时文件: " + tempFile.toAbsolutePath());
+            }
         }
     }
 
@@ -172,6 +192,10 @@ public final class TempDirUtils {
      * 递归删除目录
      */
     private static void deleteDirectoryRecursively(Path dir) throws IOException {
+        if (KEEP_TEMP_FILES) {
+            System.out.println("调试模式保留临时目录: " + dir.toAbsolutePath());
+            return;
+        }
         if (!Files.exists(dir)) {
             return;
         }
