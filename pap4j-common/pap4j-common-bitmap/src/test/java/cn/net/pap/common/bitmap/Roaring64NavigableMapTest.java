@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
+import java.util.Base64;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -124,6 +125,21 @@ public class Roaring64NavigableMapTest {
 
         List<Long> result3 = Roaring64NavigableMapUtil.getPageOrderByAddedReverse(map, 3, 2);
         Assertions.assertTrue(result3.isEmpty(), "Result should be empty");
+    }
+
+    @Test
+    public void testDeserialize_ThrowsIOException() {
+        // 随便伪造一段乱码，但是把它转换成合法的 Base64 格式，这样不会在 Base64 解码时报错
+        String poisonData = "this_is_not_a_bitmap";
+        String validBase64 = Base64.getEncoder().encodeToString(poisonData.getBytes());
+
+        // 当 bitmap.deserialize 去解析这段乱码时，必然抛出 IOException
+        Roaring64NavigableMapException exception = Assertions.assertThrows(
+                Roaring64NavigableMapException.class,
+                () -> Roaring64NavigableMapUtil.deserialize(validBase64)
+        );
+
+        Assertions.assertTrue(exception.getMessage().contains("Error occurred during deserialization"));
     }
 
 }
