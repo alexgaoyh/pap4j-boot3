@@ -43,7 +43,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
     @Transactional
     public AutoIncrePreKey saveAndFlush(AutoIncrePreKey entity) {
         AutoIncrePreKey autoIncrePreKey = autoIncrePreKeyRepository.saveAndFlush(entity);
-        elasticsearchDomainEventPublisher.publish(entity, ElasticSearchSyncEvent.SyncType.DELCREATE);
+        elasticsearchDomainEventPublisher.publish(entity, ElasticSearchSyncEvent.SyncType.UPDATE);
         return autoIncrePreKey;
     }
 
@@ -51,7 +51,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
     @Transactional
     public List<AutoIncrePreKey> saveAndFlushBatch(List<AutoIncrePreKey> list) {
         List<AutoIncrePreKey> autoIncrePreKeys = autoIncrePreKeyRepository.saveAll(list);
-        elasticsearchDomainEventPublisher.publish(list, ElasticSearchSyncEvent.SyncType.DELCREATE);
+        elasticsearchDomainEventPublisher.publish(list, ElasticSearchSyncEvent.SyncType.UPDATE);
         return autoIncrePreKeys;
     }
 

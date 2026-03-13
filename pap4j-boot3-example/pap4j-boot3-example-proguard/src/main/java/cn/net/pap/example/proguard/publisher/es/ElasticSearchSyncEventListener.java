@@ -17,17 +17,11 @@ public class ElasticSearchSyncEventListener {
     public <T> void onEvent(ElasticSearchSyncEvent<T> event) {
 
         switch (event.getType()) {
-            case CREATE -> {
-                log.info("{} , CREATE : {}", Thread.currentThread().getName(), event.getIndex());
-            }
             case UPDATE -> {
                 log.info("{} , UPDATE : {}", Thread.currentThread().getName(), event.getIndex());
             }
             case DELETE -> {
                 log.info("{} , DELETE : {}", Thread.currentThread().getName(), event.getIndex());
-            }
-            case DELCREATE -> {
-                log.info("{} , DELCREATE : {}", Thread.currentThread().getName(), event.getIndex());
             }
         }
 
