@@ -9,6 +9,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.NoSuchElementException;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -88,13 +89,25 @@ public class MD5StoreUtilTest {
         String md5_1 = "d41d8cd98f00b204e9800998ecf8427e";
         String md5_2 = "e2fc714c4727ee9395f324cd2e7f331f";
 
+        MD5StoreUtil.clear(); // 确保环境干净
         MD5StoreUtil.addAll(Arrays.asList(md5_1, md5_2));
 
         Iterator<String> iterator = MD5StoreUtil.iterator();
-        assertTrue(iterator.hasNext(), "Iterator should have at least one element to cover next()");
+
         assertTrue(iterator.hasNext());
         assertNotNull(iterator.next());
+
         assertTrue(iterator.hasNext());
+        assertNotNull(iterator.next());
+
+        assertFalse(iterator.hasNext(), "Iterator should be empty now, returning false");
+
+        try {
+            iterator.next();
+            fail("Should have thrown a NoSuchElementException");
+        } catch (NoSuchElementException e) {
+            assertNotNull(e);
+        }
     }
 
     @Test
