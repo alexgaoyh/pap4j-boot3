@@ -1,5 +1,8 @@
 package cn.net.pap.common.file.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,6 +15,9 @@ import java.util.function.Function;
  * 提供创建和使用临时目录的功能，使用后自动清理
  */
 public final class TempDirUtils {
+
+    // ========== 定义 Logger ==========
+    private static final Logger log = LoggerFactory.getLogger(TempDirUtils.class);
 
     private TempDirUtils() {
         throw new UnsupportedOperationException("工具类禁止实例化");
@@ -37,7 +43,7 @@ public final class TempDirUtils {
             if (!KEEP_TEMP_FILES) {
                 Files.deleteIfExists(tempFile);
             } else {
-                System.out.println("调试模式保留临时文件: " + tempFile.toAbsolutePath());
+                log.info("调试模式保留临时文件: {}", tempFile.toAbsolutePath());
             }
         }
     }
@@ -57,7 +63,7 @@ public final class TempDirUtils {
             if (!KEEP_TEMP_FILES) {
                 Files.deleteIfExists(tempFile);
             } else {
-                System.out.println("调试模式保留临时文件: " + tempFile.toAbsolutePath());
+                log.info("调试模式保留临时文件: {}", tempFile.toAbsolutePath());
             }
         }
     }
@@ -80,7 +86,7 @@ public final class TempDirUtils {
             if (!KEEP_TEMP_FILES) {
                 Files.deleteIfExists(tempFile);
             } else {
-                System.out.println("调试模式保留临时文件: " + tempFile.toAbsolutePath());
+                log.info("调试模式保留临时文件: {}", tempFile.toAbsolutePath());
             }
         }
     }
@@ -102,7 +108,7 @@ public final class TempDirUtils {
             if (!KEEP_TEMP_FILES) {
                 Files.deleteIfExists(tempFile);
             } else {
-                System.out.println("调试模式保留临时文件: " + tempFile.toAbsolutePath());
+                log.info("调试模式保留临时文件: {}", tempFile.toAbsolutePath());
             }
         }
     }
@@ -193,7 +199,7 @@ public final class TempDirUtils {
      */
     private static void deleteDirectoryRecursively(Path dir) throws IOException {
         if (KEEP_TEMP_FILES) {
-            System.out.println("调试模式保留临时目录: " + dir.toAbsolutePath());
+            log.info("调试模式保留临时目录: {}", dir.toAbsolutePath());
             return;
         }
         if (!Files.exists(dir)) {
@@ -206,6 +212,7 @@ public final class TempDirUtils {
                         Files.delete(path);
                     } catch (IOException e) {
                         // 忽略删除失败，避免影响主流程
+                        log.warn("清理临时文件/目录失败: {}", path.toAbsolutePath(), e);
                     }
                 });
     }
