@@ -261,7 +261,10 @@ public class WebClientTest {
      *         userCookie.setMaxAge(24 * 60 * 60); // 1天
      *         userCookie.setPath("/");
      *         Cookie tokenCookie = new Cookie("token", "pap.net.cn");
+     *         // Cookie 被标记为 HttpOnly 时，它就相当于告诉浏览器：“这个数据仅供 HTTP/HTTPS 网络传输使用，绝对不允许任何客户端脚本（如 JavaScript）触碰它。”
      *         tokenCookie.setHttpOnly(true);
+     *         // 核心作用是告诉浏览器：在发生“跨站（Cross-Site）”请求时，要不要带上这个 Cookie。
+     *         tokenCookie.setAttribute("SameSite", "Strict");
      *         tokenCookie.setMaxAge(30 * 60); // 30分钟
      *         tokenCookie.setPath("/");
      *         resp.addCookie(userCookie);
