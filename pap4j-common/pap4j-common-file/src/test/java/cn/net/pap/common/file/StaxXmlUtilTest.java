@@ -189,6 +189,7 @@ public class StaxXmlUtilTest {
             @Override public Iterator<String> getPrefixes(String uri) { return null; }
         });
 
+        // language=TEXT
         String result = (String) xpath.evaluate("ext:inner-xml(/student[1]/props[1]/prop[1])", doc, XPathConstants.STRING);
         assertTrue(result.contains("一"));
         assertTrue(result.contains("<class id=\"001\">章</class>"));
@@ -202,6 +203,7 @@ public class StaxXmlUtilTest {
         // 如果是多个值，那么循环解析，并且保证结构不发生变化。
         NodeList propNodes = (NodeList) xpath.evaluate("/student[1]/props[1]/prop", doc, XPathConstants.NODESET);
         for (int i = 0; i < propNodes.getLength(); i++) {
+            // language=TEXT
             String propInnerXml = (String) xpath.evaluate("ext:inner-xml(.)", propNodes.item(i), XPathConstants.STRING);
             assertTrue(propInnerXml.contains("</anchor>"));
         }
@@ -210,10 +212,12 @@ public class StaxXmlUtilTest {
         XPathExpression propAnchorXpath = xpath.compile("/student/props/prop[anchor/@number='1']");
         NodeList nodes = (NodeList) propAnchorXpath.evaluate(doc, XPathConstants.NODESET);
         for (int i = 0; i < nodes.getLength(); i++) {
+            // language=TEXT
             assertTrue(((String) xpath.evaluate("ext:inner-xml(.)", nodes.item(i), XPathConstants.STRING)).contains("</anchor>"));
         }
 
         // xpath 自定义函数，查询到的节点在父节点下的索引位置(从1开始)
+        // language=TEXT
         String positions = (String) xpath.evaluate("ext:position-in-parent(/student/props/prop[anchor/@number='1'])", doc, XPathConstants.STRING);
         assertTrue(positions.contains("1"));
 
