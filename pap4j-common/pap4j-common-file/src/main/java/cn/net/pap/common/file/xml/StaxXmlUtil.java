@@ -414,6 +414,191 @@ public class StaxXmlUtil {
     }
 
     /**
+     * 获取所有指定节点的文本内容，并将它们拼接成一个完整的字符串。
+     * 支持提取多个同名节点的内容，且兼容节点内部包含子节点的复杂情况。
+     *
+     * @param xmlText   XML 文本
+     * @param nodeName  目标节点名，例如 "contentRec"
+     * @return 拼接后的完整字符串
+     */
+    public static String concatAllNodeValuesByStax(String xmlText, String nodeName) {
+        if (xmlText == null || xmlText.trim().isEmpty() || nodeName == null) {
+            return "";
+        }
+
+        // 初始容量设为较大值，避免拼接长文本时频繁扩容
+        StringBuilder sb = new StringBuilder(1024);
+
+        try {
+            // 复用类中已有的静态线程安全 factory
+            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlText));
+
+            boolean inTargetNode = false;
+            int targetDepth = 0; // 用于处理可能存在的同名节点嵌套情况
+
+            while (reader.hasNext()) {
+                int event = reader.next();
+
+                switch (event) {
+                    case XMLStreamConstants.START_ELEMENT:
+                        if (nodeName.equals(reader.getLocalName())) {
+                            inTargetNode = true;
+                            targetDepth++;
+                        }
+                        break;
+
+                    case XMLStreamConstants.CHARACTERS:
+                    case XMLStreamConstants.CDATA:
+                        // 只要处于目标节点内部，就追加文本内容
+                        if (inTargetNode) {
+                            String text = reader.getText();
+                            if (text != null && !text.trim().isEmpty()) {
+                                // 如果需要跟已有的 readNodeValueByStax 保持绝对一致，可以包一层 escapeXml()
+                                // 但通常提取纯数据值进行拼接时，原样保留 getText() 是最准确的
+                                sb.append(text.trim());
+                            }
+                        }
+                        break;
+
+                    case XMLStreamConstants.END_ELEMENT:
+                        // 当闭合标签是我们寻找的目标标签时，递减深度
+                        if (inTargetNode && nodeName.equals(reader.getLocalName())) {
+                            targetDepth--;
+                            if (targetDepth == 0) {
+                                inTargetNode = false; // 完全退出目标节点
+                            }
+                        }
+                        break;
+
+                    default:
+                        break;
+                }
+            }
+            reader.close();
+
+        } catch (Exception e) {
+            throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        }
+
+        return sb.toString();
+    }
+
+    /**
+     * 基于 parseXMLInRootAndOriginalTags 改造：
+     * 移除 charSeq，改为按字符顺序从传入的 List<Map<String, String>> 中获取属性，并注入到字符包装标签中。
+     *
+     * @param xmlString        原始 XML 字符串
+     * @param rootTag          根标签名（例如 content、body）
+     * @param keepOriginalTags 需要保持原样输出的标签集合（如 anchor、ref）
+     * @param attrList         按字符顺序对应的属性 Map 列表
+     * @return 转换后的 XML 字符串
+     */
+    public static String parseXMLWithCustomAttributes(String xmlString, String rootTag, Set<String> keepOriginalTags, List<Map<String, String>> attrList) {
+        StringBuilder result = new StringBuilder("<").append(rootTag).append(">");
+        int charIndex = 0; // 用于追踪当前字符在 attrList 中的全局下标
+
+        try {
+            // 复用类中已有的 factory
+            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlString));
+
+            while (reader.hasNext()) {
+                int event = reader.next();
+
+                if (event == XMLStreamConstants.START_ELEMENT) {
+                    String tagName = reader.getLocalName();
+                    // 根标签：忽略
+                    if (rootTag.equals(tagName)) {
+                        continue;
+                    }
+                    // 原样保留的标签（如 anchor）
+                    if (keepOriginalTags.contains(tagName)) {
+                        result.append("<").append(tagName);
+                        for (int i = 0; i < reader.getAttributeCount(); i++) {
+                            result.append(" ").append(reader.getAttributeLocalName(i))
+                                    .append("=\"").append(escapeXml(reader.getAttributeValue(i))).append("\"");
+                        }
+                        result.append("/>");
+                    } else {
+                        // 其它标签统一转为 span
+                        result.append("<span type=\"").append(tagName).append("\"");
+                        for (int i = 0; i < reader.getAttributeCount(); i++) {
+                            result.append(" ").append(reader.getAttributeLocalName(i))
+                                    .append("=\"").append(escapeXml(reader.getAttributeValue(i))).append("\"");
+                        }
+                        result.append(">");
+                    }
+
+                } else if (event == XMLStreamConstants.END_ELEMENT) {
+                    String tagName = reader.getLocalName();
+                    if (!rootTag.equals(tagName) && !keepOriginalTags.contains(tagName)) {
+                        result.append("</span>");
+                    }
+                } else if (event == XMLStreamConstants.CHARACTERS) {
+                    String text = reader.getText();
+                    // 只有非空文本才进行单字符拆分包装
+                    if (text != null && !text.trim().isEmpty()) {
+                        charIndex = wrapEachCharacterWithAttributes(text, result, charIndex, attrList);
+                    }
+                }
+            }
+            reader.close();
+            result.append("</").append(rootTag).append(">");
+        } catch (Exception e) {
+            e.printStackTrace();
+            return xmlString; // 解析失败降级返回原文本
+        }
+        return result.toString();
+    }
+
+    /**
+     * 将文本中的每个字符用 span 标签包裹，并从传入的 List 中获取对应的属性 Map 注入。
+     *
+     * @param text       当前需要拆分的文本段
+     * @param result     StringBuilder 结果收集器
+     * @param startIndex 当前文本段第一个字符在全局的下标
+     * @param attrList   属性集合
+     * @return 更新后的全局下标
+     */
+    private static int wrapEachCharacterWithAttributes(String text, StringBuilder result, int startIndex, List<Map<String, String>> attrList) {
+        BreakIterator iterator = BreakIterator.getCharacterInstance(Locale.CHINA);
+        iterator.setText(text);
+
+        int start = iterator.first();
+        int end = iterator.next();
+        int currentIndex = startIndex;
+
+        while (end != BreakIterator.DONE) {
+            String ch = text.substring(start, end);
+
+            result.append("<span");
+
+            // 防御性判断：确保 currentIndex 没有超出 attrList 的范围
+            if (attrList != null && currentIndex < attrList.size()) {
+                Map<String, String> attrs = attrList.get(currentIndex);
+                if (attrs != null && !attrs.isEmpty()) {
+                    // 遍历 Map，将 key-value 作为属性拼接到标签内
+                    for (Map.Entry<String, String> entry : attrs.entrySet()) {
+                        String key = entry.getKey();
+                        String value = entry.getValue();
+                        if (key != null && value != null) {
+                            // 调用原有的 escapeXml 确保属性值里的特殊字符(如 & < >)被正确转义
+                            result.append(" ").append(key).append("=\"").append(escapeXml(value)).append("\"");
+                        }
+                    }
+                }
+            }
+
+            result.append(">").append(escapeXml(ch)).append("</span>");
+
+            currentIndex++;
+            start = end;
+            end = iterator.next();
+        }
+
+        return currentIndex;
+    }
+
+    /**
      * 静态方法：解析XML并返回所有可能的XPath路径
      * @param xmlContent XML字符串内容
      * @return 所有路径的列表

@@ -18,6 +18,8 @@ import java.io.File;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -214,6 +216,47 @@ public class StaxXmlUtilTest {
         // xpath 自定义函数，查询到的节点在父节点下的索引位置(从1开始)
         String positions = (String) xpath.evaluate("ext:position-in-parent(/student/props/prop[anchor/@number='1'])", doc, XPathConstants.STRING);
         assertTrue(positions.contains("1"));
+
+    }
+
+    /**
+     * 重新生成 xml
+     */
+    @Test
+    public void reGeneXMLTest() {
+        String xml = """
+            <?xml version="1.0" encoding="utf-8"?>
+                <book>
+                  <zhengwens>
+                    <zhengwen>
+                      <Province>河南</Province>许昌</zhengwen>
+                    <zhengwen>测试</zhengwen>
+                  </zhengwens>
+                  <biaoshis>
+                    <biaoshi>1;2;3;4;</biaoshi>
+                    <biaoshi>5;6;</biaoshi>
+                  </biaoshis>
+                </book>
+        """;
+        List<String> zhengwens = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "zhengwen");
+        List<String> biaoshis = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "biaoshi");
+        for(int zhengwenIdx = 0; zhengwenIdx < zhengwens.size(); zhengwenIdx++) {
+            String zhengwen = zhengwens.get(zhengwenIdx);
+            String biaoshi = StaxXmlUtil.concatAllNodeValuesByStax(biaoshis.get(zhengwenIdx).trim(), "biaoshi");
+            List<Map<String, String>> biaoshiMapList = new ArrayList<>();
+            String[] biaoshiSplit = biaoshi.split(";");
+            for(int idx = 0; idx < biaoshiSplit.length; idx++) {
+                if(biaoshiSplit[idx] != null && !"".endsWith(biaoshiSplit[idx])) {
+                    Map<String, String> attrMap = new HashMap<>();
+                    attrMap.put("class", "chars");
+                    attrMap.put("data-type", "字符");
+                    attrMap.put("data-sign", biaoshiSplit[idx]);
+                    biaoshiMapList.add(attrMap);
+                }
+            }
+            String s = StaxXmlUtil.parseXMLWithCustomAttributes(zhengwen, "zhengwen", new HashSet<>(), biaoshiMapList);
+            System.out.println(s);
+        }
 
     }
 
