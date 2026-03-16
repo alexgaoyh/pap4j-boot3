@@ -1,6 +1,8 @@
 package cn.net.pap.common.file.xml;
 
 import com.ibm.icu.text.BreakIterator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.xml.sax.Attributes;
 import org.xml.sax.InputSource;
 import org.xml.sax.helpers.DefaultHandler;
@@ -21,8 +23,13 @@ import java.util.Stack;
 
 public class StaxXmlUtil {
 
+    private static final Logger log = LoggerFactory.getLogger(StaxXmlUtil.class);
+
     // 将 Factory 设为静态单例，避免每次调用方法时重复创建的巨大开销. XMLInputFactory 是线程安全的（大部分实现中），或者至少创建 Reader 的方法是线程安全的
     private static final XMLInputFactory factory;
+
+    // 将 SAXParserFactory 提取为静态单例，避免 extractAllPaths 频繁创建带来的性能损耗
+    private static final SAXParserFactory saxFactory;
 
     static {
         factory = XMLInputFactory.newInstance();
@@ -30,6 +37,20 @@ public class StaxXmlUtil {
         factory.setProperty(XMLInputFactory.IS_COALESCING, true);
         // 禁用命名空间处理，只返回本地名称
         factory.setProperty(XMLInputFactory.IS_NAMESPACE_AWARE, false);
+
+        // 强制关闭 DTD 和外部实体解析，防御 XXE 注入漏洞
+        factory.setProperty(XMLInputFactory.SUPPORT_DTD, false);
+        factory.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+
+        // 初始化并安全配置 SAXParserFactory
+        saxFactory = SAXParserFactory.newInstance();
+        try {
+            saxFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
+            saxFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+            saxFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+        } catch (Exception e) {
+            log.error("SAXParserFactory 安全配置失败", e);
+        }
     }
 
     /**
@@ -41,9 +62,10 @@ public class StaxXmlUtil {
      */
     public static List<String> readChildrenXmlByStax(String xmlText, String nodeName) {
         List<String> result = new ArrayList<>();
+        XMLStreamReader reader = null;
         try (StringReader sr = new StringReader(xmlText)) {
 
-            XMLStreamReader reader = factory.createXMLStreamReader(sr);
+            reader = factory.createXMLStreamReader(sr);
 
             StringBuilder sb = null;
             int depth = 0; // 用于记录嵌套层级
@@ -88,10 +110,17 @@ public class StaxXmlUtil {
                     }
                 }
             }
-
-            reader.close();
         } catch (Exception e) {
+            log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                    // 忽略关闭异常
+                }
+            }
         }
         return result;
     }
@@ -172,31 +201,38 @@ public class StaxXmlUtil {
      * 获取某节点文本内容
      */
     public static String readNodeValueByStax(String xmlText, String nodeName) {
+        XMLStreamReader reader = null;
         try {
-            XMLInputFactory factory = XMLInputFactory.newInstance();
-            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlText));
+            // 移除内部重复实例化的 XMLInputFactory，复用静态 factory 提升性能
+            reader = factory.createXMLStreamReader(new StringReader(xmlText));
 
             while (reader.hasNext()) {
                 int event = reader.next();
                 if (event == XMLStreamConstants.START_ELEMENT && nodeName.equals(reader.getLocalName())) {
                     // 读取文本
-                    String text = "";
+                    StringBuilder textSb = new StringBuilder(); // 替换 String += 拼接，避免 GC 压力
                     while (reader.hasNext()) {
                         event = reader.next();
                         if (event == XMLStreamConstants.CHARACTERS) {
-                            text += escapeXml(reader.getText());
+                            textSb.append(escapeXml(reader.getText()));
                         } else if (event == XMLStreamConstants.END_ELEMENT && nodeName.equals(reader.getLocalName())) {
-                            reader.close();
-                            return text.trim();
+                            return textSb.toString().trim();
                         }
                     }
                 }
             }
 
-            reader.close();
             return null;
         } catch (Exception e) {
+            log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                }
+            }
         }
     }
 
@@ -206,9 +242,10 @@ public class StaxXmlUtil {
      * @return
      */
     public static String readChildrenXmlValueByStax(String xmlText, String parentNodeName) {
+        XMLStreamReader reader = null;
         try {
-            XMLInputFactory factory = XMLInputFactory.newInstance();
-            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlText));
+            // 复用静态 factory
+            reader = factory.createXMLStreamReader(new StringReader(xmlText));
 
             StringBuilder sb = null;
             int depth = 0;
@@ -238,17 +275,23 @@ public class StaxXmlUtil {
                             depth--;
                         } else if (parentNodeName.equals(reader.getLocalName())) {
                             // 父节点结束
-                            reader.close();
                             return sb.toString();
                         }
                     }
                 }
             }
 
-            reader.close();
             return null;
         } catch (Exception e) {
+            log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                }
+            }
         }
     }
 
@@ -258,9 +301,10 @@ public class StaxXmlUtil {
      */
     public static int countNodesByStax(String xmlText, String nodeName) {
         int count = 0;
+        XMLStreamReader reader = null;
         try {
-            XMLInputFactory factory = XMLInputFactory.newInstance();
-            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlText));
+            // 复用静态 factory
+            reader = factory.createXMLStreamReader(new StringReader(xmlText));
 
             while (reader.hasNext()) {
                 int event = reader.next();
@@ -269,10 +313,17 @@ public class StaxXmlUtil {
                 }
             }
 
-            reader.close();
             return count;
         } catch (Exception e) {
+            log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                }
+            }
         }
     }
 
@@ -294,11 +345,10 @@ public class StaxXmlUtil {
     public static String parseXMLInRootAndOriginalTags(String xmlString, String rootTag, Set<String> keepOriginalTags) {
         StringBuilder result = new StringBuilder("<").append(rootTag).append(">");
         int charSeq = 0;
+        XMLStreamReader reader = null;
         try {
-            XMLInputFactory factory = XMLInputFactory.newInstance();
-            // StAX 文本合并 连续的 CHARACTERS / CDATA 会自动合并 表情符号会以 完整字符串 传入
-            factory.setProperty(XMLInputFactory.IS_COALESCING, true);
-            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlString));
+            // 复用静态 factory，移除局部的 newInstance()，静态块中已经配置过 IS_COALESCING = true
+            reader = factory.createXMLStreamReader(new StringReader(xmlString));
 
             while (reader.hasNext()) {
                 int event = reader.next();
@@ -337,11 +387,17 @@ public class StaxXmlUtil {
                     }
                 }
             }
-            reader.close();
             result.append("</").append(rootTag).append(">");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("StAX 解析失败", e);
             return xmlString;
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                }
+            }
         }
         return result.toString();
     }
@@ -380,6 +436,7 @@ public class StaxXmlUtil {
             }
             return attributes;
         } catch (Exception e) {
+            log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
         } finally {
             if (reader != null) {
@@ -429,9 +486,10 @@ public class StaxXmlUtil {
         // 初始容量设为较大值，避免拼接长文本时频繁扩容
         StringBuilder sb = new StringBuilder(1024);
 
+        XMLStreamReader reader = null;
         try {
             // 复用类中已有的静态线程安全 factory
-            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlText));
+            reader = factory.createXMLStreamReader(new StringReader(xmlText));
 
             boolean inTargetNode = false;
             int targetDepth = 0; // 用于处理可能存在的同名节点嵌套情况
@@ -474,10 +532,17 @@ public class StaxXmlUtil {
                         break;
                 }
             }
-            reader.close();
 
         } catch (Exception e) {
+            log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                }
+            }
         }
 
         return sb.toString();
@@ -497,9 +562,10 @@ public class StaxXmlUtil {
         StringBuilder result = new StringBuilder("<").append(rootTag).append(">");
         int charIndex = 0; // 用于追踪当前字符在 attrList 中的全局下标
 
+        XMLStreamReader reader = null;
         try {
             // 复用类中已有的 factory
-            XMLStreamReader reader = factory.createXMLStreamReader(new StringReader(xmlString));
+            reader = factory.createXMLStreamReader(new StringReader(xmlString));
 
             while (reader.hasNext()) {
                 int event = reader.next();
@@ -541,11 +607,18 @@ public class StaxXmlUtil {
                     }
                 }
             }
-            reader.close();
+            // 移除了原本放在 try 块末尾冗余的 reader.close(); ，统一交由 finally 处理
             result.append("</").append(rootTag).append(">");
         } catch (Exception e) {
-            e.printStackTrace();
-            return xmlString; // 解析失败降级返回原文本
+            log.error("StAX 解析失败", e);
+            throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                }
+            }
         }
         return result.toString();
     }
@@ -604,8 +677,8 @@ public class StaxXmlUtil {
      * @return 所有路径的列表
      */
     public static List<String> extractAllPaths(String xmlContent) throws Exception {
-        SAXParserFactory factory = SAXParserFactory.newInstance();
-        SAXParser parser = factory.newSAXParser();
+        // 复用配置的静态单例 saxFactory
+        SAXParser parser = saxFactory.newSAXParser();
         IndexedPathHandler handler = new IndexedPathHandler();
         parser.parse(new InputSource(new StringReader(xmlContent)), handler);
         return handler.getAllPaths();
