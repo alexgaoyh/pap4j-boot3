@@ -1,7 +1,15 @@
 package cn.net.pap.common.datastructure.sequence;
 
 /**
- * 序列 对齐算法
+ * <p><strong>SequenceAlignmentUtil</strong> 提供序列比对算法。</p>
+ *
+ * <p>目前实现了用于全局序列比对的 Needleman-Wunsch 算法，
+ * 该算法常用于生物信息学中比对蛋白质或核苷酸序列。</p>
+ *
+ * <ul>
+ *     <li>计算最佳全局比对。</li>
+ *     <li>使用可配置的罚分。</li>
+ * </ul>
  */
 public class SequenceAlignmentUtil {
 
@@ -11,11 +19,13 @@ public class SequenceAlignmentUtil {
     private static final int GAP_SCORE = -2;
 
     /**
-     * Needleman-Wunsch 对齐算法
+     * <p>对两个序列执行 Needleman-Wunsch 全局比对算法。</p>
      *
-     * @param seq1
-     * @param seq2
-     * @return
+     * <p>它构建一个评分矩阵并通过回溯以找到最佳比对，在必要时引入间隙（<strong>'-'</strong>）以使总分最大化。</p>
+     *
+     * @param seq1 第一个序列字符串。
+     * @param seq2 第二个序列字符串。
+     * @return 包含分别比对后的两个字符串数组。
      */
     public static String[] needlemanWunsch(String seq1, String seq2) {
         int m = seq1.length();

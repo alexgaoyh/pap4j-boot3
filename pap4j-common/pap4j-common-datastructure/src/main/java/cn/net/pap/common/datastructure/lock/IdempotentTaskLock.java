@@ -11,16 +11,22 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 幂等任务锁
- * 核心机制：基于 ConcurrentHashMap 桶锁 + 状态机 + 惰性删除 + 外部注入定时器扫表兜底。
- * * 【使用说明】
- * 1. 业务层必须在应用启动时调用 {@link #init(ScheduledExecutorService)} 注入定时调度器，否则无法清理僵尸锁。
- * 2. 业务层在应用关闭时，只需销毁传入的 ScheduledExecutorService，并按需调用 {@link #clear()} 即可。
+ * <p><strong>IdempotentTaskLock</strong> 提供了一个强大的幂等性任务锁定机制。</p>
+ *
+ * <p>核心特性包括基于 {@link ConcurrentHashMap} 的桶锁、状态机、延迟删除以及用于清理的外部定时器。</p>
+ *
+ * <ul>
+ *     <li><strong>初始化：</strong> 必须在启动时调用 {@link #init(ScheduledExecutorService)}。</li>
+ *     <li><strong>关闭：</strong> 终止注入的执行器并可选择调用 {@link #clear()}。</li>
+ * </ul>
  */
 public class IdempotentTaskLock {
 
     private static final Logger log = LoggerFactory.getLogger(IdempotentTaskLock.class);
 
+    /**
+     * <p>定义幂等任务的生命周期状态。</p>
+     */
     private enum State {
         PENDING(0), RUNNING(1), COMPLETED(2);
         private final int code;
@@ -34,6 +40,9 @@ public class IdempotentTaskLock {
         }
     }
 
+    /**
+     * <p>处理状态和超时元数据的内部包装器。</p>
+     */
     private static class Status {
         final AtomicReference<State> state;
 
@@ -49,6 +58,13 @@ public class IdempotentTaskLock {
             this.startRunTimeNano = System.nanoTime();
         }
 
+        /**
+         * <p>释放锁并根据是否成功更新时间戳。</p>
+         *
+         * @param success 决定状态是转换为 COMPLETED 还是 PENDING。
+         * @param keepAliveNanos 成功时的保持活动时间。
+         * @return <strong>true</strong> 如果转换成功。
+         */
         boolean release(boolean success, long keepAliveNanos) {
             if (success) {
                 // 利用 Happens-Before 原则，先写普通 volatile，再写 Atomic，保证可见性
@@ -87,9 +103,10 @@ public class IdempotentTaskLock {
     }
 
     /**
-     * 由外部业务层/应用容器在启动时调用，注入定时调度器
+     * <p>使用外部调度器初始化锁定机制。</p>
      *
-     * @param scheduler 外部统一管理的调度线程池
+     * @param scheduler 用于垃圾回收的 {@link ScheduledExecutorService}。
+     * @throws IllegalArgumentException 如果 scheduler 为 null。
      */
     public static void init(ScheduledExecutorService scheduler) {
         if (scheduler == null) {
@@ -111,7 +128,10 @@ public class IdempotentTaskLock {
     }
 
     /**
-     * 尝试获取执行锁
+     * <p>尝试获取给定键的锁。</p>
+     *
+     * @param key 表示任务的唯一键。
+     * @return <strong>true</strong> 如果获取成功。
      */
     public static boolean tryAcquire(String key) {
         if (!INITIALIZED.get()) {
@@ -149,10 +169,25 @@ public class IdempotentTaskLock {
         return acquired[0];
     }
 
+    /**
+     * <p>释放已获取的锁。</p>
+     *
+     * @param key 任务键。
+     * @param success 执行结果。
+     * @return <strong>true</strong> 如果释放成功。
+     */
     public static boolean release(String key, boolean success) {
         return release(key, success, DEFAULT_KEEP_ALIVE_SECONDS);
     }
 
+    /**
+     * <p>使用自定义的保活超时时间释放已获取的锁。</p>
+     *
+     * @param key 任务键。
+     * @param success 执行结果。
+     * @param keepAliveSeconds 维持幂等状态的时间。
+     * @return <strong>true</strong> 如果释放成功。
+     */
     public static boolean release(String key, boolean success, long keepAliveSeconds) {
         Status status = accessCounts.get(key);
         if (status == null) return false;
@@ -173,8 +208,10 @@ public class IdempotentTaskLock {
     }
 
     /**
-     * 安全的强制重置
-     * 严禁破坏 COMPLETED 状态的防重冷却契约，仅清理残留的 PENDING 垃圾数据。
+     * <p>如果锁当前处于 PENDING 状态，则安全地强制移除它。</p>
+     *
+     * @param key 任务键。
+     * @return <strong>true</strong> 如果锁被移除。
      */
     public static boolean safeForceReset(String key) {
         final boolean[] removed = {false};
@@ -188,13 +225,19 @@ public class IdempotentTaskLock {
         return removed[0];
     }
 
+    /**
+     * <p>返回任务状态的内部整数代码。</p>
+     *
+     * @param key 任务键。
+     * @return 整数代码。
+     */
     public static int getStatus(String key) {
         Status status = accessCounts.get(key);
         return status == null ? State.PENDING.getCode() : status.getState().getCode();
     }
 
     /**
-     * 清理内存资源，在应用销毁/重启时调用
+     * <p>清除内存中的所有锁。</p>
      */
     public static void clear() {
         accessCounts.clear();
@@ -202,7 +245,7 @@ public class IdempotentTaskLock {
     }
 
     /**
-     * 全局兜底扫表：清理过期冷却锁，绞杀超时僵尸锁
+     * <p>后台清理器，用于移除过期或僵尸锁。</p>
      */
     private static void sweepExpiredKeys() {
         long currentNano = System.nanoTime();

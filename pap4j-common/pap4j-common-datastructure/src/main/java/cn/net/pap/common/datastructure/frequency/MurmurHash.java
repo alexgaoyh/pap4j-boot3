@@ -18,16 +18,26 @@ package cn.net.pap.common.datastructure.frequency;
  */
 
 /**
- * This is a very fast, non-cryptographic hash suitable for general hash-based
- * lookup. See http://murmurhash.googlepages.com/ for more details.
- * <p/>
+ * <h1>MurmurHash (非加密高速散列算法)</h1>
+ * <p>提供极其高速且具有极强雪崩效应的散列算法实现，非常适合作为普通的 HashTable 键散列或大规模数据快速指纹计算。</p>
  * <p>
- * The C version of MurmurHash 2.0 found at that site was ported to Java by
- * Andrzej Bialecki (ab at getopt org).
+ * 关于更多理论细节，可以参考: <a href="http://murmurhash.googlepages.com/">http://murmurhash.googlepages.com/</a>
  * </p>
+ * <p>
+ * <strong>注意：</strong>该实现并不是用于安全的密码学哈希，因此不要应用于验证数据安全性签名等密码场景。
+ * </p>
+ * 
+ * @author alexgaoyh
  */
 public class MurmurHash {
 
+    /**
+     * <p>对通用对象求出其相应的 32 位 MurmurHash 整型数值。</p>
+     * <p>根据对象类型，会自动分配到底层的 Long / Integer / Double / Float / String / byte[] 专用方法进行散列。</p>
+     *
+     * @param o 待求哈希的任意对象
+     * @return 计算后的 32 位哈希整数
+     */
     public static int hash(Object o) {
         if (o == null) {
             return 0;
@@ -53,14 +63,35 @@ public class MurmurHash {
         return hash(o.toString());
     }
 
+    /**
+     * <p>基于给定的字节数组生成 32 位的 MurmurHash 值，默认使用 {@code -1} 的种子。</p>
+     *
+     * @param data 输入的字节数组
+     * @return 计算后的 32 位散列值
+     */
     public static int hash(byte[] data) {
         return hash(data, data.length, -1);
     }
 
+    /**
+     * <p>指定哈希种子并基于给定的字节数组生成 32 位的 MurmurHash 值。</p>
+     *
+     * @param data 输入的字节数组
+     * @param seed 初始的随机种子整型
+     * @return 计算后的 32 位散列值
+     */
     public static int hash(byte[] data, int seed) {
         return hash(data, data.length, seed);
     }
 
+    /**
+     * <p>指定有效长度及种子，基于字节数组进行 32 位 MurmurHash 的最终底层算法实现。</p>
+     *
+     * @param data   字节数组数据源
+     * @param length 要处理的字节最大长度
+     * @param seed   散列函数的初始化参数值
+     * @return 经过多步变换生成的 32 位散列值
+     */
     public static int hash(byte[] data, int length, int seed) {
         int m = 0x5bd1e995;
         int r = 24;
@@ -85,7 +116,7 @@ public class MurmurHash {
             h ^= k;
         }
 
-        // avoid calculating modulo
+        // 处理最后剩余的尾部非 4 的整数倍部分的字节
         int len_m = len_4 << 2;
         int left = length - len_m;
 
@@ -103,6 +134,7 @@ public class MurmurHash {
             h *= m;
         }
 
+        // 最终的位混合，确保更好的雪崩效应
         h ^= h >>> 13;
         h *= m;
         h ^= h >>> 15;
@@ -110,6 +142,12 @@ public class MurmurHash {
         return h;
     }
 
+    /**
+     * <p>直接对给定的 {@code long} 标量生成其 32 位的 MurmurHash 值，效率优于转换为数组。</p>
+     *
+     * @param data 待计算的长整型值
+     * @return 32 位哈希整数
+     */
     public static int hashLong(long data) {
         int m = 0x5bd1e995;
         int r = 24;
@@ -132,6 +170,12 @@ public class MurmurHash {
         return h;
     }
 
+    /**
+     * <p>针对对象的通用重载：生成 64 位的 MurmurHash 值。</p>
+     *
+     * @param o 待求散列的对象
+     * @return 64位哈希长整型数
+     */
     public static long hash64(Object o) {
         if (o == null) {
             return 0l;
@@ -145,27 +189,25 @@ public class MurmurHash {
         return hash64(o.toString());
     }
 
-    // 64 bit implementation copied from here:  https://github.com/tnm/murmurhash-java
-
     /**
-     * Generates 64 bit hash from byte array with default seed value.
+     * <p>基于给定的字节数组使用系统默认种子 {@code 0xe17a1465} 计算出 64 位的哈希值。</p>
      *
-     * @param data   byte array to hash
-     * @param length length of the array to hash
-     * @return 64 bit hash of the given string
+     * @param data   代求哈希字节数组
+     * @param length 需要参与运算的数组长度
+     * @return 64 位的哈希长整型数
      */
     public static long hash64(final byte[] data, int length) {
         return hash64(data, length, 0xe17a1465);
     }
 
-
     /**
-     * Generates 64 bit hash from byte array of the given length and seed.
+     * <p>带指定种子的底层 64 位版本 MurmurHash 具体实现。</p>
+     * <p>一次处理 8 个字节的块并在末端完成混合。</p>
      *
-     * @param data   byte array to hash
-     * @param length length of the array to hash
-     * @param seed   initial seed value
-     * @return 64 bit hash of the given array
+     * @param data   字节数组
+     * @param length 数组的参与散列长度
+     * @param seed   哈希随机种子整型
+     * @return 完成最终混合处理的 64 位散列值
      */
     public static long hash64(final byte[] data, int length, int seed) {
         final long m = 0xc6a4a7935bd1e995L;

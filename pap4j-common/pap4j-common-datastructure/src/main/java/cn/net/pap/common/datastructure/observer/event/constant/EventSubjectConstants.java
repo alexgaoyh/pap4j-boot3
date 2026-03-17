@@ -10,18 +10,23 @@ import java.util.HashMap;
 import java.util.Map;
 
 /**
- * 观察者常量定义
+ * <p><strong>EventSubjectConstants</strong> 包含了预先配置的观察者链。</p>
+ *
+ * <p>它提供了不可变的静态映射（Map），代表着不同的工作流拓扑结构，
+ * 将事件映射到其响应的 {@link PapSubject} 层级结构。</p>
  */
 public class EventSubjectConstants {
 
     /**
-     * 维护的一系列观察者：
-     *  1->2->3
-     *  1->2->4
-     *  1->2->5
-     *  1->2->6->7
-     *  1->2->8->9
-     *  1->2->8->0
+     * <p>维护了一系列预定义的观察者链。</p>
+     * <ul>
+     *     <li><strong>1 -> 2 -> 3</strong></li>
+     *     <li><strong>1 -> 2 -> 4</strong></li>
+     *     <li><strong>1 -> 2 -> 5</strong></li>
+     *     <li><strong>1 -> 2 -> 6 -> 7</strong></li>
+     *     <li><strong>1 -> 2 -> 8 -> 9</strong></li>
+     *     <li><strong>1 -> 2 -> 8 -> 0</strong></li>
+     * </ul>
      */
     public static final Map<String, PapSubject> eventSubjectMap = Collections.unmodifiableMap(new HashMap<String, PapSubject>()
     {
@@ -64,14 +69,16 @@ public class EventSubjectConstants {
 
 
     /**
-     * 维护一系列观察者， 通过观察只需要对外暴露根上的 event1， 其他的观察者之间通过 addNextPapSubject 进行传递.
-     * 配合 PapObserverTest.test2 进行测试验证. 打印出来的结果就是从根开始，一层一层向下进行状态流转.
-     *  1->2->3
-     *  1->2->4
-     *  1->2->5
-     *  1->2->6->7
-     *  1->2->8->9
-     *  1->2->8->0
+     * <p>维护了一个由后续主题链接起来的观察者互联树。</p>
+     * <p>仅暴露根节点（event1）。传递给它的通知将自动向下流动。</p>
+     * <ul>
+     *     <li><strong>1 -> 2 -> 3</strong></li>
+     *     <li><strong>1 -> 2 -> 4</strong></li>
+     *     <li><strong>1 -> 2 -> 5</strong></li>
+     *     <li><strong>1 -> 2 -> 6 -> 7</strong></li>
+     *     <li><strong>1 -> 2 -> 8 -> 9</strong></li>
+     *     <li><strong>1 -> 2 -> 8 -> 0</strong></li>
+     * </ul>
      */
     public static final Map<String, PapSubject> eventSubjectMap2 = Collections.unmodifiableMap(new HashMap<String, PapSubject>()
     {

@@ -5,8 +5,18 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 /**
- * 防 OOM 的有界并发 Map
- * 采用“软限制 (Soft Bound)”机制，在高并发下保护内存不被击穿，同时避免了全局锁的性能损耗。
+ * <p><strong>BoundedConcurrentMap</strong> 是一个受防内存溢出（OOM）保护的并发映射（Concurrent Map）。</p>
+ *
+ * <p>它采用“软边界（Soft Bound）”机制，在高并发期间保护内存，而不会产生全局锁的开销。
+ * 它封装了一个 {@link ConcurrentHashMap} 并限制了其容量。</p>
+ *
+ * <ul>
+ *     <li>为映射数量提供上限。</li>
+ *     <li>提供模仿标准映射行为的线程安全操作。</li>
+ * </ul>
+ *
+ * @param <K> 此映射维护的键的类型
+ * @param <V> 映射值的类型
  */
 public class BoundedConcurrentMap<K, V> {
 
@@ -15,6 +25,12 @@ public class BoundedConcurrentMap<K, V> {
     // 最大容量阈值
     private final long maxCapacity;
 
+    /**
+     * <p>构造一个具有指定容量限制的新的 <strong>BoundedConcurrentMap</strong>。</p>
+     *
+     * @param maxCapacity 允许的最大容量。
+     * @throws IllegalArgumentException 如果 maxCapacity 小于或等于 0。
+     */
     public BoundedConcurrentMap(long maxCapacity) {
         if (maxCapacity <= 0) {
             throw new IllegalArgumentException("最大容量必须大于 0");
@@ -24,17 +40,14 @@ public class BoundedConcurrentMap<K, V> {
     }
 
     /**
-     * 尝试放入元素（普通 put 的安全替代品）
+     * <p>尝试安全地放入一个键值对。</p>
      *
-     * map.mappingCount() 和 map.putIfAbsent() 之间是 非原子操作。
+     * <p>在插入之前会进行容量检查。高并发可能导致容量稍微超出限制（软边界），但它能有效防止 OOM。</p>
      *
-     * 高并发下，多个线程可能同时通过 map.mappingCount() < maxCapacity 的检查，然后几乎同时调用 putIfAbsent。
-     *
-     * 这就导致最终容量略微超过 maxCapacity，但不会大幅超过（比如 100 → 101~102）。
-     *
-     * 这正是你测试里提到的 “软限制(Soft Bound)” 的特性。
-     *
-     * @return true: 放入或更新成功；false: 容量已满，拒绝放入新元素。
+     * @param key   键。
+     * @param value 值。
+     * @return <strong>true</strong> 如果放入或更新成功；<strong>false</strong> 如果因容量限制被拒绝。
+     * @throws NullPointerException 如果键或值为 null。
      */
     public boolean tryPut(K key, V value) {
         if (key == null || value == null) {
@@ -58,7 +71,11 @@ public class BoundedConcurrentMap<K, V> {
     }
 
     /**
-     * 包装原生的 compute 方法，注入容量拦截逻辑。（限流器的核心依赖）
+     * <p>包装原生的 <code>compute</code> 方法以注入容量拦截逻辑。</p>
+     *
+     * @param key               要计算的键。
+     * @param remappingFunction 用于计算值的函数。
+     * @return 计算出的值，如果执行被拒绝则返回 null。
      */
     public V compute(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         return map.compute(key, (k, oldValue) -> {
@@ -72,15 +89,26 @@ public class BoundedConcurrentMap<K, V> {
     }
 
     /**
-     * 包装 computeIfPresent
-     * 因为只操作已存在的 Key，一定不会增加容量，所以直接透传，无需拦截。
+     * <p>包装原生的 <code>computeIfPresent</code> 方法。</p>
+     *
+     * <p>因为它仅对现有的键进行操作，所以直接委托执行。</p>
+     *
+     * @param key               键。
+     * @param remappingFunction 计算函数。
+     * @return 计算出的值，或 null。
      */
     public V computeIfPresent(K key, BiFunction<? super K, ? super V, ? extends V> remappingFunction) {
         return map.computeIfPresent(key, remappingFunction);
     }
 
     /**
-     * 包装 computeIfAbsent
+     * <p>包装原生的 <code>computeIfAbsent</code> 方法。</p>
+     *
+     * <p>如果映射已达到满容量并且该键不存在，则拦截操作。</p>
+     *
+     * @param key             键。
+     * @param mappingFunction 映射函数。
+     * @return 计算出的或已存在的值，如果被拒绝则返回 null。
      */
     public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction) {
         // 如果容量已满且 Key 不存在，直接返回 null 拒绝执行
@@ -90,27 +118,48 @@ public class BoundedConcurrentMap<K, V> {
         return map.computeIfAbsent(key, mappingFunction);
     }
 
-    // ================= 以下是常规 Map 方法的透传 =================
-
+    /**
+     * <p>检索与键关联的值。</p>
+     *
+     * @param key 键。
+     * @return 映射的值，如果不存在则返回 null。
+     */
     public V get(K key) {
         return map.get(key);
     }
 
+    /**
+     * <p>从此映射中移除某个键的映射关系。</p>
+     *
+     * @param key 键。
+     * @return 与键关联的先前的值。
+     */
     public V remove(K key) {
         return map.remove(key);
     }
 
+    /**
+     * <p>检查映射是否包含给定的键。</p>
+     *
+     * @param key 键。
+     * @return <strong>true</strong> 如果映射包含该键。
+     */
     public boolean containsKey(K key) {
         return map.containsKey(key);
     }
 
     /**
-     * 返回当前元素的预估数量 (高并发下比 size() 更高效)
+     * <p>返回映射数量的估计值。</p>
+     *
+     * @return 映射的数量。
      */
     public long mappingCount() {
         return map.mappingCount();
     }
 
+    /**
+     * <p>从映射中清除所有条目。</p>
+     */
     public void clear() {
         map.clear();
     }

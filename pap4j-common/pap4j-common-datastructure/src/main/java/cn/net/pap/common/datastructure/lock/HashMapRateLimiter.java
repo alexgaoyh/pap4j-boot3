@@ -4,20 +4,33 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
- * 改进版：同样基于每 key 一个 Status，
- * - release 返回 boolean 表示是否成功释放
- * - 可选 成功完成时自动尝试移除 map 中的已完成条目（避免内存泄漏）
- * - safeForceReset 只有在非 RUNNING 时才移除，避免并发导致同时两个 RUNNING
+ * <p><strong>HashMapRateLimiter</strong> 是一个基于 {@link ConcurrentHashMap} 的基础限流器。</p>
  *
- *  @deprecated 请使用 {@link cn.net.pap.common.datastructure.lock.IdempotentTaskLock} 替代
+ * <p>它提供了一种改进的机制，为每个键使用一个状态对象。
+ * 特性包括：</p>
+ * <ul>
+ *     <li>release 方法返回一个布尔值以指示是否成功。</li>
+ *     <li>可选自动移除已完成的项，以防止内存泄漏。</li>
+ *     <li>安全的强制重置，仅在项不处于 RUNNING 状态时才将其移除。</li>
+ * </ul>
+ *
+ * @deprecated 请改用 {@link cn.net.pap.common.datastructure.lock.IdempotentTaskLock}。
  */
 @Deprecated
 public class HashMapRateLimiter {
 
+    /**
+     * <p>表示与特定键关联的锁的状态。</p>
+     */
     private enum State {
-        PENDING(0),      // 待执行
-        RUNNING(1),      // 执行中
-        COMPLETED(2);    // 已完成
+        /** <p>指示任务正在等待执行。</p> */
+        PENDING(0),
+        
+        /** <p>指示任务当前正在执行。</p> */
+        RUNNING(1),
+        
+        /** <p>指示任务已完成执行。</p> */
+        COMPLETED(2);
 
         private final int code;
 
@@ -30,6 +43,9 @@ public class HashMapRateLimiter {
         }
     }
 
+    /**
+     * <p>维护一个键的原子状态的内部类。</p>
+     */
     private static class Status {
         final AtomicReference<State> state;
 
@@ -37,16 +53,25 @@ public class HashMapRateLimiter {
             this.state = new AtomicReference<>(initialState);
         }
 
+        /**
+         * <p>尝试将状态从 PENDING 转换为 RUNNING。</p>
+         *
+         * @return <strong>true</strong> 如果成功，否则返回 <strong>false</strong>。
+         */
         boolean tryAcquire() {
             return state.compareAndSet(State.PENDING, State.RUNNING);
         }
 
         /**
-         * 尝试释放运行锁：
+         * <p>尝试释放锁并转换其状态。</p>
          *
-         * @param success 如果 true -> RUNNING -> COMPLETED
-         *                如果 false -> RUNNING -> PENDING（允许重试）
-         * @return true 如果成功做了状态变更；false 表示当前不是 RUNNING（可能被其它操作修改）
+         * <ul>
+         *     <li>如果 success 为 true，它将从 RUNNING 转换为 COMPLETED。</li>
+         *     <li>如果 success 为 false，它将从 RUNNING 转换回 PENDING。</li>
+         * </ul>
+         *
+         * @param success 执行结果。
+         * @return <strong>true</strong> 如果状态成功更改，否则返回 <strong>false</strong>。
          */
         boolean release(boolean success) {
             return state.compareAndSet(State.RUNNING, success ? State.COMPLETED : State.PENDING);
@@ -64,13 +89,19 @@ public class HashMapRateLimiter {
 
     private static final HashMapRateLimiter INSTANCE = new HashMapRateLimiter();
 
+    /**
+     * <p>尝试获取给定键的锁。</p>
+     *
+     * @param key 要获取锁的键。
+     * @return <strong>true</strong> 如果锁已获取，否则返回 <strong>false</strong>。
+     */
     public static boolean tryAcquire(String key) {
         // 使用 compute 保证同一 key 的插入/检查是原子的
         final boolean[] acquired = {false};
         INSTANCE.accessCounts.compute(key, (k, existingStatus) -> {
             if (existingStatus == null) {
                 acquired[0] = true;
-                return new Status(State.RUNNING); // 直接创建 RUNNING，表示持有
+                return new Status(State.RUNNING);
             }
             if (existingStatus.tryAcquire()) {
                 acquired[0] = true;
@@ -81,11 +112,11 @@ public class HashMapRateLimiter {
     }
 
     /**
-     * 释放运行标志
+     * <p>释放指定键的锁。</p>
      *
-     * @param key     key
-     * @param success true 表示执行成功 -> 转 COMPLETED（并尝试清理映射）
-     * @return true 若成功做了状态变更（RUNNING->COMPLETED 或 RUNNING->PENDING），false 表示释放失败（不在 RUNNING）
+     * @param key     与锁关联的键。
+     * @param success 指示任务是否成功。
+     * @return <strong>true</strong> 如果释放触发了状态更改，否则返回 <strong>false</strong>。
      */
     public static boolean release(String key, boolean success) {
         Status status = INSTANCE.accessCounts.get(key);
@@ -94,16 +125,16 @@ public class HashMapRateLimiter {
         }
         boolean changed = status.release(success);
         if (changed && success) {
-            // 如果变更为 COMPLETED，尝试移除条目（仅当映射仍然指向这个 Status 实例时）
-//            if (status.getState() == State.COMPLETED) {
-//                INSTANCE.accessCounts.remove(key, status);
-//            }
+            // 这里可以放置可选的移除逻辑。
         }
         return changed;
     }
 
     /**
-     * 安全的强制重置：只有在当前不是 RUNNING 时才移除并返回 true；若正在 RUNNING 则返回 false（避免并发执行）。
+     * <p>安全地强制重置给定键（通过将其移除），前提是它当前未处于 RUNNING 状态。</p>
+     *
+     * @param key 要重置的键。
+     * @return <strong>true</strong> 如果重置成功，如果锁当前处于 RUNNING 状态或丢失则返回 <strong>false</strong>。
      */
     public static boolean safeForceReset(String key) {
         Status status = INSTANCE.accessCounts.get(key);
@@ -118,13 +149,23 @@ public class HashMapRateLimiter {
     }
 
     /**
-     * 非安全的强制移除（调试用）：直接移除，不考虑 RUNNING。慎用。
+     * <p>不安全地强制移除一个键，且不检查其当前状态。</p>
+     *
+     * @param key 要移除的键。
+     * @return <strong>true</strong> 如果已被移除，否则返回 <strong>false</strong>。
+     * @deprecated 请谨慎使用，主要用于调试目的。
      */
     @Deprecated
     public static boolean forceResetUnsafe(String key) {
         return INSTANCE.accessCounts.remove(key) != null;
     }
 
+    /**
+     * <p>检索表示一个键的当前状态的整数代码。</p>
+     *
+     * @param key 键。
+     * @return 状态代码。如果丢失则返回 PENDING 的代码。
+     */
     public static int getStatus(String key) {
         Status status = INSTANCE.accessCounts.get(key);
         return status == null ? State.PENDING.getCode() : status.getState().getCode();

@@ -4,9 +4,22 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
+/**
+ * <h1>简易 Cron 表达式解析器 (Simple Cron Parser)</h1>
+ * <p>该类用于解析标准的或带有秒/年字段的简易 Cron 表达式，并能计算出基于当前时间的下一次执行时间。</p>
+ * <p>支持解析 5 到 7 个字段的 Cron 表达式：</p>
+ * <ul>
+ *     <li>5 个字段: {@code [分] [时] [日] [月] [周]}</li>
+ *     <li>6 个字段: {@code [秒] [分] [时] [日] [月] [周]}</li>
+ *     <li>7 个字段: {@code [秒] [分] [时] [日] [月] [周] [年]}</li>
+ * </ul>
+ * <p>支持的特殊字符包括 {@code *}, {@code ?}, {@code ,}, {@code -}, {@code /}, {@code L} 等。</p>
+ *
+ * @author alexgaoyh
+ */
 public class SimpleCronParser {
 
-    // Cron字段常量
+    // Cron 字段常量索引
     private static final int SECOND = 0;
     private static final int MINUTE = 1;
     private static final int HOUR = 2;
@@ -15,11 +28,21 @@ public class SimpleCronParser {
     private static final int DAY_OF_WEEK = 5;
     private static final int YEAR = 6;
 
+    /** <p>解析后的 Cron 各字段数组</p> */
     private String[] cronParts;
+    /** <p>当前参考时间</p> */
     private LocalDateTime currentTime;
+    /** <p>是否包含秒字段标志</p> */
     private boolean hasSecondField;
+    /** <p>是否包含年字段标志</p> */
     private boolean hasYearField;
 
+    /**
+     * <p>根据传入的 Cron 表达式字符串构造解析器。</p>
+     *
+     * @param cronExpression Cron 表达式字符串
+     * @throws IllegalArgumentException 如果 Cron 表达式格式不合法（字段数不是 5, 6 或 7）
+     */
     public SimpleCronParser(String cronExpression) {
         this.cronParts = cronExpression.trim().split("\\s+");
 
@@ -33,6 +56,7 @@ public class SimpleCronParser {
             this.hasSecondField = true;
             this.hasYearField = false;
         } else if (cronParts.length == 7) {
+            // 有秒且有年
             this.hasSecondField = true;
             this.hasYearField = true;
         } else {
@@ -43,7 +67,12 @@ public class SimpleCronParser {
     }
 
 
-    // 解析并获取下一次执行时间
+    /**
+     * <p>解析并计算当前时间之后的下一次触发时间。</p>
+     * <p>该方法会截断到秒级精度，并不断自增时间直至满足 Cron 表达式。</p>
+     *
+     * @return 匹配 Cron 表达式的下一个 {@link LocalDateTime}
+     */
     public LocalDateTime getNextExecutionTime() {
         LocalDateTime nextTime = currentTime.plusSeconds(1).truncatedTo(ChronoUnit.SECONDS);
 
@@ -58,7 +87,12 @@ public class SimpleCronParser {
         return nextTime;
     }
 
-    // 检查给定时间是否匹配cron表达式
+    /**
+     * <p>检查给定的时间是否完全匹配该 Cron 表达式的所有字段。</p>
+     *
+     * @param time 待检查的时间
+     * @return 如果完全匹配返回 {@code true}，否则返回 {@code false}
+     */
     private boolean matches(LocalDateTime time) {
         // 处理秒字段（如果有）
         if (hasSecondField && !matchesField(time.getSecond(), cronParts[SECOND])) {
@@ -103,7 +137,13 @@ public class SimpleCronParser {
         return true;
     }
 
-    // 特殊处理月份中的天
+    /**
+     * <p>特殊处理“月份中的天”字段，支持 {@code L} 字符。</p>
+     *
+     * @param time 待检查时间
+     * @param dayFieldIndex 日期字段在数组中的索引
+     * @return 是否匹配该日期字段
+     */
     private boolean matchesDayOfMonth(LocalDateTime time, int dayFieldIndex) {
         String dayField = cronParts[dayFieldIndex];
         if (dayField.equals("?") || dayField.equals("*")) {
@@ -115,7 +155,13 @@ public class SimpleCronParser {
         return matchesField(time.getDayOfMonth(), dayField);
     }
 
-    // 特殊处理星期几
+    /**
+     * <p>特殊处理“星期几”字段，支持 {@code L} 后缀表示最后一周的星期几。</p>
+     *
+     * @param time 待检查时间
+     * @param weekFieldIndex 星期字段在数组中的索引
+     * @return 是否匹配星期字段
+     */
     private boolean matchesDayOfWeek(LocalDateTime time, int weekFieldIndex) {
         String dayField = cronParts[weekFieldIndex];
         if (dayField.equals("?") || dayField.equals("*")) {
@@ -144,7 +190,13 @@ public class SimpleCronParser {
         return matchesField(cronDayOfWeek, dayField);
     }
 
-    // 匹配单个字段的通用方法
+    /**
+     * <p>匹配单个字段的通用方法，处理包含逗号 {@code ,} 的列表表达式。</p>
+     *
+     * @param value 实际时间提取的数值
+     * @param field 表达式字段字符串
+     * @return 是否匹配
+     */
     private boolean matchesField(int value, String field) {
         if (field.equals("*") || field.equals("?")) {
             return true;
@@ -163,7 +215,14 @@ public class SimpleCronParser {
         return matchesSingleField(value, field);
     }
 
-    // 匹配单个字段的具体实现
+    /**
+     * <p>匹配单个没有逗号分隔的基本字段表达式。</p>
+     * <p>支持范围 {@code -}、步长 {@code /} 及具体数字匹配。</p>
+     *
+     * @param value 实际时间提取的数值
+     * @param field 基本字段字符串
+     * @return 是否匹配
+     */
     private boolean matchesSingleField(int value, String field) {
         // 如果字段包含字母（如"L"），不尝试解析为数字
         if (!field.matches("^[0-9*/,-]+$")) {
@@ -192,7 +251,13 @@ public class SimpleCronParser {
         }
     }
 
-    // 检查是否是当月的最后一个指定的星期几
+    /**
+     * <p>检查给定的日期是否是当月中最后一个符合指定的星期几。</p>
+     *
+     * @param time 待检查的时间
+     * @param targetDayOfWeek 目标的星期数值（0-6 对应周日到周六）
+     * @return 是否为该月最后一个目标星期几
+     */
     private boolean isLastWeekdayOfMonth(LocalDateTime time, int targetDayOfWeek) {
         LocalDate date = time.toLocalDate();
         LocalDate lastDay = date.withDayOfMonth(date.lengthOfMonth());
@@ -206,12 +271,19 @@ public class SimpleCronParser {
         return date.getDayOfMonth() == lastTargetDay.getDayOfMonth();
     }
 
-    // 增加时间到下一个可能的时间点
+    /**
+     * <p>每次递增一秒，进行下一轮的时间匹配。</p>
+     *
+     * @param time 当前尝试匹配的时间
+     * @return 递增 1 秒后的时间
+     */
     private LocalDateTime increment(LocalDateTime time) {
         return time.plusSeconds(1);
     }
 
-    // 打印cron表达式的解析结果
+    /**
+     * <p>在控制台打印解析好的 Cron 表达式的各部分详细信息。</p>
+     */
     public void printCronDetails() {
         System.out.println("Cron表达式解析结果:");
 
@@ -231,6 +303,11 @@ public class SimpleCronParser {
         }
     }
 
+    /**
+     * <p>设置计算下一次执行时间的初始参照时间。</p>
+     *
+     * @param currentTime 参考的当前时间
+     */
     public void setCurrentTime(LocalDateTime currentTime) {
         this.currentTime = currentTime;
     }

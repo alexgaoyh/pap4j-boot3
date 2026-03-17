@@ -5,9 +5,16 @@ import java.util.List;
 import java.util.Objects;
 
 /**
- * 数据血缘 TraceId 工具类（多分支派生 + Base62 + 内嵌父节点信息）
- * - 每个 traceId 包含自身信息 + 父节点 path
- * - 支持多分支派生
+ * <p><strong>DataTraceIdUtil</strong> 用于管理用于数据血缘追踪的结构化追踪 ID。</p>
+ *
+ * <p>它使用 Base62 编码生成包含严格父节点路径的自定义追踪 ID，支持广泛的分支流并以紧凑的方式保留关系链。
+ * 每个 ID 直接嵌入关键元数据，无需依赖二级存储。</p>
+ *
+ * <ul>
+ *     <li>自包含父节点历史记录。</li>
+ *     <li>Base62 时间/层级/分支编码。</li>
+ *     <li>内置确定性完整性校验码验证。</li>
+ * </ul>
  */
 public class DataTraceIdUtil {
 
@@ -28,7 +35,14 @@ public class DataTraceIdUtil {
     private static final int CHECKSUM_LEN = 2;   // 校验码长度
 
     /**
-     * 生成根 traceId（根节点父节点设为 00 00）
+     * <p>生成基础的根追踪 ID。</p>
+     * 
+     * <p>原始根节点的父节点默认层级为 0，分支为 0。</p>
+     *
+     * @param biz    业务域标识符。
+     * @param source 特定的数据源标识符。
+     * @return 格式化的根追踪 ID 字符串。
+     * @throws NullPointerException 如果 biz 或 source 为 null。
      */
     public static String generateRoot(String biz, String source) {
         Objects.requireNonNull(biz, "biz cannot be null");
@@ -43,7 +57,13 @@ public class DataTraceIdUtil {
     }
 
     /**
-     * 多分支派生（父节点 traceId -> numBranches 子节点 traceId）
+     * <p>从父追踪 ID 将血缘树扩展为多个分支。</p>
+     *
+     * @param parentTraceId 源父追踪 ID 字符串。
+     * @param numBranches   要派生的并行分支总数。
+     * @return 包含唯一派生的子级追踪 ID 序列的 {@link List}。
+     * @throws IllegalArgumentException 如果 numBranches 小于或等于 0。
+     * @throws NullPointerException     如果 parentTraceId 为 null。
      */
     public static List<String> deriveBranches(String parentTraceId, int numBranches) {
         Objects.requireNonNull(parentTraceId, "parentTraceId cannot be null");
@@ -60,7 +80,10 @@ public class DataTraceIdUtil {
     }
 
     /**
-     * 在当前节点新增一步（单条派生，branch=1）
+     * <p>将血缘追踪向前推进一步，并保持单一分支。</p>
+     *
+     * @param currentTraceId 当前的追踪 ID 字符串。
+     * @return 新的后续序列追踪 ID 字符串。
      */
     public static String nextStep(String currentTraceId) {
         TraceMeta meta = decode(currentTraceId);
@@ -70,14 +93,17 @@ public class DataTraceIdUtil {
     }
 
     /**
-     * 解析 traceId
+     * <p>将活跃的已编码追踪 ID 字符串解析为其内部元数据属性。</p>
+     *
+     * @param traceId 已编码的追踪 ID 字符串。
+     * @return 表示底层层级定义的 {@link TraceMeta} 映射。
      */
     public static TraceMeta parse(String traceId) {
         return decode(traceId);
     }
 
     /**
-     * 编码 traceId
+     * <p>将离散参数编码为复合固定长度的 Base62 字符串表示形式。</p>
      */
     private static String encode(String biz, String source, long time, int level, int branch, int parentLevel, int parentBranch) {
         String timeStr = toBase62(time, TIME_LEN);
@@ -90,7 +116,7 @@ public class DataTraceIdUtil {
     }
 
     /**
-     * 解码 traceId
+     * <p>从已编码的追踪字符串中重构内部参数并执行校验码验证。</p>
      */
     private static TraceMeta decode(String traceId) {
         int expectedLength = BIZ_LEN + SOURCE_LEN + TIME_LEN + LEVEL_LEN + BRANCH_LEN + PARENT_LEN + CHECKSUM_LEN;
@@ -124,7 +150,7 @@ public class DataTraceIdUtil {
     }
 
     /**
-     * Base62 编码固定长度
+     * <p>将变量参数标准化为按比例补零的固定 Base62 字符串。</p>
      */
     private static String toBase62(long value, int length) {
         StringBuilder sb = new StringBuilder();
@@ -138,7 +164,7 @@ public class DataTraceIdUtil {
     }
 
     /**
-     * Base62 解码
+     * <p>处理 Base62 表示并重构内部十进制数。</p>
      */
     private static long fromBase62(String str) {
         long value = 0;
@@ -151,7 +177,7 @@ public class DataTraceIdUtil {
     }
 
     /**
-     * 计算 2 位校验码
+     * <p>生成支持序列验证的确定性十六进制校验和签名字节。</p>
      */
     private static String calculateChecksum(String raw) {
         int hash = Math.abs(raw.hashCode());
@@ -160,43 +186,46 @@ public class DataTraceIdUtil {
     }
 
     /**
-     * TraceId 元信息
+     * <p><strong>TraceMeta</strong> 充当表示层级细节的内部有效载荷。</p>
      */
     public static class TraceMeta {
 
         /**
-         * 业务域编码，例如 "ORD1"
+         * <p>域代码，例如 "ORD1"。</p>
          */
         public final String biz;
         /**
-         * 数据源编码，例如 "S001"
+         * <p>原始数据源配置，例如 "S001"。</p>
          */
         public final String source;
         /**
-         * 根 traceId 创建的 Unix 时间戳（秒），Base62 编码在 traceId 中
+         * <p>初始根分配 UNIX 时间戳，以秒为单位。</p>
          */
         public final long time;
         /**
-         * 当前 traceId 所在层级（level），根节点为 1，派生后依次递增
+         * <p>从级别 1 开始的树深度大小。</p>
          */
         public final int level;
         /**
-         * 当前 traceId 在该层级的分支号（branch），从 1 开始，多分支派生用于区分兄弟节点
+         * <p>指定子派生的序列序数分支值。</p>
          */
         public final int branch;
         /**
-         * 父节点所在层级（parentLevel），用于追溯父节点，根节点为 0
+         * <p>从 0 开始的父级层次深度索引。</p>
          */
         public final int parentLevel;
         /**
-         * 父节点在该层级的分支号（parentBranch），根节点为 0
+         * <p>父级特定派生标识符分支节点约束。</p>
          */
         public final int parentBranch;
         /**
-         * 校验码（checksum），用于验证 traceId 的完整性和防篡改
+         * <p>基于哈希的验证序列。</p>
          */
         public final String checksum;
 
+        /**
+         * <p>构造一个映射基本结构的完整元信封容器表示。</p>
+         */
         public TraceMeta(String biz, String source, long time, int level, int branch, int parentLevel, int parentBranch, String checksum) {
             this.biz = biz;
             this.source = source;

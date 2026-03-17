@@ -1,17 +1,35 @@
 package cn.net.pap.common.datastructure.stackTrace;
 
-
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+/**
+ * <p><strong>StackTraceUtils</strong> 是用于过滤和格式化 Java 堆栈轨迹的工具类。</p>
+ *
+ * <p>它允许通过应用包含和排除规则提取堆栈轨迹中最相关的部分，从而使日志更清晰、更具领域针对性。</p>
+ *
+ * <ul>
+ *     <li>支持使用 {@link StackWalker} 进行过滤。</li>
+ *     <li>提供预定义的默认包以进行包含/排除。</li>
+ *     <li>允许基于字符串解析和过滤原始堆栈轨迹。</li>
+ * </ul>
+ */
 public class StackTraceUtils {
 
+    /** <p>过滤后的堆栈轨迹中要包含的默认包。</p> */
     public static final List<String> DEFAULT_INCLUDES = Arrays.asList("cn.net.pap.");
+    /** <p>过滤后的堆栈轨迹中要排除的默认包。</p> */
     public static final List<String> DEFAULT_EXCLUDES = Arrays.asList("java.", "sun.", "javax.", "com.sun.", "org.");
 
+    /**
+     * <p>使用 {@link StackWalker} 过滤并打印可抛出异常的堆栈轨迹。</p>
+     *
+     * @param throwable 要追踪的异常。
+     * @return 基于默认包含规则显示相关帧的格式化字符串。
+     */
     public static String printFilteredStackTraceStackWalker(Throwable throwable) {
         StringBuilder builder = new StringBuilder();
         // 添加异常类型和消息
@@ -25,19 +43,46 @@ public class StackTraceUtils {
         return builder.toString();
     }
 
+    /**
+     * <p>获取由默认包含和排除列表过滤的核心堆栈轨迹。</p>
+     *
+     * @param throwable 异常。
+     * @return 过滤后的堆栈轨迹字符串。
+     */
     public static String getCoreStackTrace(Throwable throwable) {
         return getCoreStackTrace(throwable, DEFAULT_INCLUDES, DEFAULT_EXCLUDES);
     }
 
+    /**
+     * <p>获取由自定义前缀列表过滤的核心堆栈轨迹。</p>
+     *
+     * @param throwable       异常。
+     * @param includePrefixes 要包含的包。
+     * @param excludePrefixes 要排除的包。
+     * @return 过滤后的堆栈轨迹字符串。
+     */
     public static String getCoreStackTrace(Throwable throwable, List<String> includePrefixes, List<String> excludePrefixes) {
         Predicate<StackTraceElement> filter = element -> isIncluded(element, includePrefixes) && !isExcluded(element, excludePrefixes);
         return buildStackTrace(throwable, filter);
     }
 
+    /**
+     * <p>获取由自定义谓词过滤的核心堆栈轨迹。</p>
+     *
+     * @param throwable    异常。
+     * @param customFilter 自定义过滤谓词。
+     * @return 过滤后的堆栈轨迹字符串。
+     */
     public static String getCoreStackTrace(Throwable throwable, Predicate<StackTraceElement> customFilter) {
         return buildStackTrace(throwable, customFilter);
     }
 
+    /**
+     * <p>使用默认规则解析和过滤原始堆栈轨迹字符串。</p>
+     *
+     * @param stackTraceString 原始堆栈轨迹文本。
+     * @return 过滤后的堆栈轨迹字符串。
+     */
     public static String getCoreStackTrace(String stackTraceString) {
         List<String> stackTraceElementsStart = parseStackTraceStringStart(stackTraceString);
         List<StackTraceElement> stackTraceElements = parseStackTraceString(stackTraceString);
@@ -45,12 +90,25 @@ public class StackTraceUtils {
         return buildFilteredStackTraceWithStart(stackTraceElementsStart, buildFilteredStackTrace(stackTraceElements, filter));
     }
 
+    /**
+     * <p>使用自定义谓词解析和过滤原始堆栈轨迹字符串。</p>
+     *
+     * @param stackTraceString 原始堆栈轨迹文本。
+     * @param customFilter     自定义谓词。
+     * @return 过滤后的堆栈轨迹字符串。
+     */
     public static String getCoreStackTrace(String stackTraceString, Predicate<StackTraceElement> customFilter) {
         List<String> stackTraceElementsStart = parseStackTraceStringStart(stackTraceString);
         List<StackTraceElement> stackTraceElements = parseStackTraceString(stackTraceString);
         return buildFilteredStackTraceWithStart(stackTraceElementsStart, buildFilteredStackTrace(stackTraceElements, customFilter));
     }
 
+    /**
+     * <p>构建包括原因在内的完整原始堆栈轨迹字符串。</p>
+     *
+     * @param throwable 异常。
+     * @return 完整的堆栈轨迹字符串。
+     */
     public static String getFullStackTrace(Throwable throwable) {
         StringBuilder sb = new StringBuilder();
         String throwableString = throwable.toString();

@@ -10,9 +10,16 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Stream;
 
 /**
- * 高效蓄水池采样算法工具类
- * 支持从不确定大小的数据流中均匀采样k个元素
- * 线程安全，适用于生产环境
+ * <p><strong>ReservoirSamplingUtil</strong> 提供了蓄水池采样算法的高效实现。</p>
+ *
+ * <p>它允许从未知或极大尺寸的数据流中均匀地抽取 <strong>k</strong> 个元素。
+ * 在与流（Stream）正确结合使用时，此类是线程安全的，适合在生产环境中使用。</p>
+ *
+ * <ul>
+ *     <li>支持从迭代器（Iterator）、集合（Collection）、流（Stream）以及可迭代对象（Iterable）中进行采样。</li>
+ *     <li>包含加权蓄水池采样功能。</li>
+ *     <li>提供批量处理以优化性能。</li>
+ * </ul>
  */
 public final class ReservoirSamplingUtil {
 
@@ -21,13 +28,13 @@ public final class ReservoirSamplingUtil {
     }
 
     /**
-     * 从迭代器中采样k个元素
+     * <p>从给定的 {@link Iterator} 中均匀抽取 <strong>k</strong> 个元素。</p>
      *
-     * @param iterator 数据源迭代器，可以非常大或无限
-     * @param k        采样数量
-     * @param <T>      元素类型
-     * @return 采样结果列表，如果数据源为空则返回空列表
-     * @throws IllegalArgumentException 如果k <= 0
+     * @param iterator 数据源迭代器。
+     * @param k        要抽取的元素数量。
+     * @param <T>      元素的类型。
+     * @return 包含抽取元素的 {@link List}。如果源为空，则返回空列表。
+     * @throws IllegalArgumentException 如果 <strong>k &lt;= 0</strong>。
      */
     public static <T> List<T> sample(Iterator<T> iterator, int k) {
         validateK(k);
@@ -69,12 +76,12 @@ public final class ReservoirSamplingUtil {
     }
 
     /**
-     * 从集合中采样k个元素
+     * <p>从给定的 {@link Collection} 中均匀抽取 <strong>k</strong> 个元素。</p>
      *
-     * @param collection 数据源集合
-     * @param k          采样数量
-     * @param <T>        元素类型
-     * @return 采样结果列表
+     * @param collection 数据源集合。
+     * @param k          要抽取的元素数量。
+     * @param <T>        元素的类型。
+     * @return 包含抽取元素的 {@link List}。
      */
     public static <T> List<T> sample(Collection<T> collection, int k) {
         validateK(k);
@@ -87,12 +94,15 @@ public final class ReservoirSamplingUtil {
     }
 
     /**
-     * 从Stream中采样k个元素（非并行流）
+     * <p>从给定的 {@link Stream} 中均匀抽取 <strong>k</strong> 个元素。</p>
+     * 
+     * <p>注意：<strong>不支持</strong>并行流，因为它们会破坏蓄水池采样的不变性。</p>
      *
-     * @param stream 数据流
-     * @param k      采样数量
-     * @param <T>    元素类型
-     * @return 采样结果列表
+     * @param stream 数据源流。
+     * @param k      要抽取的元素数量。
+     * @param <T>    元素的类型。
+     * @return 包含抽取元素的 {@link List}。
+     * @throws IllegalArgumentException 如果流是并行流。
      */
     public static <T> List<T> sample(Stream<T> stream, int k) {
         validateK(k);
@@ -110,12 +120,12 @@ public final class ReservoirSamplingUtil {
     }
 
     /**
-     * 从Iterable中采样k个元素
+     * <p>从给定的 {@link Iterable} 中均匀抽取 <strong>k</strong> 个元素。</p>
      *
-     * @param iterable 可迭代对象
-     * @param k        采样数量
-     * @param <T>      元素类型
-     * @return 采样结果列表
+     * @param iterable 数据源可迭代对象。
+     * @param k        要抽取的元素数量。
+     * @param <T>      元素的类型。
+     * @return 包含抽取元素的 {@link List}。
      */
     public static <T> List<T> sample(Iterable<T> iterable, int k) {
         validateK(k);
@@ -128,13 +138,15 @@ public final class ReservoirSamplingUtil {
     }
 
     /**
-     * 带权重的蓄水池采样（加权采样）
+     * <p>执行加权蓄水池采样。</p>
      *
-     * @param iterator        数据源迭代器
-     * @param k               采样数量
-     * @param weightExtractor 权重提取函数
-     * @param <T>             元素类型
-     * @return 采样结果列表
+     * <p>权重较高的元素被选中的几率成比例地更高。</p>
+     *
+     * @param iterator        数据源迭代器。
+     * @param k               要抽取的元素数量。
+     * @param weightExtractor 提取每个元素权重的函数。
+     * @param <T>             元素的类型。
+     * @return 包含抽取元素的 {@link List}。
      */
     public static <T> List<T> weightedSample(Iterator<T> iterator, int k, java.util.function.ToDoubleFunction<T> weightExtractor) {
         validateK(k);
@@ -185,13 +197,13 @@ public final class ReservoirSamplingUtil {
     }
 
     /**
-     * 批量采样 - 对多个流进行采样，减少随机数生成开销
+     * <p>执行批量蓄水池采样以最大程度地减少随机数生成的开销。</p>
      *
-     * @param iterator  数据源迭代器
-     * @param k         采样数量
-     * @param batchSize 批量大小
-     * @param <T>       元素类型
-     * @return 采样结果列表
+     * @param iterator  数据源迭代器。
+     * @param k         要抽取的元素数量。
+     * @param batchSize 生成跳跃的批处理大小。
+     * @param <T>       元素的类型。
+     * @return 包含抽取元素的 {@link List}。
      */
     public static <T> List<T> sampleBatch(Iterator<T> iterator, int k, int batchSize) {
         validateK(k);
@@ -237,7 +249,9 @@ public final class ReservoirSamplingUtil {
     }
 
     /**
-     * 验证k值有效性
+     * <p>验证样本大小 <strong>k</strong> 是否严格为正数。</p>
+     * 
+     * @param k 样本大小。
      */
     private static void validateK(int k) {
         if (k <= 0) {
@@ -246,7 +260,11 @@ public final class ReservoirSamplingUtil {
     }
 
     /**
-     * 选择替换位置的辅助方法（用于加权采样）
+     * <p>根据累积的权重选择一个要被替换的索引。</p>
+     *
+     * @param weights 当前蓄水池元素的权重列表。
+     * @param random  随机数生成器。
+     * @return 选择进行替换的索引。
      */
     private static int selectReplacementIndex(List<Double> weights, Random random) {
         // 根据权重选择要替换的位置

@@ -1,16 +1,16 @@
 /**
- * DoubleArrayTrie: Java implementation of Darts (Double-ARray Trie System)
+ * <p><strong>DoubleArrayTrie</strong> 是 Darts (Double-ARray Trie System) 的 Java 实现。</p>
+ *
+ * <p>它提供了一种高效的字符串字典数据结构，允许快速的精确匹配和公共前缀搜索。</p>
  *
  * <p>
  * Copyright(C) 2001-2007 Taku Kudo &lt;taku@chasen.org&gt;<br />
- * Copyright(C) 2009 MURAWAKI Yugo &lt;murawaki@nlp.kuee.kyoto-u.ac.jp&gt;
+ * Copyright(C) 2009 MURAWAKI Yugo &lt;murawaki@nlp.kuee.kyoto-u.ac.jp&gt;<br />
  * Copyright(C) 2012 KOMIYA Atsushi &lt;komiya.atsushi@gmail.com&gt;
  * </p>
  *
  * <p>
- * The contents of this file may be used under the terms of either of the GNU
- * Lesser General Public License Version 2.1 or later (the "LGPL"), or the BSD
- * License (the "BSD").
+ * 本文件内容可在 GNU 宽通用公共许可证 2.1 版或更高版本 ("LGPL") 或 BSD 许可证 ("BSD") 的条款下使用。
  * </p>
  */
 package cn.net.pap.common.datastructure.trie;
@@ -193,6 +193,9 @@ public class DoubleArrayTrie {
         return begin;
     }
 
+    /**
+     * <p>构造一个全新的未初始化的双数组字典树实例。</p>
+     */
     public DoubleArrayTrie() {
         check = null;
         base = null;
@@ -222,18 +225,34 @@ public class DoubleArrayTrie {
         // no_delete_ = false;
     }
 
+    /**
+     * <p>获取每个节点的单位大小（字节）。</p>
+     * @return 单位大小。
+     */
     public int getUnitSize() {
         return UNIT_SIZE;
     }
 
+    /**
+     * <p>获取数组中当前分配的项目数。</p>
+     * @return 数组的大小。
+     */
     public int getSize() {
         return size;
     }
 
+    /**
+     * <p>获取数组占用的总大小（以字节为单位）。</p>
+     * @return 总大小（字节）。
+     */
     public int getTotalSize() {
         return size * UNIT_SIZE;
     }
 
+    /**
+     * <p>获取 check 数组中非零条目的总数。</p>
+     * @return 非零 check 计数。
+     */
     public int getNonzeroSize() {
         int result = 0;
         for (int i = 0; i < size; i++)
@@ -242,10 +261,25 @@ public class DoubleArrayTrie {
         return result;
     }
 
+    /**
+     * <p>使用按词法排序的字符串键列表构建字典树结构。</p>
+     *
+     * @param key 排序后的键列表。
+     * @return 错误码（0 表示成功）。
+     */
     public int build(List<String> key) {
         return build(key, null, null, key.size());
     }
 
+    /**
+     * <p>构建指定自定义长度和值的字典树结构。</p>
+     *
+     * @param _key     排序后的字符串键列表。
+     * @param _length  键长度的平行数组（可为 null）。
+     * @param _value   分配给每个键的值的平行数组（可为 null）。
+     * @param _keySize 要索引的有效键的总数。
+     * @return 错误码（0 表示成功）。
+     */
     public int build(List<String> _key, int _length[], int _value[],
                      int _keySize) {
         if (_keySize > _key.size() || _key == null)
@@ -281,6 +315,12 @@ public class DoubleArrayTrie {
         return error_;
     }
 
+    /**
+     * <p>从外部文件打开字典树。</p>
+     *
+     * @param fileName 文件路径。
+     * @throws IOException 如果文件读取失败。
+     */
     public void open(String fileName) throws IOException {
         File file = new File(fileName);
         size = (int) file.length() / UNIT_SIZE;
@@ -301,6 +341,12 @@ public class DoubleArrayTrie {
         }
     }
 
+    /**
+     * <p>将当前的字典树状态保存到外部文件。</p>
+     *
+     * @param fileName 保存文件的路径。
+     * @throws IOException 如果文件写入失败。
+     */
     public void save(String fileName) throws IOException {
         DataOutputStream out = null;
         try {
@@ -317,10 +363,25 @@ public class DoubleArrayTrie {
         }
     }
 
+    /**
+     * <p>执行字符串键的精确匹配搜索。</p>
+     *
+     * @param key 要查找的键。
+     * @return 与键关联的整数值，如果未找到则返回 -1。
+     */
     public int exactMatchSearch(String key) {
         return exactMatchSearch(key, 0, 0, 0);
     }
 
+    /**
+     * <p>指定搜索边界执行精确匹配搜索。</p>
+     *
+     * @param key     要查找的键。
+     * @param pos     起始字符位置。
+     * @param len     要计算的键切片长度。
+     * @param nodePos 根节点偏移索引。
+     * @return 整数值，如果未找到则返回 -1。
+     */
     public int exactMatchSearch(String key, int pos, int len, int nodePos) {
         if (len <= 0)
             len = key.length();
@@ -350,10 +411,25 @@ public class DoubleArrayTrie {
         return result;
     }
 
+    /**
+     * <p>执行公共前缀搜索，发现构成输入字符串前缀的所有字典匹配项。</p>
+     *
+     * @param key 目标字符串。
+     * @return 匹配序列值的 {@link List}。
+     */
     public List<Integer> commonPrefixSearch(String key) {
         return commonPrefixSearch(key, 0, 0, 0);
     }
 
+    /**
+     * <p>指定搜索边界执行公共前缀搜索。</p>
+     *
+     * @param key     目标字符串。
+     * @param pos     起始字符位置。
+     * @param len     输入切片的长度。
+     * @param nodePos 根节点偏移索引。
+     * @return 匹配序列值的 {@link List}。
+     */
     public List<Integer> commonPrefixSearch(String key, int pos, int len,
                                             int nodePos) {
         if (len <= 0)
@@ -394,7 +470,9 @@ public class DoubleArrayTrie {
         return result;
     }
 
-    // debug
+    /**
+     * <p>将内部数组转储到标准错误流以进行调试。</p>
+     */
     public void dump() {
         for (int i = 0; i < size; i++) {
             System.err.println("i: " + i + " [" + base[i] + ", " + check[i]

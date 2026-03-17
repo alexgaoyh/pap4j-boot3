@@ -6,15 +6,29 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * <p><strong>SimHash</strong> 是局部敏感哈希 (LSH) 算法的实现。</p>
+ *
+ * <p>它用于检测近似重复的文档或字符串。与加密哈希不同（在加密哈希中，微小的更改会导致截然不同的哈希值），
+ * SimHash 保证相似的输入产生相似的哈希值。</p>
+ *
+ * <ul>
+ *     <li>为简单起见，按字符对输入进行分词。</li>
+ *     <li>计算 64 位整数签名。</li>
+ *     <li>使用汉明距离评估相似度。</li>
+ * </ul>
+ */
 public class SimHash {
 
     private static final int HASH_BITS = 64; // 位数，通常64位
 
     /**
-     * 计算SimHash值
+     * <p>计算给定输入字符串的 SimHash 签名。</p>
      *
-     * @param input 输入文本
-     * @return SimHash签名
+     * <p>此方法将文本分解为单个字符，计算每个字符的频率，并将它们的加权 SHA-256 哈希值累加到最终的 64 位签名中。</p>
+     *
+     * @param input 文本输入。
+     * @return 表示 64 位 SimHash 签名的 {@link BigInteger}。
      */
     public static BigInteger computeSimHash(String input) {
         // 分词（简单基于字符分割，实际应用可以替换为更复杂的分词器）
@@ -55,11 +69,14 @@ public class SimHash {
     }
 
     /**
-     * 计算汉明距离（Hamming Distance），用于比较两个SimHash签名的相似度
+     * <p>计算两个 SimHash 签名之间的汉明距离。</p>
      *
-     * @param hash1 SimHash签名1
-     * @param hash2 SimHash签名2
-     * @return 汉明距离
+     * <p>汉明距离表示两个签名中不同的位位置数。
+     * 距离越小表明相似度越高。</p>
+     *
+     * @param hash1 第一个 SimHash 签名。
+     * @param hash2 第二个 SimHash 签名。
+     * @return 整数形式的汉明距离。
      */
     public static int hammingDistance(BigInteger hash1, BigInteger hash2) {
         BigInteger x = hash1.xor(hash2); // 取两个SimHash的异或
@@ -67,10 +84,10 @@ public class SimHash {
     }
 
     /**
-     * 使用SHA-256对字符串进行哈希处理，并截取前8个字节
+     * <p>使用 SHA-256 对字符串进行哈希处理，并提取前 8 个字节用于 64 位哈希。</p>
      *
-     * @param input 输入字符串
-     * @return 64位的哈希值
+     * @param input 要哈希处理的字符串。
+     * @return 正数 64 位 {@link BigInteger} 表示。
      */
     private static BigInteger hash(String input) {
         try {
@@ -89,4 +106,3 @@ public class SimHash {
     }
 
 }
-
