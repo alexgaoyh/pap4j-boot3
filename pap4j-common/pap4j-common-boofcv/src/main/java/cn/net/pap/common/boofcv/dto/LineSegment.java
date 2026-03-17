@@ -21,6 +21,12 @@ public class LineSegment implements Serializable {
 
     /**
      * 构造函数
+     */
+    public LineSegment() {
+    }
+
+    /**
+     * 构造函数
      *
      * @param start
      * @param end

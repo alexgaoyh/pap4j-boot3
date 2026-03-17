@@ -59,7 +59,7 @@ public class CannyEdgeUtilss {
         // 获取键的递减排序视图
         Map<Double, LineSegment> descendingMap = ((TreeMap<Double, LineSegment>) lineSegmentDistanceMap).descendingMap();
         // 四周的黑框区域
-        MarginDTO marginDTOInLineSegmentMap = getMarginDTOInLineSegmentMap(descendingMap, image.getWidth(), image.getHeight(), 0.8);
+        MarginDTO marginDTOInLineSegmentMap = getMarginDTOInLineSegmentMap(descendingMap, image.getWidth(), image.getHeight(), 0.08);
         return marginDTOInLineSegmentMap;
     }
 
@@ -306,7 +306,7 @@ public class CannyEdgeUtilss {
      * @param y2
      * @return
      */
-    private static double getAngleByPoint(Double x1, Double y1, Double x2, Double y2) {
+    public static double getAngleByPoint(Double x1, Double y1, Double x2, Double y2) {
         // 计算斜率
         double slope = (y2 - y1) / (x2 - x1);
         if (x2 - x1 == 0) {

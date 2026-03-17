@@ -26,6 +26,12 @@ public class AssociatedTripleDTO implements Serializable {
 
     /**
      * 构造函数
+     */
+    public AssociatedTripleDTO() {
+    }
+
+    /**
+     * 构造函数
      * @param xDiffValue
      * @param yDiffValue
      * @param associatedTriple

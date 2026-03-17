@@ -10,7 +10,6 @@ import boofcv.factory.feature.detect.line.FactoryDetectLine;
 import boofcv.gui.ListDisplayPanel;
 import boofcv.gui.feature.ImageLinePanel;
 import boofcv.gui.image.ShowImages;
-import boofcv.io.UtilIO;
 import boofcv.io.image.ConvertBufferedImage;
 import boofcv.io.image.UtilImageIO;
 import boofcv.struct.image.GrayF32;
@@ -22,7 +21,11 @@ import org.junit.jupiter.api.Test;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * https://github.com/lessthanoptimal/BoofCV/blob/v1.1.4/examples/src/main/java/boofcv/examples/features/ExampleLineDetection.java
@@ -31,13 +34,20 @@ import java.util.List;
  */
 public class ExampleLineDetection {
 
+    private String getTestImagePath() throws Exception {
+        URL resourceUrl = getClass().getClassLoader().getResource("input.jpg");
+        assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
+        return Paths.get(resourceUrl.toURI()).toAbsolutePath().toString();
+    }
+
     /**
      * 获得图像的倾斜角度. 针对原图的情况
      * 可以使用当前类文件的 main 方法进行可视化的图像霍夫变换直线的展示
      */
     @Test
-    public void getAnglesByOriginPic() {
-        BufferedImage bufferedImage = UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\test1.jpg"));
+    public void getAnglesByOriginPic() throws Exception {
+        String imagePath = getTestImagePath();
+        BufferedImage bufferedImage = UtilImageIO.loadImageNotNull(imagePath);
         Double angle = DetectLineUtilss.getAngleByHoughLines(bufferedImage, 10, 1);
         System.out.println(angle);
     }
@@ -47,8 +57,9 @@ public class ExampleLineDetection {
      * 可以使用当前类文件的 main 方法进行可视化的图像霍夫变换直线的展示
      */
     @Test
-    public void getAnglesByFourierTransformPic() {
-        BufferedImage bufferedImage = UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\test-out.jpg"));
+    public void getAnglesByFourierTransformPic() throws Exception {
+        String imagePath = getTestImagePath();
+        BufferedImage bufferedImage = UtilImageIO.loadImageNotNull(imagePath);
         Double angle = DetectLineUtilss.getAngleByHoughLines(bufferedImage, 10, 2);
         System.out.println(angle);
     }
@@ -95,12 +106,14 @@ public class ExampleLineDetection {
         List<LineParametric2D_F32> found = detector.detect(gray);
 
         // display the results
-        ImageLinePanel gui = new ImageLinePanel();
-        gui.setImage(buffered);
-        gui.setLines(found);
-        gui.setPreferredSize(new Dimension(gray.getWidth(), gray.getHeight()));
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            ImageLinePanel gui = new ImageLinePanel();
+            gui.setImage(buffered);
+            gui.setLines(found);
+            gui.setPreferredSize(new Dimension(gray.getWidth(), gray.getHeight()));
 
-        listPanel.addItem(gui, name);
+            listPanel.addItem(gui, name);
+        }
     }
 
     /**
@@ -121,22 +134,29 @@ public class ExampleLineDetection {
         List<LineSegment2D_F32> found = detector.detect(input);
 
         // display the results
-        ImageLinePanel gui = new ImageLinePanel();
-        gui.setImage(image);
-        gui.setLineSegments(found);
-        gui.setPreferredSize(new Dimension(image.getWidth(), image.getHeight()));
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            ImageLinePanel gui = new ImageLinePanel();
+            gui.setImage(image);
+            gui.setLineSegments(found);
+            gui.setPreferredSize(new Dimension(image.getWidth(), image.getHeight()));
 
-        listPanel.addItem(gui, "Line Segments");
+            listPanel.addItem(gui, "Line Segments");
+        }
     }
 
-    public static void main(String[] args) {
-        BufferedImage input = UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\test1.jpg"));
+    public static void main(String[] args) throws Exception {
+        URL resourceUrl = ExampleLineDetection.class.getClassLoader().getResource("input.jpg");
+        assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
+        String imagePath = Paths.get(resourceUrl.toURI()).toAbsolutePath().toString();
+        BufferedImage input = UtilImageIO.loadImageNotNull(imagePath);
 
         detectLines(input, GrayU8.class);
 
         // line segment detection is still under development and only works for F32 images right now
         detectLineSegments(input, GrayF32.class);
 
-        ShowImages.showWindow(listPanel, "Detected Lines", true);
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            ShowImages.showWindow(listPanel, "Detected Lines", true);
+        }
     }
 }

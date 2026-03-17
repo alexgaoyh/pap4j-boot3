@@ -49,10 +49,20 @@ public class BoofcvUtilTest {
             UtilImageIO.saveImage(brightenedImage, brightenedPath.toString());
             assertTrue(Files.exists(brightenedPath), "Brightened image should be saved successfully");
 
+            BufferedImage brightenedImage2 = BoofcvUtil.adjustBrightness2(inputImage, 0.5f);
+            Path brightenedPath2 = tempDir.resolve("brightened_origin.jpg").toAbsolutePath();
+            UtilImageIO.saveImage(brightenedImage2, brightenedPath2.toString());
+            assertTrue(Files.exists(brightenedPath2), "Brightened image should be saved successfully");
+
             BufferedImage contrastedImage = BoofcvUtil.adjustContrast(inputImage, 100);
             Path contrastedPath = tempDir.resolve("contrasted_origin.jpg").toAbsolutePath();
             UtilImageIO.saveImage(contrastedImage, contrastedPath.toString());
             assertTrue(Files.exists(contrastedPath), "Contrasted image should be saved successfully");
+
+            BufferedImage contrastedImage2 = BoofcvUtil.adjustContrast2(inputImage, 100);
+            Path contrastedPath2 = tempDir.resolve("contrasted_origin.jpg").toAbsolutePath();
+            UtilImageIO.saveImage(contrastedImage2, contrastedPath2.toString());
+            assertTrue(Files.exists(contrastedPath2), "Contrasted image should be saved successfully");
         });
     }
 

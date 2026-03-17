@@ -8,14 +8,19 @@ import boofcv.gui.ListDisplayPanel;
 import boofcv.gui.image.ImageGridPanel;
 import boofcv.gui.image.ShowImages;
 import boofcv.gui.image.VisualizeImageData;
-import boofcv.io.UtilIO;
 import boofcv.io.image.ConvertBufferedImage;
 import boofcv.io.image.UtilImageIO;
 import boofcv.struct.image.GrayF32;
 import boofcv.struct.image.InterleavedF32;
+import cn.net.pap.common.boofcv.util.TempDirUtils;
 import org.junit.jupiter.api.Test;
 
 import java.awt.image.BufferedImage;
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Example demonstrating how to compute the Discrete Fourier Transform, visualize the transform, and apply
@@ -25,13 +30,24 @@ import java.awt.image.BufferedImage;
  */
 public class ExampleFourierTransform {
 
+    private String getTestImagePath() throws Exception {
+        URL resourceUrl = getClass().getClassLoader().getResource("input.jpg");
+        assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
+        return Paths.get(resourceUrl.toURI()).toAbsolutePath().toString();
+    }
+
     /**
      * 傅里叶变换相关代码
      */
     @Test
-    public void getFourierTransformPicTest(){
-        BufferedImage visualMag = FourierTransformUtilss.fourierTransformConvert("C:\\Users\\86181\\Desktop\\test.jpg");
-        UtilImageIO.saveImage(visualMag, "C:\\Users\\86181\\Desktop\\test-out.jpg");
+    public void getFourierTransformPicTest() throws Exception {
+        String imagePath = getTestImagePath();
+        BufferedImage visualMag = FourierTransformUtilss.fourierTransformConvert(imagePath);
+        
+        TempDirUtils.withTempDir("boofcv_test_fourier_", (Path tempDir) -> {
+            String outPath = tempDir.resolve("test-out.jpg").toAbsolutePath().toString();
+            UtilImageIO.saveImage(visualMag, outPath);
+        });
     }
 
     /**
@@ -70,8 +86,10 @@ public class ExampleFourierTransform {
         dft.forward(boxImage, boxTransform);
 
         // Visualize the Fourier Transform for the input image and the box filter
-        displayTransform(transform, "Input Image");
-        displayTransform(boxTransform, "Box Filter");
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            displayTransform(transform, "Input Image");
+            displayTransform(boxTransform, "Box Filter");
+        }
 
         // apply the filter. convolution in spacial domain is the same as multiplication in the frequency domain
         DiscreteFourierTransformOps.multiplyComplex(transform, boxTransform, transform);
@@ -88,16 +106,18 @@ public class ExampleFourierTransform {
         BlurImageOps.mean(input, spatialBlur, 7, null, null);
 
         // Convert to BufferedImage for output
-        BufferedImage originOut = ConvertBufferedImage.convertTo(input, null);
-        BufferedImage spacialOut = ConvertBufferedImage.convertTo(spatialBlur, null);
-        BufferedImage blurredOut = ConvertBufferedImage.convertTo(blurredImage, null);
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            BufferedImage originOut = ConvertBufferedImage.convertTo(input, null);
+            BufferedImage spacialOut = ConvertBufferedImage.convertTo(spatialBlur, null);
+            BufferedImage blurredOut = ConvertBufferedImage.convertTo(blurredImage, null);
 
-        ListDisplayPanel listPanel = new ListDisplayPanel();
-        listPanel.addImage(originOut, "Original Image");
-        listPanel.addImage(spacialOut, "Spacial Domain Box");
-        listPanel.addImage(blurredOut, "Frequency Domain Box");
+            ListDisplayPanel listPanel = new ListDisplayPanel();
+            listPanel.addImage(originOut, "Original Image");
+            listPanel.addImage(spacialOut, "Spacial Domain Box");
+            listPanel.addImage(blurredOut, "Frequency Domain Box");
 
-        ShowImages.showWindow(listPanel, "Box Blur in Spacial and Frequency Domain of Input Image");
+            ShowImages.showWindow(listPanel, "Box Blur in Spacial and Frequency Domain of Input Image");
+        }
     }
 
     /**
@@ -129,8 +149,13 @@ public class ExampleFourierTransform {
         ShowImages.showWindow(dual, "Magnitude and Phase of " + name);
     }
 
-    public static void main( String[] args ) {
-        GrayF32 input = UtilImageIO.loadImage(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\test.jpg"), GrayF32.class);
-        applyBoxFilter(input.clone());
+    public static void main( String[] args ) throws Exception {
+        URL resourceUrl = ExampleCannyEdge.class.getClassLoader().getResource("input.jpg");
+        assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
+        String imagePath = Paths.get(resourceUrl.toURI()).toAbsolutePath().toString();
+        GrayF32 input = UtilImageIO.loadImage(imagePath, GrayF32.class);
+        if(input != null) {
+            applyBoxFilter(input.clone());
+        }
     }
 }

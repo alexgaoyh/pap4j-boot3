@@ -8,7 +8,6 @@ import boofcv.factory.feature.detect.edge.FactoryEdgeDetectors;
 import boofcv.gui.ListDisplayPanel;
 import boofcv.gui.binary.VisualizeBinaryData;
 import boofcv.gui.image.ShowImages;
-import boofcv.io.UtilIO;
 import boofcv.io.image.ConvertBufferedImage;
 import boofcv.io.image.UtilImageIO;
 import boofcv.struct.ConnectRule;
@@ -18,19 +17,32 @@ import cn.net.pap.common.boofcv.dto.MarginDTO;
 import org.junit.jupiter.api.Test;
 
 import java.awt.image.BufferedImage;
+import java.net.URL;
+import java.nio.file.Paths;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ExampleCannyEdge {
 
+    private String getTestImagePath() throws Exception {
+        URL resourceUrl = getClass().getClassLoader().getResource("input.jpg");
+        assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
+        return Paths.get(resourceUrl.toURI()).toAbsolutePath().toString();
+    }
+
     @Test
-    public void blackMarginTest() {
-        MarginDTO blackMargin = CannyEdgeUtilss.getBlackMargin("C:\\Users\\86181\\Desktop\\test.jpg");
+    public void blackMarginTest() throws Exception {
+        String imagePath = getTestImagePath();
+        MarginDTO blackMargin = CannyEdgeUtilss.getBlackMargin(imagePath);
         System.out.println(blackMargin);
     }
 
-
-    public static void main(String[] args) {
-        BufferedImage image = UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\test1.jpg"));
+    public static void main(String[] args) throws Exception {
+        URL resourceUrl = ExampleCannyEdge.class.getClassLoader().getResource("input.jpg");
+        assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
+        String imagePath = Paths.get(resourceUrl.toURI()).toAbsolutePath().toString();
+        BufferedImage image = UtilImageIO.loadImageNotNull(imagePath);
 
         GrayU8 gray = ConvertBufferedImage.convertFrom(image, (GrayU8) null);
         GrayU8 edgeImage = gray.createSameShape();
@@ -51,18 +63,26 @@ public class ExampleCannyEdge {
         List<Contour> contours = BinaryImageOps.contourExternal(edgeImage, ConnectRule.EIGHT);
 
         // display the results
-        BufferedImage visualBinary = VisualizeBinaryData.renderBinary(edgeImage, false, null);
-        BufferedImage visualCannyContour = VisualizeBinaryData.renderContours(edgeContours, null,
-                gray.width, gray.height, null);
-        BufferedImage visualEdgeContour = new BufferedImage(gray.width, gray.height, BufferedImage.TYPE_INT_RGB);
-        VisualizeBinaryData.render(contours, (int[]) null, visualEdgeContour);
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            BufferedImage visualBinary = VisualizeBinaryData.renderBinary(edgeImage, false, null);
+            BufferedImage visualCannyContour = VisualizeBinaryData.renderContours(edgeContours, null,
+                    gray.width, gray.height, null);
+            BufferedImage visualEdgeContour = new BufferedImage(gray.width, gray.height, BufferedImage.TYPE_INT_RGB);
+            VisualizeBinaryData.render(contours, (int[]) null, visualEdgeContour);
 
-        ListDisplayPanel panel = new ListDisplayPanel();
-        panel.addImage(visualBinary, "Binary Edges from Canny");
-        panel.addImage(visualCannyContour, "Canny Trace Graph");
-        panel.addImage(visualEdgeContour, "Contour from Canny Binary");
-        ShowImages.showWindow(panel, "Canny Edge", true);
+            ListDisplayPanel panel = new ListDisplayPanel();
+            panel.addImage(visualBinary, "Binary Edges from Canny");
+            panel.addImage(visualCannyContour, "Canny Trace Graph");
+            panel.addImage(visualEdgeContour, "Contour from Canny Binary");
+            ShowImages.showWindow(panel, "Canny Edge", true);
+        }
     }
 
+    @Test
+    public void getAngleByPointTest() throws Exception {
+        CannyEdgeUtilss.getAngleByPoint(1d, 1d, 2d, 2d);
+        CannyEdgeUtilss.getAngleByPoint(2d, 2d, 2d, 3d);
+
+    }
 
 }

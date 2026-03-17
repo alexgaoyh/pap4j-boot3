@@ -11,7 +11,6 @@ import boofcv.factory.feature.associate.FactoryAssociation;
 import boofcv.factory.feature.detdesc.FactoryDetectDescribe;
 import boofcv.gui.feature.AssociatedTriplePanel;
 import boofcv.gui.image.ShowImages;
-import boofcv.io.UtilIO;
 import boofcv.io.image.UtilImageIO;
 import boofcv.misc.BoofMiscOps;
 import boofcv.struct.feature.AssociatedTripleIndex;
@@ -19,12 +18,18 @@ import boofcv.struct.feature.TupleDesc_F64;
 import boofcv.struct.geo.AssociatedTriple;
 import boofcv.struct.image.GrayU8;
 import boofcv.struct.image.ImageBase;
+import cn.net.pap.common.boofcv.util.TempDirUtils;
 import georegression.struct.point.Point2D_F64;
 import org.ddogleg.struct.DogArray;
 import org.ddogleg.struct.DogArray_I32;
 import org.junit.jupiter.api.Test;
 
+import java.net.URL;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * Common matches between sets of three views are important in SFM as they filter out even more false positives
@@ -38,11 +43,20 @@ import java.util.List;
  */
 public class ExampleAssociateThreeView {
 
+    private String getTestImagePath() throws Exception {
+        URL resourceUrl = ExampleAssociateThreeView.class.getClassLoader().getResource("input.jpg");
+        assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
+        return Paths.get(resourceUrl.toURI()).toAbsolutePath().toString();
+    }
+
     @Test
-    public void mergeImagesTest() {
-        String imagePath1 = "C:\\Users\\86181\\Desktop\\1.jpg";
-        String imagePath2 = "C:\\Users\\86181\\Desktop\\2.jpg";
-        AssociateThreeViewUtil.mergeImages(imagePath1, imagePath2, "C:\\Users\\86181\\Desktop\\123.jpg");
+    public void mergeImagesTest() throws Exception {
+        String imagePath = getTestImagePath();
+        
+        TempDirUtils.withTempDir("boofcv_test_merge_", (Path tempDir) -> {
+            String outPath = tempDir.resolve("merge_out.jpg").toAbsolutePath().toString();
+            AssociateThreeViewUtil.mergeImages(imagePath, imagePath, outPath);
+        });
     }
 
     // Stores image pixel coordinate
@@ -117,11 +131,14 @@ public class ExampleAssociateThreeView {
         return associateThree.getMatches();
     }
 
-    public static void main( String[] args ) {
-        String name = "rock_leaves_";
-        GrayU8 gray01 = UtilImageIO.loadImage(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\1.jpg"), GrayU8.class);
-        GrayU8 gray02 = UtilImageIO.loadImage(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\2.jpg"), GrayU8.class);
-        GrayU8 gray03 = UtilImageIO.loadImage(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\1.jpg"), GrayU8.class);
+    public static void main( String[] args ) throws Exception {
+        URL resourceUrl = ExampleAssociateThreeView.class.getClassLoader().getResource("input.jpg");
+        assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
+        String imagePath = Paths.get(resourceUrl.toURI()).toAbsolutePath().toString();
+        
+        GrayU8 gray01 = UtilImageIO.loadImage(imagePath, GrayU8.class);
+        GrayU8 gray02 = UtilImageIO.loadImage(imagePath, GrayU8.class);
+        GrayU8 gray03 = UtilImageIO.loadImage(imagePath, GrayU8.class);
 
         // Using SURF features. Robust and fairly fast to compute
         DetectDescribePoint<GrayU8, TupleDesc_F64> detDesc = FactoryDetectDescribe.surfStable(
@@ -150,12 +167,14 @@ public class ExampleAssociateThreeView {
         System.out.println("Total Matched Triples = " + associated.size);
 
         // Show remaining associations from RANSAC
-        var triplePanel = new AssociatedTriplePanel();
-        triplePanel.setImages(
-                UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\1.jpg")),
-                UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\2.jpg")),
-                UtilImageIO.loadImageNotNull(UtilIO.pathExample("C:\\Users\\86181\\Desktop\\1.jpg")));
-        triplePanel.setAssociation(associated.toList());
-        ShowImages.showWindow(triplePanel, "Associations", true);
+        if (!java.awt.GraphicsEnvironment.isHeadless()) {
+            var triplePanel = new AssociatedTriplePanel();
+            triplePanel.setImages(
+                    UtilImageIO.loadImageNotNull(imagePath),
+                    UtilImageIO.loadImageNotNull(imagePath),
+                    UtilImageIO.loadImageNotNull(imagePath));
+            triplePanel.setAssociation(associated.toList());
+            ShowImages.showWindow(triplePanel, "Associations", true);
+        }
     }
 }

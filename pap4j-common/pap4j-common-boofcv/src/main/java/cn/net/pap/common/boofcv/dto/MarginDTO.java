@@ -31,6 +31,12 @@ public class MarginDTO implements Serializable {
 
     /**
      * 构造函数
+     */
+    public MarginDTO() {
+    }
+
+    /**
+     * 构造函数
      *
      * @param marginTop
      * @param marginRight
