@@ -1,6 +1,8 @@
 package cn.net.pap.common.datastructure.collection;
 
 import cn.net.pap.common.datastructure.lamba.StudentDTO;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -60,6 +62,31 @@ public class CollectionUtilTest {
         System.out.println(firstNameGroupList2);
 
 
+    }
+
+    @Test
+    @DisplayName("测试：分批执行 (Consumer 场景) - 模拟批量插入")
+    void testExecute() {
+        List<Integer> mockData = IntStream.rangeClosed(1, 10500).boxed().toList();
+        List<Integer> processedData = new ArrayList<>();
+        CollectionUtil.batchNoResult(mockData, 2000, batch -> {
+            System.out.println("当前批次处理数据量: " + batch.size());
+            processedData.addAll(batch);
+        });
+        Assertions.assertEquals(10500, processedData.size());
+    }
+
+    @Test
+    @DisplayName("测试：分批查询汇总 (Function 场景) - 模拟巨型 IN 查询")
+    void testQuery() {
+        List<Long> extremeIds = IntStream.rangeClosed(1, 65000).mapToObj(Long::valueOf).toList();
+        List<String> aggregatedResults = CollectionUtil.batchWithResult(extremeIds, 5000, batchIds -> {
+            System.out.println("当前批次查询参数量: " + batchIds.size());
+            return batchIds.stream().map(id -> "User_" + id).toList();
+        });
+        Assertions.assertEquals(65000, aggregatedResults.size());
+        Assertions.assertEquals("User_1", aggregatedResults.get(0));
+        Assertions.assertEquals("User_65000", aggregatedResults.get(64999));
     }
 
     @Test

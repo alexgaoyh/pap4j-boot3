@@ -1,12 +1,14 @@
 package cn.net.pap.common.datastructure.collection;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -94,6 +96,59 @@ public class CollectionUtil {
 
         // 返回新的层级
         return String.join(".", levels);
+    }
+
+    /**
+     * 分批执行（无返回值）
+     * 适用于：批量入库、批量更新、批量发送外部接口等
+     *
+     * @param dataList      全量数据集合
+     * @param batchSize     每批次的大小
+     * @param batchConsumer 每一批次要执行的具体业务逻辑 (回调函数)
+     * @param <T>           数据类型
+     */
+    public static <T> void batchNoResult(List<T> dataList, int batchSize, Consumer<List<T>> batchConsumer) {
+        if (dataList == null || dataList.isEmpty()) {
+            return;
+        }
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("Batch size must be greater than 0");
+        }
+        int size = dataList.size();
+        for (int i = 0; i < size; i += batchSize) {
+            List<T> batch = dataList.subList(i, Math.min(i + batchSize, size));
+            batchConsumer.accept(batch);
+        }
+    }
+
+    /**
+     * 分批查询并汇总结果（有返回值）
+     * 适用于：解决巨型 IN 查询、分批拉取外部数据并聚合等
+     *
+     * @param paramList     全量查询条件集合 (如 ID 列表)
+     * @param batchSize     每批次的大小
+     * @param batchFunction 每一批次查询的具体业务逻辑，需返回当前批次的查询结果
+     * @param <T>           查询参数的类型
+     * @param <R>           返回结果的类型
+     * @return              汇总后的全量结果集合
+     */
+    public static <T, R> List<R> batchWithResult(List<T> paramList, int batchSize, Function<List<T>, Collection<R>> batchFunction) {
+        if (paramList == null || paramList.isEmpty()) {
+            return Collections.emptyList();
+        }
+        if (batchSize <= 0) {
+            throw new IllegalArgumentException("Batch size must be greater than 0");
+        }
+        List<R> resultList = new ArrayList<>();
+        int size = paramList.size();
+        for (int i = 0; i < size; i += batchSize) {
+            List<T> batch = paramList.subList(i, Math.min(i + batchSize, size));
+            Collection<R> batchResult = batchFunction.apply(batch);
+            if (batchResult != null && !batchResult.isEmpty()) {
+                resultList.addAll(batchResult);
+            }
+        }
+        return resultList;
     }
 
     /**
