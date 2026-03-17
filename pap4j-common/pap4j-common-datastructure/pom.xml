@@ -97,6 +97,7 @@
             <groupId>com.hankcs</groupId>
             <artifactId>hanlp</artifactId>
             <version>portable-1.8.6</version>
+            <scope>test</scope>
         </dependency>
 
     </dependencies>
