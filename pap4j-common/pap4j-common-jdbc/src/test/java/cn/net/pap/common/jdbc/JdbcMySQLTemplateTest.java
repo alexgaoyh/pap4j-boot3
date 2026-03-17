@@ -287,5 +287,91 @@ class JdbcMySQLTemplateTest {
         System.out.println("maxRows = " + maxRows);
     }
 
+    /**
+     * 本地mysql8 的环境下，关闭其他所有软件（避免其他软件影响）
+     * 不完备的测试下，如下的对比不明显，没有说谁比谁更快。
+     */
+    // @Test
+    @DisplayName("分批查询 vs 全量查询的执行时间 (已排除 Java 层拼接与 GC 干扰)")
+    void testExecutionEfficiencyFlipOptimized() {
+
+        // 1. 准备测试数据
+        int queryCount = 50000;
+        List<Long> extremeIds = new java.util.ArrayList<>(queryCount);
+        for (long i = 1; i <= queryCount; i++) {
+            extremeIds.add(i);
+        }
+
+        // 将 ID 拆分为多个批次
+        int batchSize = 5000;
+        List<List<Long>> batches = new java.util.ArrayList<>();
+        for (int i = 0; i < extremeIds.size(); i += batchSize) {
+            batches.add(extremeIds.subList(i, Math.min(i + batchSize, extremeIds.size())));
+        }
+
+        System.out.println("开始预先构建 SQL 和参数 (剔除测试期间的 JVM 内存分配开销)...");
+
+        // --- 提取全量查询的准备工作 ---
+        String fullSql = buildInSql(extremeIds.size());
+        Object[] fullArgs = extremeIds.toArray(); // 提前转好数组
+
+        // --- 提取分批查询的准备工作 ---
+        List<String> batchSqls = new java.util.ArrayList<>(batches.size());
+        List<Object[]> batchArgs = new java.util.ArrayList<>(batches.size());
+        for (List<Long> batch : batches) {
+            batchSqls.add(buildInSql(batch.size()));
+            batchArgs.add(batch.toArray()); // 提前转好数组
+        }
+
+        // 统一的 RowMapper
+        org.springframework.jdbc.core.RowMapper<Long> rowMapper = (rs, rowNum) -> rs.getLong("id");
+
+        // 3. 预热阶段 (Warm-up)
+        System.out.println("开始预热 (让数据进入 MySQL Buffer Pool，并让 JDBC 缓存 PreparedStatement)...");
+        for (int i = 0; i < 3; i++) {
+            jdbcTemplate.query(fullSql, rowMapper, fullArgs);
+            for (int j = 0; j < batchSqls.size(); j++) {
+                jdbcTemplate.query(batchSqls.get(j), rowMapper, batchArgs.get(j));
+            }
+        }
+        System.out.println("预热完成，开始正式测速。\n");
+
+        // 4. 正式对比耗时
+        int testRounds = 50;
+
+        // --- 方案 A: 单次全量 IN ---
+        // 此时循环内纯粹是网络 I/O 和 MySQL 执行的时间
+        long startFull = System.nanoTime();
+        for (int i = 0; i < testRounds; i++) {
+            jdbcTemplate.query(fullSql, rowMapper, fullArgs);
+        }
+        long timeFull = System.nanoTime() - startFull;
+
+        // --- 方案 B: 分批 IN ---
+        // 此时循环内也没有任何多余的字符串或对象创建
+        long startBatch = System.nanoTime();
+        for (int i = 0; i < testRounds; i++) {
+            for (int j = 0; j < batchSqls.size(); j++) {
+                jdbcTemplate.query(batchSqls.get(j), rowMapper, batchArgs.get(j));
+            }
+        }
+        long timeBatch = System.nanoTime() - startBatch;
+
+        // 5. 打印结果
+        double fullMs = timeFull / 1_000_000.0;
+        double batchMs = timeBatch / 1_000_000.0;
+        System.out.printf("单次带 %d 个 ID 的全量 IN 查询 (执行 %d 轮) 总耗时: %.2f ms%n", queryCount, testRounds, fullMs);
+        System.out.printf("拆分为 %d 批次的 IN 查询 (执行 %d 轮) 总耗时:     %.2f ms%n", batches.size(), testRounds, batchMs);
+        System.out.println("=========================================================");
+    }
+
+    /**
+     * 辅助方法：仅负责生成带占位符的 SQL 字符串
+     */
+    private String buildInSql(int count) {
+        String placeholders = String.join(",", java.util.Collections.nCopies(count, "?"));
+        return "SELECT * FROM user_info WHERE id IN (" + placeholders + ")";
+    }
+
 
 }
