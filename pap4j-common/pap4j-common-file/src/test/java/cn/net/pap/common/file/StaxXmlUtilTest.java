@@ -5,6 +5,7 @@ import cn.net.pap.common.file.xml.XmlParseUtil;
 import cn.net.pap.common.file.xml.xpath.ExtFunctionResolver;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
+import org.w3c.dom.Element;
 import org.w3c.dom.NodeList;
 
 import javax.xml.namespace.NamespaceContext;
@@ -188,6 +189,13 @@ public class StaxXmlUtilTest {
             @Override public String getPrefix(String uri) { return null; }
             @Override public Iterator<String> getPrefixes(String uri) { return null; }
         });
+
+        NodeList anchorNodes = (NodeList) xpath.evaluate("//anchor", doc, XPathConstants.NODESET);
+        for (int i = 0; i < anchorNodes.getLength(); i++) {
+            Element anchorElement = (Element)anchorNodes.item(i);
+            assertTrue(anchorElement.hasAttribute("number"));
+        }
+
 
         // language=TEXT
         String result = (String) xpath.evaluate("ext:inner-xml(/student[1]/props[1]/prop[1])", doc, XPathConstants.STRING);
