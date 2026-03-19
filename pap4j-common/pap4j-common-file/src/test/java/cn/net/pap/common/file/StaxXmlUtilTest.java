@@ -6,6 +6,7 @@ import cn.net.pap.common.file.xml.xpath.ExtFunctionResolver;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
+import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
 
 import javax.xml.namespace.NamespaceContext;
@@ -20,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -27,6 +29,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StaxXmlUtilTest {
@@ -280,13 +284,13 @@ public class StaxXmlUtilTest {
         assertTrue(map0.size() == 0, "切分map0");
 
         String xml1 = """
-                123<anchor fileName="0035" pageNum="35"/>456<anchor fileName="0036" pageNum="36"/><anchor fileName="0037" pageNum="37"/>
+                123<anchor pageNum="35"/>456<anchor pageNum="36"/><anchor pageNum="37"/>
                 """;
         Map<String, String> map1 = StaxXmlUtil.splitByAnchor(xml1.trim());
         assertTrue(map1.size() == 3, "切分map1");
 
         String xml2 = """
-                123<anchor fileName="0035" pageNum="35"/>456<anchor fileName="0036" pageNum="36"/><anchor fileName="0037" pageNum="37"/>789
+                123<anchor pageNum="35"/>456<anchor pageNum="36"/><anchor pageNum="37"/>789
                 """;
         Map<String, String> map2 = StaxXmlUtil.splitByAnchor(xml2.trim());
         assertTrue(map2.size() == 4, "切分map2");
@@ -300,17 +304,91 @@ public class StaxXmlUtilTest {
         assertTrue(map3.containsKey("_initial_content"));
 
         String xml4 = """
-                <anchor fileName="0036" pageNum="36"/><anchor fileName="0037" pageNum="37"/>
+                <anchor pageNum="36"/><anchor pageNum="37"/>
                 """;
         Map<String, String> map4 = StaxXmlUtil.splitByAnchor(xml4.trim());
         assertTrue(map4.size() == 2, "切分map4");
 
         String xml5 = """
-                <anchor fileName="0036" pageNum="36"/><anchor fileName="0037" pageNum="37"/>     
+                <anchor pageNum="36"/><anchor pageNum="37"/>     
                 """;
         Map<String, String> map5 = StaxXmlUtil.splitByAnchor(xml5);
         assertTrue(map5.size() == 2, "切分map5");
 
+        String xml6 = """
+                123<anchor pageNum="1"></anchor>456
+                """;
+        Map<String, String> map6 = StaxXmlUtil.splitByAnchor(xml6);
+        assertTrue(map6.size() == 2, "切分map6");
+
+        Map<String, String> map5Attrs = StaxXmlUtil.extractAllAttributes(map5.keySet().toArray()[0] + "", "anchor");
+        assertTrue(map5Attrs.containsKey("pageNum"), "map5属性");
+
+        Map<String, String> map6Attrs = StaxXmlUtil.extractAllAttributes(map6.keySet().toArray()[0] + "", "anchor");
+        assertTrue(map6Attrs.containsKey("pageNum"), "map6属性");
+
+
+    }
+
+    @Test
+    public void testFindSiblingsFromTextNode() throws Exception {
+        String xml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <root>
+                <content>
+                  <text>123<anchor pageNum="1"/>456</text>
+                  <rect>1;2;3;4;5;6;</rect>
+                  <translation>qwertyuiop</translation>
+                </content>
+                <content>
+                  <text>789<anchor pageNum="2"/></text>
+                  <rect>0;9;8;</rect>
+                  <translation>zxc</translation>
+                </content>
+            </root>
+        """;
+
+        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(xml.trim().getBytes(StandardCharsets.UTF_8)));
+        XPath xpath = XPathFactory.newInstance().newXPath();
+        xpath.setXPathFunctionResolver(new ExtFunctionResolver());
+        xpath.setNamespaceContext(new NamespaceContext() {
+            @Override
+            public String getNamespaceURI(String prefix) {
+                if ("ext".equals(prefix)) {
+                    return ExtFunctionResolver.EXT_NS;
+                }
+                return null;
+            }
+            @Override public String getPrefix(String uri) { return null; }
+            @Override public Iterator<String> getPrefixes(String uri) { return null; }
+        });
+
+        NodeList textNodes = (NodeList) xpath.evaluate("//text", doc, XPathConstants.NODESET);
+
+        assertEquals(2, textNodes.getLength());
+
+        for (int i = 0; i < textNodes.getLength(); i++) {
+            Node currentTextNode = textNodes.item(i);
+
+            assertTrue(currentTextNode.getTextContent() != null , "不为空");
+            assertEquals("text", currentTextNode.getNodeName());
+            // language=TEXT
+            String currentTextNodeInnerXml = (String) xpath.evaluate("ext:inner-xml(.)", currentTextNode, XPathConstants.STRING);
+            assertTrue(currentTextNodeInnerXml != null , "不为空");
+
+            // 方式一：使用 following-sibling 轴，表示查找当前节点后面紧挨着的同级 rect 节点
+            Node rectNode = (Node) xpath.evaluate("following-sibling::rect[1]", currentTextNode, XPathConstants.NODE);
+            assertNotNull(rectNode, "未找到同级的 rect 节点");
+            assertTrue(rectNode.getTextContent() != null , "不为空");
+            assertEquals("rect", rectNode.getNodeName());
+
+            // 方式二：通过返回父节点再去寻找指定的子节点 (../translation)
+            Node translationNode = (Node) xpath.evaluate("../translation", currentTextNode, XPathConstants.NODE);
+            assertNotNull(translationNode, "未找到同级的 translation 节点");
+            assertTrue(translationNode.getTextContent() != null , "不为空");
+            assertEquals("translation", translationNode.getNodeName());
+
+        }
     }
 
 }

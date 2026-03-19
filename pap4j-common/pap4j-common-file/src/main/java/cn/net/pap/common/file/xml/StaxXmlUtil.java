@@ -741,7 +741,10 @@ public class StaxXmlUtil {
         if (xmlString == null || xmlString.trim().isEmpty()) {
             return result;
         }
-        Pattern pattern = Pattern.compile("(<anchor[^>]*/>)");
+        // <anchor[^>]* 匹配 <anchor 及其属性，直到遇到 > 或 />
+        // (?:/>|>\\s*</anchor>) 这是一个非捕获组，表示要么以 /> 结尾，要么以 > 结束并紧接着可选的空白字符和 </anchor>
+        // 外层的 () 将整个匹配作为一个 group 捕获，作为 Map 的 key
+        Pattern pattern = Pattern.compile("(<anchor[^>]*(?:/>|>\\s*</anchor>))");
         Matcher matcher = pattern.matcher(xmlString);
         int lastEnd = 0;
         boolean firstSegment = true;
