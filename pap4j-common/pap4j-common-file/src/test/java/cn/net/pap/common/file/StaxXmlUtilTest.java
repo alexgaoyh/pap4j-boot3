@@ -272,4 +272,45 @@ public class StaxXmlUtilTest {
 
     }
 
+    @Test
+    public void nodeNameSplitTest() throws Exception {
+        Map<String, String> map0 = StaxXmlUtil.splitByAnchor(null);
+        assertTrue(map0.size() == 0, "切分map0");
+        map0 = StaxXmlUtil.splitByAnchor("");
+        assertTrue(map0.size() == 0, "切分map0");
+
+        String xml1 = """
+                123<anchor fileName="0035" pageNum="35"/>456<anchor fileName="0036" pageNum="36"/><anchor fileName="0037" pageNum="37"/>
+                """;
+        Map<String, String> map1 = StaxXmlUtil.splitByAnchor(xml1.trim());
+        assertTrue(map1.size() == 3, "切分map1");
+
+        String xml2 = """
+                123<anchor fileName="0035" pageNum="35"/>456<anchor fileName="0036" pageNum="36"/><anchor fileName="0037" pageNum="37"/>789
+                """;
+        Map<String, String> map2 = StaxXmlUtil.splitByAnchor(xml2.trim());
+        assertTrue(map2.size() == 4, "切分map2");
+        assertTrue(map2.containsKey("_tail_content"));
+
+        String xml3 = """
+                123
+                """;
+        Map<String, String> map3 = StaxXmlUtil.splitByAnchor(xml3.trim());
+        assertTrue(map3.size() == 1, "切分map3");
+        assertTrue(map3.containsKey("_initial_content"));
+
+        String xml4 = """
+                <anchor fileName="0036" pageNum="36"/><anchor fileName="0037" pageNum="37"/>
+                """;
+        Map<String, String> map4 = StaxXmlUtil.splitByAnchor(xml4.trim());
+        assertTrue(map4.size() == 2, "切分map4");
+
+        String xml5 = """
+                <anchor fileName="0036" pageNum="36"/><anchor fileName="0037" pageNum="37"/>     
+                """;
+        Map<String, String> map5 = StaxXmlUtil.splitByAnchor(xml5);
+        assertTrue(map5.size() == 2, "切分map5");
+
+    }
+
 }

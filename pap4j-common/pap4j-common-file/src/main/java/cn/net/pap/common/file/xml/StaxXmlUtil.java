@@ -15,11 +15,14 @@ import javax.xml.stream.XMLStreamReader;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class StaxXmlUtil {
 
@@ -682,6 +685,91 @@ public class StaxXmlUtil {
         IndexedPathHandler handler = new IndexedPathHandler();
         parser.parse(new InputSource(new StringReader(xmlContent)), handler);
         return handler.getAllPaths();
+    }
+
+    /**
+     * 根据 {@code <anchor.../>} 标签对传入的 XML 字符串进行切分，并将切分后的段落映射为键值对返回。
+     * <p>
+     * 本方法使用 {@link LinkedHashMap} 以保证返回结果与原始字符串中的出现顺序一致。
+     * 具体的切分规则与边界情况处理如下：
+     * </p>
+     * <ul>
+     * <li><strong>常规切分：</strong>以 {@code <anchor/>} 标签为界，将标签前的内容（去除首尾空格）作为 value，当前的 {@code <anchor/>} 标签完整文本作为 key。</li>
+     * <li><strong>空值安全：</strong>传入 {@code null} 或纯空白字符串时，直接返回空 Map。</li>
+     * <li><strong>纯文本（无标签）：</strong>如果输入字符串中没有任何 anchor 标签，去空后的整体内容将以 {@code "_initial_content"} 作为 key 存入。</li>
+     * <li><strong>连续标签：</strong>当两个 anchor 标签紧挨着（或中间只有空白字符）时，后一个标签仍会作为 key 存入 Map，其对应的 value 为空字符串 {@code ""}。</li>
+     * <li><strong>尾部内容捕获：</strong>如果最后一个 anchor 标签之后还有非空字符，这些字符将以 {@code "_tail_content"} 作为 key 存入。如果尾部仅有空白字符则会被安全过滤。</li>
+     * </ul>
+     *
+     * <h3>逻辑示例：</h3>
+     * <table border="1" cellpadding="5" style="border-collapse: collapse; text-align: left;">
+     * <tr>
+     * <th>输入 (xmlString)</th>
+     * <th>返回结果 (Map)</th>
+     * </tr>
+     * <tr>
+     * <td>{@code null} 或 {@code "   "}</td>
+     * <td>{@code {}} (空 Map)</td>
+     * </tr>
+     * <tr>
+     * <td>{@code "123"}</td>
+     * <td>{@code {"_initial_content": "123"}}</td>
+     * </tr>
+     * <tr>
+     * <td>{@code "123<anchor id='1'/>456<anchor id='2'/>"}</td>
+     * <td>{@code {"<anchor id='1'/>": "123", "<anchor id='2'/>": "456"}}</td>
+     * </tr>
+     * <tr>
+     * <td>{@code "<anchor id='1'/><anchor id='2'/>"}</td>
+     * <td>{@code {"<anchor id='1'/>": "", "<anchor id='2'/>": ""}}</td>
+     * </tr>
+     * <tr>
+     * <td>{@code "123<anchor id='1'/>789"}</td>
+     * <td>{@code {"<anchor id='1'/>": "123", "_tail_content": "789"}}</td>
+     * </tr>
+     * <tr>
+     * <td>{@code "123<anchor id='1'/>   \n"}</td>
+     * <td>{@code {"<anchor id='1'/>": "123"}} (尾部空白被忽略)</td>
+     * </tr>
+     * </table>
+     *
+     * @param xmlString 需要进行切分的原始 XML 字符串
+     * @return 包含切分结果的有序 {@code Map<String, String>}
+     */
+    public static Map<String, String> splitByAnchor(String xmlString) {
+        Map<String, String> result = new LinkedHashMap<>();
+        if (xmlString == null || xmlString.trim().isEmpty()) {
+            return result;
+        }
+        Pattern pattern = Pattern.compile("(<anchor[^>]*/>)");
+        Matcher matcher = pattern.matcher(xmlString);
+        int lastEnd = 0;
+        boolean firstSegment = true;
+        while (matcher.find()) {
+            // 获取当前 anchor 之前的内容
+            String content = xmlString.substring(lastEnd, matcher.start()).trim();
+            String anchorKey = matcher.group(1);
+
+            // 【关键修改】：移除 if (!content.isEmpty()) 判断
+            // 这样即使两个 anchor 紧挨着，也能保留后一个 anchor 作为 key，value 为 ""
+            result.put(anchorKey, content);
+
+            lastEnd = matcher.end();
+            firstSegment = false;
+        }
+        // 处理第一段内容（没有任何 anchor 的情况）
+        if (firstSegment) {
+            result.put("_initial_content", xmlString.trim());
+        }
+        // 【补充逻辑】：处理最后一个 anchor 之后的尾部内容
+        // 如果输入是 "123<anchor/>456"，循环结束后 456 会丢失，这里将其捕获
+        if (!firstSegment && lastEnd < xmlString.length()) {
+            String tailContent = xmlString.substring(lastEnd).trim();
+            if (!tailContent.isEmpty()) {
+                result.put("_tail_content", tailContent);
+            }
+        }
+        return result;
     }
 
     /**
