@@ -140,4 +140,23 @@ public class CollectionUtilTest {
 
     }
 
+    @Test
+    public void fillNullKeysTest() {
+        List<Map<Integer, String>> dataList = new ArrayList<>();
+
+        dataList.add(CollectionUtil.ofOrderedGeneric(null, "A"));
+        dataList.add(CollectionUtil.ofOrderedGeneric(null, "B"));
+        dataList.add(CollectionUtil.ofOrderedGeneric(12, "C")); // 物理页锚点
+        dataList.add(CollectionUtil.ofOrderedGeneric(null, "D"));
+        dataList.add(CollectionUtil.ofOrderedGeneric(15, "E"));
+
+        CollectionUtil.fillNullKeys(dataList);
+
+        Assertions.assertEquals("A", dataList.get(0).get(12));
+        Assertions.assertEquals("B", dataList.get(1).get(12));
+        Assertions.assertFalse(dataList.get(0).containsKey(null));
+        Assertions.assertEquals("D", dataList.get(3).get(15));
+        dataList.forEach(System.out::println);
+    }
+
 }

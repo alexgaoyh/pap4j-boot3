@@ -1,13 +1,6 @@
 package cn.net.pap.common.datastructure.collection;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -297,6 +290,76 @@ public class CollectionUtil {
 
             return Integer.compare(i1, i2);
         });
+    }
+
+    /**
+     * 通用的有序 Map 构造工具
+     * @param <K> 期望的 Key 类型
+     * @param <V> 期望的 Value 类型
+     * @param kv  交替的 Key-Value 数组
+     * @return 泛型化的 LinkedHashMap
+     */
+    @SuppressWarnings("unchecked")
+    public static <K, V> Map<K, V> ofOrderedGeneric(Object... kv) {
+        if (kv.length % 2 != 0) {
+            throw new IllegalArgumentException("key/value must be pairs");
+        }
+        Map<K, V> map = new LinkedHashMap<>();
+        for (int i = 0; i < kv.length; i += 2) {
+            // 直接强制转换，调用方需保证传入类型与声明类型一致
+            map.put((K) kv[i], (V) kv[i + 1]);
+        }
+        return map;
+    }
+
+    /**
+     * <h2>逻辑段落页码回填工具</h2>
+     * * <p>该方法采用<b>逆序遍历算法</b>（Backward Fill），将 List 中键为 {@code null} 的逻辑段落映射到其下方出现的第一个有效物理页码（Integer Key）上。</p>
+     * * <h3>核心逻辑说明：</h3>
+     * <ul>
+     * <li><b>扫描方向：</b> 从列表末尾向开头扫描 ($O(n)$ 时间复杂度)。</li>
+     * <li><b>状态维护：</b> 记录扫描过程中遇到的最近一个非空 Integer 键作为“锚点”。</li>
+     * <li><b>替换规则：</b> 当遇到包含 {@code null} 键的 Map 时，若下方已发现有效锚点，则将该 {@code null} 键替换为锚点键。</li>
+     * </ul>
+     * * <h3>处理场景示例：</h3>
+     * <table border="1">
+     * <tr><th>处理前 (JSON 简述)</th><th>处理后 (页码回填)</th><th>说明</th></tr>
+     * <tr><td>{@code [{null: "A"}, {10: "B"}]}</td><td>{@code [{10: "A"}, {10: "B"}]}</td><td>向上回填</td></tr>
+     * <tr><td>{@code [{null: "A"}, {null: "B"}, {5: "C"}]}</td><td>{@code [{5: "A"}, {5: "B"}, {5: "C"}]}</td><td>连续 null 统一锚定</td></tr>
+     * <tr><td>{@code [{1: "A"}, {null: "B"}]}</td><td>{@code [{1: "A"}, {null: "B"}]}</td><td>末尾无锚点，保持原样</td></tr>
+     * </table>
+     * * <h3>注意事项：</h3>
+     * <blockquote>
+     * 1. <b>原地修改：</b> 该方法会直接修改传入的 {@code List} 及其内部的 {@code Map} 实例。<br>
+     * 2. <b>多键兼容：</b> 若某 Map 包含多个物理页码（跨页段落），该方法默认取其遇到的第一个有效 Key 作为后续 null 段落的锚点。<br>
+     * 3. <b>Map 类型限制：</b> 传入的 Map 实现必须支持 {@code remove()} 和 {@code put()} 操作（如 {@link java.util.HashMap}），且允许 {@code null} 键。
+     * </blockquote>
+     *
+     * @param list 待处理的逻辑段落列表。列表项为 Map，键代表物理页码（Integer），值代表文本内容。
+     * 其中键为 {@code null} 表示该段落在物理图像上无直接对应页码（如校勘记、补文等）。
+     * @throws UnsupportedOperationException 如果列表中的 Map 是不可变的（如 {@code Map.of()} 创建的实例）。
+     */
+    public static void fillNullKeys(List<Map<Integer, String>> list) {
+        Integer lastSeenValidKey = null;
+
+        // 从后往前遍历，因为 null 需要参考“下方”的第一个有效 Key
+        for (int i = list.size() - 1; i >= 0; i--) {
+            Map<Integer, String> currentMap = list.get(i);
+
+            // 获取当前 Map 中第一个非 null 的 Integer Key
+            Optional<Integer> currentValidKey = currentMap.keySet().stream()
+                    .filter(Objects::nonNull)
+                    .findFirst();
+
+            if (currentValidKey.isPresent()) {
+                // 找到了物理页码锚点，更新“下方最近”的 Key 状态
+                lastSeenValidKey = currentValidKey.get();
+            } else if (currentMap.containsKey(null) && lastSeenValidKey != null) {
+                // 执行替换：先移除 null 键，再以锚点 Key 重新插入
+                String content = currentMap.remove(null);
+                currentMap.put(lastSeenValidKey, content);
+            }
+        }
     }
 
     /**
