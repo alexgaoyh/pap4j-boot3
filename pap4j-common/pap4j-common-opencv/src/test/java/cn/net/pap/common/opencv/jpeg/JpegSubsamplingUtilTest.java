@@ -1,0 +1,54 @@
+package cn.net.pap.common.opencv.jpeg;
+
+import cn.net.pap.common.opencv.util.TempDirUtils;
+import org.junit.jupiter.api.Test;
+
+import java.awt.image.BufferedImage;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+public class JpegSubsamplingUtilTest {
+
+//    static {
+//        System.setProperty("temp.dir.utils.dev", "true");
+//    }
+
+    @Test
+    public void testDynamicSubsamplingWithTempDir() throws Exception {
+        // 创建测试图像
+        BufferedImage image = JpegSubsamplingUtil.createTestImage(800, 600);
+
+        // 使用你的工具类创建一个临时目录，测试结束后会自动清理
+        // 使用 Function<Path, T> 的重载版本，方便直接向上抛出 checked 异常 (IOException)
+        TempDirUtils.withTempDir("jpeg-subsample-test-", dir -> {
+
+            try {
+                Path outputFile420 = dir.resolve("dynamic_subsampled_420.jpg");
+                Path outputFile444 = dir.resolve("dynamic_subsampled_444.jpg");
+
+                // 测试 1：高画质 (0.9) 下，强制开启 2x2 子采样 (4:2:0)
+                JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile420, 0.9f, true);
+                System.out.println("成功生成 4:2:0 图像: " + Files.size(outputFile420) + " bytes");
+                assertTrue(Files.exists(outputFile420) && Files.size(outputFile420) > 0);
+
+                // 测试 2：同样的高画质 (0.9) 下，强制关闭子采样 (4:4:4)
+                JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile444, 0.9f, false);
+                System.out.println("成功生成 4:4:4 图像: " + Files.size(outputFile444) + " bytes");
+                assertTrue(Files.exists(outputFile444) && Files.size(outputFile444) > 0);
+
+                // 断言：在相同画质参数下，开启子采样(4:2:0)的文件体积应该明显小于不开启(4:4:4)的体积
+                assertTrue(Files.size(outputFile420) < Files.size(outputFile444),
+                        "开启 2x2 子采样的图像文件大小应该更小");
+
+                return null; // 满足 Function 的返回值要求
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
+    }
+
+
+}
