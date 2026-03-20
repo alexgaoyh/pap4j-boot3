@@ -63,7 +63,7 @@ public class StaxXmlUtilTest {
                 // 第三层节点
                 List<String> thirdNodeXMLs = StaxXmlUtil.readChildrenXmlByStax(secondNodeXML, thirdNodeName);
                 for (String thirdNodeXML : thirdNodeXMLs) {
-                    String value = StaxXmlUtil.readNodeValueByStax(thirdNodeXML, thirdNodeName);
+                    String value = StaxXmlUtil.readNodeValueByStax(thirdNodeXML, thirdNodeName).orElse(null);
                     System.out.println(value);
                 }
             }
@@ -89,7 +89,7 @@ public class StaxXmlUtilTest {
                 // 第三层节点
                 List<String> thirdNodeXMLs = StaxXmlUtil.readChildrenXmlByStax(secondNodeXML, thirdNodeName);
                 for (String thirdNodeXML : thirdNodeXMLs) {
-                    String value = StaxXmlUtil.readChildrenXmlValueByStax(thirdNodeXML, thirdNodeName);
+                    String value = StaxXmlUtil.readChildrenXmlValueByStax(thirdNodeXML, thirdNodeName).orElse(null);
                     System.out.println(value);
                 }
             }

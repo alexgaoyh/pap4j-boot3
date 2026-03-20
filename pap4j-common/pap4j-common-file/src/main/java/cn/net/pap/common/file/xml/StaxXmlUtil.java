@@ -14,11 +14,13 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 import java.util.regex.Matcher;
@@ -33,6 +35,9 @@ public class StaxXmlUtil {
 
     // 将 SAXParserFactory 提取为静态单例，避免 extractAllPaths 频繁创建带来的性能损耗
     private static final SAXParserFactory saxFactory;
+
+    // 预编译 Pattern，提升性能
+    private static final Pattern ANCHOR_PATTERN = Pattern.compile("(<anchor[^>]*(?:/>|>\\s*</anchor>))");
 
     static {
         factory = XMLInputFactory.newInstance();
@@ -64,6 +69,10 @@ public class StaxXmlUtil {
      * @return List，每个元素是一个子节点的 XML 文本
      */
     public static List<String> readChildrenXmlByStax(String xmlText, String nodeName) {
+        if (xmlText == null || xmlText.isBlank() || nodeName == null) {
+            return Collections.emptyList();
+        }
+        
         List<String> result = new ArrayList<>();
         XMLStreamReader reader = null;
         try (StringReader sr = new StringReader(xmlText)) {
@@ -121,7 +130,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    // 忽略关闭异常
+                    log.warn("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -136,23 +145,12 @@ public class StaxXmlUtil {
         for (int i = 0; i < text.length(); i++) {
             char c = text.charAt(i);
             switch (c) {
-                case '&':
-                    sb.append("&amp;");
-                    break;
-                case '<':
-                    sb.append("&lt;");
-                    break;
-                case '>':
-                    sb.append("&gt;");
-                    break;
-                case '"':
-                    sb.append("&quot;");
-                    break;
-                case '\'':
-                    sb.append("&apos;");
-                    break;
-                default:
-                    sb.append(c);
+                case '&' -> sb.append("&amp;");
+                case '<' -> sb.append("&lt;");
+                case '>' -> sb.append("&gt;");
+                case '"' -> sb.append("&quot;");
+                case '\'' -> sb.append("&apos;");
+                default -> sb.append(c);
             }
         }
         return sb.toString();
@@ -203,7 +201,11 @@ public class StaxXmlUtil {
     /**
      * 获取某节点文本内容
      */
-    public static String readNodeValueByStax(String xmlText, String nodeName) {
+    public static Optional<String> readNodeValueByStax(String xmlText, String nodeName) {
+        if (xmlText == null || xmlText.isBlank() || nodeName == null) {
+            return Optional.empty();
+        }
+        
         XMLStreamReader reader = null;
         try {
             // 移除内部重复实例化的 XMLInputFactory，复用静态 factory 提升性能
@@ -219,13 +221,13 @@ public class StaxXmlUtil {
                         if (event == XMLStreamConstants.CHARACTERS) {
                             textSb.append(escapeXml(reader.getText()));
                         } else if (event == XMLStreamConstants.END_ELEMENT && nodeName.equals(reader.getLocalName())) {
-                            return textSb.toString().trim();
+                            return Optional.of(textSb.toString().trim());
                         }
                     }
                 }
             }
 
-            return null;
+            return Optional.empty();
         } catch (Exception e) {
             log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
@@ -234,6 +236,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
+                    log.warn("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -244,7 +247,11 @@ public class StaxXmlUtil {
      * @param parentNodeName
      * @return
      */
-    public static String readChildrenXmlValueByStax(String xmlText, String parentNodeName) {
+    public static Optional<String> readChildrenXmlValueByStax(String xmlText, String parentNodeName) {
+        if (xmlText == null || xmlText.isBlank() || parentNodeName == null) {
+            return Optional.empty();
+        }
+
         XMLStreamReader reader = null;
         try {
             // 复用静态 factory
@@ -278,13 +285,13 @@ public class StaxXmlUtil {
                             depth--;
                         } else if (parentNodeName.equals(reader.getLocalName())) {
                             // 父节点结束
-                            return sb.toString();
+                            return Optional.of(sb.toString());
                         }
                     }
                 }
             }
 
-            return null;
+            return Optional.empty();
         } catch (Exception e) {
             log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
@@ -293,6 +300,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
+                    log.warn("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -303,6 +311,10 @@ public class StaxXmlUtil {
      * 统计节点数量
      */
     public static int countNodesByStax(String xmlText, String nodeName) {
+        if (xmlText == null || xmlText.isBlank() || nodeName == null) {
+            return 0;
+        }
+
         int count = 0;
         XMLStreamReader reader = null;
         try {
@@ -325,6 +337,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
+                    log.warn("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -346,6 +359,10 @@ public class StaxXmlUtil {
      * @return 转换后的 XML 字符串
      */
     public static String parseXMLInRootAndOriginalTags(String xmlString, String rootTag, Set<String> keepOriginalTags) {
+        if (xmlString == null || xmlString.isBlank()) {
+            return xmlString;
+        }
+
         StringBuilder result = new StringBuilder("<").append(rootTag).append(">");
         int charSeq = 0;
         XMLStreamReader reader = null;
@@ -399,6 +416,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
+                    log.warn("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -416,7 +434,7 @@ public class StaxXmlUtil {
     public static Map<String, String> extractAllAttributes(String xmlString, String elementName) {
         Map<String, String> attributes = new HashMap<>();
         if (xmlString == null || elementName == null || xmlString.trim().isEmpty()) {
-            return attributes;
+            return Collections.emptyMap();
         }
 
         XMLStreamReader reader = null;
@@ -446,6 +464,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
+                    log.warn("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -544,6 +563,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
+                    log.warn("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -562,6 +582,10 @@ public class StaxXmlUtil {
      * @return 转换后的 XML 字符串
      */
     public static String parseXMLWithCustomAttributes(String xmlString, String rootTag, Set<String> keepOriginalTags, List<Map<String, String>> attrList) {
+        if (xmlString == null || xmlString.isBlank()) {
+            return xmlString;
+        }
+
         StringBuilder result = new StringBuilder("<").append(rootTag).append(">");
         int charIndex = 0; // 用于追踪当前字符在 attrList 中的全局下标
 
@@ -620,6 +644,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
+                    log.warn("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -680,6 +705,10 @@ public class StaxXmlUtil {
      * @return 所有路径的列表
      */
     public static List<String> extractAllPaths(String xmlContent) throws Exception {
+        if (xmlContent == null || xmlContent.isBlank()) {
+            return Collections.emptyList();
+        }
+
         // 复用配置的静态单例 saxFactory
         SAXParser parser = saxFactory.newSAXParser();
         IndexedPathHandler handler = new IndexedPathHandler();
@@ -701,38 +730,6 @@ public class StaxXmlUtil {
      * <li><strong>尾部内容捕获：</strong>如果最后一个 anchor 标签之后还有非空字符，这些字符将以 {@code "_tail_content"} 作为 key 存入。如果尾部仅有空白字符则会被安全过滤。</li>
      * </ul>
      *
-     * <h3>逻辑示例：</h3>
-     * <table border="1" cellpadding="5" style="border-collapse: collapse; text-align: left;">
-     * <tr>
-     * <th>输入 (xmlString)</th>
-     * <th>返回结果 (Map)</th>
-     * </tr>
-     * <tr>
-     * <td>{@code null} 或 {@code "   "}</td>
-     * <td>{@code {}} (空 Map)</td>
-     * </tr>
-     * <tr>
-     * <td>{@code "123"}</td>
-     * <td>{@code {"_initial_content": "123"}}</td>
-     * </tr>
-     * <tr>
-     * <td>{@code "123<anchor id='1'/>456<anchor id='2'/>"}</td>
-     * <td>{@code {"<anchor id='1'/>": "123", "<anchor id='2'/>": "456"}}</td>
-     * </tr>
-     * <tr>
-     * <td>{@code "<anchor id='1'/><anchor id='2'/>"}</td>
-     * <td>{@code {"<anchor id='1'/>": "", "<anchor id='2'/>": ""}}</td>
-     * </tr>
-     * <tr>
-     * <td>{@code "123<anchor id='1'/>789"}</td>
-     * <td>{@code {"<anchor id='1'/>": "123", "_tail_content": "789"}}</td>
-     * </tr>
-     * <tr>
-     * <td>{@code "123<anchor id='1'/>   \n"}</td>
-     * <td>{@code {"<anchor id='1'/>": "123"}} (尾部空白被忽略)</td>
-     * </tr>
-     * </table>
-     *
      * @param xmlString 需要进行切分的原始 XML 字符串
      * @return 包含切分结果的有序 {@code Map<String, String>}
      */
@@ -741,11 +738,8 @@ public class StaxXmlUtil {
         if (xmlString == null || xmlString.trim().isEmpty()) {
             return result;
         }
-        // <anchor[^>]* 匹配 <anchor 及其属性，直到遇到 > 或 />
-        // (?:/>|>\\s*</anchor>) 这是一个非捕获组，表示要么以 /> 结尾，要么以 > 结束并紧接着可选的空白字符和 </anchor>
-        // 外层的 () 将整个匹配作为一个 group 捕获，作为 Map 的 key
-        Pattern pattern = Pattern.compile("(<anchor[^>]*(?:/>|>\\s*</anchor>))");
-        Matcher matcher = pattern.matcher(xmlString);
+
+        Matcher matcher = ANCHOR_PATTERN.matcher(xmlString);
         int lastEnd = 0;
         boolean firstSegment = true;
         while (matcher.find()) {
@@ -753,7 +747,6 @@ public class StaxXmlUtil {
             String content = xmlString.substring(lastEnd, matcher.start()).trim();
             String anchorKey = matcher.group(1);
 
-            // 【关键修改】：移除 if (!content.isEmpty()) 判断
             // 这样即使两个 anchor 紧挨着，也能保留后一个 anchor 作为 key，value 为 ""
             result.put(anchorKey, content);
 
@@ -764,7 +757,7 @@ public class StaxXmlUtil {
         if (firstSegment) {
             result.put("_initial_content", xmlString.trim());
         }
-        // 【补充逻辑】：处理最后一个 anchor 之后的尾部内容
+        // 处理最后一个 anchor 之后的尾部内容
         // 如果输入是 "123<anchor/>456"，循环结束后 456 会丢失，这里将其捕获
         if (!firstSegment && lastEnd < xmlString.length()) {
             String tailContent = xmlString.substring(lastEnd).trim();
