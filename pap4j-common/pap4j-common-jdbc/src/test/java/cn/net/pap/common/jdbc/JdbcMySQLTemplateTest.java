@@ -373,5 +373,89 @@ class JdbcMySQLTemplateTest {
         return "SELECT * FROM user_info WHERE id IN (" + placeholders + ")";
     }
 
+    @Test
+    @DisplayName("验证 cachePrepStmts=true 的性能差异")
+    void testCachePrepStmtsDifference() throws Exception {
+        // 1. 插入一点基础数据（保证查询有结果）
+        jdbcTemplate.update("INSERT IGNORE INTO user_info (id, name, age) VALUES (1, 'cache-test', 20)");
+
+        // 基础 URL (替换为你真实的密码，这里沿用你 Config 中的配置)
+        String baseUrl = "jdbc:mysql://127.0.0.1:3306/cf?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true";
+        String username = "root";
+        String password = "alexgaoyh";
+
+        // URL 1: 不开启缓存 (默认情况)
+        String urlWithoutCache = baseUrl;
+
+        // URL 2: 开启缓存及配套参数
+        String urlWithCache = baseUrl + "&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true";
+
+        System.out.println("================ 开始测试 cachePrepStmts ===============");
+
+        // 2. 测试不带缓存的性能
+        long timeWithoutCache = runIntensiveQueries("未开启缓存 (Without Cache)", urlWithoutCache, username, password);
+
+        // 3. 测试带缓存的性能
+        long timeWithCache = runIntensiveQueries("已开启缓存 (With Cache)", urlWithCache, username, password);
+
+        // 4. 输出对比
+        System.out.println("================ 测试结果总结 ==========================");
+        System.out.printf("未开启缓存耗时: %d ms%n", timeWithoutCache);
+        System.out.printf("已开启缓存耗时: %d ms%n", timeWithCache);
+
+        if (timeWithCache < timeWithoutCache) {
+            double improve = (double)(timeWithoutCache - timeWithCache) / timeWithoutCache * 100;
+            System.out.printf("性能提升: %.2f%%%n", improve);
+        } else {
+            System.out.println("在当前极为短暂的测试中未体现出明显优势，可能受JIT或网络波动影响，建议增加循环次数。");
+        }
+    }
+
+    /**
+     * 辅助方法：使用指定的 URL 构建独立的数据源，并执行密集查询
+     */
+    private long runIntensiveQueries(String label, String url, String username, String password) {
+        // 使用 HikariCP 手动构建独立的数据源
+        com.zaxxer.hikari.HikariConfig config = new com.zaxxer.hikari.HikariConfig();
+        config.setJdbcUrl(url);
+        config.setUsername(username);
+        config.setPassword(password);
+        config.setMaximumPoolSize(1); // 限制池大小，确保复用同一个 Connection
+
+        try (com.zaxxer.hikari.HikariDataSource ds = new com.zaxxer.hikari.HikariDataSource(config)) {
+            JdbcTemplate testJt = new JdbcTemplate(ds);
+            String sql = "SELECT name FROM user_info WHERE id = ?";
+
+            // 使用 ResultSetExtractor 避免 RowMapper 的对象创建开销，纯测 JDBC 驱动性能
+            org.springframework.jdbc.core.ResultSetExtractor<String> extractor = rs -> {
+                if (rs.next()) return rs.getString(1);
+                return null;
+            };
+
+            int warmUpCount = 10000;
+            int testCount = 50000;
+
+            System.out.println(label + " -> 正在预热...");
+            // 预热：让 JVM JIT 编译器完成字节码到机器码的编译
+            for (int i = 0; i < warmUpCount; i++) {
+                testJt.query(sql, extractor, 1L);
+            }
+
+            System.out.println(label + " -> 正式开始计时...");
+            long startTime = System.currentTimeMillis();
+
+            // 正式测试
+            for (int i = 0; i < testCount; i++) {
+                testJt.query(sql, extractor, 1L);
+            }
+
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+            System.out.printf("%s 测试完成，耗时: %d ms%n", label, duration);
+            System.out.println("------------------------------------------------------");
+            return duration;
+        }
+    }
+
 
 }
