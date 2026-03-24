@@ -184,11 +184,19 @@ public class ReadTxtToStringUtil {
         try {
             String decoded = decoder.decode(ByteBuffer.wrap(data)).toString();
             int score = 0;
-            for (char c : decoded.toCharArray()) {
-                // 扩展字符范围判断
-                if (isChineseCharacter(c)) {
+
+            // 放弃使用 toCharArray()，改用 codePoint 遍历
+            int length = decoded.length();
+            for (int offset = 0; offset < length; ) {
+                // 获取当前位置的完整 Unicode 代码点（如果是生僻字，会自动读取两个 char）
+                int codePoint = decoded.codePointAt(offset);
+
+                if (isChineseCharacter(codePoint)) {
                     score++;
                 }
+
+                // 移动游标：普通字符加 1，Surrogate Pair (生僻字) 加 2
+                offset += Character.charCount(codePoint);
             }
             return score;
         } catch (CharacterCodingException e) {
@@ -197,15 +205,16 @@ public class ReadTxtToStringUtil {
         }
     }
 
-    private static boolean isChineseCharacter(char c) {
-        // 扩展中文字符范围
-        return (c >= 0x4E00 && c <= 0x9FFF) ||       // 基本汉字
-                (c >= 0x3400 && c <= 0x4DBF) ||       // 扩展A
-                (c >= 0x20000 && c <= 0x2A6DF) ||     // 扩展B
-                (c >= 0x2A700 && c <= 0x2B73F) ||     // 扩展C
-                (c >= 0x2B740 && c <= 0x2B81F) ||     // 扩展D
-                (c >= 0xF900 && c <= 0xFAFF) ||       // 兼容汉字
-                (c >= 0x2F800 && c <= 0x2FA1F);       // 补充兼容汉字
+    // 将参数类型从 char 改为 int
+    private static boolean isChineseCharacter(int codePoint) {
+        // 扩展中文字符范围，现在 > 0xFFFF 的判断可以真实生效了
+        return (codePoint >= 0x4E00 && codePoint <= 0x9FFF) ||        // 基本汉字
+                (codePoint >= 0x3400 && codePoint <= 0x4DBF) ||       // 扩展A
+                (codePoint >= 0x20000 && codePoint <= 0x2A6DF) ||     // 扩展B
+                (codePoint >= 0x2A700 && codePoint <= 0x2B73F) ||     // 扩展C
+                (codePoint >= 0x2B740 && codePoint <= 0x2B81F) ||     // 扩展D
+                (codePoint >= 0xF900 && codePoint <= 0xFAFF) ||       // 兼容汉字
+                (codePoint >= 0x2F800 && codePoint <= 0x2FA1F);       // 补充兼容汉字
     }
 
 }
