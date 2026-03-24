@@ -262,6 +262,249 @@
     addHeader('Accept', 'application/json');
     updateBodyEditor();
 </script>
+<style>
+    /* 调整原 body 布局，给右侧历史面板留出空间，完全不破坏原有的 flex 和 padding */
+    body {
+        padding-right: 340px !important;
+    }
 
+    /* 历史记录侧边栏样式 */
+    #historyPanel {
+        position: fixed;
+        top: 0;
+        right: 0;
+        width: 320px;
+        height: 100vh;
+        background: #f9f9f9;
+        border-left: 1px solid #ddd;
+        padding: 20px;
+        box-sizing: border-box;
+        overflow-y: auto;
+        box-shadow: -2px 0 8px rgba(0,0,0,0.05);
+        z-index: 1000;
+    }
+
+    #historyPanel h2 {
+        margin-top: 0;
+        font-size: 1.2rem;
+        color: #333;
+    }
+
+    .history-item {
+        background: #fff;
+        border: 1px solid #eee;
+        padding: 12px;
+        margin-bottom: 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        position: relative;
+        transition: box-shadow 0.2s;
+        word-break: break-all;
+    }
+
+    .history-item:hover {
+        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+        border-color: #ccc;
+    }
+
+    .history-item .method {
+        font-weight: bold;
+        margin-right: 5px;
+    }
+
+    .history-item .url {
+        font-size: 0.9rem;
+        color: #444;
+    }
+
+    .history-item .time {
+        font-size: 0.8rem;
+        color: #888;
+        margin-top: 6px;
+    }
+
+    .delete-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: transparent;
+        color: #ff4d4f;
+        border: none;
+        cursor: pointer;
+        font-size: 1rem;
+        padding: 0;
+    }
+
+    .delete-btn:hover {
+        color: #d9363e;
+        transform: scale(1.1);
+    }
+</style>
+
+<div id="historyPanel">
+    <h2>📜 请求历史</h2>
+    <div id="historyList"></div>
+</div>
+
+<script>
+    (function initHistoryFeature() {
+        const HISTORY_KEY = 'api_tester_history';
+        const historyListEl = document.getElementById('historyList');
+
+        // 1. 获取和保存数据的辅助函数
+        function getHistory() {
+            try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
+            catch (e) { return []; }
+        }
+
+        function saveHistory(data) {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(data));
+        }
+
+        // 2. 提取当前表单数据并保存
+        function saveCurrentRequest() {
+            const url = document.getElementById('url').value.trim();
+            if (!url) return;
+
+            const method = document.getElementById('method').value;
+            const contentType = document.getElementById('contentType').value;
+
+            // 提取 Headers
+            const headers = [];
+            document.getElementById('headers').querySelectorAll('.pair').forEach(div => {
+                const inputs = div.querySelectorAll('input');
+                const k = inputs[0].value.trim();
+                const v = inputs[1].value.trim();
+                if (k) headers.push({ k, v });
+            });
+
+            // 提取 Body
+            let bodyText = '';
+            let formData = [];
+            if (contentType === 'application/json' || contentType === 'text/plain' || !contentType) {
+                const textEl = document.getElementById('bodyText');
+                if (textEl) bodyText = textEl.value;
+            } else {
+                document.getElementById('bodyEditor').querySelectorAll('.pair').forEach(div => {
+                    const keyInput = div.querySelector('.key');
+                    const typeSelect = div.querySelector('.type');
+                    const valueInput = div.querySelector('.value');
+                    if (keyInput && keyInput.value.trim()) {
+                        formData.push({
+                            key: keyInput.value.trim(),
+                            type: typeSelect.value,
+                            // 由于浏览器安全限制，无法保存并重新赋值文件路径，因此置空
+                            value: typeSelect.value === 'file' ? '' : valueInput.value
+                        });
+                    }
+                });
+            }
+
+            const record = {
+                id: Date.now(), // 唯一标识
+                time: new Date().toLocaleString(),
+                url,
+                method,
+                contentType,
+                headers,
+                bodyText,
+                formData
+            };
+
+            const history = getHistory();
+            history.unshift(record); // 最新记录插在最前
+            if (history.length > 50) history.pop(); // 最多保留 50 条防止炸栈
+            saveHistory(history);
+            renderHistory();
+        }
+
+        // 3. 渲染历史列表
+        window.renderHistory = function() {
+            const history = getHistory();
+            historyListEl.innerHTML = history.length === 0 ? '<p style="color:#888;font-size:0.9rem;">暂无历史记录</p>' : '';
+
+            history.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'history-item';
+                div.onclick = (e) => {
+                    // 防止点击删除按钮时触发回显
+                    if(e.target.className.includes('delete-btn')) return;
+                    restoreRequest(item.id);
+                };
+
+                // 为不同请求方法上色
+                let methodColor = '#333';
+                if(item.method === 'GET') methodColor = '#0070c0';
+                if(item.method === 'POST') methodColor = '#008000';
+                if(item.method === 'PUT') methodColor = '#d97706';
+                if(item.method === 'DELETE') methodColor = '#cc0000';
+
+                div.innerHTML = `
+                    <button class="delete-btn" onclick="deleteHistoryItem(${item.id})" title="删除">✖</button>
+                    <div>
+                        <span class="method" style="color:${methodColor}">${item.method}</span>
+                        <span class="url">${item.url}</span>
+                    </div>
+                    <div class="time">${item.time}</div>
+                `;
+                historyListEl.appendChild(div);
+            });
+        };
+
+        // 4. 删除单条记录
+        window.deleteHistoryItem = function(id) {
+            let history = getHistory();
+            history = history.filter(item => item.id !== id);
+            saveHistory(history);
+            renderHistory();
+        };
+
+        // 5. 回显数据到主界面
+        window.restoreRequest = function(id) {
+            const record = getHistory().find(item => item.id === id);
+            if (!record) return;
+
+            document.getElementById('url').value = record.url;
+            document.getElementById('method').value = record.method;
+            document.getElementById('contentType').value = record.contentType || '';
+
+            // 清空并重建 Headers
+            const hdrsDiv = document.getElementById('headers');
+            hdrsDiv.innerHTML = '';
+            record.headers.forEach(h => window.addHeader(h.k, h.v));
+
+            // 触发你原有的更新 Body 逻辑
+            window.updateBodyEditor();
+
+            // 使用 setTimeout 确保 updateBodyEditor 的 DOM 渲染完成之后再赋值
+            setTimeout(() => {
+                if (record.contentType === 'application/json' || record.contentType === 'text/plain' || !record.contentType) {
+                    const textEl = document.getElementById('bodyText');
+                    if (textEl) textEl.value = record.bodyText || '';
+                } else {
+                    const bdyEdtr = document.getElementById('bodyEditor');
+                    bdyEdtr.innerHTML = ''; // 清掉 updateBodyEditor 默认增加的那个空行
+                    record.formData.forEach(fd => {
+                        window.addFormDataRow(fd.key, fd.type, fd.value);
+                    });
+                }
+            }, 0);
+        };
+
+        // 6. 核心：拦截你原有的 sendRequest 函数（AOP切面思路）
+        const originalSendRequest = window.sendRequest;
+        window.sendRequest = async function() {
+            // 在发请求前静默保存记录
+            saveCurrentRequest();
+            // 唤起你原本的发送逻辑
+            if (originalSendRequest) {
+                await originalSendRequest.apply(this, arguments);
+            }
+        };
+
+        // 页面加载完毕后初次渲染历史记录
+        renderHistory();
+    })();
+</script>
 </body>
 </html>
