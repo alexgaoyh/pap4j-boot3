@@ -139,12 +139,14 @@ public class TfIdfDataSketchesUtilTest {
 
             // 获取第一个文档中最重要的词
             System.out.println("\nTop words in document 1:");
-            Map<String, Double> docScores = calculator.getDocumentTfIdfScores(1, Integer.MAX_VALUE);
-            docScores.entrySet().stream()
-                    .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
-                    // .limit(100)
-                    .forEach(entry ->
-                            System.out.printf("  %s: %.4f%n", entry.getKey(), entry.getValue()));
+            if(calculator.getTotalDocuments() > 0) {
+                Map<String, Double> docScores = calculator.getDocumentTfIdfScores(1, Integer.MAX_VALUE);
+                docScores.entrySet().stream()
+                        .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                        // .limit(100)
+                        .forEach(entry ->
+                                System.out.printf("  %s: %.4f%n", entry.getKey(), entry.getValue()));
+            }
 
         } catch (Exception e) {
             e.printStackTrace();

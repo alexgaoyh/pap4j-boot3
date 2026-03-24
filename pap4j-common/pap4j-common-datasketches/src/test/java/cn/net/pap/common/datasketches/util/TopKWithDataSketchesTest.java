@@ -5,6 +5,7 @@ import org.apache.datasketches.frequencies.ItemsSketch;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
+import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.*;
@@ -18,7 +19,9 @@ public class TopKWithDataSketchesTest {
     public void readTxtTestDetailed() throws IOException {
         ItemsSketch<String> sketch = new ItemsSketch<>(256);
         String filePath = "C:\\Users\\86181\\Desktop\\gcd.txt";
-
+        if(!new File(filePath).exists()) {
+            return;
+        }
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
             while ((line = br.readLine()) != null) {
