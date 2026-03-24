@@ -205,16 +205,23 @@ public class ReadTxtToStringUtil {
         }
     }
 
-    // 将参数类型从 char 改为 int
+    /**
+     * 将参数类型从 char 改为 int
+     */
     private static boolean isChineseCharacter(int codePoint) {
         // 扩展中文字符范围，现在 > 0xFFFF 的判断可以真实生效了
         return (codePoint >= 0x4E00 && codePoint <= 0x9FFF) ||        // 基本汉字
-                (codePoint >= 0x3400 && codePoint <= 0x4DBF) ||       // 扩展A
-                (codePoint >= 0x20000 && codePoint <= 0x2A6DF) ||     // 扩展B
-                (codePoint >= 0x2A700 && codePoint <= 0x2B73F) ||     // 扩展C
-                (codePoint >= 0x2B740 && codePoint <= 0x2B81F) ||     // 扩展D
-                (codePoint >= 0xF900 && codePoint <= 0xFAFF) ||       // 兼容汉字
-                (codePoint >= 0x2F800 && codePoint <= 0x2FA1F);       // 补充兼容汉字
+                (codePoint >= 0x3400 && codePoint <= 0x4DBF) ||        // 扩展 A
+                (codePoint >= 0x20000 && codePoint <= 0x2A6DF) ||      // 扩展 B
+                (codePoint >= 0x2A700 && codePoint <= 0x2B73F) ||      // 扩展 C
+                (codePoint >= 0x2B740 && codePoint <= 0x2B81F) ||      // 扩展 D
+                (codePoint >= 0x2B820 && codePoint <= 0x2CEAF) ||      // 扩展 E
+                (codePoint >= 0x2CEB0 && codePoint <= 0x2EBEF) ||      // 扩展 F
+                (codePoint >= 0x30000 && codePoint <= 0x3134F) ||      // 扩展 G
+                (codePoint >= 0x31350 && codePoint <= 0x323AF) ||      // 扩展 H
+                (codePoint >= 0x2EBF0 && codePoint <= 0x2EE5F) ||      // 扩展 I
+                (codePoint >= 0xF900 && codePoint <= 0xFAFF) ||        // 兼容汉字
+                (codePoint >= 0x2F800 && codePoint <= 0x2FA1F);        // 补充兼容汉字
     }
 
 }
