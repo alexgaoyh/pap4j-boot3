@@ -44,6 +44,11 @@ public class JpegSubsamplingUtilTest {
                 int dqt444 = JpegSubsamplingUtil.getExactJpegQuality(outputFile444.toFile());
                 assertTrue(dqt420 == 80 && dqt444 == 90);
 
+                SubsamplingMode subsamplingMode420 = JpegSubsamplingUtil.readSubsamplingMode(outputFile420.toFile());
+                SubsamplingMode subsamplingMode444 = JpegSubsamplingUtil.readSubsamplingMode(outputFile444.toFile());
+                assertTrue(subsamplingMode420 == SubsamplingMode.YUV_420);
+                assertTrue(subsamplingMode444 == SubsamplingMode.YUV_444);
+
                 // 断言：在相同画质参数下，开启子采样(4:2:0)的文件体积应该明显小于不开启(4:4:4)的体积
                 assertTrue(Files.size(outputFile420) < Files.size(outputFile444),
                         "开启 2x2 子采样的图像文件大小应该更小");

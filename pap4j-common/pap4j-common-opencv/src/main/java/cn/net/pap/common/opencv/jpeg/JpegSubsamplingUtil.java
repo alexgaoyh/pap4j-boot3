@@ -90,6 +90,66 @@ public class JpegSubsamplingUtil {
         }
     }
 
+    /**
+     * 解析 JPEG 图像，获取其色度子采样模式 (例如 4:4:4 或 4:2:0)
+     *
+     * @param jpegFile 输入的 JPEG 文件
+     * @return SubsamplingMode 子采样枚举，解析失败或非标返回 UNKNOWN
+     */
+    public static SubsamplingMode readSubsamplingMode(File jpegFile) throws IOException {
+        try (ImageInputStream iis = ImageIO.createImageInputStream(jpegFile)) {
+            if (iis == null) {
+                throw new IOException("无法创建输入流，文件可能不存在。");
+            }
+
+            // 获取适用的解码器
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+            if (!readers.hasNext()) {
+                throw new IOException("未找到适用于该文件的 ImageReader (可能不是 JPEG)。");
+            }
+
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(iis, true, true); // 优化：跳过读取图像像素，只读元数据
+
+                // 获取第一帧的元数据
+                IIOMetadata metadata = reader.getImageMetadata(0);
+                if (metadata == null) {
+                    return SubsamplingMode.UNKNOWN;
+                }
+
+                String metadataFormat = "javax_imageio_jpeg_image_1.0";
+                Element tree = (Element) metadata.getAsTree(metadataFormat);
+
+                // 寻找 SOF (Start of Frame) 节点
+                NodeList sofNodes = tree.getElementsByTagName("sof");
+                if (sofNodes.getLength() > 0) {
+                    Element sof = (Element) sofNodes.item(0);
+                    // 获取颜色通道组件 (通常 component 0 是 Y, 1 是 Cb, 2 是 Cr)
+                    NodeList components = sof.getElementsByTagName("componentSpec");
+
+                    if (components.getLength() > 0) {
+                        // 提取 Y (亮度) 通道的采样倍率
+                        Element luma = (Element) components.item(0);
+                        String hFactor = luma.getAttribute("HsamplingFactor");
+                        String vFactor = luma.getAttribute("VsamplingFactor");
+
+                        // 遍历枚举进行精准匹配
+                        for (SubsamplingMode mode : SubsamplingMode.values()) {
+                            if (mode.getHFactor().equals(hFactor) && mode.getVFactor().equals(vFactor)) {
+                                return mode;
+                            }
+                        }
+                    }
+                }
+            } finally {
+                reader.dispose(); // 务必释放资源
+            }
+        }
+
+        return SubsamplingMode.UNKNOWN;
+    }
+
     public static BufferedImage createTestImage(int width, int height) {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = image.createGraphics();

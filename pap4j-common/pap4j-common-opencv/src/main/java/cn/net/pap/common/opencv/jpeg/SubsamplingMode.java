@@ -9,7 +9,9 @@ public enum SubsamplingMode {
 
     YUV_422(2, 1), // 平衡模式
 
-    YUV_420(2, 2); // 最高压缩率（Web 最常用）
+    YUV_420(2, 2), // 最高压缩率（Web 最常用）
+
+    UNKNOWN(0, 0); // 未知或非标模式（例如单通道灰度图）
 
     private final String hFactor;
 
