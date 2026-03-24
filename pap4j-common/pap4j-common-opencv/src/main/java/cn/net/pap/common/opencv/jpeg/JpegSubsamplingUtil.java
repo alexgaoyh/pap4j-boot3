@@ -35,9 +35,9 @@ public class JpegSubsamplingUtil {
      * @param image   原始图像
      * @param output  输出的 Path 路径
      * @param quality 压缩质量 (0.0f - 1.0f)
-     * @param use420  true 表示使用 2x2 子采样 (4:2:0)，false 表示全采样 (4:4:4)
+     * @param mode    子采样模式 (例如 SubsamplingMode.YUV_420)
      */
-    public static void writeJpegWithSubsampling(BufferedImage image, Path output, float quality, boolean use420) throws IOException {
+    public static void writeJpegWithSubsampling(BufferedImage image, Path output, float quality, SubsamplingMode mode) throws IOException {
         Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("jpeg");
         if (!writers.hasNext()) {
             throw new IllegalStateException("未找到 JPEG 编码器");
@@ -68,8 +68,8 @@ public class JpegSubsamplingUtil {
                 if (components.getLength() >= 3) {
                     // 修改 Y (亮度) 通道的采样率
                     Element luma = (Element) components.item(0);
-                    luma.setAttribute("HsamplingFactor", use420 ? "2" : "1");
-                    luma.setAttribute("VsamplingFactor", use420 ? "2" : "1");
+                    luma.setAttribute("HsamplingFactor", mode.getHFactor());
+                    luma.setAttribute("VsamplingFactor", mode.getVFactor());
 
                     // 确保 Cb 和 Cr 通道的采样率始终为 1
                     for (int i = 1; i <= 2; i++) {

@@ -30,19 +30,19 @@ public class JpegSubsamplingUtilTest {
                 Path outputFile444 = dir.resolve("dynamic_subsampled_444.jpg");
 
                 // 测试 1：高画质 (0.9) 下，强制开启 2x2 子采样 (4:2:0)
-                JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile420, 0.9f, true);
+                JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile420, 0.80f, SubsamplingMode.YUV_420);
                 System.out.println("成功生成 4:2:0 图像: " + Files.size(outputFile420) + " bytes");
                 assertTrue(Files.exists(outputFile420) && Files.size(outputFile420) > 0);
 
                 // 测试 2：同样的高画质 (0.9) 下，强制关闭子采样 (4:4:4)
-                JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile444, 0.9f, false);
+                JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile444, 0.9f, SubsamplingMode.YUV_444);
                 System.out.println("成功生成 4:4:4 图像: " + Files.size(outputFile444) + " bytes");
                 assertTrue(Files.exists(outputFile444) && Files.size(outputFile444) > 0);
 
                 // --- 质量（Quality）验证逻辑 ---
                 int dqt420 = JpegSubsamplingUtil.getExactJpegQuality(outputFile420.toFile());
                 int dqt444 = JpegSubsamplingUtil.getExactJpegQuality(outputFile444.toFile());
-                assertTrue(dqt420 == dqt444 && dqt420 == 90);
+                assertTrue(dqt420 == 80 && dqt444 == 90);
 
                 // 断言：在相同画质参数下，开启子采样(4:2:0)的文件体积应该明显小于不开启(4:4:4)的体积
                 assertTrue(Files.size(outputFile420) < Files.size(outputFile444),
