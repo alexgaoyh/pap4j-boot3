@@ -29,7 +29,7 @@ public class JpegSubsamplingUtilTest {
                 Path outputFile420 = dir.resolve("dynamic_subsampled_420.jpg");
                 Path outputFile444 = dir.resolve("dynamic_subsampled_444.jpg");
 
-                // 测试 1：高画质 (0.9) 下，强制开启 2x2 子采样 (4:2:0)
+                // 测试 1：高画质 (0.8) 下，强制开启 2x2 子采样 (4:2:0)
                 JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile420, 0.80f, SubsamplingMode.YUV_420);
                 System.out.println("成功生成 4:2:0 图像: " + Files.size(outputFile420) + " bytes");
                 assertTrue(Files.exists(outputFile420) && Files.size(outputFile420) > 0);
@@ -58,6 +58,7 @@ public class JpegSubsamplingUtilTest {
                 throw new RuntimeException(e);
             }
         });
+        image.flush();
     }
 
 
