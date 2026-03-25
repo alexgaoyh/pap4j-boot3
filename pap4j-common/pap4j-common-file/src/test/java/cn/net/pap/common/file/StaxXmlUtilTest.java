@@ -242,22 +242,27 @@ public class StaxXmlUtilTest {
     public void reGeneXMLTest() {
         String xml = """
             <?xml version="1.0" encoding="utf-8"?>
-                <book>
-                  <zhengwens>
-                    <zhengwen>
-                      <Province>河南</Province>许昌</zhengwen>
-                    <zhengwen>测试</zhengwen>
-                  </zhengwens>
-                  <biaoshis>
-                    <biaoshi>1;2;3;4;</biaoshi>
-                    <biaoshi>5;6;</biaoshi>
-                  </biaoshis>
-                </book>
+            <book>
+              <zhengwens>
+                <zhengwen>
+                    <Province>河南</Province> &amp; 许昌 😊
+                    <anchor id="101"></anchor>
+                    测试
+                </zhengwen>
+                <zhengwen>验证</zhengwen>
+              </zhengwens>
+              <biaoshis>
+                <biaoshi>1;2;3;4;5;6;7;8;9;10;11;</biaoshi>
+                <biaoshi>12;13;</biaoshi>
+              </biaoshis>
+            </book>
         """;
         List<String> zhengwens = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "zhengwen");
         List<String> biaoshis = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "biaoshi");
         for(int zhengwenIdx = 0; zhengwenIdx < zhengwens.size(); zhengwenIdx++) {
             String zhengwen = zhengwens.get(zhengwenIdx);
+            // 【仅处理换行与回车】 1. 将所有的 \r (回车) 和 \n (换行) 直接替换为空字符串 2. 这样可以把多行合并为一行，同时保留原有的空格字符
+            zhengwen = zhengwen.replaceAll("[\\r\\n]+\\s*", "");
             String biaoshi = StaxXmlUtil.concatAllNodeValuesByStax(biaoshis.get(zhengwenIdx).trim(), "biaoshi");
             List<Map<String, String>> biaoshiMapList = new ArrayList<>();
             String[] biaoshiSplit = biaoshi.split(";");

@@ -689,6 +689,10 @@ public class StaxXmlUtil {
             return xmlString;
         }
 
+        if (attrList == null) {
+            throw new IllegalArgumentException("attrList cannot be null");
+        }
+
         StringBuilder result = new StringBuilder("<").append(rootTag).append(">");
         int charIndex = 0; // 用于追踪当前字符在 attrList 中的全局下标
 
@@ -713,7 +717,7 @@ public class StaxXmlUtil {
                             result.append(" ").append(reader.getAttributeLocalName(i))
                                     .append("=\"").append(escapeXml(reader.getAttributeValue(i))).append("\"");
                         }
-                        result.append("/>");
+                        result.append(">");
                     } else {
                         // 其它标签统一转为 span
                         result.append("<span type=\"").append(tagName).append("\"");
@@ -726,13 +730,17 @@ public class StaxXmlUtil {
 
                 } else if (event == XMLStreamConstants.END_ELEMENT) {
                     String tagName = reader.getLocalName();
-                    if (!rootTag.equals(tagName) && !keepOriginalTags.contains(tagName)) {
-                        result.append("</span>");
+                    if (!rootTag.equals(tagName)) {
+                        if (keepOriginalTags.contains(tagName)) {
+                            result.append("</").append(tagName).append(">");
+                        } else {
+                            result.append("</span>");
+                        }
                     }
                 } else if (event == XMLStreamConstants.CHARACTERS) {
                     String text = reader.getText();
-                    // 只有非空文本才进行单字符拆分包装
-                    if (text != null && !text.trim().isEmpty()) {
+                    // 去掉了 .trim()，只验证非空 (!text.isEmpty()) 必须把包含了空格、换行的原生 text 交给下游方法，否则字符下标无法对齐
+                    if (text != null && !text.isEmpty()) {
                         charIndex = wrapEachCharacterWithAttributes(text, result, charIndex, attrList);
                     }
                 }
