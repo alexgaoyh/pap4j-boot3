@@ -13,18 +13,23 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamReader;
 import java.io.StringReader;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Stack;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class StaxXmlUtil {
 
@@ -59,6 +64,104 @@ public class StaxXmlUtil {
         } catch (Exception e) {
             log.error("SAXParserFactory 安全配置失败", e);
         }
+    }
+
+    /**
+     * 从任意结构的 XML 字符串中提取纯文本信息
+     *
+     * @param xmlString 原始 XML 字符串
+     * @return 提取出的纯文本。如果解析失败或输入为空，返回空字符串。
+     */
+    public static String extractText(String xmlString) {
+        if (xmlString == null || xmlString.trim().isEmpty()) {
+            return xmlString;
+        }
+        if (!xmlString.contains("<")) {
+            return xmlString;
+        }
+
+        StringBuilder resultText = new StringBuilder();
+        try (StringReader stringReader = new StringReader(xmlString)) {
+            // 尝试进行严格的规范 XML 解析
+            XMLStreamReader reader = factory.createXMLStreamReader(stringReader);
+            while (reader.hasNext()) {
+                int eventType = reader.next();
+                if (eventType == XMLStreamConstants.CHARACTERS || eventType == XMLStreamConstants.CDATA) {
+                    String text = reader.getText();
+                    if (text != null && !text.trim().isEmpty()) {
+                        resultText.append(text.trim());
+                    }
+                }
+            }
+            reader.close();
+            return resultText.toString().trim();
+
+        } catch (Exception e) {
+            log.debug("输入不符合标准 XML 格式，降级为正则提取文本返回。输入片段: {}", xmlString.length() > 50 ? xmlString.substring(0, 50) + "..." : xmlString);
+
+            // 严格解析失败时，使用正则表达式移除所有 XML/HTML 标签结构 . 匹配规则：以 < 开头，中间包含任意非 > 的字符，以 > 结尾。将其全部替换为空字符串。
+            String fallbackText = xmlString.replaceAll("<[^>]+>", "");
+
+            // 将 HTML/XML 实体转义字符（如 &lt; 恢复为 <）转换回来，防止文本被错误转义污染
+            fallbackText = fallbackText.replace("&lt;", "<")
+                    .replace("&gt;", ">")
+                    .replace("&amp;", "&")
+                    .replace("&quot;", "\"")
+                    .replace("&apos;", "'");
+
+            // 清理由于剔除标签而可能产生的多余空白字符
+            return fallbackText.trim();
+        }
+    }
+
+    /**
+     * 同 {@code pap4j-common-datastructure CollectionUtil.java}
+     * @param list
+     */
+    public static void fillNullKeys(List<Map<Integer, String>> list) {
+        // 记录“后方” Map 中出现的第一个有效页码
+        Integer nextValidKey = null;
+
+        // 从后往前遍历列表
+        for (int i = list.size() - 1; i >= 0; i--) {
+            Map<Integer, String> currentMap = list.get(i);
+
+            // 1. 处理 null 键：如果存在 null，则用后方记录的 nextValidKey 替换
+            if (currentMap.containsKey(null)) {
+                String content = currentMap.remove(null);
+                if (nextValidKey != null) {
+                    currentMap.put(nextValidKey, content);
+                } else {
+                    // 如果后面没有有效页码，可以根据业务逻辑保留 null 或赋予默认值
+                    currentMap.put(null, content);
+                }
+            }
+
+            // 2. 更新 nextValidKey：取当前 Map 中第一个非空的 Key，使用 findFirst() 代替 min() 以保持插入顺序/自然出现顺序
+            nextValidKey = currentMap.keySet().stream()
+                    .filter(Objects::nonNull)
+                    .findFirst()         // 取得第一个出现的有效键
+                    .orElse(nextValidKey); // 如果当前 Map 全空，则沿用后面的有效键
+        }
+    }
+
+    /**
+     * 将百分比坐标字符串转换为保留两位小数的 BigDecimal 列表
+     * 输入: "10%, 12.5%, 2.001%"
+     * 输出: [10.00, 12.50, 2.00]
+     */
+    public static List<BigDecimal> convertCoordsToList(String rectStr) {
+        if (rectStr == null || rectStr.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        return Arrays.stream(rectStr.split(","))
+                .map(String::trim)
+                .map(s -> s.replace("%", ""))
+                .filter(s -> !s.isEmpty())
+                // 使用 map 转换并设置精度
+                .map(s -> new BigDecimal(s).setScale(2, RoundingMode.HALF_UP))
+                .collect(Collectors.toList());
     }
 
     /**
