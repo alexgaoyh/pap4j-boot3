@@ -340,25 +340,29 @@ public class CollectionUtil {
      * @throws UnsupportedOperationException 如果列表中的 Map 是不可变的（如 {@code Map.of()} 创建的实例）。
      */
     public static void fillNullKeys(List<Map<Integer, String>> list) {
-        Integer lastSeenValidKey = null;
+        // 记录“后方” Map 中出现的第一个有效页码
+        Integer nextValidKey = null;
 
-        // 从后往前遍历，因为 null 需要参考“下方”的第一个有效 Key
+        // 从后往前遍历列表
         for (int i = list.size() - 1; i >= 0; i--) {
             Map<Integer, String> currentMap = list.get(i);
 
-            // 获取当前 Map 中第一个非 null 的 Integer Key
-            Optional<Integer> currentValidKey = currentMap.keySet().stream()
-                    .filter(Objects::nonNull)
-                    .findFirst();
-
-            if (currentValidKey.isPresent()) {
-                // 找到了物理页码锚点，更新“下方最近”的 Key 状态
-                lastSeenValidKey = currentValidKey.get();
-            } else if (currentMap.containsKey(null) && lastSeenValidKey != null) {
-                // 执行替换：先移除 null 键，再以锚点 Key 重新插入
+            // 1. 处理 null 键：如果存在 null，则用后方记录的 nextValidKey 替换
+            if (currentMap.containsKey(null)) {
                 String content = currentMap.remove(null);
-                currentMap.put(lastSeenValidKey, content);
+                if (nextValidKey != null) {
+                    currentMap.put(nextValidKey, content);
+                } else {
+                    // 如果后面没有有效页码，可以根据业务逻辑保留 null 或赋予默认值
+                    currentMap.put(null, content);
+                }
             }
+
+            // 2. 更新 nextValidKey：取当前 Map 中第一个非空的 Key，使用 findFirst() 代替 min() 以保持插入顺序/自然出现顺序
+            nextValidKey = currentMap.keySet().stream()
+                    .filter(Objects::nonNull)
+                    .findFirst()         // 取得第一个出现的有效键
+                    .orElse(nextValidKey); // 如果当前 Map 全空，则沿用后面的有效键
         }
     }
 
