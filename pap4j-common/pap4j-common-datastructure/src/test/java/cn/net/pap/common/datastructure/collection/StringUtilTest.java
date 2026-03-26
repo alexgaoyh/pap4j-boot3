@@ -129,4 +129,34 @@ public class StringUtilTest {
         }
     }
 
+    /**
+     * 黑色菱形问号
+     */
+    @Test
+    public void chineseErrorTest() {
+        String replacementChar = "\uFFFD";
+        System.out.println("直接打印: " + replacementChar);
+    }
+
+    /**
+     * 验证错误解析。
+     */
+    @Test
+    public void chineseCharTest() {
+        String text = "𠮷";
+        System.out.println("原始字符串: " + text);
+        System.out.println("字符串长度 (char count): " + text.length());
+        char high = text.charAt(0);
+        System.out.println("仅打印高位: [" + high + "]");
+        char low = text.charAt(1);
+        System.out.println("仅打印低位: [" + low + "]");
+        try {
+            byte[] bytes = "中".getBytes("UTF-8");
+            String broken = new String(bytes, 0, 2, "UTF-8");
+            System.out.println("UTF-8截断导致的乱码: " + broken);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 }
