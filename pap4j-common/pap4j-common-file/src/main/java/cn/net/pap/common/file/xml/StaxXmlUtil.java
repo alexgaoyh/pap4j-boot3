@@ -1,6 +1,8 @@
 package cn.net.pap.common.file.xml;
 
 import cn.net.pap.common.file.util.BinaryConvertUtil;
+import cn.net.pap.common.file.xml.record.ParseResult;
+import cn.net.pap.common.file.xml.record.RefInfo;
 import com.ibm.icu.text.BreakIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -786,7 +788,8 @@ public class StaxXmlUtil {
      * 解析并转换带有自定义属性的 XML 字符串。
      *
      * <p>该方法基于 StAX (Streaming API for XML) 流式解析给定的 XML 文本，并对不同的标签类别执行特定的 HTML 转换逻辑。
-     * 核心功能包括：标签替换、属性重命名、标点符号特殊格式化，以及将普通文本节点拆分并与外部属性集合按字符下标进行绑定。</p>
+     * 核心功能包括：标签替换、属性重命名、标点符号特殊格式化，以及将普通文本节点拆分并与外部属性集合按字符下标进行绑定。
+     * 此外，该方法还会提取所有包含 <code>refid</code> 属性的标签及其对应的值，封装为自定义对象列表返回。</p>
      *
      * <h3>处理逻辑详情：</h3>
      * <ul>
@@ -797,7 +800,8 @@ public class StaxXmlUtil {
      *   <li><strong>普通标签转换：</strong>其它非根、非标点、非保留的标签，统一转换为 <code>&lt;span&gt;</code>。
      *       <ul>
      *           <li>原标签名将作为 <code>data-entity-type</code> 的属性值。</li>
-     *           <li>若包含 <code>refid</code> 属性，则将其重命名为 <code>data-id</code>，并在值前拼接 <code>dataIdPrefix + "|"</code>。</li>
+     *           <li>若包含 <code>refid</code> 属性，则将其重命名为 <code>data-id</code>，并在值前拼接 <code>dataIdPrefix + "|"</code>。
+     *               同时，将标签名与 <code>refid</code> 的值封装并加入统计列表中。</li>
      *           <li>其它属性原样保留。</li>
      *       </ul>
      *   </li>
@@ -811,13 +815,13 @@ public class StaxXmlUtil {
      * @param attrList         自定义属性列表。用于为拆分后的单个字符赋予特定属性，其索引需要与处理的文本流字符顺序对齐（不可为 null）。
      * @param punctuationTags  标点符号标签名称集合（例如："comma", "period" 等）。匹配的标签将采用特殊的 <code>span.punctuation</code> 格式渲染。
      * @param dataIdPrefix     用于拼接在 <code>refid</code> 转换而来的 <code>data-id</code> 属性值前方的前缀字符串。
-     * @return                 解析并转换完成的 HTML/XML 字符串。
+     * @return                 包含解析结果字符串以及 refid 统计信息的 ParseResult。
      * @throws IllegalArgumentException 如果传入的 <code>attrList</code> 为 null，则抛出此异常。
      * @throws RuntimeException         如果在 StAX 解析过程中发生异常，将会被捕获并包装为此运行时异常抛出。
      */
-    public static String parseXMLWithCustomAttributes(String xmlString, String rootTag, Set<String> keepOriginalTags, List<Map<String, String>> attrList, Set<String> punctuationTags, String dataIdPrefix) {
+    public static ParseResult parseXMLWithCustomAttributes(String xmlString, String rootTag, Set<String> keepOriginalTags, List<Map<String, String>> attrList, Set<String> punctuationTags, String dataIdPrefix) {
         if (xmlString == null || xmlString.isBlank()) {
-            return xmlString;
+            return new ParseResult(xmlString, new ArrayList<>());
         }
 
         if (attrList == null) {
@@ -836,6 +840,8 @@ public class StaxXmlUtil {
         // [新增] 状态变量：用于缓存当前正在解析的标点标签名称和内部文本
         String currentPuncTag = null;
         StringBuilder puncTextBuffer = new StringBuilder();
+
+        List<RefInfo> refList = new ArrayList<>();
 
         XMLStreamReader reader = null;
         try {
@@ -876,6 +882,8 @@ public class StaxXmlUtil {
                         result.append("<span data-entity-type=\"").append(tagName).append("\"");
                         for (int i = 0; i < reader.getAttributeCount(); i++) {
                             if(reader.getAttributeLocalName(i).equals("refid")) {
+                                refList.add(new RefInfo(tagName, reader.getAttributeValue(i)));
+
                                 result.append(" ").append("data-id")
                                         .append("=\"").append(dataIdPrefix + "|" + escapeXml(reader.getAttributeValue(i))).append("\"");
                             } else {
@@ -940,7 +948,7 @@ public class StaxXmlUtil {
                 }
             }
         }
-        return result.toString();
+        return new ParseResult(result.toString(), refList);
     }
 
     /**
