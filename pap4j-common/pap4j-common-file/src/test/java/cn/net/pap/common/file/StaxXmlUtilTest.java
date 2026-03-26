@@ -277,6 +277,11 @@ public class StaxXmlUtilTest {
             }
             String s = StaxXmlUtil.parseXMLWithCustomAttributes(zhengwen, "zhengwen", new HashSet<>(), biaoshiMapList);
             System.out.println(s);
+            System.out.println();
+            String s2 = StaxXmlUtil.parseXMLWithCustomAttributes(zhengwen, null, new HashSet<>(), biaoshiMapList);
+            System.out.println(s2);
+            System.out.println("==================================");
+
         }
 
     }

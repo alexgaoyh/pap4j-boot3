@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -675,14 +676,20 @@ public class StaxXmlUtil {
     }
 
     /**
-     * 基于 parseXMLInRootAndOriginalTags 改造：
-     * 移除 charSeq，改为按字符顺序从传入的 List<Map<String, String>> 中获取属性，并注入到字符包装标签中。
+     * 解析并转换 XML/HTML 片段，按字符顺序为文本内容注入自定义属性。
+     * <p>
+     * 本方法基于 StAX 解析，将文本节点拆解，并从 {@code attrList} 中按序获取对应的属性注入到字符包装标签中。
+     * 未指定的普通标签将被统一转换为 {@code <span>}（可用于 HTML 渲染），而指定保留的标签则原样输出。
+     * </p>
      *
-     * @param xmlString        原始 XML 字符串
-     * @param rootTag          根标签名（例如 content、body）
-     * @param keepOriginalTags 需要保持原样输出的标签集合（如 anchor、ref）
-     * @param attrList         按字符顺序对应的属性 Map 列表
-     * @return 转换后的 XML 字符串
+     * @param xmlString        原始的 XML 或 HTML 片段字符串。注意：输入必须是结构良好的格式（需包含一个顶层闭合节点）。
+     * @param rootTag          期望输出的外层包装标签名（例如 "content"、"body" 或 "div"）。
+     *                         <b>特性：</b>如果传入 {@code null} 或空字符串，则只输出内部转换后的内容片段，
+     *                         不会生成外层包装标签，并在解析时自动剥离掉输入字符串的实际根节点。
+     * @param keepOriginalTags 需要保持原样输出、不被转换为 {@code span} 的 HTML/XML 标签集合（如 "anchor"、"br"、"img" 等）。
+     *                         注意：不可为 null，若无需要保留的标签请传入空集合。
+     * @param attrList         按纯文本字符顺序对应的属性 Map 列表（用于给每个字符包装节点赋加属性）。
+     * @return 转换并注入属性后的 XML/HTML 字符串
      */
     public static String parseXMLWithCustomAttributes(String xmlString, String rootTag, Set<String> keepOriginalTags, List<Map<String, String>> attrList) {
         if (xmlString == null || xmlString.isBlank()) {
@@ -693,7 +700,13 @@ public class StaxXmlUtil {
             throw new IllegalArgumentException("attrList cannot be null");
         }
 
-        StringBuilder result = new StringBuilder("<").append(rootTag).append(">");
+        boolean hasRootTag = rootTag != null && !rootTag.isBlank();
+        StringBuilder result = new StringBuilder();
+        if (hasRootTag) {
+            result.append("<").append(rootTag).append(">");
+        }
+        // 如果没传 rootTag，则先置空，后续动态捕获解析到的第一个标签
+        String actualRootTag = hasRootTag ? rootTag : null;
         int charIndex = 0; // 用于追踪当前字符在 attrList 中的全局下标
 
         XMLStreamReader reader = null;
@@ -706,12 +719,16 @@ public class StaxXmlUtil {
 
                 if (event == XMLStreamConstants.START_ELEMENT) {
                     String tagName = reader.getLocalName();
+                    // 如果没传 rootTag，将遇到的第一个标签记为需要忽略的根标签
+                    if (actualRootTag == null) {
+                        actualRootTag = tagName;
+                    }
                     // 根标签：忽略
-                    if (rootTag.equals(tagName)) {
+                    if (actualRootTag.equals(tagName)) {
                         continue;
                     }
                     // 原样保留的标签（如 anchor）
-                    if (keepOriginalTags.contains(tagName)) {
+                    if (keepOriginalTags != null && keepOriginalTags.contains(tagName)) {
                         result.append("<").append(tagName);
                         for (int i = 0; i < reader.getAttributeCount(); i++) {
                             result.append(" ").append(reader.getAttributeLocalName(i))
@@ -730,8 +747,8 @@ public class StaxXmlUtil {
 
                 } else if (event == XMLStreamConstants.END_ELEMENT) {
                     String tagName = reader.getLocalName();
-                    if (!rootTag.equals(tagName)) {
-                        if (keepOriginalTags.contains(tagName)) {
+                    if (!tagName.equals(actualRootTag)) {
+                        if (keepOriginalTags != null && keepOriginalTags.contains(tagName)) {
                             result.append("</").append(tagName).append(">");
                         } else {
                             result.append("</span>");
@@ -746,7 +763,9 @@ public class StaxXmlUtil {
                 }
             }
             // 移除了原本放在 try 块末尾冗余的 reader.close(); ，统一交由 finally 处理
-            result.append("</").append(rootTag).append(">");
+            if (hasRootTag) {
+                result.append("</").append(rootTag).append(">");
+            }
         } catch (Exception e) {
             log.error("StAX 解析失败", e);
             throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
