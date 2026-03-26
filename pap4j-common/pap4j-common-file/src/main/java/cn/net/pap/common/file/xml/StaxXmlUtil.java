@@ -1,5 +1,6 @@
 package cn.net.pap.common.file.xml;
 
+import cn.net.pap.common.file.util.BinaryConvertUtil;
 import com.ibm.icu.text.BreakIterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -779,6 +780,223 @@ public class StaxXmlUtil {
             }
         }
         return result.toString();
+    }
+
+    /**
+     * 解析并转换带有自定义属性的 XML 字符串。
+     *
+     * <p>该方法基于 StAX (Streaming API for XML) 流式解析给定的 XML 文本，并对不同的标签类别执行特定的 HTML 转换逻辑。
+     * 核心功能包括：标签替换、属性重命名、标点符号特殊格式化，以及将普通文本节点拆分并与外部属性集合按字符下标进行绑定。</p>
+     *
+     * <h3>处理逻辑详情：</h3>
+     * <ul>
+     *   <li><strong>根节点处理：</strong>如果传入了 <code>rootTag</code>，最终结果将被该标签包裹。如果未传，自动将 XML 中的第一个标签视作根标签并忽略它，不在结果中输出。</li>
+     *   <li><strong>标点符号标签 (Punctuation Tags)：</strong>若标签名在 <code>punctuationTags</code> 集合中，内部文本将被缓存。结束时会被统一转换为特定的 span 结构：
+     *       <code>&lt;span class="punctuation" data-[标签名]="[内部文本]" data-segment="〇"&gt;[内部文本]&lt;/span&gt;</code>。</li>
+     *   <li><strong>原样保留标签 (Keep Original Tags)：</strong>若标签名在 <code>keepOriginalTags</code> 集合中（如 anchor 等），则该标签及其属性将原样输出。</li>
+     *   <li><strong>普通标签转换：</strong>其它非根、非标点、非保留的标签，统一转换为 <code>&lt;span&gt;</code>。
+     *       <ul>
+     *           <li>原标签名将作为 <code>data-entity-type</code> 的属性值。</li>
+     *           <li>若包含 <code>refid</code> 属性，则将其重命名为 <code>data-id</code>，并在值前拼接 <code>dataIdPrefix + "|"</code>。</li>
+     *           <li>其它属性原样保留。</li>
+     *       </ul>
+     *   </li>
+     *   <li><strong>文本字符映射：</strong>对于普通的文本内容（非标点符号内部文本），通过调用 <code>wrapEachCharacterWithAttributes</code>
+     *       方法，将文本按字符粒度拆分，并依据全局游标 <code>charIndex</code> 从 <code>attrList</code> 中获取并拼装相应的自定义属性。</li>
+     * </ul>
+     *
+     * @param xmlString        需要解析的源 XML 字符串。如果为空或 blank，则直接原样返回。
+     * @param rootTag          自定义的输出根标签名。如果不为空，则用其包裹最终结果；如果为空，则丢弃源 XML 的外层标签。
+     * @param keepOriginalTags 需要原样保留的标签名称集合（不转为 span）。
+     * @param attrList         自定义属性列表。用于为拆分后的单个字符赋予特定属性，其索引需要与处理的文本流字符顺序对齐（不可为 null）。
+     * @param punctuationTags  标点符号标签名称集合（例如："comma", "period" 等）。匹配的标签将采用特殊的 <code>span.punctuation</code> 格式渲染。
+     * @param dataIdPrefix     用于拼接在 <code>refid</code> 转换而来的 <code>data-id</code> 属性值前方的前缀字符串。
+     * @return                 解析并转换完成的 HTML/XML 字符串。
+     * @throws IllegalArgumentException 如果传入的 <code>attrList</code> 为 null，则抛出此异常。
+     * @throws RuntimeException         如果在 StAX 解析过程中发生异常，将会被捕获并包装为此运行时异常抛出。
+     */
+    public static String parseXMLWithCustomAttributes(String xmlString, String rootTag, Set<String> keepOriginalTags, List<Map<String, String>> attrList, Set<String> punctuationTags, String dataIdPrefix) {
+        if (xmlString == null || xmlString.isBlank()) {
+            return xmlString;
+        }
+
+        if (attrList == null) {
+            throw new IllegalArgumentException("attrList cannot be null");
+        }
+
+        boolean hasRootTag = rootTag != null && !rootTag.isBlank();
+        StringBuilder result = new StringBuilder();
+        if (hasRootTag) {
+            result.append("<").append(rootTag).append(">");
+        }
+        // 如果没传 rootTag，则先置空，后续动态捕获解析到的第一个标签
+        String actualRootTag = hasRootTag ? rootTag : null;
+        int charIndex = 0; // 用于追踪当前字符在 attrList 中的全局下标
+
+        // [新增] 状态变量：用于缓存当前正在解析的标点标签名称和内部文本
+        String currentPuncTag = null;
+        StringBuilder puncTextBuffer = new StringBuilder();
+
+        XMLStreamReader reader = null;
+        try {
+            // 复用类中已有的 factory
+            reader = factory.createXMLStreamReader(new StringReader(xmlString));
+
+            while (reader.hasNext()) {
+                int event = reader.next();
+
+                if (event == XMLStreamConstants.START_ELEMENT) {
+                    String tagName = reader.getLocalName();
+                    // 如果没传 rootTag，将遇到的第一个标签记为需要忽略的根标签
+                    if (actualRootTag == null) {
+                        actualRootTag = tagName;
+                    }
+                    // 根标签：忽略
+                    if (actualRootTag.equals(tagName)) {
+                        continue;
+                    }
+
+                    // [新增] 标点符号标签：记录状态并清空文本缓存，不拼接任何起始标签
+                    if (punctuationTags != null && punctuationTags.contains(tagName)) {
+                        currentPuncTag = tagName;
+                        puncTextBuffer.setLength(0);
+                        continue;
+                    }
+
+                    // 原样保留的标签（如 anchor）
+                    if (keepOriginalTags != null && keepOriginalTags.contains(tagName)) {
+                        result.append("<").append(tagName);
+                        for (int i = 0; i < reader.getAttributeCount(); i++) {
+                            result.append(" ").append(reader.getAttributeLocalName(i))
+                                    .append("=\"").append(escapeXml(reader.getAttributeValue(i))).append("\"");
+                        }
+                        result.append(">");
+                    } else {
+                        // 其它标签统一转为 span
+                        result.append("<span data-entity-type=\"").append(tagName).append("\"");
+                        for (int i = 0; i < reader.getAttributeCount(); i++) {
+                            if(reader.getAttributeLocalName(i).equals("refid")) {
+                                result.append(" ").append("data-id")
+                                        .append("=\"").append(dataIdPrefix + "|" + escapeXml(reader.getAttributeValue(i))).append("\"");
+                            } else {
+                                result.append(" ").append(reader.getAttributeLocalName(i))
+                                        .append("=\"").append(escapeXml(reader.getAttributeValue(i))).append("\"");
+                            }
+                        }
+                        result.append(">");
+                    }
+
+                } else if (event == XMLStreamConstants.END_ELEMENT) {
+                    String tagName = reader.getLocalName();
+                    if (!tagName.equals(actualRootTag)) {
+
+                        // [新增] 标点符号结束：此时文本已收集完毕，执行一次性拼装
+                        if (currentPuncTag != null && currentPuncTag.equals(tagName)) {
+                            String puncText = puncTextBuffer.toString();
+                            // 组装格式：<span class="punctuation" data-comma="，" data-segment="〇">，</span>
+                            result.append("<span class=\"punctuation\" data-")
+                                    .append(tagName) // 动态取自标签名
+                                    .append("=\"").append(puncText).append("\"") // 动态取自标签内部文本
+                                    .append(" data-segment=\"〇\">")
+                                    .append(puncText)
+                                    .append("</span>");
+                            currentPuncTag = null; // 重置状态
+                        }
+                        // 原有逻辑保持不变
+                        else if (keepOriginalTags != null && keepOriginalTags.contains(tagName)) {
+                            result.append("</").append(tagName).append(">");
+                        } else {
+                            result.append("</span>");
+                        }
+                    }
+                } else if (event == XMLStreamConstants.CHARACTERS) {
+                    String text = reader.getText();
+                    // 去掉了 .trim()，只验证非空 (!text.isEmpty()) 必须把包含了空格、换行的原生 text 交给下游方法，否则字符下标无法对齐
+                    if (text != null && !text.isEmpty()) {
+
+                        // [新增] 处于标点标签内部时，不走 wrapper 逻辑，仅缓存文本并推进下标
+                        if (currentPuncTag != null) {
+                            puncTextBuffer.append(text);
+                            charIndex += text.length(); // 保证遇到标点时，游标也能对齐你的 attrList
+                        } else {
+                            // 原有逻辑
+                            charIndex = wrapEachCharacterWithAttributes(text, result, charIndex, attrList);
+                        }
+                    }
+                }
+            }
+            if (hasRootTag) {
+                result.append("</").append(rootTag).append(">");
+            }
+        } catch (Exception e) {
+            log.error("StAX 解析失败", e);
+            throw new RuntimeException("StAX 解析失败: " + e.getMessage(), e);
+        } finally {
+            if (reader != null) {
+                try {
+                    reader.close();
+                } catch (Exception e) {
+                    log.warn("关闭 XMLStreamReader 失败", e);
+                }
+            }
+        }
+        return result.toString();
+    }
+
+    /**
+     * 根据宽高和百分比坐标字符串，计算具体的绝对值坐标
+     *
+     * @param rectStr 矩形百分比坐标，格式如 "93.32%,14.93%,1.86%,2.65%"
+     * @param width   画布或页面的实际宽度
+     * @param height  画布或页面的实际高度
+     * @return 逗号分割的绝对值坐标字符串，例如 "933.20,149.30,18.60,26.50"
+     */
+    public static String calculateAbsoluteCoords(String rectStr, double width, double height) {
+        if (rectStr == null || rectStr.trim().isEmpty()) {
+            return "";
+        }
+
+        String[] parts = rectStr.split(",");
+        // 确保数据格式是合法的 x, y, w, h 四个值
+        if (parts.length != 4) {
+            return "";
+        }
+
+        try {
+            BigDecimal bdWidth = BigDecimal.valueOf(width);
+            BigDecimal bdHeight = BigDecimal.valueOf(height);
+            BigDecimal divisor = new BigDecimal("100");
+
+            // 提取数值并去除 % 号，先除以 100 转为小数比例，再乘以对应的宽高
+            // x (索引 0) 乘以 width
+            BigDecimal x = new BigDecimal(parts[0].replace("%", "").trim())
+                    .divide(divisor, 6, RoundingMode.HALF_UP)
+                    .multiply(bdWidth).setScale(2, RoundingMode.HALF_UP);
+
+            // y (索引 1) 乘以 height
+            BigDecimal y = new BigDecimal(parts[1].replace("%", "").trim())
+                    .divide(divisor, 6, RoundingMode.HALF_UP)
+                    .multiply(bdHeight).setScale(2, RoundingMode.HALF_UP);
+
+            // w (索引 2) 乘以 width
+            BigDecimal w = new BigDecimal(parts[2].replace("%", "").trim())
+                    .divide(divisor, 6, RoundingMode.HALF_UP)
+                    .multiply(bdWidth).setScale(2, RoundingMode.HALF_UP);
+
+            // h (索引 3) 乘以 height
+            BigDecimal h = new BigDecimal(parts[3].replace("%", "").trim())
+                    .divide(divisor, 6, RoundingMode.HALF_UP)
+                    .multiply(bdHeight).setScale(2, RoundingMode.HALF_UP);
+
+            // 重新拼接为字符串返回 (使用 toPlainString 避免科学计数法)
+            return BinaryConvertUtil.dToB62(x.longValue()) + "," + BinaryConvertUtil.dToB62(y.longValue()) + "," +
+                    BinaryConvertUtil.dToB62(w.longValue()) + "," + BinaryConvertUtil.dToB62(h.longValue());
+
+        } catch (NumberFormatException e) {
+            // 捕获异常，防止脏数据导致程序崩溃
+            System.err.println("坐标转换失败，非法的数据格式: " + rectStr);
+            return "";
+        }
     }
 
     /**
