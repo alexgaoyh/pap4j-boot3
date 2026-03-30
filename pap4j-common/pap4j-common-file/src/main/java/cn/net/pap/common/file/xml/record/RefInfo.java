@@ -5,6 +5,7 @@ package cn.net.pap.common.file.xml.record;
  *
  * @param type  标签类型 (tagName)
  * @param value 类型值 (refid)
+ * @param nodeValue 节点内部的值
  */
-public record RefInfo(String type, String value) {
+public record RefInfo(String type, String value, String nodeValue) {
 }

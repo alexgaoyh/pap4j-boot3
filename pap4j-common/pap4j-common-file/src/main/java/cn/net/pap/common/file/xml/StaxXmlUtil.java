@@ -841,6 +841,11 @@ public class StaxXmlUtil {
         String currentPuncTag = null;
         StringBuilder puncTextBuffer = new StringBuilder();
 
+        // 状态变量：不再提前缓存 RefInfo 对象，而是缓存属性，等文本收集完毕再实例化
+        String currentRefType = null;
+        String currentRefValue = null;
+        StringBuilder refTextBuffer = new StringBuilder();
+
         List<RefInfo> refList = new ArrayList<>();
 
         XMLStreamReader reader = null;
@@ -882,7 +887,10 @@ public class StaxXmlUtil {
                         result.append("<span data-entity-type=\"").append(tagName).append("\"");
                         for (int i = 0; i < reader.getAttributeCount(); i++) {
                             if(reader.getAttributeLocalName(i).equals("refid")) {
-                                refList.add(new RefInfo(tagName, reader.getAttributeValue(i)));
+                                // 暂存 type 和 value，并清空文本缓存，等待 END_ELEMENT 时再实例化
+                                currentRefType = tagName;
+                                currentRefValue = reader.getAttributeValue(i);
+                                refTextBuffer.setLength(0);
 
                                 result.append(" ").append("data-id")
                                         .append("=\"").append(dataIdPrefix + "|" + escapeXml(reader.getAttributeValue(i))).append("\"");
@@ -896,6 +904,15 @@ public class StaxXmlUtil {
 
                 } else if (event == XMLStreamConstants.END_ELEMENT) {
                     String tagName = reader.getLocalName();
+
+                    // 遇到带 refid 的标签结束：文本收集完毕，此时一次性实例化 RefInfo record 并加入集合
+                    if (currentRefType != null && currentRefType.equals(tagName)) {
+                        refList.add(new RefInfo(currentRefType, currentRefValue, refTextBuffer.toString()));
+                        // 重置状态，避免影响后续节点
+                        currentRefType = null;
+                        currentRefValue = null;
+                    }
+
                     if (!tagName.equals(actualRootTag)) {
 
                         // [新增] 标点符号结束：此时文本已收集完毕，执行一次性拼装
@@ -921,6 +938,11 @@ public class StaxXmlUtil {
                     String text = reader.getText();
                     // 去掉了 .trim()，只验证非空 (!text.isEmpty()) 必须把包含了空格、换行的原生 text 交给下游方法，否则字符下标无法对齐
                     if (text != null && !text.isEmpty()) {
+
+                        // 如果当前处于带有 refid 的标签内部，追加收集文本
+                        if (currentRefType != null) {
+                            refTextBuffer.append(text);
+                        }
 
                         // [新增] 处于标点标签内部时，不走 wrapper 逻辑，仅缓存文本并推进下标
                         if (currentPuncTag != null) {
