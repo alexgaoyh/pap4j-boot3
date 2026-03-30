@@ -2,7 +2,7 @@ package cn.net.pap.example.proguard.entity;
 
 import cn.net.pap.example.proguard.convert.JsonConverter;
 import cn.net.pap.example.proguard.convert.JsonTypeConvert;
-import cn.net.pap.example.proguard.listener.TransactionCompletionListener;
+import cn.net.pap.example.proguard.listener.EntityDebugLoggerListener;
 import com.fasterxml.jackson.annotation.JsonRawValue;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -19,7 +19,7 @@ import java.util.Map;
 @Entity
 @Table(name = "proguard")
 @org.hibernate.envers.Audited
-@EntityListeners(TransactionCompletionListener.class)
+@EntityListeners(EntityDebugLoggerListener.class)
 public class Proguard {
 
     @Id
