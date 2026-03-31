@@ -254,10 +254,13 @@ public class HttpTest {
                     .POST(HttpRequest.BodyPublishers.ofString(jsonBody == null ? "" : jsonBody))
                     .timeout(Duration.ofSeconds(3))
                     .build();
-            // 发送即结束
-            CLIENT.sendAsync(request, HttpResponse.BodyHandlers.discarding());
+            CLIENT.sendAsync(request, HttpResponse.BodyHandlers.discarding()).exceptionally(e -> {
+                log.warn("sendPostBlindly", e);
+                return null;
+            });;
             return true;
         } catch (Exception ignore) {
+            log.warn("sendPostBlindly", ignore);
             // 默默吞掉异常
             return false;
         }
