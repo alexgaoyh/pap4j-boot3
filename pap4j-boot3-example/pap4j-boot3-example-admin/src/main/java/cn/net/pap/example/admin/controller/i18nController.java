@@ -5,15 +5,16 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RestController;
 
-import org.springframework.beans.factory.annotation.Autowired;
-
 import java.util.Locale;
 
 @RestController
 public class i18nController {
 
-    @Autowired
-    private MessageSource messageSource;
+    private final MessageSource messageSource;
+
+    public i18nController(MessageSource messageSource) {
+        this.messageSource = messageSource;
+    }
 
     @GetMapping("/greeting")
     public String greeting(@RequestHeader(value = "Accept-Language", required = false) Locale locale) {

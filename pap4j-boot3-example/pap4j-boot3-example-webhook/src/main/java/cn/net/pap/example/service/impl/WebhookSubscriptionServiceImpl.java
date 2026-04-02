@@ -3,7 +3,6 @@ package cn.net.pap.example.service.impl;
 import cn.net.pap.example.entity.WebhookSubscription;
 import cn.net.pap.example.repository.WebhookSubscriptionRepository;
 import cn.net.pap.example.service.IWebhookSubscriptionService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -11,8 +10,11 @@ import java.util.List;
 @Service
 public class WebhookSubscriptionServiceImpl implements IWebhookSubscriptionService {
 
-    @Autowired
-    private WebhookSubscriptionRepository subscriptionRepository;
+    private final WebhookSubscriptionRepository subscriptionRepository;
+
+    public WebhookSubscriptionServiceImpl(WebhookSubscriptionRepository subscriptionRepository) {
+        this.subscriptionRepository = subscriptionRepository;
+    }
 
     /**
      * 根据事件类型获取活跃的订阅

@@ -3,7 +3,6 @@ package cn.net.pap.example.proguard.controller;
 import cn.net.pap.example.proguard.entity.AutoIncrePreKey;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
 import cn.net.pap.example.proguard.service.IDeadlockRetryDemoService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -12,11 +11,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/retry")
 public class DeadLockRetryDemoController {
 
-    @Autowired
-    private IDeadlockRetryDemoService deadlockRetryDemoService;
+    private final IDeadlockRetryDemoService deadlockRetryDemoService;
 
-    @Autowired
-    private IAutoIncrePreKeyService autoIncrePreKeyService;
+    private final IAutoIncrePreKeyService autoIncrePreKeyService;
+
+    public DeadLockRetryDemoController(IDeadlockRetryDemoService deadlockRetryDemoService, IAutoIncrePreKeyService autoIncrePreKeyService) {
+        this.deadlockRetryDemoService = deadlockRetryDemoService;
+        this.autoIncrePreKeyService = autoIncrePreKeyService;
+    }
 
     @GetMapping("/insert")
     public String insert() throws InterruptedException {

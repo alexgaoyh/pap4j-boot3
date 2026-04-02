@@ -2,25 +2,24 @@ package cn.net.pap.neo4j;
 
 import cn.net.pap.neo4j.entity.HobbyEntity;
 import cn.net.pap.neo4j.repository.HobbyRepository;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.neo4j.driver.internal.value.NodeValue;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.*;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {Neo4jApplication.class})
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class HobbyEntityTest {
 
-    @Autowired
-    private HobbyRepository hobbyRepository;
+    private final HobbyRepository hobbyRepository;
+    private final Neo4jClient neo4jClient;
 
-    @Autowired
-    private Neo4jClient neo4jClient;
+    public HobbyEntityTest(HobbyRepository hobbyRepository, Neo4jClient neo4jClient) {
+        this.hobbyRepository = hobbyRepository;
+        this.neo4jClient = neo4jClient;
+    }
 
     // @Test
     public void inertTest() {

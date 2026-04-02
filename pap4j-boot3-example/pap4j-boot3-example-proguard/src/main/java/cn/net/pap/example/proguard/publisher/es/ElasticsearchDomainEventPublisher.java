@@ -1,6 +1,5 @@
 package cn.net.pap.example.proguard.publisher.es;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
@@ -9,8 +8,11 @@ import java.util.List;
 @Component
 public class ElasticsearchDomainEventPublisher {
 
-    @Autowired
-    private ApplicationEventPublisher publisher;
+    private final ApplicationEventPublisher publisher;
+
+    public ElasticsearchDomainEventPublisher(ApplicationEventPublisher publisher) {
+        this.publisher = publisher;
+    }
 
     /**
      * 单条

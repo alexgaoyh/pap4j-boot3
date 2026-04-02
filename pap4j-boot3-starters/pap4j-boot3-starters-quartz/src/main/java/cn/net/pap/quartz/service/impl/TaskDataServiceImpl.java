@@ -5,7 +5,6 @@ import cn.net.pap.quartz.repository.TaskDataRepository;
 import cn.net.pap.quartz.service.ITaskDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,8 +21,11 @@ public class TaskDataServiceImpl implements ITaskDataService {
 
     private static final Logger log = LoggerFactory.getLogger(TaskDataServiceImpl.class);
 
-    @Autowired(required = false)
-    private TaskDataRepository taskDataRepository;
+    private final TaskDataRepository taskDataRepository;
+
+    public TaskDataServiceImpl(TaskDataRepository taskDataRepository) {
+        this.taskDataRepository = taskDataRepository;
+    }
 
     private static final int BATCH_SIZE = 10;
 

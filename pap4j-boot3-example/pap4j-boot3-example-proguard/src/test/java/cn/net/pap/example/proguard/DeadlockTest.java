@@ -7,12 +7,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.junit.jupiter.api.Test;
-import org.junit.runner.RunWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -22,14 +20,17 @@ import java.util.concurrent.*;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class DeadlockTest {
 
     private static final Logger log = LoggerFactory.getLogger(DeadlockTest.class);
 
-    @Autowired
-    private IProguardService proguardService;
+    private final IProguardService proguardService;
+
+    public DeadlockTest(IProguardService proguardService) {
+        this.proguardService = proguardService;
+    }
 
     // @Test
     void testDeadlock() throws InterruptedException {

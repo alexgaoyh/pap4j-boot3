@@ -1,18 +1,15 @@
 package cn.net.pap.quartz;
 
 import cn.net.pap.quartz.util.BeanMethodInvoker;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterAll;
-import org.junit.runner.RunWith;
 import cn.net.pap.quartz.entity.TaskData;
 import cn.net.pap.quartz.service.ITaskDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.List;
 import java.util.Map;
@@ -28,19 +25,20 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {QuartzAutoConfiguration.class})
 @TestPropertySource("classpath:application.properties")
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class TaskDataTest {
 
     private static final Logger logger = LoggerFactory.getLogger(TaskDataTest.class);
 
-    @Autowired
-    private ITaskDataService taskDataService;
+    private final ITaskDataService taskDataService;
+    private final ApplicationContext applicationContext;
 
-    @Autowired
-    private ApplicationContext applicationContext;
-
+    public TaskDataTest(ITaskDataService taskDataService, ApplicationContext applicationContext) {
+        this.taskDataService = taskDataService;
+        this.applicationContext = applicationContext;
+    }
     public static final ExecutorService executor = new ThreadPoolExecutor(
             20,
             20,

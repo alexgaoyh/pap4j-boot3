@@ -7,7 +7,6 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -32,8 +31,11 @@ import java.util.Map;
 @ConditionalOnClass(RedisOperations.class)
 public class CacheableFieldAspect {
 
-    @Autowired
-    private CacheManager cacheManager;
+    private final CacheManager cacheManager;
+
+    public CacheableFieldAspect(CacheManager cacheManager) {
+        this.cacheManager = cacheManager;
+    }
 
     @Around(value = "@annotation(cn.net.pap.cache.annotation.CacheableField)")
     public Object cacheable(ProceedingJoinPoint pjp) throws Throwable {

@@ -3,23 +3,23 @@ package cn.net.pap.example.proguard;
 import cn.net.pap.example.proguard.entity.AutoIncrePreKey;
 import cn.net.pap.example.proguard.repository.AutoIncrePreKeyRepository;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 
 import java.util.List;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class AutoIncrePreKeyTest {
 
-    @Autowired
-    private IAutoIncrePreKeyService autoIncrePreKeyService;
+    private final IAutoIncrePreKeyService autoIncrePreKeyService;
+    private final AutoIncrePreKeyRepository autoIncrePreKeyRepository;
 
-    @Autowired
-    private AutoIncrePreKeyRepository autoIncrePreKeyRepository;
+    public AutoIncrePreKeyTest(IAutoIncrePreKeyService autoIncrePreKeyService, AutoIncrePreKeyRepository autoIncrePreKeyRepository) {
+        this.autoIncrePreKeyService = autoIncrePreKeyService;
+        this.autoIncrePreKeyRepository = autoIncrePreKeyRepository;
+    }
 
     @Test
     public void preKeyTest() throws Exception {

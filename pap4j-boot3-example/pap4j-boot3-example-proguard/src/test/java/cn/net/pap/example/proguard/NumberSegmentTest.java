@@ -3,18 +3,19 @@ package cn.net.pap.example.proguard;
 import cn.net.pap.example.proguard.entity.NumberSegment;
 import cn.net.pap.example.proguard.service.impl.NumberSegmentService;
 import cn.net.pap.example.proguard.util.NumberSegmentUtil;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class NumberSegmentTest {
 
-    @Autowired
-    private NumberSegmentService numberSegmentService;
+    private final NumberSegmentService numberSegmentService;
+
+    public NumberSegmentTest(NumberSegmentService numberSegmentService) {
+        this.numberSegmentService = numberSegmentService;
+    }
 
     @Test
     public void segmentTest() {

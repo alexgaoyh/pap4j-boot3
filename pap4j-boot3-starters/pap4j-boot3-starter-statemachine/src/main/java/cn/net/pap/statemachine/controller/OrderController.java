@@ -3,7 +3,7 @@ package cn.net.pap.statemachine.controller;
 import cn.net.pap.statemachine.entity.Order;
 import cn.net.pap.statemachine.enums.OrderEvents;
 import cn.net.pap.statemachine.enums.OrderStates;
-import jakarta.annotation.Resource;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
@@ -12,8 +12,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class OrderController {
-    @Resource(name = "orderStateMachine")
-    private StateMachine<OrderStates, OrderEvents> orderStateMachine;
+
+    private final StateMachine<OrderStates, OrderEvents> orderStateMachine;
+
+    public OrderController(@Qualifier("orderStateMachine") StateMachine<OrderStates, OrderEvents> orderStateMachine) {
+        this.orderStateMachine = orderStateMachine;
+    }
 
     @GetMapping("/created")
     public String created() {

@@ -14,7 +14,6 @@ import org.hibernate.query.NativeQuery;
 import org.hibernate.transform.AliasToEntityMapResultTransformer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
@@ -30,7 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -44,17 +42,27 @@ public class ProguardServiceImpl implements IProguardService {
 
     private static final Logger logger = LoggerFactory.getLogger(ProguardServiceImpl.class);
 
-    @Autowired
-    private ProguardRepository proguardRepository;
+    private final ProguardRepository proguardRepository;
 
-    @Autowired
-    private ProguardIdxSeqRepository proguardIdxSeqRepository;
+    private final ProguardIdxSeqRepository proguardIdxSeqRepository;
 
-    @Autowired
-    private ProguardJDBCRepository proguardJDBCRepository;
+    private final ProguardJDBCRepository proguardJDBCRepository;
 
-    @Autowired
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
+
+    private final TransactionTemplate transactionTemplate;
+
+    public ProguardServiceImpl(ProguardRepository proguardRepository,
+                               ProguardIdxSeqRepository proguardIdxSeqRepository,
+                               ProguardJDBCRepository proguardJDBCRepository,
+                               EntityManager entityManager,
+                               TransactionTemplate transactionTemplate) {
+        this.proguardRepository = proguardRepository;
+        this.proguardIdxSeqRepository = proguardIdxSeqRepository;
+        this.proguardJDBCRepository = proguardJDBCRepository;
+        this.entityManager = entityManager;
+        this.transactionTemplate = transactionTemplate;
+    }
 
     @Override
     public List<Proguard> searchAllByProguardName(String proguardName) {
@@ -305,9 +313,6 @@ public class ProguardServiceImpl implements IProguardService {
         }
         return null;
     }
-
-    @Autowired
-    private TransactionTemplate transactionTemplate;
 
     @Override
     public Proguard timeout(Proguard proguard, Long timeMS) {

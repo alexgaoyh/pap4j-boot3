@@ -5,27 +5,29 @@ import cn.net.pap.example.doris.mapper.DorisMapper;
 import cn.net.pap.example.doris.service.DorisService;
 import cn.net.pap.example.doris.service.IDorisTransServiceInMysqlDB;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestConstructor;
 
 import java.util.List;
 
 @SpringBootTest
 @TestMethodOrder(org.junit.jupiter.api.MethodOrderer.OrderAnnotation.class)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class DorisMapperTest {
 
-    @Autowired
-    private DorisMapper dorisMapper;
+    private final DorisMapper dorisMapper;
+    private final DorisService dorisService;
+    private final IDorisTransServiceInMysqlDB dorisTransServiceInMysqlDB;
 
-    @Autowired
-    private DorisService dorisService;
-
-    @Resource(name = "dorisTransServiceInMysqlDB")
-    private IDorisTransServiceInMysqlDB dorisTransServiceInMysqlDB;
+    public DorisMapperTest(DorisMapper dorisMapper, DorisService dorisService, @Qualifier("dorisTransServiceInMysqlDB") IDorisTransServiceInMysqlDB dorisTransServiceInMysqlDB) {
+        this.dorisMapper = dorisMapper;
+        this.dorisService = dorisService;
+        this.dorisTransServiceInMysqlDB = dorisTransServiceInMysqlDB;
+    }
 
     @Test
     @Order(1)

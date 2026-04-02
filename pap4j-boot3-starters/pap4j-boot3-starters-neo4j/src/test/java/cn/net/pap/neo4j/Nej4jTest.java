@@ -9,11 +9,8 @@ import cn.net.pap.neo4j.util.kg.PersonEntity2KGConvert;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,15 +18,17 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {Neo4jApplication.class})
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class Nej4jTest {
 
-    @Autowired
-    private PersonRepository personRepository;
+    private final PersonRepository personRepository;
+    private final HobbyRepository hobbyRepository;
 
-    @Autowired
-    private HobbyRepository hobbyRepository;
+    public Nej4jTest(PersonRepository personRepository, HobbyRepository hobbyRepository) {
+        this.personRepository = personRepository;
+        this.hobbyRepository = hobbyRepository;
+    }
 
     //@Test
     public void insert() {

@@ -3,7 +3,6 @@ package cn.net.pap.drools.service.impl;
 import cn.net.pap.drools.entity.DroolsRule;
 import cn.net.pap.drools.repository.DroolsRuleRepository;
 import cn.net.pap.drools.service.IDroolsRuleService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,8 +11,11 @@ import java.util.Optional;
 @Service
 public class DroolsRuleServiceImpl implements IDroolsRuleService {
 
-    @Autowired
-    private DroolsRuleRepository droolsRuleRepository;
+    private final DroolsRuleRepository droolsRuleRepository;
+
+    public DroolsRuleServiceImpl(DroolsRuleRepository droolsRuleRepository) {
+        this.droolsRuleRepository = droolsRuleRepository;
+    }
 
     @Override
     public DroolsRule findById(Long droolsRuleId) {

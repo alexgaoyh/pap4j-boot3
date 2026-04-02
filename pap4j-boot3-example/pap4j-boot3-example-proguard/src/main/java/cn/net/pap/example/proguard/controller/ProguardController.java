@@ -13,7 +13,6 @@ import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -36,23 +35,26 @@ import java.util.*;
 @RestController
 public class ProguardController {
 
-    @Autowired
-    private IProguardService proguardService;
+    private final IProguardService proguardService;
 
-    @Autowired
-    private DemoProperties demoProperties;
+    private final DemoProperties demoProperties;
 
-    @Autowired
-    private Map<String, Class<?>> entityMappings;
+    private final Map<String, Class<?>> entityMappings;
 
-    @Autowired
-    private EntityManager entityManager;
+    private final EntityManager entityManager;
 
-    @Autowired
-    private TransactionTemplate transactionTemplate;
+    private final TransactionTemplate transactionTemplate;
 
-    @Autowired
-    private ObjectMapper objectMapper;
+    private final ObjectMapper objectMapper;
+
+    public ProguardController(IProguardService proguardService, DemoProperties demoProperties, Map<String, Class<?>> entityMappings, EntityManager entityManager, TransactionTemplate transactionTemplate, ObjectMapper objectMapper) {
+        this.proguardService = proguardService;
+        this.demoProperties = demoProperties;
+        this.entityMappings = entityMappings;
+        this.entityManager = entityManager;
+        this.transactionTemplate = transactionTemplate;
+        this.objectMapper = objectMapper;
+    }
 
     @RequestMapping("/first")
     public String first(HttpServletResponse resp) throws IOException {

@@ -4,15 +4,13 @@ import cn.net.pap.statemachine.enums.OrderEvents;
 import cn.net.pap.statemachine.enums.OrderStates;
 import cn.net.pap.statemachine.repository.OrderRepository;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 
 @Slf4j
 public class OrderAction implements Action<OrderStates, OrderEvents> {
 
-    @Autowired
-    private OrderRepository orderRepository;
+    private final OrderRepository orderRepository;
 
     private OrderStates source;
 
@@ -20,7 +18,8 @@ public class OrderAction implements Action<OrderStates, OrderEvents> {
 
     private OrderEvents event;
 
-    public OrderAction(OrderStates source, OrderStates target, OrderEvents event) {
+    public OrderAction(OrderRepository orderRepository, OrderStates source, OrderStates target, OrderEvents event) {
+        this.orderRepository = orderRepository;
         this.source = source;
         this.target = target;
         this.event = event;

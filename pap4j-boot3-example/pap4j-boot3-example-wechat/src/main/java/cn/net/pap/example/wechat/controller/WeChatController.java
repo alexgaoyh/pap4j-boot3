@@ -5,7 +5,6 @@ import cn.net.pap.example.wechat.service.WeChatService;
 import cn.net.pap.example.wechat.vo.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -16,8 +15,11 @@ public class WeChatController {
 
     private static final Logger logger = LoggerFactory.getLogger(WeChatController.class);
 
-    @Autowired
-    private WeChatService weChatService;
+    private final WeChatService weChatService;
+
+    public WeChatController(WeChatService weChatService) {
+        this.weChatService = weChatService;
+    }
 
 
     @GetMapping(value = "/cgi-bin/user/info")

@@ -1,6 +1,5 @@
 package cn.net.pap.example.proguard.repository;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -15,8 +14,11 @@ import java.sql.SQLException;
 @Repository
 public class ProguardJDBCRepository {
 
-    @Autowired
-    private DataSource dataSource;
+    private final DataSource dataSource;
+
+    public ProguardJDBCRepository(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
 
     public void dataSourcePrintProguardId() {
         try (Connection conn = dataSource.getConnection();

@@ -5,7 +5,6 @@ import cn.net.pap.example.proguard.publisher.es.ElasticSearchSyncEvent;
 import cn.net.pap.example.proguard.publisher.es.ElasticsearchDomainEventPublisher;
 import cn.net.pap.example.proguard.repository.AutoIncrePreKeyRepository;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -25,14 +24,19 @@ import java.util.Map;
 @Service
 public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
 
-    @Autowired
-    private AutoIncrePreKeyRepository autoIncrePreKeyRepository;
+    private final AutoIncrePreKeyRepository autoIncrePreKeyRepository;
 
-    @Autowired
-    private PlatformTransactionManager transactionManager;
+    private final PlatformTransactionManager transactionManager;
 
-    @Autowired
-    private ElasticsearchDomainEventPublisher elasticsearchDomainEventPublisher;
+    private final ElasticsearchDomainEventPublisher elasticsearchDomainEventPublisher;
+
+    public AutoIncrePreKeyServiceImpl(AutoIncrePreKeyRepository autoIncrePreKeyRepository,
+                                      PlatformTransactionManager transactionManager,
+                                      ElasticsearchDomainEventPublisher elasticsearchDomainEventPublisher) {
+        this.autoIncrePreKeyRepository = autoIncrePreKeyRepository;
+        this.transactionManager = transactionManager;
+        this.elasticsearchDomainEventPublisher = elasticsearchDomainEventPublisher;
+    }
 
     /**
      *  @TransactionalEventListener , 增加全部的支持，我要知道操作的是哪个表，操作的数据，支持幂等的。

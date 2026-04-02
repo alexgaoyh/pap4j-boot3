@@ -6,12 +6,9 @@ import cn.net.pap.neo4j.repository.DepartmentRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,15 +17,17 @@ import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {Neo4jApplication.class})
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class DepartmentEntityTest {
 
-    @Autowired
-    private DepartmentRepository departmentRepository;
+    private final DepartmentRepository departmentRepository;
+    private final Neo4jClient neo4jClient;
 
-    @Autowired
-    private Neo4jClient neo4jClient;
+    public DepartmentEntityTest(DepartmentRepository departmentRepository, Neo4jClient neo4jClient) {
+        this.departmentRepository = departmentRepository;
+        this.neo4jClient = neo4jClient;
+    }
 
     // @Test
     public void initData() throws Exception {

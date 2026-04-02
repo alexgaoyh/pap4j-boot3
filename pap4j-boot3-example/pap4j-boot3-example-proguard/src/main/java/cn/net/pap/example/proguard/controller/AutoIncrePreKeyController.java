@@ -2,7 +2,6 @@ package cn.net.pap.example.proguard.controller;
 
 import cn.net.pap.example.proguard.entity.AutoIncrePreKey;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
@@ -16,8 +15,11 @@ import java.util.Map;
 @RequestMapping("/autoIncrePreKey")
 public class AutoIncrePreKeyController {
 
-    @Autowired
-    private IAutoIncrePreKeyService autoIncrePreKeyService;
+    private final IAutoIncrePreKeyService autoIncrePreKeyService;
+
+    public AutoIncrePreKeyController(IAutoIncrePreKeyService autoIncrePreKeyService) {
+        this.autoIncrePreKeyService = autoIncrePreKeyService;
+    }
 
     @GetMapping("/saveAndFlush")
     public String saveAndFlush() throws Exception {

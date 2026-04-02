@@ -1,8 +1,7 @@
 package cn.net.pap.logback.config;
 
 import ch.qos.logback.classic.Level;
-import cn.net.pap.logback.util.LogbackConfigurationUtil;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
@@ -17,8 +16,11 @@ import java.util.Arrays;
 @Component
 public class LogbackInitializer implements ApplicationListener<ApplicationReadyEvent> {
 
-    @Autowired(required = false)
-    private DataSource dataSource;
+    private final DataSource dataSource;
+
+    public LogbackInitializer(ObjectProvider<DataSource> dataSourceProvider) {
+        this.dataSource = dataSourceProvider.getIfAvailable();
+    }
 
     @Override
     public void onApplicationEvent(ApplicationReadyEvent event) {

@@ -2,15 +2,17 @@ package cn.net.pap.example.doris.service.impl;
 
 import cn.net.pap.example.doris.service.DorisService;
 import cn.net.pap.example.doris.service.IDorisTransServiceInMysqlDB;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service("dorisTransServiceInMysqlDB")
 public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysqlDB {
 
-    @Autowired
-    private DorisService dorisService;
+    private final DorisService dorisService;
+
+    public DorisTransServiceInMysqlDBImpl(DorisService dorisService) {
+        this.dorisService = dorisService;
+    }
 
     /**
      * 这里 @Transactional 注解 配合内部的 getConnection 会报错

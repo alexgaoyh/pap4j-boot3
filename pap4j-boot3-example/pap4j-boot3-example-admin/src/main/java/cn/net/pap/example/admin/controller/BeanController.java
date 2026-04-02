@@ -15,7 +15,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.ClientHttpResponse;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -44,11 +43,14 @@ public class BeanController {
 
     private static final Logger log = LoggerFactory.getLogger(BeanController.class);
 
-    @Autowired
-    private ExampleBeanDTO exampleBeanDTO;
+    private final ExampleBeanDTO exampleBeanDTO;
 
-    @Autowired
-    private ExampleUserDTO exampleUserDTO;
+    private final ExampleUserDTO exampleUserDTO;
+
+    public BeanController(ExampleBeanDTO exampleBeanDTO, ExampleUserDTO exampleUserDTO) {
+        this.exampleBeanDTO = exampleBeanDTO;
+        this.exampleUserDTO = exampleUserDTO;
+    }
 
     @GetMapping(value = "gitCommitInfo", produces = "application/json;charset=UTF-8")
     @ResponseBody

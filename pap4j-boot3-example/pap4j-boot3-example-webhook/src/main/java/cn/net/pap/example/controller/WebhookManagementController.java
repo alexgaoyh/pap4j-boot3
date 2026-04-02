@@ -6,7 +6,6 @@ import cn.net.pap.example.service.IWebhookSenderService;
 import cn.net.pap.example.service.IWebhookSubscriptionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,11 +25,14 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/webhook")
 public class WebhookManagementController {
 
-    @Autowired
-    private IWebhookSubscriptionService subscriptionService;
+    private final IWebhookSubscriptionService subscriptionService;
 
-    @Autowired
-    private IWebhookSenderService webhookSender;
+    private final IWebhookSenderService webhookSender;
+
+    public WebhookManagementController(IWebhookSubscriptionService subscriptionService, IWebhookSenderService webhookSender) {
+        this.subscriptionService = subscriptionService;
+        this.webhookSender = webhookSender;
+    }
 
     /**
      * 创建订阅

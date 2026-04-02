@@ -1,13 +1,10 @@
 package cn.net.pap.quartz;
 
 import cn.net.pap.quartz.bean.QuartzService;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.quartz.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.Date;
 import java.util.List;
@@ -16,17 +13,20 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {QuartzAutoConfiguration.class, QuartzService.class})
 @TestPropertySource(properties = {
         "org.quartz.jobStore.isClustered=true",
         "org.quartz.jobStore.clusterCheckinInterval=1000",
         "org.quartz.scheduler.instanceId=AUTO"
 })
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class QuartzFailoverTest {
 
-    @Autowired
-    private Scheduler scheduler;
+    private final Scheduler scheduler;
+
+    public QuartzFailoverTest(Scheduler scheduler) {
+        this.scheduler = scheduler;
+    }
 
     private static CountDownLatch failoverLatch = new CountDownLatch(1);
     private static boolean jobFailed = false;

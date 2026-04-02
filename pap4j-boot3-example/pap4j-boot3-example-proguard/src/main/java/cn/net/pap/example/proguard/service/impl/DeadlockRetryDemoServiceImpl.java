@@ -1,7 +1,6 @@
 package cn.net.pap.example.proguard.service.impl;
 
 import cn.net.pap.example.proguard.service.IDeadlockRetryDemoService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -14,8 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DeadlockRetryDemoServiceImpl implements IDeadlockRetryDemoService {
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
+
+    public DeadlockRetryDemoServiceImpl(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     @Retryable(
             value = {

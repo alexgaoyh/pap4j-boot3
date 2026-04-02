@@ -1,32 +1,30 @@
 package cn.net.pap.quartz;
 
 import cn.net.pap.quartz.bean.QuartzService;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.quartz.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.Random;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {QuartzAutoConfiguration.class, QuartzService.class})
 @TestPropertySource("classpath:application.properties")
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class QuartzShutdownPropTest {
 
-    @Autowired
-    private Scheduler scheduler;
+    private final Scheduler scheduler;
+    private final QuartzService quartzService;
+    private final ThreadPoolTaskExecutor schedulerThreadPool;
 
-    @Autowired
-    private QuartzService quartzService;
-
-    @Autowired
-    private ThreadPoolTaskExecutor schedulerThreadPool;
+    public QuartzShutdownPropTest(Scheduler scheduler, QuartzService quartzService, ThreadPoolTaskExecutor schedulerThreadPool) {
+        this.scheduler = scheduler;
+        this.quartzService = quartzService;
+        this.schedulerThreadPool = schedulerThreadPool;
+    }
 
     public static class TestBeanJob implements Job {
         private static final Logger logger = LoggerFactory.getLogger(TestBeanJob.class);

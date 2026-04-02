@@ -3,7 +3,6 @@ package cn.net.pap.common.jdbc;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +21,7 @@ import java.util.Map;
 
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = JdbcAccessTemplateTest.Config.class)
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class JdbcAccessTemplateTest {
 
     static {
@@ -51,8 +51,11 @@ public class JdbcAccessTemplateTest {
     public record TestRecord(String id, String temp) {
     }
 
-    @Autowired
-    JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
+
+    public JdbcAccessTemplateTest(JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     // @Test
     @DisplayName("查询数据")

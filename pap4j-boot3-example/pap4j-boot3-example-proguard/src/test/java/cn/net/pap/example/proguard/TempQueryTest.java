@@ -5,12 +5,9 @@ import cn.net.pap.example.proguard.entity.TempQuery;
 import cn.net.pap.example.proguard.repository.AutoIncrePreKeyRepository;
 import cn.net.pap.example.proguard.service.ITempQueryService;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.PersistenceContext;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -18,18 +15,19 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class TempQueryTest {
 
-    @Autowired
-    private ITempQueryService tempQueryService;
+    private final ITempQueryService tempQueryService;
+    private final AutoIncrePreKeyRepository autoIncrePreKeyRepository;
+    private final EntityManager em;
 
-    @Autowired
-    private AutoIncrePreKeyRepository autoIncrePreKeyRepository;
-
-    @PersistenceContext
-    private EntityManager em;
+    public TempQueryTest(ITempQueryService tempQueryService, AutoIncrePreKeyRepository autoIncrePreKeyRepository, EntityManager em) {
+        this.tempQueryService = tempQueryService;
+        this.autoIncrePreKeyRepository = autoIncrePreKeyRepository;
+        this.em = em;
+    }
 
     @Test
     public void testBatchInsertAndQuery() {

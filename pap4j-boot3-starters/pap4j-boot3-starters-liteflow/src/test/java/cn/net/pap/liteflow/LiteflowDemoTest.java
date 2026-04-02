@@ -3,18 +3,19 @@ package cn.net.pap.liteflow;
 import cn.net.pap.liteflow.component.demo.dto.DemoContextDTO;
 import com.yomahub.liteflow.core.FlowExecutor;
 import com.yomahub.liteflow.flow.LiteflowResponse;
-import jakarta.annotation.Resource;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {LiteflowApplication.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class LiteflowDemoTest {
 
-    @Resource
-    private FlowExecutor flowExecutor;
+    private final FlowExecutor flowExecutor;
+
+    public LiteflowDemoTest(FlowExecutor flowExecutor) {
+        this.flowExecutor = flowExecutor;
+    }
 
     // @Test
     public void liteflowDemoTest() throws Exception {

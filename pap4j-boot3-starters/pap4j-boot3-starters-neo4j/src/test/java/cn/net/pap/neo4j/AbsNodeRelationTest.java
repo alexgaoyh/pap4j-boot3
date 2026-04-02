@@ -6,23 +6,23 @@ import cn.net.pap.neo4j.entity.AbsNodeEntity;
 import cn.net.pap.neo4j.repository.AbsNodeRepository;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.neo4j.driver.internal.value.PathValue;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {Neo4jApplication.class})
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class AbsNodeRelationTest {
 
-    @Autowired
-    private AbsNodeRepository absNodeRepository;
+    private final AbsNodeRepository absNodeRepository;
+
+    public AbsNodeRelationTest(AbsNodeRepository absNodeRepository) {
+        this.absNodeRepository = absNodeRepository;
+    }
 
     @Test
     public void insert() {

@@ -1,12 +1,12 @@
 package cn.net.pap.example.proguard;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.test.context.TestConstructor;
 
 /**
  * 这是一个 Spring Boot 单元测试示例类，用于演示如何在 **不依赖 @SpringBootApplication 启动类** 的情况下，启动一个最小化的 Spring Web
@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Configuration;
  * 2、可以在 TestConfig 中进一步添加 Controller 或其他需要的 Bean
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, classes = NoSpringBootApplicationTest.TestConfig.class)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class NoSpringBootApplicationTest {
 
     @Configuration
@@ -32,11 +33,13 @@ public class NoSpringBootApplicationTest {
 
     }
 
-    @Autowired
-    private TestRestTemplate restTemplate;
+    private final TestRestTemplate restTemplate;
+    private final int port;
 
-    @LocalServerPort
-    private int port;
+    public NoSpringBootApplicationTest(TestRestTemplate restTemplate, @LocalServerPort int port) {
+        this.restTemplate = restTemplate;
+        this.port = port;
+    }
 
     @Test
     public void test1() throws Exception {

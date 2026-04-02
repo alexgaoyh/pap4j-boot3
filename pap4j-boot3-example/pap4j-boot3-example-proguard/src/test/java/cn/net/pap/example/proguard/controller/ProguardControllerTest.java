@@ -3,9 +3,9 @@ package cn.net.pap.example.proguard.controller;
 import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.properties.DemoProperties;
 import cn.net.pap.example.proguard.service.IProguardService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.data.jpa.JpaRepositoriesAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -15,8 +15,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.util.HashMap;
 
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -25,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(ProguardController.class)
 @Import(ProguardControllerTest.TestConfig.class)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class ProguardControllerTest {
 
     @Configuration
@@ -47,20 +50,20 @@ public class ProguardControllerTest {
 
         @Bean
         public ProguardController proguardController(IProguardService proguardService, DemoProperties demoProperties) {
-            ProguardController controller = new ProguardController();
-            // 反射注入依赖或者改 Controller 支持构造函数注入
-            ReflectionTestUtils.setField(controller, "proguardService", proguardService);
-            ReflectionTestUtils.setField(controller, "demoProperties", demoProperties);
-            return controller;
+            // 使用构造函数注入，不再使用 ReflectionTestUtils
+            // 注意：ProguardController 的构造函数需要 many parameters，我们需要在 TestConfig 中提供 Mock 或 null
+            return new ProguardController(proguardService, demoProperties, new HashMap<>(), null, null, new ObjectMapper());
         }
 
     }
 
-    @Autowired
-    private MockMvc mvcClient;
+    private final MockMvc mvcClient;
+    private final IProguardService proguardService;
 
-    @Autowired
-    private IProguardService proguardService;
+    public ProguardControllerTest(MockMvc mvcClient, IProguardService proguardService) {
+        this.mvcClient = mvcClient;
+        this.proguardService = proguardService;
+    }
 
     @Test
     public void getProguardByProguardIdTest() throws Exception {

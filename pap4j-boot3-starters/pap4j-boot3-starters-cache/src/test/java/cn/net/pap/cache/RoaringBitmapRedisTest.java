@@ -1,24 +1,25 @@
 package cn.net.pap.cache;
 
 import cn.net.pap.common.bitmap.Roaring64NavigableMapUtil;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.cache.CacheApplication.class})
 @TestPropertySource("classpath:application.properties")
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class RoaringBitmapRedisTest {
 
-    @Autowired
-    private RedisTemplate<String, Object> redisTemplate;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    public RoaringBitmapRedisTest(RedisTemplate<String, Object> redisTemplate) {
+        this.redisTemplate = redisTemplate;
+    }
 
     @Test
     public void redisTemplateTest() {

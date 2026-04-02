@@ -6,7 +6,6 @@ import cn.net.pap.example.service.IWebhookSenderService;
 import cn.net.pap.example.service.IWebhookSubscriptionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -30,8 +29,11 @@ public class WebhookSenderServiceImpl implements IWebhookSenderService {
 
     private static final Logger logger = LoggerFactory.getLogger(WebhookSenderServiceImpl.class);
 
-    @Autowired
-    private IWebhookSubscriptionService subscriptionService;
+    private final IWebhookSubscriptionService subscriptionService;
+
+    public WebhookSenderServiceImpl(IWebhookSubscriptionService subscriptionService) {
+        this.subscriptionService = subscriptionService;
+    }
 
     /**
      * 创建带超时设置的 RestTemplate

@@ -6,7 +6,6 @@ import org.apache.ibatis.session.SqlSession;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -22,17 +21,23 @@ public class DorisService {
 
     private static final Logger log = LoggerFactory.getLogger(DorisService.class);
 
-    @Autowired
-    private SqlSessionFactory sqlSessionFactory;
+    private final SqlSessionFactory sqlSessionFactory;
 
-    @Autowired
-    private DataSource dataSource;
+    private final DataSource dataSource;
 
-    @Autowired
-    private DorisMapper dorisMapper;
+    private final DorisMapper dorisMapper;
 
-    @Autowired
-    private PlatformTransactionManager platformTransactionManager;
+    private final PlatformTransactionManager platformTransactionManager;
+
+    public DorisService(SqlSessionFactory sqlSessionFactory,
+                        DataSource dataSource,
+                        DorisMapper dorisMapper,
+                        PlatformTransactionManager platformTransactionManager) {
+        this.sqlSessionFactory = sqlSessionFactory;
+        this.dataSource = dataSource;
+        this.dorisMapper = dorisMapper;
+        this.platformTransactionManager = platformTransactionManager;
+    }
 
     public int transactionalTest() {
         SqlSession session = sqlSessionFactory.openSession(false);

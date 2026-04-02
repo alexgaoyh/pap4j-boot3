@@ -1,39 +1,38 @@
 package cn.net.pap.quartz;
 
-import jakarta.annotation.Resource;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.quartz.*;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.scheduling.quartz.SchedulerFactoryBean;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import javax.sql.DataSource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {QuartzAutoConfiguration.class})
 @TestPropertySource("classpath:application.properties")
 @TestPropertySource(properties = {
         "cn.net.pap.quartz.scheduler.multi=true"
 })
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class QuartzClusterSwitchNodeTest {
 
     private static final String CRON = "0/1 * * * * ?"; // 每5秒执行一次
 
-    @Resource
-    private DataSource dataSource;
+    private final DataSource dataSource;
+    private final SchedulerFactoryBean scheduler1;
+    private final SchedulerFactoryBean scheduler2;
 
-    @Autowired
-    @Qualifier("scheduler1")
-    private SchedulerFactoryBean scheduler1;
-
-    @Autowired
-    @Qualifier("scheduler2")
-    private SchedulerFactoryBean scheduler2;
+    public QuartzClusterSwitchNodeTest(
+            DataSource dataSource,
+            @Qualifier("scheduler1") SchedulerFactoryBean scheduler1,
+            @Qualifier("scheduler2") SchedulerFactoryBean scheduler2) {
+        this.dataSource = dataSource;
+        this.scheduler1 = scheduler1;
+        this.scheduler2 = scheduler2;
+    }
 
     // @Test
     public void testQuartzClusterTwoNodes() throws Exception {

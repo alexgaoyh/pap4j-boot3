@@ -1,31 +1,30 @@
 package cn.net.pap.quartz;
 
 import cn.net.pap.quartz.util.QuartzUtils;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.Trigger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import javax.sql.DataSource;
 import java.sql.ResultSet;
 import java.util.List;
 import java.util.Set;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {QuartzAutoConfiguration.class})
 @TestPropertySource("classpath:application.properties")
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class QuartzTest {
 
-    @Autowired
-    private Scheduler scheduler;
+    private final Scheduler scheduler;
+    private final DataSource dataSource;
 
-    @Autowired
-    private DataSource dataSource;
+    public QuartzTest(Scheduler scheduler, DataSource dataSource) {
+        this.scheduler = scheduler;
+        this.dataSource = dataSource;
+    }
 
     /**
      * 单元测试 执行定时任务 ， 已执行信息获取， 当前数据库已创建表名

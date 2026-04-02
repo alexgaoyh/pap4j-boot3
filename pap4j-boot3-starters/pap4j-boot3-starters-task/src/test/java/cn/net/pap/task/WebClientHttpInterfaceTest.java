@@ -1,7 +1,6 @@
 package cn.net.pap.task;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,10 +20,14 @@ import java.time.Duration;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 @SpringBootTest(classes = WebClientHttpInterfaceTest.Config.class)
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class WebClientHttpInterfaceTest {
 
-    @Autowired
-    private JsonPlaceHolderApi api;
+    private final JsonPlaceHolderApi api;
+
+    public WebClientHttpInterfaceTest(JsonPlaceHolderApi api) {
+        this.api = api;
+    }
 
     @Test
     public void testWebClientHttpInterface() {

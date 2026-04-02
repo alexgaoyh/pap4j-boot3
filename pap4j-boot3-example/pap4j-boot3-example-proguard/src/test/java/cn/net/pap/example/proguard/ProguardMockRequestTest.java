@@ -6,14 +6,12 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -26,14 +24,17 @@ import java.util.Map;
 /**
  * Mock Request RequestContextHolder for Service-Bean
  */
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class ProguardMockRequestTest {
 
-    @Autowired
-    IProguardService proguardService;
+    private final IProguardService proguardService;
 
-    @Before
+    public ProguardMockRequestTest(IProguardService proguardService) {
+        this.proguardService = proguardService;
+    }
+
+    @BeforeEach
     public void setUp() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("pap-tenant-id", "pap.net.cn");

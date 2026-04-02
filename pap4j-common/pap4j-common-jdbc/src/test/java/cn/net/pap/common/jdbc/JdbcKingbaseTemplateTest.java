@@ -6,7 +6,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = JdbcKingbaseTemplateTest.Config.class)
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 class JdbcKingbaseTemplateTest {
 
     private static final Logger log = LoggerFactory.getLogger(JdbcKingbaseTemplateTest.class);
@@ -54,14 +54,15 @@ class JdbcKingbaseTemplateTest {
         }
     }
 
-    @Autowired
-    JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
+    private final DataSource dataSource;
+    private final PlatformTransactionManager transactionManager;
 
-    @Autowired
-    DataSource dataSource;
-
-    @Autowired
-    PlatformTransactionManager transactionManager;
+    public JdbcKingbaseTemplateTest(JdbcTemplate jdbcTemplate, DataSource dataSource, PlatformTransactionManager transactionManager) {
+        this.jdbcTemplate = jdbcTemplate;
+        this.dataSource = dataSource;
+        this.transactionManager = transactionManager;
+    }
 
     private boolean isDatabaseConnected() {
         try {

@@ -5,8 +5,8 @@ import cn.net.pap.statemachine.actions.OrderAction;
 import cn.net.pap.statemachine.enums.OrderEvents;
 import cn.net.pap.statemachine.enums.OrderStates;
 import cn.net.pap.statemachine.listeners.OrderStateMachineListener;
+import cn.net.pap.statemachine.repository.OrderRepository;
 import org.springframework.beans.factory.BeanFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,12 +21,19 @@ import java.util.EnumSet;
 @EnableStateMachine
 public class OrderStateMachineConfiguration {
 
-    @Autowired
-    private BeanFactory beanFactory;
+    private final BeanFactory beanFactory;
 
-    @Autowired
-    @Qualifier("orderStateMachineRuntimePersister")
-    private StateMachineRuntimePersister<OrderStates, OrderEvents, String> orderStateMachineRuntimePersister;
+    private final StateMachineRuntimePersister<OrderStates, OrderEvents, String> orderStateMachineRuntimePersister;
+
+    private final OrderRepository orderRepository;
+
+    public OrderStateMachineConfiguration(BeanFactory beanFactory,
+                                          @Qualifier("orderStateMachineRuntimePersister") StateMachineRuntimePersister<OrderStates, OrderEvents, String> orderStateMachineRuntimePersister,
+                                          OrderRepository orderRepository) {
+        this.beanFactory = beanFactory;
+        this.orderStateMachineRuntimePersister = orderStateMachineRuntimePersister;
+        this.orderRepository = orderRepository;
+    }
 
     @Bean(name = "orderStateMachine")
     StateMachine<OrderStates, OrderEvents> orderStateMachine() throws Exception {
@@ -83,32 +90,32 @@ public class OrderStateMachineConfiguration {
 
     @Bean
     public OrderAction createOrderAction() {
-        return new OrderAction(OrderStates.SUBMITTED, OrderStates.CREATED, OrderEvents.CREATE_ORDER);
+        return new OrderAction(orderRepository, OrderStates.SUBMITTED, OrderStates.CREATED, OrderEvents.CREATE_ORDER);
     }
 
     @Bean
     public OrderAction payOrderAction() {
-        return new OrderAction(OrderStates.CREATED, OrderStates.PAID, OrderEvents.PAY);
+        return new OrderAction(orderRepository, OrderStates.CREATED, OrderStates.PAID, OrderEvents.PAY);
     }
 
     @Bean
     public OrderAction fulfillOrderAction() {
-        return new OrderAction(OrderStates.PAID, OrderStates.FULFILLED, OrderEvents.FULFILL);
+        return new OrderAction(orderRepository, OrderStates.PAID, OrderStates.FULFILLED, OrderEvents.FULFILL);
     }
 
     @Bean
     public OrderAction submittedCancelOrderAction() {
-        return new OrderAction(OrderStates.SUBMITTED, OrderStates.CANCELLED, OrderEvents.CANCEL);
+        return new OrderAction(orderRepository, OrderStates.SUBMITTED, OrderStates.CANCELLED, OrderEvents.CANCEL);
     }
 
     @Bean
     public OrderAction paidCancelOrderAction() {
-        return new OrderAction(OrderStates.PAID, OrderStates.CANCELLED, OrderEvents.CANCEL);
+        return new OrderAction(orderRepository, OrderStates.PAID, OrderStates.CANCELLED, OrderEvents.CANCEL);
     }
 
     @Bean
     public OrderAction fulfilledCancelOrderAction() {
-        return new OrderAction(OrderStates.FULFILLED, OrderStates.CANCELLED, OrderEvents.CANCEL);
+        return new OrderAction(orderRepository, OrderStates.FULFILLED, OrderStates.CANCELLED, OrderEvents.CANCEL);
     }
 
     @Bean

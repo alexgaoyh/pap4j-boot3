@@ -9,32 +9,30 @@ import cn.net.pap.neo4j.repository.HLMRepository;
 import cn.net.pap.neo4j.util.kg.HLMEntity2KGConvert;
 import cn.net.pap.neo4j.util.kg.HLMListDTO2KGConvert;
 import cn.net.pap.neo4j.util.kg.PathValue2KGConvert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.neo4j.driver.internal.InternalNode;
 import org.neo4j.driver.internal.InternalRelationship;
 import org.neo4j.driver.internal.value.PathValue;
 import org.neo4j.driver.summary.ResultSummary;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
-import org.springframework.test.context.junit4.SpringRunner;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {Neo4jApplication.class})
+@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class HLMEntityTest {
 
-    @Autowired
-    private HLMRepository hlmRepository;
+    private final HLMRepository hlmRepository;
+    private final HLMRelationshipRepository hlmRelationshipRepository;
+    private final Neo4jClient neo4jClient;
 
-    @Autowired
-    private HLMRelationshipRepository hlmRelationshipRepository;
-
-    @Autowired
-    private Neo4jClient neo4jClient;
+    public HLMEntityTest(HLMRepository hlmRepository, HLMRelationshipRepository hlmRelationshipRepository, Neo4jClient neo4jClient) {
+        this.hlmRepository = hlmRepository;
+        this.hlmRelationshipRepository = hlmRelationshipRepository;
+        this.neo4jClient = neo4jClient;
+    }
 
     @Test
     public void findByName() {

@@ -2,7 +2,6 @@ package cn.net.pap.example.proguard.service.impl;
 
 import cn.net.pap.example.proguard.entity.NumberSegment;
 import cn.net.pap.example.proguard.repository.NumberSegmentRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,7 +15,6 @@ public class NumberSegmentService {
 
     private final NumberSegmentRepository numberSegmentRepository;
 
-    @Autowired
     public NumberSegmentService(NumberSegmentRepository numberSegmentRepository) {
         this.numberSegmentRepository = numberSegmentRepository;
     }

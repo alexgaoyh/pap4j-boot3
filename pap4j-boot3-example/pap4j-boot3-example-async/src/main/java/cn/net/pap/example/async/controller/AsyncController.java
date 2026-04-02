@@ -3,7 +3,6 @@ package cn.net.pap.example.async.controller;
 import cn.net.pap.example.async.config.ContextHolder;
 import cn.net.pap.example.async.constant.AsyncConstant;
 import cn.net.pap.example.async.service.AsyncService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -24,11 +23,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RestController
 public class AsyncController {
 
-    @Autowired
-    private ApplicationContext applicationContext;
+    private final ApplicationContext applicationContext;
 
-    @Autowired
-    private ThreadPoolTaskExecutor taskExecutor;
+    private final ThreadPoolTaskExecutor taskExecutor;
+
+    public AsyncController(ApplicationContext applicationContext, ThreadPoolTaskExecutor taskExecutor) {
+        this.applicationContext = applicationContext;
+        this.taskExecutor = taskExecutor;
+    }
 
     @GetMapping(value = "/direct", produces = "application/json;charset=UTF-8")
     public String direct(@RequestParam(value = "index", required = false) String index) throws Exception {

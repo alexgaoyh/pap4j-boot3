@@ -4,7 +4,6 @@ import cn.net.pap.example.proguard.callback.TempQueryCallback;
 import cn.net.pap.example.proguard.entity.TempQuery;
 import cn.net.pap.example.proguard.repository.TempQueryRepository;
 import cn.net.pap.example.proguard.service.ITempQueryService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,11 +15,14 @@ import java.util.List;
 @Service
 public class TempQueryServiceImpl implements ITempQueryService {
 
-    @Autowired
-    private TempQueryRepository tempQueryRepository;
+    private final TempQueryRepository tempQueryRepository;
 
-    @Autowired
-    private JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
+
+    public TempQueryServiceImpl(TempQueryRepository tempQueryRepository, JdbcTemplate jdbcTemplate) {
+        this.tempQueryRepository = tempQueryRepository;
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     @Transactional
     public void batchInsert(String bizType, Collection<Long> ids) {

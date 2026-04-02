@@ -3,8 +3,7 @@ package cn.net.pap.drools;
 import cn.net.pap.drools.dto.OrderDTO;
 import cn.net.pap.drools.entity.DroolsRule;
 import cn.net.pap.drools.service.IDroolsRuleService;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.kie.api.KieBase;
 import org.kie.api.builder.Message;
 import org.kie.api.builder.Results;
@@ -12,9 +11,8 @@ import org.kie.api.io.ResourceType;
 import org.kie.api.runtime.KieSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,21 +22,23 @@ import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {DroolsApplication.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class DroolsRuleTest {
 
     private static final Logger log = LoggerFactory.getLogger(DroolsRuleTest.class);
 
-    @Autowired
-    private IDroolsRuleService droolsRuleService;
+    private final IDroolsRuleService droolsRuleService;
+
+    public DroolsRuleTest(IDroolsRuleService droolsRuleService) {
+        this.droolsRuleService = droolsRuleService;
+    }
 
     @Test
     public void crudDB() {

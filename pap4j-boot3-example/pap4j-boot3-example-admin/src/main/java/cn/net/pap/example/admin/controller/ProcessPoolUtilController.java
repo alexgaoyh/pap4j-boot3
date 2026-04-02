@@ -7,7 +7,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -66,12 +65,14 @@ public class ProcessPoolUtilController {
 
     }
 
-    @Autowired
-    @Qualifier("processExecutor")
-    private ThreadPoolTaskExecutor executor;
+    private final ThreadPoolTaskExecutor executor;
 
-    @Autowired
-    private ThreadPoolExecutor testThreadPoolExecutor;
+    private final ThreadPoolExecutor testThreadPoolExecutor;
+
+    public ProcessPoolUtilController(@Qualifier("processExecutor") ThreadPoolTaskExecutor executor, ThreadPoolExecutor testThreadPoolExecutor) {
+        this.executor = executor;
+        this.testThreadPoolExecutor = testThreadPoolExecutor;
+    }
 
     /**
      * 容器关闭前执行的清理逻辑

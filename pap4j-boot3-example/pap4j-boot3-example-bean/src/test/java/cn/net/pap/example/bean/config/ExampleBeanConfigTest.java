@@ -1,20 +1,21 @@
 package cn.net.pap.example.bean.config;
 
 import cn.net.pap.example.bean.config.dto.ExampleBeanDTO;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes={ExampleBeanConfig.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class ExampleBeanConfigTest {
 
-    @Autowired
-    private ExampleBeanDTO exampleBeanDTO;
+    private final ExampleBeanDTO exampleBeanDTO;
+
+    public ExampleBeanConfigTest(ExampleBeanDTO exampleBeanDTO) {
+        this.exampleBeanDTO = exampleBeanDTO;
+    }
 
     @Test
     public void exampleBeanDTOTest() {

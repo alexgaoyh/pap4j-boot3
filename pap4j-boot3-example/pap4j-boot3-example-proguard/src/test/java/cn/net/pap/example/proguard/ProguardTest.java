@@ -16,16 +16,14 @@ import org.hibernate.ScrollMode;
 import org.hibernate.ScrollableResults;
 import org.hibernate.Session;
 import org.hibernate.StatelessSession;
-import org.junit.Test;
-import org.junit.runner.RunWith;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.context.junit4.SpringRunner;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -36,20 +34,21 @@ import java.util.stream.LongStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@RunWith(SpringRunner.class)
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class ProguardTest {
 
     private static final Logger log = LoggerFactory.getLogger(ProguardTest.class);
 
-    @Autowired
-    ProguardRepository proguardRepository;
+    private final ProguardRepository proguardRepository;
+    private final IProguardService proguardService;
+    private final EntityManager entityManager;
 
-    @Autowired
-    IProguardService proguardService;
-
-    @Autowired
-    private EntityManager entityManager;
+    public ProguardTest(ProguardRepository proguardRepository, IProguardService proguardService, EntityManager entityManager) {
+        this.proguardRepository = proguardRepository;
+        this.proguardService = proguardService;
+        this.entityManager = entityManager;
+    }
 
     @Test
     public void transTest() {
