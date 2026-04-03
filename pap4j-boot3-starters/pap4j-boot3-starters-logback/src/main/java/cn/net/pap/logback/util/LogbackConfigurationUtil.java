@@ -15,6 +15,19 @@ import org.slf4j.LoggerFactory;
 import javax.sql.DataSource;
 import java.util.List;
 
+/**
+ * <h3>Logback 编程式配置底层工具类</h3>
+ * <p>
+ * 该工具类封装了直接通过 Java 代码动态配置 Logback 核心组件（Appender, Policy, Encoder）的逻辑。
+ * 它负责构建整个日志系统的“骨架”，主要功能包括：
+ * <ul>
+ *   <li><b>标准化 Appender 构建:</b> 统一创建 Console、RollingFile 及无锁 DB Appender。</li>
+ *   <li><b>多重异步封装:</b> 默认为所有 Appender 封装异步处理，并优化 <code>queueSize</code> 和 <code>discardingThreshold</code> 策略。</li>
+ *   <li><b>全局策略控制:</b> 统一控制日志留存周期（30天）、文件大小阈值（10MB）及总配额限制。</li>
+ *   <li><b>根日志接管:</b> 动态初始化 <code>ROOT_LOGGER</code>，确保应用全周期的日志可控。</li>
+ * </ul>
+ * </p>
+ */
 public class LogbackConfigurationUtil {
 
     /**
@@ -53,7 +66,7 @@ public class LogbackConfigurationUtil {
         ConsoleAppender<ILoggingEvent> consoleAppender = createConsoleAppender(context, "CONSOLE", DEFAULT_PATTERN);
 
         PapDBAppender dbAppender = createDBAppender(context, "DB", dataSource);
-        // 异步包装
+        // 异步包装 (默认关闭 includeCallerData 以大幅提高性能)
         AsyncAppender asyncFile = createAsyncAppender(context, "ASYNC-FILE", sharedFileAppender, 2048, false);
         AsyncAppender asyncConsole = createAsyncAppender(context, "ASYNC-CONSOLE", consoleAppender, 1024, false);
         AsyncAppender asyncDb = createAsyncAppender(context, "ASYNC-DB", dbAppender, 4096, false);

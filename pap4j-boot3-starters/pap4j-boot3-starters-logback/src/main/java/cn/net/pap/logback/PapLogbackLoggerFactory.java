@@ -11,23 +11,44 @@ import ch.qos.logback.core.rolling.TimeBasedRollingPolicy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy;
+import ch.qos.logback.core.util.FileSize;
+
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 /**
- * 动态日志文件的写入，在spring bean 中使用如下命令创建 log 对象，之后调用 info error 等函数。
- * 效果： 把日志信息自定义的写入到指定的文件中，不用再更改 xml.
- * logback.xml 可参考 /test/resources 文件夹下的配置文件.
+ * <h3>动态日志文件工厂</h3>
  * <p>
- * private static final Logger log = PapLogbackLoggerFactory.getLogger(TestController.class.getSimpleName());
- * log.info("");
+ * 该工厂类允许在 Spring Bean 或业务逻辑中动态创建独立的日志文件，无需修改 logback.xml。
+ * 核心优化特性：
+ * <ul>
+ *   <li><b>句柄上限隔离 (Safety Cap):</b> 内置 1024 个 Logger 缓存上限。
+ *       <br>目的：防止开发者错误地将动态变量（如 UserId/OrderNo）作为 LoggerName 传入导致系统打开过多文件句柄（Too many open files）而宕机。</li>
+ *   <li><b>极致性能 (Async-First):</b> 默认启用高性能异步队列配置。
+ *       <br>优化：<code>includeCallerData</code> 已设为 <code>false</code>，避免了高昂的堆栈追踪（类名/行号）开销，大幅提升吞吐。</li>
+ *   <li><b>智能回退机制:</b> 超过上限的新请求将回退到 <code>ROOT_LOGGER</code>，保证业务不中断且系统不奔溃。</li>
+ *   <li><b>磁盘配额保护:</b> 内置 <code>10MB</code> 单文件滚动及 <code>1GB</code> 总容量限制。</li>
+ * </ul>
+ * </p>
+ * 
+ * 使用示例：
+ * <pre>{@code
+ *      private static final Logger log = PapLogbackLoggerFactory.getLogger(TestController.class.getSimpleName());
+ *      log.info("Message");
+ * }</pre>
  */
 public class PapLogbackLoggerFactory {
 
-    // 缓存已经初始化过的 Logger
+    // 缓存上限 1024 以防止由于外部恶意动态传参导致的句柄泄露
+    private static final int MAX_LOGGER_COUNT = 1024;
     private static final ConcurrentMap<String, Logger> loggerCache = new ConcurrentHashMap<>();
 
     public static Logger getLogger(String loggerName) {
+        if (loggerCache.size() >= MAX_LOGGER_COUNT && !loggerCache.containsKey(loggerName)) {
+            // 达到上限，回退到默认日志，防止 OOM
+            return LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        }
         return loggerCache.computeIfAbsent(loggerName, PapLogbackLoggerFactory::createAndConfigureLogger);
     }
 
@@ -70,11 +91,14 @@ public class PapLogbackLoggerFactory {
 
         rollingFileAppender.setEncoder(fileEncoder);
 
-        TimeBasedRollingPolicy<ILoggingEvent> rollingPolicy = new TimeBasedRollingPolicy<>();
+        // 使用 SizeAndTimeBasedRollingPolicy
+        SizeAndTimeBasedRollingPolicy<ILoggingEvent> rollingPolicy = new SizeAndTimeBasedRollingPolicy<>();
         rollingPolicy.setContext(context);
         rollingPolicy.setParent(rollingFileAppender);
-        rollingPolicy.setFileNamePattern("logs/" + loggerName + ".%d{yyyy-MM-dd}.log");
+        rollingPolicy.setFileNamePattern("logs/" + loggerName + ".%d{yyyy-MM-dd}.%i.log");
+        rollingPolicy.setMaxFileSize(FileSize.valueOf("10MB")); // 限制单个文件大小
         rollingPolicy.setMaxHistory(60);
+        rollingPolicy.setTotalSizeCap(FileSize.valueOf("1GB"));
         rollingPolicy.start();
 
         rollingFileAppender.setRollingPolicy(rollingPolicy);
@@ -104,7 +128,8 @@ public class PapLogbackLoggerFactory {
         asyncAppender.setContext(context);
         asyncAppender.setName("async_" + appender.getName());
         asyncAppender.addAppender(appender);
-        asyncAppender.setIncludeCallerData(true);
+        asyncAppender.setIncludeCallerData(false); // 生产环境通常不需要，提高性能
+        asyncAppender.setQueueSize(512);
         asyncAppender.start();
         return asyncAppender;
     }
