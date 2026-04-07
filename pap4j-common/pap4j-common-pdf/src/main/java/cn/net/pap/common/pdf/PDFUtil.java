@@ -28,6 +28,9 @@ import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.*;
@@ -43,6 +46,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class PDFUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(PDFUtil.class);
 
     private static final float PDF_VERSION = 1.4f;
     private static final String PDF_PART = "1";
@@ -87,6 +92,7 @@ public class PDFUtil {
 
             return true;
         } catch (IOException e) {
+            log.error("convertPDFToJPG error", e);
             return false;
         }
     }
@@ -185,23 +191,18 @@ public class PDFUtil {
         final File inputFile = new File(inputFilePath);
         final File outputFile = new File(outputFilePath);
 
-        byte[] inputContent = Files.readAllBytes(inputFile.getAbsoluteFile().toPath());
-
-        try(final InputStream colorSpaceProfileInputStream = PDFUtil.class.getClassLoader().getResourceAsStream("sRGB Color Space Profile.icm");) {
-            PDDocument doc = Loader.loadPDF(inputContent);
+        try(final InputStream colorSpaceProfileInputStream = PDFUtil.class.getClassLoader().getResourceAsStream("sRGB Color Space Profile.icm");
+            final RandomAccessRead randomAccessRead = new RandomAccessReadBufferedFile(inputFile);
+            final PDDocument doc = Loader.loadPDF(randomAccessRead)) {
 
             PDDocumentCatalog catalog = setCompliant(doc, PDF_PART, PDF_CONFORMANCE);
 
             addOutputIntent(doc, catalog, colorSpaceProfileInputStream);
 
-            final ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
             doc.setVersion(PDF_VERSION);
-            doc.save(byteArrayOutputStream);
-            doc.close();
-
-            final byte[] outputContent = byteArrayOutputStream.toByteArray();
+            
             try (final OutputStream outputStream = Files.newOutputStream(outputFile.toPath())) {
-                outputStream.write(outputContent);
+                doc.save(outputStream);
             }
         }
 
@@ -217,7 +218,11 @@ public class PDFUtil {
         // 创建或加载PDF文档
         try (PDDocument document = new PDDocument()) {
             // 仿宋 PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
-            PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
+            // 使用 try-with-resources 关闭流防止内存泄露
+            PDType0Font simfangFont;
+            try (InputStream is = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋"))) {
+                simfangFont = PDType0Font.load(document, is);
+            }
             // 创建新页面
             PDPage page = null;
             if(widthAndHeight != null && widthAndHeight.length == 2) {
@@ -243,10 +248,11 @@ public class PDFUtil {
                     float width = coordsDTO.getWidth();
                     float height = coordsDTO.getHeight();
 
-                    PDType0Font font = findFont(text, loadedFontMaps);
+                    // 将当前 document 传递给内部字体查找方法，确保字体绑定到正确的 document，从而满足 PDF/A 的字体嵌入要求
+                    PDType0Font font = findFontInternal(document, text, loadedFontMaps);
                     if(font == null) {
                         // todo maybe throw exception
-                        System.out.println("不匹配 ：" + text);
+                        log.info("不匹配 ：{}", text);
                         text = "=";
                         font = simfangFont;
                     }
@@ -271,75 +277,84 @@ public class PDFUtil {
         }
     }
 
+
     /**
      * 查询可用的字体
      * @param text
      * @return
+     * @deprecated 返回的字体绑定到了一个已关闭的 PDDocument，会导致 PDF/A 字体嵌入失败。
      */
+    @Deprecated
     public static PDType0Font findFont(String text) {
         try (PDDocument document = new PDDocument()) {
             for(ChineseFont chineseFont : ChineseFont.values()) {
                 //  PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
-                PDType0Font tmp = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName())));
-                try {
-                    if(tmp.getStringWidth(String.valueOf(text)) > 0) {
-                        return tmp;
+                // 修复：关闭输入流防止内存泄漏
+                try (InputStream is = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName()))) {
+                    if (is != null) {
+                        PDType0Font tmp = PDType0Font.load(document, is);
+                        try {
+                            if(tmp.getStringWidth(String.valueOf(text)) > 0) {
+                                return tmp;
+                            }
+                        } catch (Exception e) {
+                            log.warn("Failed to get string width for text: {}", text, e);
+                        }
                     }
                 } catch (Exception e) {
-
+                    log.warn("Failed to load font: {}", chineseFont.getFontName(), e);
                 }
             }
         } catch (IOException e) {
-
+            log.error("findFont IOException", e);
         }
         return null;
     }
 
     /**
-     * 查询可用的字体
-     * @param text
-     * @return
+     * 内部字体查找方法，确保加载的字体绑定到正确的 PDDocument 以支持 PDF/A 嵌入
      */
-    public static PDType0Font findFont(String text, List<Map<String, Object>> loadedFonts) {
-        try (PDDocument document = new PDDocument()) {
-            try {
-                for(Map<String, Object> fontMap : loadedFonts) {
-                    if(((PDType0Font)fontMap.get("PDType0Font")).getStringWidth(String.valueOf(text)) > 0) {
-                        return (PDType0Font)fontMap.get("PDType0Font");
-                    }
+    private static PDType0Font findFontInternal(PDDocument document, String text, List<Map<String, Object>> loadedFonts) {
+        try {
+            for(Map<String, Object> fontMap : loadedFonts) {
+                if(((PDType0Font)fontMap.get("PDType0Font")).getStringWidth(String.valueOf(text)) > 0) {
+                    return (PDType0Font)fontMap.get("PDType0Font");
                 }
-            } catch (Exception e) {
-
             }
+        } catch (Exception e) {
+            log.warn("Failed to get string width from loaded fonts", e);
+        }
 
-            for(ChineseFont chineseFont : ChineseFont.values()) {
-                if(loadedFonts.stream().map(e->e.get("fontName").toString()).collect(Collectors.joining()).contains(chineseFont.getFontName())) {
-                   continue;
-                }
-                //  PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
-                InputStream resourceAsStream = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName()));
-                if(resourceAsStream == null) {
-                    resourceAsStream = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName()).substring(1));
-                }
-                if(resourceAsStream != null) {
+        for(ChineseFont chineseFont : ChineseFont.values()) {
+            if(loadedFonts.stream().map(e->e.get("fontName").toString()).collect(Collectors.joining()).contains(chineseFont.getFontName())) {
+               continue;
+            }
+            //  PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
+            InputStream resourceAsStream = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName()));
+            if(resourceAsStream == null) {
+                resourceAsStream = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName()).substring(1));
+            }
+            if(resourceAsStream != null) {
+                try {
+                    // 使用正确的 document 加载字体，保证能够成功进行子集嵌入并满足 PDF/A 标准
+                    PDType0Font tmp = PDType0Font.load(document, resourceAsStream);
+                    Map<String, Object> tmpFontMap = new HashMap<>();
+                    tmpFontMap.put("fontName", chineseFont.getFontName());
+                    tmpFontMap.put("PDType0Font", tmp);
+                    loadedFonts.add(tmpFontMap);
+                    if(tmp.getStringWidth(String.valueOf(text)) > 0) {
+                        return tmp;
+                    }
+                } catch (Exception e) {
+                    log.warn("Error loading or checking font: {}", chineseFont.getFontName(), e);
+                } finally {
                     try {
-                        PDType0Font tmp = PDType0Font.load(document, resourceAsStream);
-                        Map<String, Object> tmpFontMap = new HashMap<>();
-                        tmpFontMap.put("fontName", chineseFont.getFontName());
-                        tmpFontMap.put("PDType0Font", tmp);
-                        loadedFonts.add(tmpFontMap);
-                        if(tmp.getStringWidth(String.valueOf(text)) > 0) {
-                            return tmp;
-                        }
-                    } catch (Exception e) {
-
-                    } finally {
                         resourceAsStream.close();
+                    } catch (IOException e) {
+                        log.warn("Error closing font input stream", e);
                     }
                 }
-
             }
-        } catch (IOException e) {
 
         }
         return null;
@@ -354,8 +369,15 @@ public class PDFUtil {
     public static void drawParagraphs(String pdfPath, List<String> paragraphs) throws IOException {
         try (PDDocument document = new PDDocument()) {
             // 加载字体  PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
-            PDType0Font songFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("宋体")));
-            PDType0Font songFontExtB = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("宋体ExtB")));
+            // 使用 try-with-resources 关闭流防止内存泄露，并确保字体绑定到当前 document 用于 PDF/A 的子集嵌入
+            PDType0Font songFont;
+            try (InputStream is = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("宋体"))) {
+                songFont = PDType0Font.load(document, is);
+            }
+            PDType0Font songFontExtB;
+            try (InputStream is = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("宋体ExtB"))) {
+                songFontExtB = PDType0Font.load(document, is);
+            }
 
             // 页面设置
             PDRectangle pageSize = PDRectangle.A4;
@@ -441,6 +463,7 @@ public class PDFUtil {
         try {
             return font.getStringWidth(String.valueOf(c)) > 0;
         } catch (Exception e) {
+            log.warn("fontContainsCharacter error for character: {}", c, e);
             return false;
         }
     }
@@ -569,6 +592,7 @@ public class PDFUtil {
             document.save(pdfPath);
             return true;
         } catch (Exception e) {
+            log.warn("jpg2Pdf error for", e);
             return false;
         } finally {
             try {
@@ -619,6 +643,7 @@ public class PDFUtil {
             document.save(pdfPath);
             return true;
         } catch (Exception e) {
+            log.warn("dir2Pdf error", e);
             return false;
         } finally {
             try {
@@ -647,15 +672,15 @@ public class PDFUtil {
 
         final Charset charset = StandardCharsets.UTF_8;
 
-        final InputStream is = PDFUtil.class.getClassLoader().getResourceAsStream("xmpTemplate.xml");
+        String content;
+        // 使用 try-with-resources 确保 InputStream 关闭，防止异常时发生内存泄漏
+        try (InputStream is = PDFUtil.class.getClassLoader().getResourceAsStream("xmpTemplate.xml")) {
+            final byte[] fileBytes = IOUtils.toByteArray(is);
+            content = new String(fileBytes, charset);
+        }
 
-        final byte[] fileBytes = IOUtils.toByteArray(is);
-
-        String content = new String(fileBytes, charset);
         content = content.replace("@#pdfaid:part#@", pdfPart);
         content = content.replace("@#pdfaid:conformance#@", pdfConformance);
-
-        is.close();
 
         final byte[] editedBytes = content.getBytes(charset);
         metadata.importXMPMetadata(editedBytes);
@@ -690,7 +715,7 @@ public class PDFUtil {
     public static void analyzePdf(String filePath) throws IOException {
         File file = new File(filePath);
         try (PDDocument document = Loader.loadPDF(file)) {
-            System.out.println("PDF 文件页数: " + document.getNumberOfPages());
+            log.info("PDF 文件页数: {}", document.getNumberOfPages());
 
             long totalImageSize = 0;
             long totalFontSize = 0;
@@ -709,7 +734,7 @@ public class PDFUtil {
                     pageContentSize += stream.getLength();
                 }
 
-                System.out.println("第 " + pageNum + " 页内容流大小: " + pageContentSize / 1024 + " KB");
+                log.info("第 {} 页内容流大小: {} KB", pageNum, pageContentSize / 1024);
                 totalContentSize += pageContentSize;
 
                 ResourceStats stats = analyzeResources(pageDict, fontNames);
@@ -720,19 +745,19 @@ public class PDFUtil {
                 pageNum++;
             }
 
-            System.out.println("图像总大小: " + totalImageSize / 1024 + " KB");
-            System.out.println("字体数量: " + fontNames.size());
-            System.out.println("字体名: " + fontNames);
-            System.out.println("嵌入字体总大小: " + totalFontSize / 1024 + " KB");
-            System.out.println("内容流总大小: " + totalContentSize / 1024 + " KB");
-            System.out.println("Form XObject 总大小: " + totalFormXObjectSize / 1024 + " KB");
+            log.info("图像总大小: {} KB", totalImageSize / 1024);
+            log.info("字体数量: {}", fontNames.size());
+            log.info("字体名: {}", fontNames);
+            log.info("嵌入字体总大小: {} KB", totalFontSize / 1024);
+            log.info("内容流总大小: {} KB", totalContentSize / 1024);
+            log.info("Form XObject 总大小: {} KB", totalFormXObjectSize / 1024);
 
             long totalKnown = totalImageSize + totalFontSize + totalContentSize + totalFormXObjectSize;
-            System.out.println("已知资源总大小: " + totalKnown / 1024 + " KB");
+            log.info("已知资源总大小: {} KB", totalKnown / 1024);
 
             long fileSize = file.length();
-            System.out.println("实际文件大小: " + fileSize / 1024 + " KB");
-            System.out.println("未解释部分大小: " + (fileSize - totalKnown) / 1024 + " KB");
+            log.info("实际文件大小: {} KB", fileSize / 1024);
+            log.info("未解释部分大小: {} KB", (fileSize - totalKnown) / 1024);
         }
     }
 
@@ -760,11 +785,11 @@ public class PDFUtil {
                         long size = stream.getLength();
                         imageSize += size;
                         String imageType = getImageFilterType(stream);
-                        System.out.println("发现图像对象: " + key.getName() + " - 类型: " + imageType + " - 大小: " + size / 1024 + " KB");
+                        log.info("发现图像对象: {} - 类型: {} - 大小: {} KB", key.getName(), imageType, size / 1024);
                     } else if (COSName.FORM.equals(subtype)) {
                         long size = stream.getLength();
                         formSize += size;
-                        System.out.println("发现 Form XObject: " + key.getName() + " - 大小: " + size / 1024 + " KB");
+                        log.info("发现 Form XObject: {} - 大小: {} KB", key.getName(), size / 1024);
 
                         // 递归分析
                         COSDictionary formResources = (COSDictionary) stream.getDictionaryObject(COSName.RESOURCES);
@@ -868,7 +893,7 @@ public class PDFUtil {
                     COSStream fontStream = (COSStream) fileBase;
                     long size = fontStream.getLength();
                     fontSize += size;
-                    System.out.println("发现嵌入字体流: " + fileName.getName() + " - 大小: " + size / 1024 + " KB");
+                    log.info("发现嵌入字体流: {} - 大小: {} KB", fileName.getName(), size / 1024);
                 }
             }
         }
@@ -984,7 +1009,7 @@ public class PDFUtil {
                     // 读取图像
                     BufferedImage image = ImageIO.read(imageFile);
                     if (image == null) {
-                        System.err.println("无法读取图像文件: " + imageFile.getName());
+                        log.error("无法读取图像文件: {}", imageFile.getName());
                         continue;
                     }
 
@@ -1003,7 +1028,7 @@ public class PDFUtil {
                         contentStream.drawImage(pdImage, 0, 0, image.getWidth(), image.getHeight());
                     }
                 } catch (IOException e) {
-                    System.err.println("处理文件时出错: " + imageFile.getName() + " - " + e.getMessage());
+                    log.error("处理文件时出错: {}", imageFile.getName(), e);
                 }
             }
 
