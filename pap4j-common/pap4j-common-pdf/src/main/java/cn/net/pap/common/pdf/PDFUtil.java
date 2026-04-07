@@ -75,6 +75,10 @@ public class PDFUtil {
 
     /**
      * 单页 PDF 转换 JPG
+     * <p><b>警告 (存在 Bug):</b> 虽然注释是单页转换，但实际代码会遍历所有页并反复覆盖同一个 outputPath。
+     * 如果传入多页 PDF，最终只会得到最后一页的图片，且浪费渲染性能。
+     * 多页转换建议使用 {@link #extractImagesToJPG}。</p>
+     *
      * @param pdfFilePath   PDF文件绝对路径
      * @param outputPath    JPG文件绝对路径
      * @param DPI           DPI
@@ -99,6 +103,8 @@ public class PDFUtil {
 
     /**
      * 添加印章
+     * <p><b>注意 (硬编码):</b> 目前代码将印章固定添加在第一页 (getPage(0)) 且坐标写死为 (100, 100)。
+     * 生产环境通常需要根据关键字或指定坐标、指定页码灵活处理，直接复用可能无法满足业务需求。</p>
      *
      * @param pdfFilePath
      * @param imageFilePath
@@ -120,6 +126,8 @@ public class PDFUtil {
 
     /**
      * 添加数字签名
+     * <p><b>注意 (硬编码):</b> 方法内部对签名的名称 (name)、位置 (location) 和原因 (reason) 进行了硬编码。
+     * 生产环境中这些信息通常需要作为参数动态传入。</p>
      *
      * @param pdfFilePath
      * @param keystorePath     *.p12   可以申请SSL证书(*.key, .crt)，然后使用openssl 命令转换为 p12 证书
@@ -160,6 +168,8 @@ public class PDFUtil {
 
     /**
      * 添加禁止编辑(密码)
+     * <p><b>注意 (硬编码):</b> 加密级别硬编码为 128 位 RC4。
+     * 对于普通业务（仅禁止编辑）足够，但现代高安全性 PDF 推荐使用 256 位 AES。</p>
      *
      * @param pdfFilePath
      * @param ownerPassword
@@ -182,6 +192,10 @@ public class PDFUtil {
 
     /**
      * convert PDF/A
+     * <p><b>警告 (伪 PDF/A):</b> 该方法仅仅替换了元数据 (XMP Metadata) 和声明了颜色空间 (OutputIntent)，
+     * 并未真正执行 PDF/A 要求的严格转换（如全量嵌入字体、移除透明度等）。
+     * 转换后的文件在专业的 PDF/A 校验器中可能会报错，无法满足严格的归档合规要求。</p>
+     *
      * @param inputFilePath
      * @param outputFilePath
      * @throws Exception
@@ -210,6 +224,9 @@ public class PDFUtil {
 
     /**
      * 写文字，支持字体大小和按照写入顺序读取.
+     * <p><b>警告 (覆盖原文件):</b> 该方法并不是在现有的 PDF 上追加内容，而是直接创建一个全新的空文档并写入内容，
+     * 最终会覆盖目标路径的文件。如果需要在已有 PDF 上追加，请重写此方法（以 AppendMode.APPEND 模式打开流）。</p>
+     *
      * @param pdfPath
      * @param coordsDTOList
      * @throws IOException
@@ -280,9 +297,13 @@ public class PDFUtil {
 
     /**
      * 查询可用的字体
+     * <p><b>致命错误 (流已关闭):</b> 在 try-with-resources 中创建并关闭了 PDDocument。
+     * 返回的 PDType0Font 绑定在一个已关闭的文档上，后续在写入并执行 document.save() 时必然会触发 IOException。
+     * <b>绝对不要在生产环境使用。</b> 请使用内部重构后的 findFontInternal。</p>
+     *
      * @param text
      * @return
-     * @deprecated 返回的字体绑定到了一个已关闭的 PDDocument，会导致 PDF/A 字体嵌入失败。
+     * @deprecated 返回的字体绑定到了一个已关闭的 PDDocument，会导致 PDF/A 字体嵌入失败及保存报错。
      */
     @Deprecated
     public static PDType0Font findFont(String text) {
@@ -362,6 +383,9 @@ public class PDFUtil {
 
     /**
      * 写入段落
+     * <p><b>警告 (覆盖原文件):</b> 该方法会创建一个全新的空文档并覆盖目标路径的文件，
+     * 而不是在现有文档上追加段落。同时该方法强依赖 ClassPath 下存在对应的“宋体”字体文件，否则会报错。</p>
+     *
      * @param pdfPath
      * @param paragraphs
      * @throws IOException
@@ -526,6 +550,9 @@ public class PDFUtil {
 
     /**
      * 画矩形， 或者是表格的一个长方形的框。 提供一个从左下角开始，左上角结束的逆时针的四个点坐标.
+     * <p><b>警告 (覆盖原文件):</b> 该方法会创建一个全新的空文档并覆盖目标路径的文件，
+     * 而不是在现有文档上追加矩形框。如果需要在已有 PDF 上画框，请重写此方法。</p>
+     *
      * @param pdfPath
      * @param leftBottom    左下角
      * @param rightBottom   右下角
@@ -944,7 +971,10 @@ public class PDFUtil {
     }
 
     /**
-     * 从PDF中提取图像并保存为JPG，支持自定义起始页码编号
+     * 将 PDF 的每一页光栅化渲染为 JPG 图片保存，支持自定义起始编号
+     * <p><b>说明 (方法名易误解):</b> 方法名为 extractImagesToJPG，但实际逻辑是把整页渲染成图片 (Page to Image)，
+     * 并不是把 PDF 内部嵌入的原图 (Image Resources) 单独无损提取出来。</p>
+     *
      * @param inputFilePath 输入PDF文件路径
      * @param outputPattern 输出文件模式
      * @param dpi 图像分辨率
