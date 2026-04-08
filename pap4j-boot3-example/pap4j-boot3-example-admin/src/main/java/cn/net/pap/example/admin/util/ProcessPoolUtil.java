@@ -11,7 +11,10 @@ import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -67,6 +70,10 @@ public class ProcessPoolUtil {
         // 使用线程安全的 StringBuffer 替代 StringBuilder
         StringBuffer out = new StringBuffer();
         AtomicBoolean isOomRisk = new AtomicBoolean(false);
+        // 将 streamReaderFuture 提升到外层定义，是为了在 finally 块中能够统一、安全地对其进行 cancel(true)。
+        // 这样无论是正常执行结束、进程超时(timeout)、主线程被中断(InterruptedException)，还是发生其他异常，
+        // 都能保证异步读取日志的线程被正确通知退出并释放，防止线程池中的 Worker 线程泄露。
+        Future<?> streamReaderFuture = null;
 
         try {
             process = new ProcessBuilder(command).redirectErrorStream(true).start();
@@ -78,7 +85,7 @@ public class ProcessPoolUtil {
             Charset charset = Charset.forName(charsetName);
 
             // 1. 将读取任务提交给外部传入的线程池，并获取 Future 句柄
-            Future<?> streamReaderFuture = executor.submit(() -> {
+            streamReaderFuture = executor.submit(() -> {
                 try (BufferedReader reader = new BufferedReader(new InputStreamReader(finalProcess.getInputStream(), charset))) {
                     String line;
                     while ((line = reader.readLine()) != null) {
@@ -95,7 +102,8 @@ public class ProcessPoolUtil {
                         }
                     }
                 } catch (Exception e) {
-                    log.error("[ProcessPoolUtil] 读取流异常", e);
+                    // 当底层流被关闭时正常抛出异常，不再作为 Error 打印，防止日志噪音
+                    log.debug("[ProcessPoolUtil] 读取流结束或被主动关闭", e);
                 }
             });
 
@@ -103,10 +111,8 @@ public class ProcessPoolUtil {
             if (timeoutSec > 0) {
                 isFinished = process.waitFor(timeoutSec, TimeUnit.SECONDS);
                 if (!isFinished) {
-                    process.destroyForcibly();
-                    // 2. 超时发生，取消异步读取任务（相当于 interrupt）
-                    streamReaderFuture.cancel(true);
-                    return new ProcessResult(isFinished, -1, out + "\nTIMEOUT_OR_KILLED");
+                    log.warn("[ProcessPoolUtil] 进程执行超时，准备强杀: {}", command);
+                    return new ProcessResult(false, -1, out + "\nTIMEOUT_OR_KILLED");
                 }
             } else {
                 // 这个方法会响应中断并抛出 InterruptedException
@@ -127,10 +133,7 @@ public class ProcessPoolUtil {
             return new ProcessResult(isFinished, process.exitValue(), out.toString());
 
         } catch (InterruptedException e) {
-            log.error("[ProcessPoolUtil] 收到主线程中断信号，正在强杀子进程...", e);
-            if (process != null) {
-                process.destroyForcibly();
-            }
+            log.error("[ProcessPoolUtil] 收到主线程中断信号，正在强杀子进程...");
             // 重新设置中断状态，好让上层调用者（如线程池）知道线程已被中断
             Thread.currentThread().interrupt();
             return new ProcessResult(false, -1, out + "\nEXECUTION_INTERRUPTED");
@@ -139,13 +142,28 @@ public class ProcessPoolUtil {
             return new ProcessResult(false, -1, out + "\nERROR: " + e.getMessage());
         } finally {
             if (process != null) {
+                // 先关闭流，触发底层 SIGPIPE，防止进程死前挣扎向缓冲区继续写入导致挂起
                 closeQuietly(process.getInputStream());
                 closeQuietly(process.getOutputStream());
                 closeQuietly(process.getErrorStream());
 
                 if (process.isAlive()) {
+                    // 递归获取所有子进程并强杀。 如果传入的命令是一个脚本（例如 sh script.sh 或 cmd /c script.bat），
+                    // 脚本内部可能又启动了其他耗时的子进程（如 ffmpeg, magick 等）。 当超时发生时，普通的 process.destroyForcibly() 只会杀死外层的 shell 进程，
+                    // 导致内部真正耗时的子进程变成孤儿进程(Orphan Process)在后台继续消耗 CPU 和内存。
+                    process.descendants().forEach(ProcessHandle::destroyForcibly);
+
+                    // 最后强杀直接启动的父进程本身
                     process.destroyForcibly();
+                    try {
+                        // 等待底层的进程真正被 OS 回收，防止僵尸进程残留
+                        process.waitFor(1, TimeUnit.SECONDS);
+                    } catch (InterruptedException ignored) {
+                    }
                 }
+            }
+            if (streamReaderFuture != null && !streamReaderFuture.isDone()) {
+                streamReaderFuture.cancel(true);
             }
         }
     }
