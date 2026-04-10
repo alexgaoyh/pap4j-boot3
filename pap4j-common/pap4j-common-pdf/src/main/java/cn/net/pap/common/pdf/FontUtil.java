@@ -129,7 +129,7 @@ public class FontUtil {
      */
     public static List<CoordsDTO> convertTextPointDTO(List<TextPointDTO> textPointDTOS) {
         List<CoordsDTO> coordsDTOS = new ArrayList<>();
-        if(null != textPointDTOS && !"".equals(textPointDTOS)) {
+        if(null != textPointDTOS && textPointDTOS.size() > 0) {
             for (TextPointDTO textPointDTO : textPointDTOS) {
                 CoordsDTO coordsDTO = new CoordsDTO(textPointDTO.getX(), textPointDTO.getY(),
                         Float.parseFloat(textPointDTO.getCharacterBounds().getWidth() + ""),

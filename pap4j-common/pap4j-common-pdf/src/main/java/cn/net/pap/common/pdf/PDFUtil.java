@@ -597,8 +597,7 @@ public class PDFUtil {
 
     public static Boolean jpg2Pdf(String jpgPath, String pdfPath) {
         List<String> imagePaths = Arrays.asList(new String[]{ jpgPath });
-        PDDocument document = new PDDocument();
-        try {
+        try (PDDocument document = new PDDocument()) {
             for (String imagePath : imagePaths) {
                 PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
                 // todo 后续根据需求，这里做一下调整，避免生成的pdf过大，未完全验证，存在不同的格式，比如 jpg ,还有各种不同压缩方式的tif 等等
@@ -621,12 +620,6 @@ public class PDFUtil {
         } catch (Exception e) {
             log.warn("jpg2Pdf error for", e);
             return false;
-        } finally {
-            try {
-                document.close();
-            } catch (IOException e) {
-                return false;
-            }
         }
     }
 
