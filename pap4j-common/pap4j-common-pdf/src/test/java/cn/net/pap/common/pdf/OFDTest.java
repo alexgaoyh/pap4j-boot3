@@ -78,9 +78,9 @@ public class OFDTest {
         double textWidthMm = (textPixelWidth / dpi) * 25.4d;
         double textHeightMm = (textPixelHeight / dpi) * 25.4d;
 
-        // 计算字体大小：取容器宽高较小者的 90% 作为字体实际物理大小，解决出现的 图元对象外接矩阵过大
-        double baseFontSizeMm = Math.max(textWidthMm, textHeightMm);
-        double finalFontSizeMm = baseFontSizeMm;
+        // 计算字体大小：取容器宽高较小者的 90% 作为字体实际物理大小，未解决出现的 图元对象外接矩阵过大
+        double baseFontSizeMm = Math.min(textWidthMm, textHeightMm);
+        double finalFontSizeMm = baseFontSizeMm * 0.9;
 
         // slf4j 占位符 {} 不支持直接限制小数位数，因此针对浮点数使用 String.format
         log.info("读取到图片像素: {} x {} px", pixelWidth, pixelHeight);
