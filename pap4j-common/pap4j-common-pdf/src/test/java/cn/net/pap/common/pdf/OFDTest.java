@@ -27,7 +27,7 @@ public class OFDTest {
 
     @Test
     public void test1() throws Exception {
-        Path outPath = Paths.get("C:\\Users\\86181\\Desktop\\archive_watermarked_document.ofd");
+        Path outPath = Paths.get("C:\\Users\\86181\\Desktop\\ofda-check.ofd");
         Path imgPath = Paths.get("C:\\Users\\86181\\Desktop\\1.jpg");
 
         // ====================================================
@@ -78,9 +78,9 @@ public class OFDTest {
         double textWidthMm = (textPixelWidth / dpi) * 25.4d;
         double textHeightMm = (textPixelHeight / dpi) * 25.4d;
 
-        // 计算字体大小：取容器宽高较小者的 90% 作为字体实际物理大小
-        double baseFontSizeMm = Math.min(textWidthMm, textHeightMm);
-        double finalFontSizeMm = baseFontSizeMm * 0.9;
+        // 计算字体大小：取容器宽高较小者的 90% 作为字体实际物理大小，解决出现的 图元对象外接矩阵过大
+        double baseFontSizeMm = Math.max(textWidthMm, textHeightMm);
+        double finalFontSizeMm = baseFontSizeMm;
 
         // slf4j 占位符 {} 不支持直接限制小数位数，因此针对浮点数使用 String.format
         log.info("读取到图片像素: {} x {} px", pixelWidth, pixelHeight);
@@ -100,28 +100,38 @@ public class OFDTest {
         // 4. 开始构建 OFD 文档
         // ====================================================
         try (OFDDoc ofdDoc = new OFDDoc(outPath)) {
-            // 添加元数据
-            CustomDatas customDatas = new CustomDatas();
-            customDatas.addCustomData(new CustomData("档号", "TEA-2026-001A"));
-            ofdDoc.getOfdDocument().add(customDatas);
+            try {
+                java.lang.reflect.Field ofdDirField = OFDDoc.class.getDeclaredField("ofdDir");
+                ofdDirField.setAccessible(true);
+                org.ofdrw.pkg.container.OFDDir ofdDir = (org.ofdrw.pkg.container.OFDDir) ofdDirField.get(ofdDoc);
+                ofdDir.getOfd().addAttribute("DocType", "OFD-A");
+                CustomDatas customDatas = new CustomDatas();
+                customDatas.addCustomData(new CustomData("发文字号", "TEA-2026-001A"));
+                ofdDir.getOfd().getDocBody().getDocInfo().setAuthor("河南许昌").setCustomDatas(customDatas);
+            } catch (Exception e) {
+                log.error("设置 OFD 元数据失败", e);
+            }
 
             // 加载字体
             Font archiveFont = new Font("仿宋", "Simfang", simfangResource.getFile().toPath());
 
             // --- 构造图片层 ---
             Img topImage = new Img(targetWidthMm, targetHeightMm, imgPath);
-            topImage.setPosition(Position.Absolute).setX(0d).setY(0d).setWidth(targetWidthMm).setHeight(targetHeightMm);
+            // 清空图片的默认外边距和内边距
+            topImage.setPosition(Position.Absolute).setX(0d).setY(0d).setWidth(targetWidthMm).setHeight(targetHeightMm).setMargin(0d).setPadding(0d);
 
             // --- 构造文字层 ---
             Span textSpan = new Span(textContent).setColor(textR, textG, textB).setFont(archiveFont).setFontSize(finalFontSizeMm);
 
             Paragraph textParagraph = new Paragraph().add(textSpan);
-            textParagraph.setPosition(Position.Absolute)
-                    // 使用计算后的物理坐标(mm)设置绝对位置和容器大小
-                    .setX(textXmm).setY(textYmm).setWidth(textWidthMm).setHeight(textHeightMm);
+            // 清空段落的默认边距（非常关键，段落默认有边距）
+            textParagraph.setPosition(Position.Absolute).setX(textXmm).setY(textYmm).setWidth(textWidthMm).setHeight(textHeightMm).setMargin(0d).setPadding(0d);
 
             // --- 使用计算出的动态尺寸创建画布 ---
             PageLayout customLayout = new PageLayout(targetWidthMm, targetHeightMm);
+
+            ofdDoc.setDefaultPageLayout(customLayout);
+
             VirtualPage vPage = new VirtualPage(customLayout);
 
             vPage.add(textParagraph);
