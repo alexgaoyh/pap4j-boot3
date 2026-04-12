@@ -20,6 +20,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 public class OFDTest {
 
@@ -144,4 +145,95 @@ public class OFDTest {
             log.info("输出路径：{}", outPath.toAbsolutePath());
         }
     }
+
+    public record TextMark(String content, int pixelX, int pixelY, int pixelWidth, int pixelHeight, int r, int g,
+                           int b) {
+    }
+
+    @Test
+    public void test2() throws Exception {
+        Path outPath = Paths.get("C:\\Users\\86181\\Desktop\\ofda-test2.ofd");
+
+        List<TextMark> textMarks = List.of(
+                new TextMark("河", 7767, 1337, 229, 266, 255, 0, 0),    // 红色
+                new TextMark("南", 8067, 1337, 229, 266, 0, 128, 0),    // 绿色
+                new TextMark("许", 8367, 1337, 229, 266, 0, 0, 255),    // 蓝色
+                new TextMark("昌", 8667, 1337, 229, 266, 0, 0, 0)       // 黑色
+        );
+
+        double dpi = 96.0;
+
+        int pixelWidth = 9300;
+        int pixelHeight = 7136;
+
+        // 像素转毫米公式
+        double targetWidthMm = (pixelWidth / dpi) * 25.4d;
+        double targetHeightMm = (pixelHeight / dpi) * 25.4d;
+
+        log.info(String.format("画布物理尺寸: %.2f x %.2f mm", targetWidthMm, targetHeightMm));
+
+        ClassPathResource simfangResource = new ClassPathResource("fonts/simfang.ttf");
+        if (!simfangResource.exists()) {
+            log.error("提示：字体文件不存在，跳过处理 (资源路径: fonts/simfang.ttf)");
+            return;
+        }
+
+        try (OFDDoc ofdDoc = new OFDDoc(outPath)) {
+            try {
+                java.lang.reflect.Field ofdDirField = OFDDoc.class.getDeclaredField("ofdDir");
+                ofdDirField.setAccessible(true);
+                org.ofdrw.pkg.container.OFDDir ofdDir = (org.ofdrw.pkg.container.OFDDir) ofdDirField.get(ofdDoc);
+                ofdDir.getOfd().addAttribute("DocType", "OFD-A");
+                CustomDatas customDatas = new CustomDatas();
+                customDatas.addCustomData(new CustomData("发文字号", "TEA-2026-001A"));
+                ofdDir.getOfd().getDocBody().getDocInfo().setAuthor("河南许昌").setCustomDatas(customDatas);
+            } catch (Exception e) {
+                log.error("设置 OFD 元数据失败", e);
+            }
+
+            Font archiveFont = new Font("仿宋", "Simfang", simfangResource.getFile().toPath());
+
+            PageLayout customLayout = new PageLayout(targetWidthMm, targetHeightMm);
+            ofdDoc.setDefaultPageLayout(customLayout);
+            VirtualPage vPage = new VirtualPage(customLayout);
+
+            // --- 循环遍历 Record 集合，添加文字层 ---
+            for (TextMark mark : textMarks) {
+                // 将当前文字的像素坐标和尺寸等比例转换为物理数值(mm)
+                double textXmm = (mark.pixelX() / dpi) * 25.4d;
+                double textYmm = (mark.pixelY() / dpi) * 25.4d;
+                double textWidthMm = (mark.pixelWidth() / dpi) * 25.4d;
+                double textHeightMm = (mark.pixelHeight() / dpi) * 25.4d;
+
+                // 计算字体大小
+                double baseFontSizeMm = Math.min(textWidthMm, textHeightMm);
+                double finalFontSizeMm = baseFontSizeMm * 0.9;
+
+                // 构造 Span 文本
+                Span textSpan = new Span(mark.content())
+                        .setColor(mark.r(), mark.g(), mark.b())
+                        .setFont(archiveFont)
+                        .setFontSize(finalFontSizeMm);
+
+                // 构造 Paragraph 容器
+                Paragraph textParagraph = new Paragraph().add(textSpan);
+                textParagraph.setPosition(Position.Absolute)
+                        .setX(textXmm).setY(textYmm)
+                        .setWidth(textWidthMm).setHeight(textHeightMm)
+                        .setMargin(0d).setPadding(0d);
+
+                // 将文字添加到虚拟页（后添加的会在图片上方）
+                vPage.add(textParagraph);
+
+                log.info(String.format("已添加文字 [%s]: 物理坐标 X=%.2f mm, Y=%.2f mm", mark.content(), textXmm, textYmm));
+            }
+
+            // 写入文档
+            ofdDoc.addVPage(vPage);
+
+            log.info("完美贴合图片尺寸，且多处文字位置精确转换的 OFD 文件生成成功！");
+            log.info("输出路径：{}", outPath.toAbsolutePath());
+        }
+    }
+
 }
