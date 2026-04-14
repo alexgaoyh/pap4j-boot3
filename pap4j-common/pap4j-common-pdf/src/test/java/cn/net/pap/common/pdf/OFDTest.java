@@ -18,6 +18,8 @@ import org.springframework.core.io.ClassPathResource;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
@@ -97,6 +99,15 @@ public class OFDTest {
             return;
         }
 
+        Path tmpFontPath = null;
+        try {
+            tmpFontPath = Files.createTempFile("simfang_subset_", ".ttf");
+            FontSubsetUtils.createSubset(Paths.get(simfangResource.getFile().toString()), tmpFontPath, textContent);
+        } catch (IOException e) {
+            log.error("提示：字体子集化失败，跳过处理 (资源路径: fonts/simfang.ttf)");
+            return;
+        }
+
         // ====================================================
         // 4. 开始构建 OFD 文档
         // ====================================================
@@ -114,7 +125,7 @@ public class OFDTest {
             }
 
             // 加载字体
-            Font archiveFont = new Font("仿宋", "Simfang", simfangResource.getFile().toPath());
+            Font archiveFont = new Font("仿宋", "Simfang", tmpFontPath);
 
             // --- 构造图片层 ---
             Img topImage = new Img(targetWidthMm, targetHeightMm, imgPath);
@@ -143,6 +154,10 @@ public class OFDTest {
 
             log.info("完美贴合图片尺寸，且文字位置精确转换的 OFD 文件生成成功！");
             log.info("输出路径：{}", outPath.toAbsolutePath());
+        } finally {
+            if(tmpFontPath != null && tmpFontPath.toFile().exists()) {
+                tmpFontPath.toFile().delete();
+            }
         }
     }
 
