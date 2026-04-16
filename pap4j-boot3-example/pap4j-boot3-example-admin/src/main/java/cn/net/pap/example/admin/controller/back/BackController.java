@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "后台接口", description = "后台管理相关的API接口")
 public class BackController {
 
-    @GetMapping("/hello")
-    @Operation(summary = "后台欢迎接口", description = "返回后台欢迎信息", operationId = "hello")
-    public String hello() {
+    @GetMapping("/back_hello")
+    @Operation(summary = "后台欢迎接口", description = "返回后台欢迎信息", operationId = "back_hello")
+    public String back_hello() {
         return "Hello from Back API!";
     }
 

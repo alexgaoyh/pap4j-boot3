@@ -11,9 +11,9 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "第三方接口", description = "对接第三方的API接口")
 public class ThirdController {
 
-    @GetMapping("/hello")
-    @Operation(summary = "第三方欢迎接口", description = "返回第三方欢迎信息", operationId = "hello")
-    public String hello() {
+    @GetMapping("/third_hello")
+    @Operation(summary = "第三方欢迎接口", description = "返回第三方欢迎信息", operationId = "third_hello")
+    public String third_hello() {
         return "Hello from Third API!";
     }
 
