@@ -20,3 +20,12 @@ springdoc:
       display-name: '测试模块'
       paths-to-match: '/**'
       packages-to-scan: cn.net.pap.example.admin
+    - group: 'front'
+      display-name: '前台接口'
+      packages-to-scan: cn.net.pap.example.admin.controller.front
+    - group: 'back'
+      display-name: '后台接口'
+      packages-to-scan: cn.net.pap.example.admin.controller.back
+    - group: 'third'
+      display-name: '第三方接口'
+      packages-to-scan: cn.net.pap.example.admin.controller.third
