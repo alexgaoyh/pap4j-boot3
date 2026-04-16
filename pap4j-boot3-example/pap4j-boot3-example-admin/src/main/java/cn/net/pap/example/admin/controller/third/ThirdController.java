@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class ThirdController {
 
     @GetMapping("/hello")
-    @Operation(summary = "第三方欢迎接口", description = "返回第三方欢迎信息")
+    @Operation(summary = "第三方欢迎接口", description = "返回第三方欢迎信息", operationId = "hello")
     public String hello() {
         return "Hello from Third API!";
     }

@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class BackController {
 
     @GetMapping("/hello")
-    @Operation(summary = "后台欢迎接口", description = "返回后台欢迎信息")
+    @Operation(summary = "后台欢迎接口", description = "返回后台欢迎信息", operationId = "hello")
     public String hello() {
         return "Hello from Back API!";
     }

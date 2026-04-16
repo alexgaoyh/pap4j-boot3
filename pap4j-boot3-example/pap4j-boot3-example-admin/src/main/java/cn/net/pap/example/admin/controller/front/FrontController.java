@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class FrontController {
 
     @GetMapping("/hello")
-    @Operation(summary = "前台欢迎接口", description = "返回前台欢迎信息")
+    @Operation(summary = "前台欢迎接口", description = "返回前台欢迎信息", operationId = "hello")
     public String hello() {
         return "Hello from Front API!";
     }
