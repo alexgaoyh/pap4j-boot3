@@ -154,6 +154,10 @@ public class InnerXmlFunction implements XPathFunction {
     }
 
     /**
+     * 这个方法其实是为了兼容 jdk8 增加了代码处理逻辑，目前在 jdk17 下没有遇到过这个问题。
+     * 在 JDK 8 中，内置的 XML 序列化器（基于 Apache Xalan 早期版本的内部分支 com.sun.org.apache.xalan.internal）对 Unicode 的支持主要停留在基本多语言平面（BMP，即 65535 以内的字符）。
+     * 从 JDK 9 开始（尤其是到 JDK 11 和 17 这些 LTS 长期支持版本），Java 官方对底层的 XML 处理模块进行了大量重构和 Bug 修复。代理对原生支持：JDK 17 的 XML 序列化器被彻底升级，能够原生理解并正确处理 UTF-16 的代理对（Surrogate Pairs）。
+     *   智能输出：当它发现你在往 StringWriter（本质是处理 Java String 和 char[] 的内存流）输出时，它知道 Java 的 String 本身就是支持代理对的，因此它不再盲目进行实体转义，而是直接把这两个 char 原封不动地写进去。
      * Java 老旧的 XML 引擎面对超出单 char 表示范围的生僻字时，由于你使用了字符流（StringWriter）作为输出目标，它出于防御性设计的本能，选择了最安全的 ASCII 实体转义策略。
      * 需要对生僻字做处理。
      * @param str
