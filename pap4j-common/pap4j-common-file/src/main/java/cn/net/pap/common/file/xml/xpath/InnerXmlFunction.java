@@ -14,6 +14,8 @@ import javax.xml.xpath.XPathFunction;
 import javax.xml.xpath.XPathFunctionException;
 import java.io.StringWriter;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * InnerXmlFunction 是一个自定义的 XPathFunction，用于获取 XML 节点的内部 XML 内容。
@@ -23,6 +25,8 @@ import java.util.List;
  * 使用场景：在 XPath 表达式中直接获取元素内部的 XML，而不是整个节点。
  */
 public class InnerXmlFunction implements XPathFunction {
+
+    private static final Pattern NUMERIC_ENTITY_PATTERN = Pattern.compile("&#(\\d+);");
 
     @Override
     public Object evaluate(List<?> args) throws XPathFunctionException {
@@ -143,10 +147,36 @@ public class InnerXmlFunction implements XPathFunction {
             } else {
                 StringWriter writer = new StringWriter();
                 transformer.transform(new DOMSource(child), new StreamResult(writer));
-                sb.append(writer.toString());
+                String transformedXml = writer.toString();
+                sb.append(unescapeNumericEntities(transformedXml));
             }
         }
     }
+
+    /**
+     * Java 老旧的 XML 引擎面对超出单 char 表示范围的生僻字时，由于你使用了字符流（StringWriter）作为输出目标，它出于防御性设计的本能，选择了最安全的 ASCII 实体转义策略。
+     * 需要对生僻字做处理。
+     * @param str
+     * @return
+     */
+    private String unescapeNumericEntities(String str) {
+        if (str == null || !str.contains("&#")) {
+            return str;
+        }
+        Matcher m = NUMERIC_ENTITY_PATTERN.matcher(str);
+        StringBuffer sb = new StringBuffer();
+        while (m.find()) {
+            try {
+                int codePoint = Integer.parseInt(m.group(1));
+                m.appendReplacement(sb, new String(Character.toChars(codePoint)));
+            } catch (Exception e) {
+                m.appendReplacement(sb, m.group(0));
+            }
+        }
+        m.appendTail(sb);
+        return sb.toString();
+    }
+
 
 }
 
