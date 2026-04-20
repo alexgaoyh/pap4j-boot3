@@ -3,6 +3,7 @@ package cn.net.pap.common.pdf;
 import org.junit.jupiter.api.Test;
 import org.ofdrw.core.basicStructure.ofd.docInfo.CustomData;
 import org.ofdrw.core.basicStructure.ofd.docInfo.CustomDatas;
+import org.ofdrw.core.basicStructure.pageObj.layer.Type;
 import org.ofdrw.font.Font;
 import org.ofdrw.layout.OFDDoc;
 import org.ofdrw.layout.PageLayout;
@@ -46,11 +47,12 @@ public class OFDTest {
         // 1. 前置配置：定义 DPI 及基于图片像素坐标系的参数
         // ====================================================
         // 目标显示 DPI：96 (Windows 标准)，高清打印场景可调高至 300
-        double dpi = 96.0;
+        // todo 这个值要根据具体图像做调整.
+        double dpi = 600.0;
 
         // 定义要写入的文字内容及样式
         String textContent = "法";
-        int textR = 255, textG = 0, textB = 0; // 字体颜色 (红色)
+        int textR = 255, textG = 255, textB = 255; // 字体颜色
 
         // 定义文字在原图上的像素级位置及容器大小 (单位：px)
         // 这里的 X 和 Y 是指文字容器左上角相对于图片左上角的坐标
@@ -131,11 +133,13 @@ public class OFDTest {
             Img topImage = new Img(targetWidthMm, targetHeightMm, imgPath);
             // 清空图片的默认外边距和内边距
             topImage.setPosition(Position.Absolute).setX(0d).setY(0d).setWidth(targetWidthMm).setHeight(targetHeightMm).setMargin(0d).setPadding(0d);
+            topImage.setLayer(Type.Background);
 
             // --- 构造文字层 ---
             Span textSpan = new Span(textContent).setColor(textR, textG, textB).setFont(archiveFont).setFontSize(finalFontSizeMm);
 
             Paragraph textParagraph = new Paragraph().add(textSpan);
+            textParagraph.setOpacity(0d);
             // 清空段落的默认边距（非常关键，段落默认有边距）
             textParagraph.setPosition(Position.Absolute).setX(textXmm).setY(textYmm).setWidth(textWidthMm).setHeight(textHeightMm).setMargin(0d).setPadding(0d);
 
