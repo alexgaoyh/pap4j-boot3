@@ -1,5 +1,7 @@
 package cn.net.pap.common.pdf;
 
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.ofdrw.core.basicStructure.ofd.docInfo.CustomData;
 import org.ofdrw.core.basicStructure.ofd.docInfo.CustomDatas;
@@ -36,12 +38,43 @@ public class OFDTest {
 
     // 缓存反射 Field，提升高并发下的性能，避免每次实例化都去反射获取
     private static final java.lang.reflect.Field OFD_DIR_FIELD;
+    
+    // 缓存基础字体文件路径，避免高并发下每次都去复制几MB的字体文件
+    private static Path GLOBAL_BASE_FONT_PATH;
+
     static {
         try {
             OFD_DIR_FIELD = OFDDoc.class.getDeclaredField("ofdDir");
             OFD_DIR_FIELD.setAccessible(true);
         } catch (NoSuchFieldException e) {
             throw new RuntimeException("OFDDoc 初始化反射获取 ofdDir 失败", e);
+        }
+    }
+
+    // 类加载时仅执行一次磁盘拷贝
+    @BeforeAll
+    public static void setupGlobalResources() throws IOException {
+        ClassPathResource simfangResource = new ClassPathResource("fonts/simfang.ttf");
+        if (simfangResource.exists()) {
+            GLOBAL_BASE_FONT_PATH = Files.createTempFile("simfang_base_global_", ".ttf");
+            try (InputStream in = simfangResource.getInputStream()) {
+                Files.copy(in, GLOBAL_BASE_FONT_PATH, StandardCopyOption.REPLACE_EXISTING);
+            }
+            log.info("全局基础字体文件缓存完毕: {}", GLOBAL_BASE_FONT_PATH);
+        } else {
+            log.warn("提示：基础字体测试资源不存在：fonts/simfang.ttf");
+        }
+    }
+
+    // 测试结束后清理全局缓存的文件
+    @AfterAll
+    public static void cleanupGlobalResources() {
+        if (GLOBAL_BASE_FONT_PATH != null) {
+            try {
+                Files.deleteIfExists(GLOBAL_BASE_FONT_PATH);
+            } catch (IOException e) {
+                log.warn("清理全局基础字体文件失败", e);
+            }
         }
     }
 
@@ -60,15 +93,6 @@ public class OFDTest {
             }
         }
         return null;
-    }
-
-    // 辅助函数：将 ClassPathResource 中的文件拷贝到本地临时文件，解决打成 JAR 包后 getFile() 报错问题
-    private Path getResourceAsTempPath(ClassPathResource resource, String prefix, String suffix) throws IOException {
-        Path tempFile = Files.createTempFile(prefix, suffix);
-        try (InputStream in = resource.getInputStream()) {
-            Files.copy(in, tempFile, StandardCopyOption.REPLACE_EXISTING);
-        }
-        return tempFile;
     }
 
     @Test
@@ -140,19 +164,16 @@ public class OFDTest {
         // ====================================================
         // 3. 校验：检查字体文件是否存在
         // ====================================================
-        ClassPathResource simfangResource = new ClassPathResource("fonts/simfang.ttf");
-        if (!simfangResource.exists()) {
+        if (GLOBAL_BASE_FONT_PATH == null) {
             log.error("提示：字体文件不存在，跳过处理 (资源路径: fonts/simfang.ttf)");
             return;
         }
 
         Path tmpFontPath = null;
-        Path baseFontTempPath = null;
         try {
-            // 使用 getResourceAsTempPath 避免 JAR 包中执行 getFile() 报错
-            baseFontTempPath = getResourceAsTempPath(simfangResource, "simfang_base_", ".ttf");
             tmpFontPath = Files.createTempFile("simfang_subset_", ".ttf");
-            FontSubsetUtils.createSubset(baseFontTempPath, tmpFontPath, textContent);
+            // 直接使用全局初始化的字体文件，避免重复 IO，提升并发性能
+            FontSubsetUtils.createSubset(GLOBAL_BASE_FONT_PATH, tmpFontPath, textContent);
 
             // ====================================================
             // 4. 开始构建 OFD 文档
@@ -212,13 +233,6 @@ public class OFDTest {
                     log.error("清理临时字体子集文件失败: {}", tmpFontPath, e);
                 }
             }
-            if (baseFontTempPath != null) {
-                try {
-                    Files.deleteIfExists(baseFontTempPath);
-                } catch (IOException e) {
-                    log.error("清理基础临时字体文件失败: {}", baseFontTempPath, e);
-                }
-            }
         }
     }
 
@@ -250,17 +264,12 @@ public class OFDTest {
             log.info(String.format("画布物理尺寸: %.2f x %.2f mm", targetWidthMm, targetHeightMm));
         }
 
-        ClassPathResource simfangResource = new ClassPathResource("fonts/simfang.ttf");
-        if (!simfangResource.exists()) {
+        if (GLOBAL_BASE_FONT_PATH == null) {
             log.error("提示：字体文件不存在，跳过处理 (资源路径: fonts/simfang.ttf)");
             return;
         }
 
-        Path baseFontTempPath = null;
         try {
-            // 同样处理字体，避免使用 getFile()
-            baseFontTempPath = getResourceAsTempPath(simfangResource, "simfang_base_", ".ttf");
-
             try (OFDDoc ofdDoc = new OFDDoc(outPath)) {
                 try {
                     // 使用静态初始化的 Field 对象
@@ -273,7 +282,7 @@ public class OFDTest {
                     log.error("设置 OFD 元数据失败", e);
                 }
 
-                Font archiveFont = new Font("仿宋", "Simfang", baseFontTempPath);
+                Font archiveFont = new Font("仿宋", "Simfang", GLOBAL_BASE_FONT_PATH);
 
                 PageLayout customLayout = new PageLayout(targetWidthMm, targetHeightMm);
                 ofdDoc.setDefaultPageLayout(customLayout);
@@ -321,13 +330,7 @@ public class OFDTest {
         } catch (IOException e) {
             log.error("提示：字体处理或 OFD 生成失败", e);
         } finally {
-            if (baseFontTempPath != null) {
-                try {
-                    Files.deleteIfExists(baseFontTempPath);
-                } catch (IOException e) {
-                    log.error("清理基础临时字体文件失败: {}", baseFontTempPath, e);
-                }
-            }
+
         }
     }
 }
