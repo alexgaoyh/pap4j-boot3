@@ -17,17 +17,59 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 
 import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
+import java.awt.Dimension;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.Iterator;
 import java.util.List;
 
 public class OFDTest {
 
     private static final Logger log = LoggerFactory.getLogger(OFDTest.class);
+
+    // 缓存反射 Field，提升高并发下的性能，避免每次实例化都去反射获取
+    private static final java.lang.reflect.Field OFD_DIR_FIELD;
+    static {
+        try {
+            OFD_DIR_FIELD = OFDDoc.class.getDeclaredField("ofdDir");
+            OFD_DIR_FIELD.setAccessible(true);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException("OFDDoc 初始化反射获取 ofdDir 失败", e);
+        }
+    }
+
+    // 辅助函数：仅读取图片尺寸，避免将整张大图加载到内存中导致 OOM
+    private Dimension getImageDimensions(File imgFile) throws IOException {
+        try (ImageInputStream in = ImageIO.createImageInputStream(imgFile)) {
+            final Iterator<ImageReader> readers = ImageIO.getImageReaders(in);
+            if (readers.hasNext()) {
+                ImageReader reader = readers.next();
+                try {
+                    reader.setInput(in);
+                    return new Dimension(reader.getWidth(0), reader.getHeight(0));
+                } finally {
+                    reader.dispose();
+                }
+            }
+        }
+        return null;
+    }
+
+    // 辅助函数：将 ClassPathResource 中的文件拷贝到本地临时文件，解决打成 JAR 包后 getFile() 报错问题
+    private Path getResourceAsTempPath(ClassPathResource resource, String prefix, String suffix) throws IOException {
+        Path tempFile = Files.createTempFile(prefix, suffix);
+        try (InputStream in = resource.getInputStream()) {
+            Files.copy(in, tempFile, StandardCopyOption.REPLACE_EXISTING);
+        }
+        return tempFile;
+    }
 
     @Test
     public void test1() throws Exception {
@@ -64,14 +106,15 @@ public class OFDTest {
         // ====================================================
         // 2. 动态读取图片像素，并转换为 OFD 的物理尺寸 (单位：mm)
         // ====================================================
-        BufferedImage bimg = ImageIO.read(imgFile);
-        if (bimg == null) {
+        // 使用自定义的方法仅读取图片尺寸，避免整图加载到内存中引发 OOM
+        Dimension imgDim = getImageDimensions(imgFile);
+        if (imgDim == null) {
             log.error("提示：无法解析图片内容，可能格式不支持，跳过处理。");
             return;
         }
 
-        int pixelWidth = bimg.getWidth();
-        int pixelHeight = bimg.getHeight();
+        int pixelWidth = imgDim.width;
+        int pixelHeight = imgDim.height;
 
         // 像素转毫米公式：物理长度(mm) = (像素px / DPI) * 25.4 (1英寸=25.4毫米)
         double targetWidthMm = (pixelWidth / dpi) * 25.4d;
@@ -88,9 +131,11 @@ public class OFDTest {
         double finalFontSizeMm = baseFontSizeMm * 0.9;
 
         // slf4j 占位符 {} 不支持直接限制小数位数，因此针对浮点数使用 String.format
-        log.info("读取到图片像素: {} x {} px", pixelWidth, pixelHeight);
-        log.info(String.format("画布物理尺寸: %.2f x %.2f mm", targetWidthMm, targetHeightMm));
-        log.info(String.format("文字物理坐标: X=%.2f mm, Y=%.2f mm", textXmm, textYmm));
+        if (log.isInfoEnabled()) {
+            log.info("读取到图片像素: {} x {} px", pixelWidth, pixelHeight);
+            log.info(String.format("画布物理尺寸: %.2f x %.2f mm", targetWidthMm, targetHeightMm));
+            log.info(String.format("文字物理坐标: X=%.2f mm, Y=%.2f mm", textXmm, textYmm));
+        }
 
         // ====================================================
         // 3. 校验：检查字体文件是否存在
@@ -102,65 +147,77 @@ public class OFDTest {
         }
 
         Path tmpFontPath = null;
+        Path baseFontTempPath = null;
         try {
+            // 使用 getResourceAsTempPath 避免 JAR 包中执行 getFile() 报错
+            baseFontTempPath = getResourceAsTempPath(simfangResource, "simfang_base_", ".ttf");
             tmpFontPath = Files.createTempFile("simfang_subset_", ".ttf");
-            FontSubsetUtils.createSubset(Paths.get(simfangResource.getFile().toString()), tmpFontPath, textContent);
-        } catch (IOException e) {
-            log.error("提示：字体子集化失败，跳过处理 (资源路径: fonts/simfang.ttf)");
-            return;
-        }
+            FontSubsetUtils.createSubset(baseFontTempPath, tmpFontPath, textContent);
 
-        // ====================================================
-        // 4. 开始构建 OFD 文档
-        // ====================================================
-        try (OFDDoc ofdDoc = new OFDDoc(outPath)) {
-            try {
-                java.lang.reflect.Field ofdDirField = OFDDoc.class.getDeclaredField("ofdDir");
-                ofdDirField.setAccessible(true);
-                org.ofdrw.pkg.container.OFDDir ofdDir = (org.ofdrw.pkg.container.OFDDir) ofdDirField.get(ofdDoc);
-                ofdDir.getOfd().addAttribute("DocType", "OFD-A");
-                CustomDatas customDatas = new CustomDatas();
-                customDatas.addCustomData(new CustomData("发文字号", "TEA-2026-001A"));
-                ofdDir.getOfd().getDocBody().getDocInfo().setAuthor("河南许昌").setCustomDatas(customDatas);
-            } catch (Exception e) {
-                log.error("设置 OFD 元数据失败", e);
+            // ====================================================
+            // 4. 开始构建 OFD 文档
+            // ====================================================
+            try (OFDDoc ofdDoc = new OFDDoc(outPath)) {
+                try {
+                    // 使用静态初始化的 Field 对象，避免并发下重复执行反射消耗性能
+                    org.ofdrw.pkg.container.OFDDir ofdDir = (org.ofdrw.pkg.container.OFDDir) OFD_DIR_FIELD.get(ofdDoc);
+                    ofdDir.getOfd().addAttribute("DocType", "OFD-A");
+                    CustomDatas customDatas = new CustomDatas();
+                    customDatas.addCustomData(new CustomData("发文字号", "TEA-2026-001A"));
+                    ofdDir.getOfd().getDocBody().getDocInfo().setAuthor("河南许昌").setCustomDatas(customDatas);
+                } catch (Exception e) {
+                    log.error("设置 OFD 元数据失败", e);
+                }
+
+                // 加载字体
+                Font archiveFont = new Font("仿宋", "Simfang", tmpFontPath);
+
+                // --- 构造图片层 ---
+                Img topImage = new Img(targetWidthMm, targetHeightMm, imgPath);
+                // 清空图片的默认外边距和内边距
+                topImage.setPosition(Position.Absolute).setX(0d).setY(0d).setWidth(targetWidthMm).setHeight(targetHeightMm).setMargin(0d).setPadding(0d);
+                topImage.setLayer(Type.Background);
+
+                // --- 构造文字层 ---
+                Span textSpan = new Span(textContent).setColor(textR, textG, textB).setFont(archiveFont).setFontSize(finalFontSizeMm);
+
+                Paragraph textParagraph = new Paragraph().add(textSpan);
+                textParagraph.setOpacity(0d);
+                // 清空段落的默认边距（非常关键，段落默认有边距）
+                textParagraph.setPosition(Position.Absolute).setX(textXmm).setY(textYmm).setWidth(textWidthMm).setHeight(textHeightMm).setMargin(0d).setPadding(0d);
+
+                // --- 使用计算出的动态尺寸创建画布 ---
+                PageLayout customLayout = new PageLayout(targetWidthMm, targetHeightMm);
+
+                ofdDoc.setDefaultPageLayout(customLayout);
+
+                VirtualPage vPage = new VirtualPage(customLayout);
+
+                vPage.add(textParagraph);
+                vPage.add(topImage);
+
+                // 写入文档
+                ofdDoc.addVPage(vPage);
+
+                log.info("完美贴合图片尺寸，且文字位置精确转换的 OFD 文件生成成功！");
+                log.info("输出路径：{}", outPath.toAbsolutePath());
             }
-
-            // 加载字体
-            Font archiveFont = new Font("仿宋", "Simfang", tmpFontPath);
-
-            // --- 构造图片层 ---
-            Img topImage = new Img(targetWidthMm, targetHeightMm, imgPath);
-            // 清空图片的默认外边距和内边距
-            topImage.setPosition(Position.Absolute).setX(0d).setY(0d).setWidth(targetWidthMm).setHeight(targetHeightMm).setMargin(0d).setPadding(0d);
-            topImage.setLayer(Type.Background);
-
-            // --- 构造文字层 ---
-            Span textSpan = new Span(textContent).setColor(textR, textG, textB).setFont(archiveFont).setFontSize(finalFontSizeMm);
-
-            Paragraph textParagraph = new Paragraph().add(textSpan);
-            textParagraph.setOpacity(0d);
-            // 清空段落的默认边距（非常关键，段落默认有边距）
-            textParagraph.setPosition(Position.Absolute).setX(textXmm).setY(textYmm).setWidth(textWidthMm).setHeight(textHeightMm).setMargin(0d).setPadding(0d);
-
-            // --- 使用计算出的动态尺寸创建画布 ---
-            PageLayout customLayout = new PageLayout(targetWidthMm, targetHeightMm);
-
-            ofdDoc.setDefaultPageLayout(customLayout);
-
-            VirtualPage vPage = new VirtualPage(customLayout);
-
-            vPage.add(textParagraph);
-            vPage.add(topImage);
-
-            // 写入文档
-            ofdDoc.addVPage(vPage);
-
-            log.info("完美贴合图片尺寸，且文字位置精确转换的 OFD 文件生成成功！");
-            log.info("输出路径：{}", outPath.toAbsolutePath());
+        } catch (IOException e) {
+            log.error("提示：字体处理或 OFD 生成失败", e);
         } finally {
-            if(tmpFontPath != null && tmpFontPath.toFile().exists()) {
-                tmpFontPath.toFile().delete();
+            if (tmpFontPath != null) {
+                try {
+                    Files.deleteIfExists(tmpFontPath);
+                } catch (IOException e) {
+                    log.error("清理临时字体子集文件失败: {}", tmpFontPath, e);
+                }
+            }
+            if (baseFontTempPath != null) {
+                try {
+                    Files.deleteIfExists(baseFontTempPath);
+                } catch (IOException e) {
+                    log.error("清理基础临时字体文件失败: {}", baseFontTempPath, e);
+                }
             }
         }
     }
@@ -189,7 +246,9 @@ public class OFDTest {
         double targetWidthMm = (pixelWidth / dpi) * 25.4d;
         double targetHeightMm = (pixelHeight / dpi) * 25.4d;
 
-        log.info(String.format("画布物理尺寸: %.2f x %.2f mm", targetWidthMm, targetHeightMm));
+        if (log.isInfoEnabled()) {
+            log.info(String.format("画布物理尺寸: %.2f x %.2f mm", targetWidthMm, targetHeightMm));
+        }
 
         ClassPathResource simfangResource = new ClassPathResource("fonts/simfang.ttf");
         if (!simfangResource.exists()) {
@@ -197,62 +256,78 @@ public class OFDTest {
             return;
         }
 
-        try (OFDDoc ofdDoc = new OFDDoc(outPath)) {
-            try {
-                java.lang.reflect.Field ofdDirField = OFDDoc.class.getDeclaredField("ofdDir");
-                ofdDirField.setAccessible(true);
-                org.ofdrw.pkg.container.OFDDir ofdDir = (org.ofdrw.pkg.container.OFDDir) ofdDirField.get(ofdDoc);
-                ofdDir.getOfd().addAttribute("DocType", "OFD-A");
-                CustomDatas customDatas = new CustomDatas();
-                customDatas.addCustomData(new CustomData("发文字号", "TEA-2026-001A"));
-                ofdDir.getOfd().getDocBody().getDocInfo().setAuthor("河南许昌").setCustomDatas(customDatas);
-            } catch (Exception e) {
-                log.error("设置 OFD 元数据失败", e);
+        Path baseFontTempPath = null;
+        try {
+            // 同样处理字体，避免使用 getFile()
+            baseFontTempPath = getResourceAsTempPath(simfangResource, "simfang_base_", ".ttf");
+
+            try (OFDDoc ofdDoc = new OFDDoc(outPath)) {
+                try {
+                    // 使用静态初始化的 Field 对象
+                    org.ofdrw.pkg.container.OFDDir ofdDir = (org.ofdrw.pkg.container.OFDDir) OFD_DIR_FIELD.get(ofdDoc);
+                    ofdDir.getOfd().addAttribute("DocType", "OFD-A");
+                    CustomDatas customDatas = new CustomDatas();
+                    customDatas.addCustomData(new CustomData("发文字号", "TEA-2026-001A"));
+                    ofdDir.getOfd().getDocBody().getDocInfo().setAuthor("河南许昌").setCustomDatas(customDatas);
+                } catch (Exception e) {
+                    log.error("设置 OFD 元数据失败", e);
+                }
+
+                Font archiveFont = new Font("仿宋", "Simfang", baseFontTempPath);
+
+                PageLayout customLayout = new PageLayout(targetWidthMm, targetHeightMm);
+                ofdDoc.setDefaultPageLayout(customLayout);
+                VirtualPage vPage = new VirtualPage(customLayout);
+
+                // --- 循环遍历 Record 集合，添加文字层 ---
+                for (TextMark mark : textMarks) {
+                    // 将当前文字的像素坐标和尺寸等比例转换为物理数值(mm)
+                    double textXmm = (mark.pixelX() / dpi) * 25.4d;
+                    double textYmm = (mark.pixelY() / dpi) * 25.4d;
+                    double textWidthMm = (mark.pixelWidth() / dpi) * 25.4d;
+                    double textHeightMm = (mark.pixelHeight() / dpi) * 25.4d;
+
+                    // 计算字体大小
+                    double baseFontSizeMm = Math.min(textWidthMm, textHeightMm);
+                    double finalFontSizeMm = baseFontSizeMm * 0.9;
+
+                    // 构造 Span 文本
+                    Span textSpan = new Span(mark.content())
+                            .setColor(mark.r(), mark.g(), mark.b())
+                            .setFont(archiveFont)
+                            .setFontSize(finalFontSizeMm);
+
+                    // 构造 Paragraph 容器
+                    Paragraph textParagraph = new Paragraph().add(textSpan);
+                    textParagraph.setPosition(Position.Absolute)
+                            .setX(textXmm).setY(textYmm)
+                            .setWidth(textWidthMm).setHeight(textHeightMm)
+                            .setMargin(0d).setPadding(0d);
+
+                    // 将文字添加到虚拟页（后添加的会在图片上方）
+                    vPage.add(textParagraph);
+
+                    if (log.isInfoEnabled()) {
+                        log.info(String.format("已添加文字 [%s]: 物理坐标 X=%.2f mm, Y=%.2f mm", mark.content(), textXmm, textYmm));
+                    }
+                }
+
+                // 写入文档
+                ofdDoc.addVPage(vPage);
+
+                log.info("完美贴合图片尺寸，且多处文字位置精确转换的 OFD 文件生成成功！");
+                log.info("输出路径：{}", outPath.toAbsolutePath());
             }
-
-            Font archiveFont = new Font("仿宋", "Simfang", simfangResource.getFile().toPath());
-
-            PageLayout customLayout = new PageLayout(targetWidthMm, targetHeightMm);
-            ofdDoc.setDefaultPageLayout(customLayout);
-            VirtualPage vPage = new VirtualPage(customLayout);
-
-            // --- 循环遍历 Record 集合，添加文字层 ---
-            for (TextMark mark : textMarks) {
-                // 将当前文字的像素坐标和尺寸等比例转换为物理数值(mm)
-                double textXmm = (mark.pixelX() / dpi) * 25.4d;
-                double textYmm = (mark.pixelY() / dpi) * 25.4d;
-                double textWidthMm = (mark.pixelWidth() / dpi) * 25.4d;
-                double textHeightMm = (mark.pixelHeight() / dpi) * 25.4d;
-
-                // 计算字体大小
-                double baseFontSizeMm = Math.min(textWidthMm, textHeightMm);
-                double finalFontSizeMm = baseFontSizeMm * 0.9;
-
-                // 构造 Span 文本
-                Span textSpan = new Span(mark.content())
-                        .setColor(mark.r(), mark.g(), mark.b())
-                        .setFont(archiveFont)
-                        .setFontSize(finalFontSizeMm);
-
-                // 构造 Paragraph 容器
-                Paragraph textParagraph = new Paragraph().add(textSpan);
-                textParagraph.setPosition(Position.Absolute)
-                        .setX(textXmm).setY(textYmm)
-                        .setWidth(textWidthMm).setHeight(textHeightMm)
-                        .setMargin(0d).setPadding(0d);
-
-                // 将文字添加到虚拟页（后添加的会在图片上方）
-                vPage.add(textParagraph);
-
-                log.info(String.format("已添加文字 [%s]: 物理坐标 X=%.2f mm, Y=%.2f mm", mark.content(), textXmm, textYmm));
+        } catch (IOException e) {
+            log.error("提示：字体处理或 OFD 生成失败", e);
+        } finally {
+            if (baseFontTempPath != null) {
+                try {
+                    Files.deleteIfExists(baseFontTempPath);
+                } catch (IOException e) {
+                    log.error("清理基础临时字体文件失败: {}", baseFontTempPath, e);
+                }
             }
-
-            // 写入文档
-            ofdDoc.addVPage(vPage);
-
-            log.info("完美贴合图片尺寸，且多处文字位置精确转换的 OFD 文件生成成功！");
-            log.info("输出路径：{}", outPath.toAbsolutePath());
         }
     }
-
 }
