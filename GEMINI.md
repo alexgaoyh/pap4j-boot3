@@ -4,7 +4,7 @@
 
 ## 1. 技术栈边界 (Tech Stack)
 *   **核心框架**: Java 17+ 和 Spring Boot 3.x (Jakarta EE 规范)。
-*   **构建工具**: Maven。执行构建或测试时，请直接使用系统全局环境变量中配置的 `mvn` 命令，并建议添加 `-Dfile.encoding=UTF-8` 参数以防止中文乱码。
+*   **构建工具**: Maven。执行构建或测试时，请直接使用系统全局环境变量中配置的 `mvn` 命令，并建议添加 `-Dfile.encoding=UTF-8` 参数以防止中文乱码，添加的这个命令使用双引号包裹避免被截断。
 *   **模块架构**: 本项目是一个多模块架构。
     *   `pap4j-boot3-example`: 存放各类集成示例和测试业务。
     *   `pap4j-boot3-starters`: 存放自定义的 Spring Boot Starter 组件。
