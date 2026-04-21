@@ -196,7 +196,7 @@ public class StringUtilTest {
                 
                 data: {"content": "\uFFFD"}
                 
-                data: {"content": "\uFFFD\"}
+                data: {"content": "\uFFFD"}
                 
                 """;
 
