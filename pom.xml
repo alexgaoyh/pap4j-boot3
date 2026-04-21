@@ -36,6 +36,8 @@
         <maven-javadoc-plugin.skip>${default.skip}</maven-javadoc-plugin.skip>
         <git-commit-id-maven-plugin.skip>${default.skip}</git-commit-id-maven-plugin.skip>
         <maven-checkstyle-plugin.skip>${default.skip}</maven-checkstyle-plugin.skip>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
     </properties>
 
     <licenses>
