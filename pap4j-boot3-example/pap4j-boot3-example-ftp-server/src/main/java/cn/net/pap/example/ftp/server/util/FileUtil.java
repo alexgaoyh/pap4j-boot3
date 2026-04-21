@@ -12,11 +12,11 @@ import java.nio.file.Paths;
 public class FileUtil {
 
     /**
-     * 文件编码
+     * <p>文件编码</p>
      *
-     * @param filePath
-     * @return
-     * @throws IOException
+     * @param filePath 文件路径
+     * @return 编码结果
+     * @throws IOException IO异常
      */
     public static String detectCharsetUsingICU4J(String filePath) throws IOException {
         byte[] data = Files.readAllBytes(Paths.get(filePath));
@@ -85,7 +85,7 @@ public class FileUtil {
     }
 
     /**
-     * 将参数类型从 char 改为 int
+     * <p>将参数类型从 char 改为 int</p>
      */
     private static boolean isChineseCharacter(int codePoint) {
         // 扩展中文字符范围，现在 > 0xFFFF 的判断可以真实生效了

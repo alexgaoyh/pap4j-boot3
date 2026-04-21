@@ -16,7 +16,11 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 /**
- * 使用方法： client.sendSiteCommand("CONTENT " + fileName);  client.getReplyString();
+ * <p>使用方法：</p>
+ * <pre>{@code
+ * client.sendSiteCommand("CONTENT " + fileName);
+ * client.getReplyString();
+ * }</pre>
  */
 public class ContentCommand implements Command {
 

@@ -35,7 +35,7 @@ import java.util.Iterator;
 
 /**
  * 单元测试详见： pap-bean-ftp-starter ->  com.pap.ftp.ftp.AutoCloseableFTPClientTest
- *
+ * <pre>{@code
  *  public class AutoCloseableFTPClient extends FTPClient implements AutoCloseable {
  *     public InputStream retrieveImgSendFileStream(String remote) throws IOException {
  *         return this._retrieveFileStream("SITE_IMGSEND", remote);
@@ -95,6 +95,7 @@ import java.util.Iterator;
  *             }
  *         }
  *     }
+ * }</pre>
  */
 
 public class ImgSendCommand extends AbstractCommand {
@@ -228,9 +229,10 @@ public class ImgSendCommand extends AbstractCommand {
     }
 
     /**
-     * 相比于前面的方法，不再返回 base64，因为 base64 会放大，所以下面这个方法，是直接返回流，然后同样可以解析使用。
-     * 单元测试方法如下，直接子采样图像之后返回。
-     * @Test
+     * <p>相比于前面的方法，不再返回 base64，因为 base64 会放大，所以下面这个方法，是直接返回流，然后同样可以解析使用。</p>
+     * <p>单元测试方法如下，直接子采样图像之后返回：</p>
+     * <pre>{@code
+     *     @Test
      *     @Order(9)
      *     public void testImgSend() throws Exception {
      *         AutoCloseableFTPClient ftpClient = new AutoCloseableFTPClient();
@@ -269,11 +271,12 @@ public class ImgSendCommand extends AbstractCommand {
      *             }
      *         }
      *     }
+     * }</pre>
      *
-     * @param inputFileStr
-     * @param targetWidth
-     * @return
-     * @throws IOException
+     * @param inputFileStr 输入文件路径
+     * @param targetWidth 目标宽度
+     * @return {@link ImageThumbnailDTO} 缩略图信息
+     * @throws IOException IO异常
      */
     public static ImageThumbnailDTO convertOrigin(String inputFileStr, int targetWidth) throws IOException {
         BufferedImage image = getLowMemoryThumbnail(inputFileStr, targetWidth);

@@ -17,6 +17,8 @@ import java.io.IOException;
 import java.util.Base64;
 
 /**
+ * <p>测试示例：</p>
+ * <pre>{@code
  *     @Test
  *     @Order(9)
  *     public void testImgGet() throws IOException {
@@ -31,6 +33,7 @@ import java.util.Base64;
  *             }
  *         }
  *     }
+ * }</pre>
  */
 public class ImgGetCommand extends AbstractCommand {
 

@@ -13,7 +13,11 @@ import java.io.File;
 import java.io.IOException;
 
 /**
- * 使用方法： client.sendSiteCommand("ENCODING " + fileName);  client.getReplyString();
+ * <p>使用方法：</p>
+ * <pre>{@code
+ * client.sendSiteCommand("ENCODING " + fileName);
+ * client.getReplyString();
+ * }</pre>
  */
 public class EncodingCommand implements Command {
 

@@ -168,7 +168,7 @@ public class FtpServerConfig {
 
 
     /**
-     * 用户配置对象
+     * <p>用户配置对象</p>
      */
     public static class FtpUserProperties {
         private final String username;

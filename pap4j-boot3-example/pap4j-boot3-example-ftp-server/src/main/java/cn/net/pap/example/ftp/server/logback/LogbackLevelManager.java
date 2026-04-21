@@ -10,12 +10,14 @@ import java.util.Map;
 public class LogbackLevelManager {
 
     /**
-     * 动态修改指定Logger的日志级别（适配Logback 1.5.x）
+     * <p>动态修改指定Logger的日志级别（适配Logback 1.5.x）</p>
      *
      * @param loggerName Logger名称，支持：
-     *                   - "root" 修改根日志级别
-     *                   - "org.apache.ftpserver" 等具体包名
-     *                   - 完整类名
+     *                   <ul>
+     *                   <li>"root" 修改根日志级别</li>
+     *                   <li>"org.apache.ftpserver" 等具体包名</li>
+     *                   <li>完整类名</li>
+     *                   </ul>
      * @param levelName  日志级别，支持：TRACE, DEBUG, INFO, WARN, ERROR, OFF
      * @return 是否修改成功
      */

@@ -4,7 +4,7 @@ import java.io.InputStream;
 import java.io.Serializable;
 
 /**
- * 应用于 ImgSendCommand 包含图像流和图像宽高。
+ * <p>应用于 ImgSendCommand 包含图像流和图像宽高。</p>
  */
 public class ImageThumbnailDTO implements Serializable {
 

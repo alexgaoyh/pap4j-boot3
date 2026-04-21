@@ -80,7 +80,7 @@ public class RateLimitFtplet extends DefaultFtplet {
     }
 
     /**
-     * 封装连接请求
+     * <p>封装连接请求</p>
      */
     private static class ConnectRequest {
         private final FtpSession session;

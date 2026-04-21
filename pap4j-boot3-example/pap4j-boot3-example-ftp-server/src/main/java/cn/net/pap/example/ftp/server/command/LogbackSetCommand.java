@@ -11,9 +11,12 @@ import org.apache.ftpserver.impl.FtpServerContext;
 import java.io.IOException;
 
 /**
- *             ftpClient.sendSiteCommand("LOGBACKSET " + "org.apache.ftpserver " + "ERROR");
- *             int replyCode = ftpClient.getReplyCode();
- *             String replyString = ftpClient.getReplyString();
+ * <p>使用示例：</p>
+ * <pre>{@code
+ * ftpClient.sendSiteCommand("LOGBACKSET " + "org.apache.ftpserver " + "ERROR");
+ * int replyCode = ftpClient.getReplyCode();
+ * String replyString = ftpClient.getReplyString();
+ * }</pre>
  */
 public class LogbackSetCommand implements Command {
 
