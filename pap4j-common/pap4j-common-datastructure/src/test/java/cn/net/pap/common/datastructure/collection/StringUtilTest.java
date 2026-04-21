@@ -2,6 +2,7 @@ package cn.net.pap.common.datastructure.collection;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -89,7 +90,7 @@ public class StringUtilTest {
             // StringBuilder builder = new StringBuilder();
             StringBuilder builder = new StringBuilder(1024 * 1024);
             for (char b2 = '\u4E00'; b2 <= '\u9FA5'; b2++) {
-                if(!String.valueOf(b1).equals(String.valueOf(b2))) {
+                if (!String.valueOf(b1).equals(String.valueOf(b2))) {
                     builder.append(String.valueOf(b1));
                     builder.append(String.valueOf(b2));
                 }
@@ -97,9 +98,11 @@ public class StringUtilTest {
         }
     }
 
-    record Segment(String fileName, int pageNum, String content){
+    record Segment(String fileName, int pageNum, String content) {
 
-    };
+    }
+
+    ;
 
 
     @Test
@@ -157,6 +160,92 @@ public class StringUtilTest {
         } catch (Exception e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * 验证对中文字符串在字节层面进行不正常切分，
+     * 破坏 UTF-8 编码字节边界时，导致产生黑色菱形问号（U+FFFD ）的特殊输出。
+     */
+    @Test
+    public void testChineseStringImproperSlicing() {
+        // 中文字符串，在UTF-8编码下通常每个中文字符占3个字节
+        String originalStr = "测试";
+        byte[] utf8Bytes = originalStr.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+
+        // 故意从中间截断一个中文字符。"测"占3个字节，这里只取前2个字节，破坏了完整的UTF-8字符边界
+        byte[] brokenBytes = Arrays.copyOfRange(utf8Bytes, 0, 2);
+
+        // 使用UTF-8重新构造字符串时，遇到不完整的字节序列，会用替换字符(Replacement Character, U+FFFD, 即黑色菱形问号 )代替
+        String brokenStr = new String(brokenBytes, java.nio.charset.StandardCharsets.UTF_8);
+
+        System.out.println("原始中文字符串: " + originalStr);
+        System.out.println("由于不正常切分导致的特殊输出(包含黑色菱形问号): " + brokenStr);
+
+        // 验证确实生成了带有 U+FFFD 的特殊输出
+        assertTrue(brokenStr.contains("\uFFFD"));
+    }
+
+    @Test
+    public void testUpstreamBug() {
+        String mockUpstreamStream = """
+                data: {"content": "测"}
+                
+                data: {"content": "试"}
+                
+                data: {"content": "\uFFFD"}
+                
+                data: {"content": "\uFFFD"}
+                
+                data: {"content": "\uFFFD\"}
+                
+                """;
+
+        byte[] bytesFromNetwork = mockUpstreamStream.getBytes(StandardCharsets.UTF_8);
+
+        int validEnd = findValidUtf8End(bytesFromNetwork);
+
+        System.out.println("--- 模拟本地按 \\n\\n 拆分并验证字符 ---");
+        int start = 0;
+        int fffdCount = 0; // 记录发现了多少个脏数据块
+
+        for (int i = 0; i < validEnd - 1; i++) {
+            if (bytesFromNetwork[i] == '\n' && bytesFromNetwork[i + 1] == '\n') {
+                int eventLength = i - start + 2;
+                String event = new String(bytesFromNetwork, start, eventLength, StandardCharsets.UTF_8);
+
+                if (event.contains("\uFFFD")) {
+                    fffdCount++;
+                    System.out.print("【抓到脏数据】发现 U+FFFD！完整内容: " + event);
+                } else {
+                    System.out.print("【正常数据】: " + event);
+                }
+                // ===============================================
+
+                start = i + 2;
+            }
+        }
+
+        System.out.println("----------------------------------------");
+        System.out.println("验证结束，共拦截到 " + fffdCount + " 个包含 U+FFFD 的损坏事件。");
+
+    }
+
+    private int findValidUtf8End(byte[] bytes) {
+        int length = bytes.length;
+        if (length == 0) return 0;
+        for (int i = Math.max(0, length - 4); i < length; i++) {
+            byte b = bytes[i];
+            if ((b & 0x80) == 0) {
+                continue;
+            } else if ((b & 0xE0) == 0xC0) {
+                if (i + 1 >= length) return i;
+            } else if ((b & 0xF0) == 0xE0) {
+                if (i + 2 >= length) return i;
+            } else if ((b & 0xF8) == 0xF0) {
+                if (i + 3 >= length) return i;
+            }
+        }
+        return length;
     }
 
 }
