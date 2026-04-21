@@ -24,6 +24,15 @@ import java.nio.file.Paths;
  */
 public class ContentCommand implements Command {
 
+    /**
+     * <p>执行 <code>CONTENT</code> 自定义指令，用于快速获取支持格式文件的文本内容。</p>
+     *
+     * @param session FTP IO 会话对象
+     * @param context FTP 服务器上下文
+     * @param request FTP 客户端请求信息
+     * @throws IOException IO 异常
+     * @throws FtpException FTP 处理异常
+     */
     @Override
     public void execute(FtpIoSession session, FtpServerContext context, FtpRequest request)
             throws IOException, FtpException {

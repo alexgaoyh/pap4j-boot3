@@ -65,6 +65,12 @@ public class FtpServerConfig {
         return new RateLimitFtplet(connectRateLimit);
     }
 
+    /**
+     * <p>初始化并启动 FTP 服务器 Bean，装配监听器、过滤器、用户和自定义命令。</p>
+     * @param rateLimitFtplet 限流过滤器
+     * @return FtpServer 实例
+     * @throws FtpException 初始化失败异常
+     */
     @Bean
     public FtpServer ftpServer(RateLimitFtplet rateLimitFtplet) throws FtpException {
         FtpServerFactory serverFactory = new FtpServerFactory();

@@ -13,10 +13,28 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Set;
 
+/**
+ * <p>用于监控 FTP 当前在线用户和服务器统计信息的自定义命令。</p>
+ * <p>支持命令：</p>
+ * <ul>
+ *     <li><code>SITE MONITORUSERS USERS</code>：显示活跃用户列表</li>
+ *     <li><code>SITE MONITORUSERS STATS</code>：显示服务器统计信息</li>
+ *     <li><code>SITE MONITORUSERS HELP</code>：显示帮助菜单</li>
+ * </ul>
+ */
 public class MonitorUsersCommand extends AbstractCommand {
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
+    /**
+     * <p>执行用户监控和统计查询指令。</p>
+     *
+     * @param session FTP IO 会话对象
+     * @param context FTP 服务器上下文
+     * @param request FTP 客户端请求信息
+     * @throws IOException IO 异常
+     * @throws FtpException FTP 处理异常
+     */
     @Override
     public void execute(FtpIoSession session, FtpServerContext context, FtpRequest request)
             throws IOException, FtpException {

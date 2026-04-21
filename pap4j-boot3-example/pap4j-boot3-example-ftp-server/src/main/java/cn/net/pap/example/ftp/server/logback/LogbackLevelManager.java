@@ -7,6 +7,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 
+/**
+ * <p>动态日志级别管理工具类，用于运行时动态调整 Logback 的日志级别。</p>
+ */
 public class LogbackLevelManager {
 
     /**

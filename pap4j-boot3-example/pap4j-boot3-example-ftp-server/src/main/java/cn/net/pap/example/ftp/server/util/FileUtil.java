@@ -9,6 +9,9 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
+/**
+ * <p>文件处理相关工具类，提供文件编码推测等功能。</p>
+ */
 public class FileUtil {
 
     /**

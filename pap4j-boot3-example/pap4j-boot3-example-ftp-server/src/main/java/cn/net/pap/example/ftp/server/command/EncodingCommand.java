@@ -21,6 +21,15 @@ import java.io.IOException;
  */
 public class EncodingCommand implements Command {
 
+    /**
+     * <p>执行 <code>ENCODING</code> 自定义指令，用于探测目标文件的字符编码集。</p>
+     *
+     * @param session FTP IO 会话对象
+     * @param context FTP 服务器上下文
+     * @param request FTP 客户端请求信息
+     * @throws IOException IO 异常
+     * @throws FtpException FTP 处理异常
+     */
     @Override
     public void execute(FtpIoSession session, FtpServerContext context, FtpRequest request) throws IOException, FtpException {
         String args = request.getArgument();

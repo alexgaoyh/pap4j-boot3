@@ -219,6 +219,14 @@ public class ImgSendCommand extends AbstractCommand {
 
     }
 
+    /**
+     * <p>转换图片为低内存占用的 Base64 编码输入流。</p>
+     *
+     * @param inputFileStr 输入文件路径
+     * @param targetWidth 目标宽度
+     * @return 转换后的 {@link InputStream}
+     * @throws IOException IO异常
+     */
     public static InputStream convert(String inputFileStr, int targetWidth) throws IOException {
         BufferedImage image = getLowMemoryThumbnail(inputFileStr, targetWidth);
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {

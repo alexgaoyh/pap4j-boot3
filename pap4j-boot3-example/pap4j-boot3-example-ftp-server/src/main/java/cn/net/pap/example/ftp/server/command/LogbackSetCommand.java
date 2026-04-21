@@ -20,6 +20,15 @@ import java.io.IOException;
  */
 public class LogbackSetCommand implements Command {
 
+    /**
+     * <p>执行 <code>LOGBACKSET</code> 自定义指令，提供动态修改 Logback 日志级别的能力。</p>
+     *
+     * @param session FTP IO 会话对象
+     * @param context FTP 服务器上下文
+     * @param request FTP 客户端请求信息
+     * @throws IOException IO 异常
+     * @throws FtpException FTP 处理异常
+     */
     @Override
     public void execute(FtpIoSession session, FtpServerContext context, FtpRequest request) throws IOException, FtpException {
         String args = request.getArgument();
