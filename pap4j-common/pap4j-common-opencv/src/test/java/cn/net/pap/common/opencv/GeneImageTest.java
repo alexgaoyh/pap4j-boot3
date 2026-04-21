@@ -15,7 +15,60 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class GeneImageTest {
+
+    @Test
+    void testGenerateImageProcess() throws IOException {
+        // 在方法前面指定参数
+        int width = 8290;
+        int height = 7138;
+        int dpi = 600;
+        int number = 1;
+        String fileNamePrefix = "Sample";
+
+        // 创建临时文件路径（生成在系统临时目录，指定前缀和后缀）
+        Path tempFilePath = Files.createTempFile(fileNamePrefix + "-" + String.format("%04d", number) + "-", ".jpg");
+
+        try {
+            BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+            Graphics2D g2d = image.createGraphics();
+
+            // 设置背景颜色
+            g2d.setColor(Color.BLACK);
+            g2d.fillRect(0, 0, width, height);
+
+            // 设置文本颜色
+            g2d.setColor(Color.WHITE);
+            // 字体大小根据高度动态调整（或保持硬编码 3000）
+            Font font = new Font("Arial", Font.PLAIN, 3000);
+            g2d.setFont(font);
+            FontMetrics fm = g2d.getFontMetrics();
+            int x = (width - fm.stringWidth(String.valueOf(number))) / 2;
+            int y = (height + fm.getAscent() - fm.getDescent()) / 2;
+            g2d.drawString(String.valueOf(number), x, y);
+
+            g2d.dispose();
+
+            // 使用 JpegDPIProcessor 处理并写入临时文件
+            JpegDPIProcessor processor = new JpegDPIProcessor();
+            byte[] imgData = processor.setDPI(image, dpi);
+
+            Files.write(tempFilePath, imgData);
+
+            // 打印生成信息
+            System.out.println("临时图片已生成: " + tempFilePath.toAbsolutePath());
+
+            // 验证文件是否存在
+            assertTrue(Files.exists(tempFilePath), "文件应该生成成功");
+
+        } finally {
+            // 执行完删除
+            Files.deleteIfExists(tempFilePath);
+            System.out.println("临时文件已清理。");
+        }
+    }
 
     /**
      * 在指定文件夹按照传入数字生成图像，可循环生成多张图像
