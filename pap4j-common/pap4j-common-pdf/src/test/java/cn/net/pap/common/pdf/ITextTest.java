@@ -29,9 +29,9 @@ public class ITextTest {
      */
     private static BigDecimal dpi72ToReal = new BigDecimal(300).divide(new BigDecimal(72), 2, BigDecimal.ROUND_HALF_UP);
 
-    // @Test
+    @Test
     public void dirConvertTest() throws Exception {
-        File[] files = new File("C:\\Users\\86181\\Desktop\\单").listFiles();
+        File[] files = new File[]{TestResourceUtil.getFile("jpg.pdf")};
 
         for (File file : files) {
             if (file.isDirectory()) {
@@ -59,7 +59,7 @@ public class ITextTest {
             BigDecimal minWidth = new BigDecimal(Integer.MAX_VALUE);
             BigDecimal maxWidth = new BigDecimal(Integer.MIN_VALUE);
 
-            File file = new File("C:\\Users\\86181\\Desktop\\0029A.pdf");
+            File file = TestResourceUtil.getFile("jbig2.pdf");
             PdfReader reader = new PdfReader(file.getAbsolutePath());
             Integer pageNum = 1;
             Rectangle pageSize = reader.getPageSize(pageNum);
@@ -107,7 +107,7 @@ public class ITextTest {
             System.out.println(maxWidth);
             System.out.println(objectMapper.writeValueAsString(centerXTextList));
 
-            // saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS, dpi72ToReal, "C:\\Users\\86181\\Desktop\\123456.pdf");
+            // saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS, dpi72ToReal, System.getProperty("java.io.tmpdir") + "/123456.pdf");
 
         } catch (Exception e) {
             e.printStackTrace();

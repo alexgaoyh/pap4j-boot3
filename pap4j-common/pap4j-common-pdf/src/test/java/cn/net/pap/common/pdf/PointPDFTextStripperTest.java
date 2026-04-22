@@ -18,7 +18,7 @@ public class PointPDFTextStripperTest {
     @Test
     public void textExtractor() {
 
-        try (PDDocument document = Loader.loadPDF(new File("0004A.pdf"))) {
+        try (PDDocument document = Loader.loadPDF(new File(TestResourceUtil.getFile("format.pdf").getAbsolutePath()))) {
             PDFTextStripper stripper = new PDFTextStripper();
             String texts = stripper.getText(document);
             System.out.println(texts);
@@ -32,10 +32,13 @@ public class PointPDFTextStripperTest {
     public void pointTextExtractor() {
         List<PointTextDTO> pointTextDTOS = new ArrayList<>();
 
-        try (PDDocument document = Loader.loadPDF(new File("0004A.pdf"))) {
+        try (PDDocument document = Loader.loadPDF(new File(TestResourceUtil.getFile("format.pdf").getAbsolutePath()))) {
             PointPDFTextStripper stripper = new PointPDFTextStripper();
             String textWithPoints = stripper.getText(document);
             for(String textWithPoint : textWithPoints.split("\n")) {
+                if(!textWithPoint.contains("[")) {
+                    break;
+                }
                 String text = textWithPoint.substring(0, textWithPoint.indexOf("["));
                 String point = textWithPoint.substring(textWithPoint.indexOf("[") + 1, textWithPoint.indexOf("]"));
                 PointTextDTO pointTextDTO = new PointTextDTO(string2Box(point), text);

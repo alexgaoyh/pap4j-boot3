@@ -18,10 +18,16 @@ public class ItextExtractPathsTest {
 
     /**
      * PDF 线条信息、矩形信息 提取
+     * 创建 pdf 的过程：
+     * 1、通过 Acrobat 实现
+     * 1.1、打开 Acrobat，点击 工具-> 创建 PDF -> 空白页 -> 点击创建。
+     * 1.2、点击右侧工具栏的 注释。在顶部出现的注释工具栏中，找到 绘图工具。选择“矩形”或“线条”，在空白页上画图。你可以右键点击画好的形状 -> 属性，修改颜色和线条粗细。
+     * 1.3、将注释“压”入底层（Flatten）：注意：直接保存是不行的。点击 文件->打印 。在打印机列表中，选择 Adobe PDF（或者 Microsoft Print to PDF 也可以），点击 打印。
+     *
      */
     @Test
     public void extractPathTest() throws Exception {
-        PdfReader pdfReader = new PdfReader("C:\\Users\\86181\\Desktop\\format.pdf");
+        PdfReader pdfReader = new PdfReader(TestResourceUtil.getFile("format.pdf").getAbsolutePath());
 
         for (int page = 1; page <= pdfReader.getNumberOfPages(); page++) {
             System.out.printf("Page %s\n", page);

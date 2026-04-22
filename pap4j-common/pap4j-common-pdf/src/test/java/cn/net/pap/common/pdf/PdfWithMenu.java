@@ -17,7 +17,7 @@ public class PdfWithMenu {
     }
 
     private Font initSimsunFont() throws Exception {
-        BaseFont baseFont = BaseFont.createFont("C:\\Windows\\Fonts\\simsun.ttc,0",
+        BaseFont baseFont = BaseFont.createFont(TestResourceUtil.getFile("simsun.ttc").getAbsolutePath() + ",0",
                 BaseFont.IDENTITY_H, BaseFont.NOT_EMBEDDED);
         return new Font(baseFont, 12);
     }

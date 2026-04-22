@@ -14,11 +14,11 @@ import java.util.List;
 
 public class ITextUnicodeTest {
 
-    // @Test
+    @Test
     public void resourceTest() {
         try {
             // File file = new ClassPathResource("templates/模板.xlsx").getFile();
-            ClassPathResource simfangResource = new ClassPathResource("fonts/simfang.ttf");
+            ClassPathResource simfangResource = new ClassPathResource("simfang.ttf");
             if(simfangResource.exists()){
                 File file = simfangResource.getFile();
                 System.out.println(file.exists());
@@ -33,10 +33,10 @@ public class ITextUnicodeTest {
     /**
      * 加载字体，并且判断字体中是否存在某个 字符
      */
-    // @Test
+    @Test
     public void unicodeSupportTest() {
         try {
-            BaseFont chineseFont = BaseFont.createFont("C:\\Users\\86181\\Downloads\\NotoSansSC-VariableFont_wght.ttf",
+            BaseFont chineseFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
                     BaseFont.IDENTITY_H,
                     BaseFont.EMBEDDED
             );
@@ -52,12 +52,12 @@ public class ITextUnicodeTest {
     /**
      * 加载字体，并且获得字体内支持的所有字符的范围 Range
      */
-    // @Test
+    @Test
     public void unicodeRangeTest() {
         // 用于存储Unicode存在的区间
         List<String> unicodeRanges = new ArrayList<>();
         try {
-            BaseFont chineseFont = BaseFont.createFont("C:\\Users\\86181\\Downloads\\NotoSansSC-VariableFont_wght.ttf",
+            BaseFont chineseFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
                     BaseFont.IDENTITY_H,
                     BaseFont.EMBEDDED
             );
@@ -103,16 +103,16 @@ public class ITextUnicodeTest {
     /**
      * 生成PDF，多种字体的处理.
      */
-    // @Test
+    @Test
     public void emojiChineseTest() {
         // https://fonts.google.com/
         // https://fontforge.org/en-US/
         try {
-            BaseFont chineseFont = BaseFont.createFont("C:\\Users\\86181\\Downloads\\NotoSansSC-VariableFont_wght.ttf",
+            BaseFont chineseFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
                     BaseFont.IDENTITY_H,
                     BaseFont.EMBEDDED
             );
-            BaseFont emojiFont = BaseFont.createFont("C:\\Users\\86181\\Downloads\\NotoEmoji-VariableFont_wght.ttf",
+            BaseFont emojiFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
                     BaseFont.IDENTITY_H,
                     BaseFont.EMBEDDED
             );
@@ -121,7 +121,9 @@ public class ITextUnicodeTest {
             Font emojiStyle = new Font(emojiFont, 12);
 
             Document document = new Document();
-            PdfWriter.getInstance(document, new FileOutputStream("C:\\Users\\86181\\Downloads\\emoji_demo.pdf"));
+            java.io.File tempOut = java.io.File.createTempFile("emoji_demo", ".pdf");
+            tempOut.deleteOnExit();
+            PdfWriter.getInstance(document, new FileOutputStream(tempOut));
             document.open();
 
             Paragraph paragraph = new Paragraph();
@@ -137,14 +139,14 @@ public class ITextUnicodeTest {
         }
     }
 
-    // @Test
+    @Test
     public void emoji2PdfTest() {
         try {
-            BaseFont chineseFont = BaseFont.createFont("C:\\Users\\86181\\Downloads\\NotoSansSC-VariableFont_wght.ttf",
+            BaseFont chineseFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
                     BaseFont.IDENTITY_H,
                     BaseFont.EMBEDDED
             );
-            BaseFont emojiFont = BaseFont.createFont("C:\\Users\\86181\\Downloads\\NotoEmoji-VariableFont_wght.ttf",
+            BaseFont emojiFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
                     BaseFont.IDENTITY_H,
                     BaseFont.EMBEDDED
             );
@@ -153,7 +155,9 @@ public class ITextUnicodeTest {
             Font emojiStyle = new Font(emojiFont, 12);
 
             Document document = new Document();
-            PdfWriter.getInstance(document, new FileOutputStream("C:\\Users\\86181\\Downloads\\emoji_demo.pdf"));
+            java.io.File tempOut = java.io.File.createTempFile("emoji_demo", ".pdf");
+            tempOut.deleteOnExit();
+            PdfWriter.getInstance(document, new FileOutputStream(tempOut));
             document.open();
 
             // 逐区间遍历Unicode范围

@@ -28,9 +28,11 @@ public class ItextPdfChangePicInPDFTest {
 
     private static final Logger log = LoggerFactory.getLogger(ItextPdfChangePicInPDFTest.class);
 
-    // @Test
+    @Test
     public void extractImagesTest() throws Exception {
-        extractAndConvertImagesToJp2("C:\\Users\\86181\\Desktop\\GBT 9237-2017.pdf", "C:\\Users\\86181\\Desktop\\input-jp2.pdf");
+        File tempFile = File.createTempFile("input-jp2", ".pdf");
+        tempFile.deleteOnExit();
+        extractAndConvertImagesToJp2(TestResourceUtil.getFile("jpg.pdf").getAbsolutePath(), tempFile.getAbsolutePath());
     }
 
     /**

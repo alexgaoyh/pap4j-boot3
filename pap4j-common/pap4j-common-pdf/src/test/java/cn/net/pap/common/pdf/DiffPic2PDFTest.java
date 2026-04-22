@@ -14,22 +14,25 @@ import java.io.IOException;
  */
 public class DiffPic2PDFTest {
 
-    public static String imagePath = "C:\\Users\\86181\\Desktop\\0.jp2";
+    public static String imagePath = "0.jp2";
 
-    // @Test
+    @Test
     public void pic2PDF() throws IOException {
         FileOutputStream pdfOutputStream = null;
         Document document = null;
+        java.io.File tempPdf = null;
         try {
-            Image jp2Image = Image.getInstance(imagePath);
+            Image jp2Image = Image.getInstance(TestResourceUtil.getFile(imagePath).getAbsolutePath());
             Rectangle pageSize = new Rectangle(jp2Image.getScaledWidth(), jp2Image.getScaledHeight());
             document = new Document(pageSize);
-            pdfOutputStream = new FileOutputStream(imagePath + ".pdf");
+            tempPdf = java.io.File.createTempFile("pic2pdf", ".pdf");
+            tempPdf.deleteOnExit();
+            pdfOutputStream = new FileOutputStream(tempPdf);
             PdfWriter.getInstance(document, pdfOutputStream);
             document.open();
             document.add(jp2Image);
             document.close();
-            System.out.println("PDF 生成成功！");
+            System.out.println("PDF 生成成功！" + tempPdf.toPath().toAbsolutePath());
         } catch (Exception e) {
             e.printStackTrace();
             System.err.println("错误: " + e.getMessage());

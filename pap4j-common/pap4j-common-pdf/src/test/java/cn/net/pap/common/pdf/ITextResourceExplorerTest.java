@@ -15,7 +15,7 @@ public class ITextResourceExplorerTest {
 
     @Test
     public void print() throws Exception {
-        PdfReader reader = new PdfReader(new FileInputStream("input.pdf"));
+        PdfReader reader = new PdfReader(new FileInputStream(TestResourceUtil.getFile("format.pdf").getAbsolutePath()));
         for (int i = 1; i <= reader.getNumberOfPages(); i++) {
             PdfDictionary pageDict = reader.getPageN(i);
             System.out.println(">>> Page " + i);

@@ -11,12 +11,14 @@ import java.util.Iterator;
 
 public class Jbig2ToJpgConverter {
 
-    // @Test
+    @Test
     public void convertTest() throws IOException {
         try {
-            String jb2ePath = "C:\\Users\\86181\\Desktop\\003.jb2e";
-            String jb2gPath = "C:\\Users\\86181\\Desktop\\003.jb2g";
-            String outputJpg = "C:\\Users\\86181\\Desktop\\003.jpg";
+            String jb2ePath = TestResourceUtil.getFile("003.jb2e").getAbsolutePath();
+            String jb2gPath = TestResourceUtil.getFile("003.jb2g").getAbsolutePath();
+            File tempFile = File.createTempFile("003-", ".jpg");
+            tempFile.deleteOnExit();
+            String outputJpg = tempFile.getAbsolutePath();
 
             Jbig2ToJpgConverter.convert(jb2ePath, jb2gPath, outputJpg);
         } catch (Exception e) {

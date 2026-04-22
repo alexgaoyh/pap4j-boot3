@@ -58,7 +58,7 @@ public class PDFFontTest {
      */
     @Test
     public void pdfTest() throws IOException {
-        List<FontInfo> fontInfos = listAllFonts("input.pdf");
+        List<FontInfo> fontInfos = listAllFonts("format.pdf");
         for (FontInfo fontInfo : fontInfos) {
             System.out.println(fontInfo);
         }
@@ -159,7 +159,7 @@ public class PDFFontTest {
      *
      * @throws Exception
      */
-    @Test
+    // @Test
     public void reGenePdfTest() throws Exception {
         String src = "C:/Users/86181/Desktop/GBT 9237-2017.pdf";
         String dest = "C:/Users/86181/Desktop/output.pdf";

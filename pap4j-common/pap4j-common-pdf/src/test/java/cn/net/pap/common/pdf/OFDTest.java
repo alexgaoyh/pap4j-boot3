@@ -7,6 +7,7 @@ import org.ofdrw.core.basicStructure.ofd.docInfo.CustomData;
 import org.ofdrw.core.basicStructure.ofd.docInfo.CustomDatas;
 import org.ofdrw.core.basicStructure.pageObj.layer.Type;
 import org.ofdrw.font.Font;
+import org.ofdrw.font.PapOFDFont;
 import org.ofdrw.layout.OFDDoc;
 import org.ofdrw.layout.PageLayout;
 import org.ofdrw.layout.VirtualPage;
@@ -97,8 +98,9 @@ public class OFDTest {
 
     @Test
     public void test1() throws Exception {
-        Path outPath = Paths.get("C:\\Users\\86181\\Desktop\\ofda-check.ofd");
-        Path imgPath = Paths.get("C:\\Users\\86181\\Desktop\\1.jpg");
+        Path outPath = Files.createTempFile("ofda-check-", ".ofd");
+        outPath.toFile().deleteOnExit();
+        Path imgPath = TestResourceUtil.getFile("1.jpg").toPath();
 
         // ====================================================
         // 0. 校验：检查输入图片是否存在，不存在则直接跳过
@@ -191,7 +193,7 @@ public class OFDTest {
                 }
 
                 // 加载字体
-                Font archiveFont = new Font("仿宋", "Simfang", tmpFontPath);
+                Font archiveFont = new PapOFDFont("仿宋", "Simfang", tmpFontPath);
 
                 // --- 构造图片层 ---
                 Img topImage = new Img(targetWidthMm, targetHeightMm, imgPath);
@@ -242,7 +244,8 @@ public class OFDTest {
 
     @Test
     public void test2() throws Exception {
-        Path outPath = Paths.get("C:\\Users\\86181\\Desktop\\ofda-test2.ofd");
+        Path outPath = Files.createTempFile("ofda-test2-", ".ofd");
+        outPath.toFile().deleteOnExit();
 
         List<TextMark> textMarks = List.of(
                 new TextMark("河", 7767, 1337, 229, 266, 255, 0, 0),    // 红色
@@ -282,7 +285,7 @@ public class OFDTest {
                     log.error("设置 OFD 元数据失败", e);
                 }
 
-                Font archiveFont = new Font("仿宋", "Simfang", GLOBAL_BASE_FONT_PATH);
+                Font archiveFont = new PapOFDFont("仿宋", "Simfang", GLOBAL_BASE_FONT_PATH);
 
                 PageLayout customLayout = new PageLayout(targetWidthMm, targetHeightMm);
                 ofdDoc.setDefaultPageLayout(customLayout);

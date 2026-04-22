@@ -17,7 +17,9 @@ public class ItextBookMarkTest {
 
     @Test
     public void bookmarkTest() throws Exception {
-        String dest = "C:\\Users\\86181\\Desktop\\DocumentWithTOC.pdf";
+        java.io.File tempFile = java.io.File.createTempFile("DocumentWithTOC", ".pdf");
+        tempFile.deleteOnExit();
+        String dest = tempFile.getAbsolutePath();
         try {
             createPdf(dest);
             System.out.println("PDF created successfully: " + dest);
