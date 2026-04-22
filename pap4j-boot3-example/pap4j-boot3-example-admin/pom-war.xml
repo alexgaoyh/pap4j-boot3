@@ -23,6 +23,18 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
+            <exclusions>
+                <exclusion>
+                    <artifactId>tomcat-embed-el</artifactId>
+                    <groupId>org.apache.tomcat.embed</groupId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.5</version>
         </dependency>
 
         <dependency>
@@ -44,6 +56,14 @@
                 <exclusion>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-starter-tomcat</artifactId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>tomcat-embed-core</artifactId>
+                    <groupId>org.apache.tomcat.embed</groupId>
+                </exclusion>
+                <exclusion>
+                    <artifactId>tomcat-embed-websocket</artifactId>
+                    <groupId>org.apache.tomcat.embed</groupId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -81,6 +101,15 @@
 
     <build>
         <plugins>
+
+            <!--
+            spring-boot-maven-plugin  这个插件有一个 repackage 的 goal。
+            我如果是打war包，这个 repackage 的作用是？
+            如果打 WAR 包时不加 repackage 配置：你得到的是一个纯粹的传统 WAR 包，只能部署到外部 Tomcat 中运行，无法使用 java -jar 启动。
+            如果打 WAR 包时加了 repackage 配置：你得到的是一个兼容性极强的包。
+                本地开发测试或使用 Docker 镜像部署时，直接 java -jar 跑起来；如果是交付给传统的运维环境，直接塞进他们现有的 Tomcat 里面也能完美运行。
+            -->
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
