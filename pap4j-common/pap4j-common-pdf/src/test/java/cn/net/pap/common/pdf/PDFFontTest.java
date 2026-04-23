@@ -173,114 +173,149 @@ public class PDFFontTest {
      *
      * @throws Exception
      */
-    // @Test
+    @Test
     public void reGenePdfTest() throws Exception {
-        String src = "C:/Users/86181/Desktop/GBT 9237-2017.pdf";
-        String dest = "C:/Users/86181/Desktop/output.pdf";
-        String font = "C:/Windows/Fonts/simsun.ttc,0";
+        java.io.File srcFile = null;
+        java.io.File fontFile = null;
+        java.io.File tempDest = null;
+        java.io.FileInputStream srcFis = null;
+        java.io.FileOutputStream destFos = null;
+        try {
+            srcFile = TestResourceUtil.getFile("font.pdf");
+            fontFile = TestResourceUtil.getFile("simfang.ttf");
+            tempDest = java.io.File.createTempFile("output_", ".pdf");
+            tempDest.deleteOnExit();
 
-        PdfReader reader = new PdfReader(src);
+            srcFis = new java.io.FileInputStream(srcFile);
+            destFos = new java.io.FileOutputStream(tempDest);
 
-        Document document = new Document();
-        PdfWriter writer = PdfWriter.getInstance(document, new FileOutputStream(dest));
-        document.open();
+            //  对于源 PDF (srcFile) 和目标 PDF (tempDest)： 我不再直接把文件路径传给 iText。而是自己手动创建了 java.io.FileInputStream 和 java.io.FileOutputStream。
+            //  这样，在 finally 块里，我们可以主动调用 srcFis.close() 和 destFos.close()。只要我们自己掐断了流，iText 就无法再占用这两个文件。
+            PdfReader reader = new PdfReader(srcFis);
 
-        final PdfContentByte cb = writer.getDirectContent();
+            Document document = new Document();
+            PdfWriter writer = PdfWriter.getInstance(document, destFos);
+            document.open();
 
-        // 使用本机中文字体；iText 会自动子集化
-        final BaseFont bf = BaseFont.createFont(font, BaseFont.IDENTITY_H, BaseFont.EMBEDDED);
+            final PdfContentByte cb = writer.getDirectContent();
 
-        for (int page = 1; page <= reader.getNumberOfPages(); page++) {
-            Rectangle ps = reader.getPageSizeWithRotation(page);
-            float width = ps.getWidth();
-            float height = ps.getHeight();
-            float maxSize = 14400f; // 如果超出 14400，就缩小比例
-            float scale = Math.min(maxSize / width, maxSize / height);
-            document.setPageSize(new Rectangle(width * scale, height * scale));
-            document.newPage();
+            // 将字体读取为 byte[]，彻底避免 iText 占用 TTF 文件的句柄导致无法删除
+            // 对于 TTF 字体文件 (fontFile)： 我使用 java.nio.file.Files.readAllBytes(fontFile.toPath()) 将整个字体文件一次性读到了内存中的 byte[] 字节数组里。
+            // 然后，调用 BaseFont.createFont 时，把这个字节数组传给它（参数 ttfAfm），把原先的字体路径替换成了一个假名字 "simfang.ttf"。
+            // 通过这种方式，我们向 iText 隐瞒了字体在硬盘上的真实路径，iText 就只会在内存里操作字体，绝对不可能去锁定硬盘上的那个 TTF 文件。
+            byte[] fontBytes = java.nio.file.Files.readAllBytes(fontFile.toPath());
+            final BaseFont bf = BaseFont.createFont("simfang.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, false, fontBytes, null);
 
-            // --- 第一步：渲染文字（在图像下层）
-            PdfReaderContentParser parser = new PdfReaderContentParser(reader);
-            parser.processContent(page, new RenderListener() {
-                @Override
-                public void beginTextBlock() {
-                }
+            for (int page = 1; page <= reader.getNumberOfPages(); page++) {
+                Rectangle ps = reader.getPageSizeWithRotation(page);
+                float width = ps.getWidth();
+                float height = ps.getHeight();
+                float maxSize = width; // 如果超出 14400，就缩小比例
+                float scale = Math.min(maxSize / width, maxSize / height);
+                document.setPageSize(new Rectangle(width * scale, height * scale));
+                document.newPage();
 
-                @Override
-                public void endTextBlock() {
-                }
-
-                @Override
-                public void renderImage(ImageRenderInfo renderInfo) { /* 跳过图像 */ }
-
-                @Override
-                public void renderText(TextRenderInfo info) {
-                    try {
-                        String text = info.getText();
-                        if (text == null || text.isEmpty()) return;
-
-                        LineSegment base = info.getBaseline();
-                        Vector s = base.getStartPoint();
-                        Vector e = base.getEndPoint();
-
-                        float x = s.get(Vector.I1);
-                        float y = s.get(Vector.I2);
-
-                        float dx = e.get(Vector.I1) - x;
-                        float dy = e.get(Vector.I2) - y;
-                        double angleRad = Math.atan2(dy, dx);
-                        float cos = (float) Math.cos(angleRad);
-                        float sin = (float) Math.sin(angleRad);
-
-                        float ascentY = info.getAscentLine().getStartPoint().get(Vector.I2);
-                        float descentY = info.getDescentLine().getStartPoint().get(Vector.I2);
-                        float fontSize = Math.max(0.1f, Math.abs(ascentY - descentY));
-
-                        cb.saveState();
-                        cb.beginText();
-                        cb.setFontAndSize(bf, fontSize);
-                        cb.setTextMatrix(cos, sin, -sin, cos, x, y);
-                        cb.showText(text);
-                        cb.endText();
-                        cb.restoreState();
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
+                // --- 第一步：渲染文字（在图像下层）
+                PdfReaderContentParser parser = new PdfReaderContentParser(reader);
+                parser.processContent(page, new RenderListener() {
+                    @Override
+                    public void beginTextBlock() {
                     }
-                }
-            });
 
-            // --- 第二步：渲染图像（在文字上层）
-            parser.processContent(page, new RenderListener() {
-                @Override
-                public void beginTextBlock() {
-                }
-
-                @Override
-                public void endTextBlock() {
-                }
-
-                @Override
-                public void renderText(TextRenderInfo info) { /* 跳过文字 */ }
-
-                @Override
-                public void renderImage(ImageRenderInfo renderInfo) {
-                    try {
-                        PdfImageObject image = renderInfo.getImage();
-                        if (image == null) return;
-
-                        Image img = Image.getInstance(image.getImageAsBytes());
-                        Matrix m = renderInfo.getImageCTM();
-
-                        cb.addImage(img, m.get(Matrix.I11), m.get(Matrix.I12), m.get(Matrix.I21), m.get(Matrix.I22), m.get(Matrix.I31), m.get(Matrix.I32));
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
+                    @Override
+                    public void endTextBlock() {
                     }
-                }
-            });
+
+                    @Override
+                    public void renderImage(ImageRenderInfo renderInfo) { /* 跳过图像 */ }
+
+                    @Override
+                    public void renderText(TextRenderInfo info) {
+                        try {
+                            String text = info.getText();
+                            if (text == null || text.isEmpty()) return;
+
+                            LineSegment base = info.getBaseline();
+                            Vector s = base.getStartPoint();
+                            Vector e = base.getEndPoint();
+
+                            float x = s.get(Vector.I1);
+                            float y = s.get(Vector.I2);
+
+                            float dx = e.get(Vector.I1) - x;
+                            float dy = e.get(Vector.I2) - y;
+                            double angleRad = Math.atan2(dy, dx);
+                            float cos = (float) Math.cos(angleRad);
+                            float sin = (float) Math.sin(angleRad);
+
+                            float ascentY = info.getAscentLine().getStartPoint().get(Vector.I2);
+                            float descentY = info.getDescentLine().getStartPoint().get(Vector.I2);
+                            float fontSize = Math.max(0.1f, Math.abs(ascentY - descentY));
+
+                            cb.saveState();
+                            cb.beginText();
+                            cb.setFontAndSize(bf, fontSize);
+                            cb.setTextMatrix(cos, sin, -sin, cos, x, y);
+                            cb.showText(text);
+                            cb.endText();
+                            cb.restoreState();
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                });
+
+                // --- 第二步：渲染图像（在文字上层）
+                parser.processContent(page, new RenderListener() {
+                    @Override
+                    public void beginTextBlock() {
+                    }
+
+                    @Override
+                    public void endTextBlock() {
+                    }
+
+                    @Override
+                    public void renderText(TextRenderInfo info) { /* 跳过文字 */ }
+
+                    @Override
+                    public void renderImage(ImageRenderInfo renderInfo) {
+                        try {
+                            PdfImageObject image = renderInfo.getImage();
+                            if (image == null) return;
+
+                            Image img = Image.getInstance(image.getImageAsBytes());
+                            Matrix m = renderInfo.getImageCTM();
+
+                            cb.addImage(img, m.get(Matrix.I11), m.get(Matrix.I12), m.get(Matrix.I21), m.get(Matrix.I22), m.get(Matrix.I31), m.get(Matrix.I32));
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                });
+            }
+
+            document.close();
+            reader.close();
+        } finally {
+            //  在 finally 中保证所有的 try { fis.close(); } catch(...) {} 执行完毕后，调用 srcFile.delete()、fontFile.delete()、tempDest.delete()。
+            //  因为已经没有任何进程和句柄在占用它们了，它们会被立即顺畅删除，Temp 文件夹终于干净了。
+            if (srcFis != null) {
+                try { srcFis.close(); } catch (Exception e) {}
+            }
+            if (destFos != null) {
+                try { destFos.close(); } catch (Exception e) {}
+            }
+            if (srcFile != null && srcFile.exists()) {
+                srcFile.delete();
+            }
+            if (fontFile != null && fontFile.exists()) {
+                fontFile.delete();
+            }
+            if (tempDest != null && tempDest.exists()) {
+                tempDest.delete();
+            }
         }
-
-        document.close();
-        reader.close();
     }
 
 }
