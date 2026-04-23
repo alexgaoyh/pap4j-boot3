@@ -175,6 +175,7 @@ public class PDFFontTest {
      */
     @Test
     public void reGenePdfTest() throws Exception {
+        String fontResourceName = "simfang.ttf";
         java.io.File srcFile = null;
         java.io.File fontFile = null;
         java.io.File tempDest = null;
@@ -182,7 +183,7 @@ public class PDFFontTest {
         java.io.FileOutputStream destFos = null;
         try {
             srcFile = TestResourceUtil.getFile("font.pdf");
-            fontFile = TestResourceUtil.getFile("simfang.ttf");
+            fontFile = TestResourceUtil.getFile(fontResourceName);
             tempDest = java.io.File.createTempFile("output_", ".pdf");
             tempDest.deleteOnExit();
 
@@ -204,7 +205,7 @@ public class PDFFontTest {
             // 然后，调用 BaseFont.createFont 时，把这个字节数组传给它（参数 ttfAfm），把原先的字体路径替换成了一个假名字 "simfang.ttf"。
             // 通过这种方式，我们向 iText 隐瞒了字体在硬盘上的真实路径，iText 就只会在内存里操作字体，绝对不可能去锁定硬盘上的那个 TTF 文件。
             byte[] fontBytes = java.nio.file.Files.readAllBytes(fontFile.toPath());
-            final BaseFont bf = BaseFont.createFont("simfang.ttf", BaseFont.IDENTITY_H, BaseFont.EMBEDDED, false, fontBytes, null);
+            final BaseFont bf = BaseFont.createFont(fontResourceName, BaseFont.IDENTITY_H, BaseFont.EMBEDDED, false, fontBytes, null);
 
             for (int page = 1; page <= reader.getNumberOfPages(); page++) {
                 Rectangle ps = reader.getPageSizeWithRotation(page);
