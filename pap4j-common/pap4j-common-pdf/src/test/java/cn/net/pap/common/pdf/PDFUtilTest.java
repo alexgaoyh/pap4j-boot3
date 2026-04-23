@@ -503,4 +503,29 @@ public class PDFUtilTest {
         }
     }
 
+    @Test
+    public void drawTextFullyEmbeddedFontTest() throws Exception {
+        try (PDDocument document = new PDDocument()) {
+            // 使用仿宋字体，并将 embedSubset 参数设置为 false，实现全嵌入而不是字体子集
+            PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")), false);
+
+            Integer pageWidth = 842;
+            Integer pageHeight = 595;
+            PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
+            document.addPage(page);
+
+            try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
+                PDColor pdColor = hexToPDColor("#000000");
+                // 写入文字
+                drawFont(contentStream, pdColor, simfangFont, 24, pageHeight, 100f, 100f, "全嵌入字体测试");
+            }
+
+            // 保存新创建的文档
+            File tempOut = File.createTempFile("output_fully_embedded_", ".pdf");
+            tempOut.deleteOnExit();
+            document.save(tempOut.getAbsolutePath());
+            System.out.println("生成全嵌入字体的 PDF 成功: " + tempOut.getAbsolutePath());
+        }
+    }
+
 }

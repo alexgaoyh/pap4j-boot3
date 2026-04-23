@@ -25,11 +25,13 @@ public class PDFFontTest {
     public static class FontInfo {
         private String name;
         private boolean embedded;
+        private boolean subset;
         private Integer pageNumber;
 
-        public FontInfo(String name, boolean embedded, Integer pageNumber) {
+        public FontInfo(String name, boolean embedded, boolean subset, Integer pageNumber) {
             this.name = name;
             this.embedded = embedded;
+            this.subset = subset;
             this.pageNumber = pageNumber;
         }
 
@@ -41,24 +43,32 @@ public class PDFFontTest {
             return embedded;
         }
 
+        public boolean isSubset() {
+            return subset;
+        }
+
         public Integer getPageNumber() {
             return pageNumber;
         }
 
         @Override
         public String toString() {
-            return name + " (" + (embedded ? "embedded" : "not embedded") + ")" + " (page: " + pageNumber + ")";
+            String embedState = embedded ? (subset ? "subset embedded" : "fully embedded") : "not embedded";
+            return name + " (" + embedState + ")" + " (page: " + pageNumber + ")";
         }
     }
 
     /**
-     * 获得 PDF 内的所有字体信息
+     * 获得 PDF 内的所有字体信息。
+     * 若需要生成用于测试的全嵌入字体 PDF 文件，
+     * 请参考 {@link cn.net.pap.common.pdf.PDFUtilTest#drawTextFullyEmbeddedFontTest()} 方法。
+     * 该方法通过将 PDType0Font.load 的 embedSubset 参数设置为 false 来创建全嵌入字体的 PDF。
      *
      * @throws IOException
      */
     @Test
     public void pdfTest() throws IOException {
-        List<FontInfo> fontInfos = listAllFonts("format.pdf");
+        List<FontInfo> fontInfos = listAllFonts(TestResourceUtil.getFile("font.pdf").getAbsolutePath());
         for (FontInfo fontInfo : fontInfos) {
             System.out.println(fontInfo);
         }
@@ -95,9 +105,11 @@ public class PDFFontTest {
     private void processFont(PdfDictionary font, List<FontInfo> fontList, Integer pageNumber) {
         String name = font.getAsName(PdfName.BASEFONT).toString();
         boolean isEmbedded = false;
+        boolean isSubset = false;
 
         if (isEmbeddedSubset(name)) {
             isEmbedded = true;
+            isSubset = true;
         } else {
             PdfDictionary desc = font.getAsDict(PdfName.FONTDESCRIPTOR);
 
@@ -112,17 +124,19 @@ public class PDFFontTest {
                     return;
                 }
             } else {
-                // 检查是否嵌入
-                if (desc.get(PdfName.FONTFILE) != null ||  // Type 1 embedded
-                        desc.get(PdfName.FONTFILE2) != null || // TrueType embedded
-                        desc.get(PdfName.FONTFILE3) != null) { // Other embedded font types
+                // 检查是否全嵌入
+                // 修复幽灵引用：使用 getAsStream 获取真实的流数据
+                if (desc.getAsStream(PdfName.FONTFILE) != null ||  // Type 1 embedded
+                        desc.getAsStream(PdfName.FONTFILE2) != null || // TrueType embedded
+                        desc.getAsStream(PdfName.FONTFILE3) != null) { // Other embedded font types
                     isEmbedded = true;
+                    isSubset = false;
                 }
             }
         }
 
         // 添加到字体列表
-        fontList.add(new FontInfo(name.substring(1), isEmbedded, pageNumber));
+        fontList.add(new FontInfo(name.substring(1), isEmbedded, isSubset, pageNumber));
     }
 
     /**
