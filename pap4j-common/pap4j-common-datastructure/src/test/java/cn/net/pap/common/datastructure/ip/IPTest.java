@@ -1,18 +1,27 @@
 package cn.net.pap.common.datastructure.ip;
 
+import cn.net.pap.common.datastructure.resource.TestResourceUtil;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.net.InetAddress;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 public class IPTest {
 
-    // @Test
+    @Test
     public void ipRangeExpander() {
+        Path outPath = null;
         try {
-            expandIPRanges("C:\\Users\\86181\\Desktop\\chnroute.txt", "C:\\Users\\86181\\Desktop\\chnroute2.txt");
+            outPath = Files.createTempFile("ip-test-", ".txt");
+            expandIPRanges(TestResourceUtil.getFile("chnroute.txt").toPath().toAbsolutePath().toString(), outPath.toAbsolutePath().toString());
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if(outPath != null) {
+                outPath.toFile().delete();
+            }
         }
     }
 

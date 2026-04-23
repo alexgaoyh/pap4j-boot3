@@ -1,9 +1,12 @@
 package cn.net.pap.common.datastructure.catalog;
 
+import cn.net.pap.common.datastructure.resource.TestResourceUtil;
 import cn.net.pap.common.datastructure.trie.DoubleArrayTrie;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileReader;
 import java.util.*;
 
@@ -47,10 +50,10 @@ public class DoubleArrayTrieTest {
         System.out.println(words.get(idx));
     }
 
-    // @Test
+    @Test
     public void test() throws Exception {
         // dict.dict 每一行是一个词
-        BufferedReader reader = new BufferedReader(new FileReader("C:\\Users\\alexg\\Desktop\\dict.dict"));
+        BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(new FileInputStream(new File(TestResourceUtil.getFile("dict.dict").toPath().toAbsolutePath().toString()))));
         String line;
         List<String> words = new ArrayList<String>();
         Set<Character> charset = new HashSet<Character>();
