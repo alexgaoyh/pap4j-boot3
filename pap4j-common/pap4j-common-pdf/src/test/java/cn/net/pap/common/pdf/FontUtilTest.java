@@ -4,6 +4,8 @@ import cn.net.pap.common.pdf.dto.TextPointDTO;
 import cn.net.pap.common.pdf.enums.ChineseFont;
 import com.itextpdf.text.pdf.BaseFont;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.io.File;
@@ -15,6 +17,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class FontUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(FontUtilTest.class);
 
     @Test
     public void test1() {
@@ -77,6 +81,18 @@ public class FontUtilTest {
                         fontFile.getName(),
                         fontFile.length(),
                         FontUtil.detectFontFormat(buffer));
+            }
+        }
+    }
+
+    @Test
+    public void chineseFontFamilyNameTest() {
+        for(ChineseFont chineseFont : ChineseFont.values()) {
+            try (InputStream resourceAsStream = PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation(chineseFont.getFontName()))) {
+                Font baseFont = Font.createFont(Font.TRUETYPE_FONT, resourceAsStream);
+                log.info(chineseFont.getFontName() + " : " + baseFont.getFamily());
+            } catch (Exception e) {
+                System.err.println("字体流加载失败: " + e.getMessage());
             }
         }
     }
