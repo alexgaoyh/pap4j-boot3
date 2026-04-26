@@ -6,10 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ReadDocDocxUtilsTest {
 
-    // @Test
+    @Test
     public void testReadDocDocx() {
-        String doc = ReadDocDocUtils.readWord("C:\\Users\\86181\\Desktop\\doc.doc");
-        String docx = ReadDocDocUtils.readWord("C:\\Users\\86181\\Desktop\\docx.docx");
+        String doc = ReadDocDocUtils.readWord(TestResourceUtil.getFile("doc.doc").getAbsolutePath().toString());
+        String docx = ReadDocDocUtils.readWord(TestResourceUtil.getFile("docx.docx").getAbsolutePath().toString());
         assertTrue(!doc.equals(""));
         assertTrue(!docx.equals(""));
     }
