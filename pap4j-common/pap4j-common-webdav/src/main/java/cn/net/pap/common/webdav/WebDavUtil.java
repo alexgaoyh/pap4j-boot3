@@ -78,7 +78,21 @@ public class WebDavUtil {
         System.out.println("Delete " + uri + " status is :" + status);
     }
 
+    /**
+     * 上传文件前，自动检测并创建不存在的父目录
+     */
     public void upload(String uri, FileInputStream fis) throws IOException {
+        // 1. 尝试截取文件的父目录并递归创建
+        int lastSlashIndex = uri.lastIndexOf("/");
+        // 避免截断 "http://" 并确保不在根目录下操作
+        if (lastSlashIndex > 8) {
+            String parentUri = uri.substring(0, lastSlashIndex);
+            if (!parentUri.equals(this.root)) {
+                mkdirs(parentUri);
+            }
+        }
+
+        // 2. 执行原本的上传逻辑
         HttpPut put = new HttpPut(uri);
         InputStreamEntity requestEntity = new InputStreamEntity(fis);
         put.setEntity(requestEntity);
@@ -86,6 +100,39 @@ public class WebDavUtil {
         StatusLine statusLine = execute.getStatusLine();
         int status = statusLine.getStatusCode();
         System.out.println("Upload " + uri + " status is :" + status);
+    }
+
+    /**
+     *  递归创建多级目录 (类似 Java 的 File.mkdirs)
+     */
+    public void mkdirs(String uri) throws IOException {
+        if (uri == null || uri.equals(this.root) || uri.length() <= this.root.length()) {
+            return;
+        }
+
+        HttpMkcol mkcol = new HttpMkcol(uri);
+        HttpResponse response = this.client.execute(mkcol, this.context);
+        int status = response.getStatusLine().getStatusCode();
+
+        // 201 Created 代表创建成功
+        // 405 Method Not Allowed 代表该目录已经存在，无需操作
+        if (status == 201 || status == 405) {
+            return;
+        }
+
+        // 409 Conflict 代表父目录不存在，需要先递归创建父目录
+        if (status == 409) {
+            int lastSlashIndex = uri.lastIndexOf("/");
+            if (lastSlashIndex > 8) {
+                String parentUri = uri.substring(0, lastSlashIndex);
+                // 递归往上层创建
+                mkdirs(parentUri);
+
+                // 父目录创建完毕后，重新尝试创建当前目录
+                HttpMkcol retryMkcol = new HttpMkcol(uri);
+                this.client.execute(retryMkcol, this.context);
+            }
+        }
     }
 
     public void mkdir(String uri) throws IOException {
@@ -103,8 +150,10 @@ public class WebDavUtil {
         System.out.println("Download " + uri + " status is :" + status);
     }
 
+    /**
+     * 【改造点】增加 HTTP 状态码校验，防止 404 解析 XML 报错及 NPE 空指针异常
+     */
     public MultiStatusResponse[] propfind(String testuri) throws IOException {
-        MultiStatusResponse[] responses = null;
         try {
             DavPropertyNameSet names = new DavPropertyNameSet();
             names.add(DeltaVConstants.COMMENT);
@@ -112,16 +161,22 @@ public class WebDavUtil {
             HttpPropfind propfind = new HttpPropfind(testuri, DavConstants.PROPFIND_ALL_PROP_INCLUDE, names, DavConstants.DEPTH_1);
             HttpResponse resp = this.client.execute(propfind, this.context);
             int status = resp.getStatusLine().getStatusCode();
-            System.out.println("List file " + uri + " status is :" + status);
-            // assertEquals(207, status);
-            MultiStatus multistatus;
-            multistatus = propfind.getResponseBodyAsMultiStatus(resp);
-            responses = multistatus.getResponses();
+            System.out.println("List file " + testuri + " status is :" + status);
+
+            // 关键拦截：只有状态码为 207 (Multi-Status) 时，服务器回传的才是正确的 XML 文件属性信息
+            if (status == 207) {
+                MultiStatus multistatus = propfind.getResponseBodyAsMultiStatus(resp);
+                return multistatus.getResponses();
+            } else {
+                // 如果是 404 或者其他错误，不强行解析，直接返回空数组
+                log.warn("Target URI status is {}, returning empty array to avoid NPE.", status);
+                return new MultiStatusResponse[0];
+            }
         } catch (DavException e) {
-            // TODO Auto-generated catch block
-            log.error("propfind", e);
+            log.error("propfind error", e);
+            // 发生异常时也返回空数组，确保外部的 for 循环读取 propfind.length 时不会报 NullPointerException
+            return new MultiStatusResponse[0];
         }
-        return responses;
     }
 
     public void transStream2File(InputStream is, String fileName) throws IOException {

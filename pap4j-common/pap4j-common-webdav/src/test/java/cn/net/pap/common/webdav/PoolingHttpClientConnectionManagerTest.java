@@ -1,5 +1,6 @@
 package cn.net.pap.common.webdav;
 
+import com.sun.net.httpserver.HttpServer;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.config.RequestConfig;
@@ -12,13 +13,17 @@ import org.apache.http.impl.client.HttpClients;
 import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.pool.PoolStats;
 import org.apache.http.util.EntityUtils;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.io.OutputStream;
+import java.net.InetSocketAddress;
+import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -121,7 +126,7 @@ public class PoolingHttpClientConnectionManagerTest {
     private String sendGetRequest(String url) {
         try {
             boolean checked = checkHttpClientState();
-            if(!checked) {
+            if (!checked) {
                 logger.error("系统HTTP状态失败!");
             } else {
                 // 检查连接池状态
@@ -153,7 +158,45 @@ public class PoolingHttpClientConnectionManagerTest {
         return null;
     }
 
-    // @Test
+    private static HttpServer mockServer;
+    private static final int PORT = 8080;
+
+    @BeforeAll
+    static void setUpServer() throws IOException {
+        // 创建一个监听 PORT 端口的 HTTP 服务器
+        mockServer = HttpServer.create(new InetSocketAddress(PORT), 0);
+
+        // 配置路由和处理逻辑
+        mockServer.createContext("/direct", exchange -> {
+            // 使用文本块构建 JSON 响应
+            String responseBody = """
+                    direct
+                    """;
+
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+            // 注意：必须先调用 sendResponseHeaders，再写入 body
+            byte[] bytes = responseBody.getBytes(StandardCharsets.UTF_8);
+            exchange.sendResponseHeaders(200, bytes.length);
+
+            try (OutputStream os = exchange.getResponseBody()) {
+                os.write(bytes);
+            }
+        });
+
+        // 使用默认的执行器启动
+        mockServer.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(100));
+        mockServer.start();
+    }
+
+    @AfterAll
+    static void tearDownServer() {
+        if (mockServer != null) {
+            // 参数为最大等待延迟秒数
+            mockServer.stop(0);
+        }
+    }
+
+    @Test
     public void getTest() {
         String url = "http://127.0.0.1:8080/direct";
         String response = sendGetRequest(url);
@@ -178,7 +221,7 @@ public class PoolingHttpClientConnectionManagerTest {
         try {
             IntStream.range(5000, 11000).forEach(index -> {
                 executor.submit(() -> {
-                    String url = "http://127.0.0.1:8080/direct?index=" +  index;
+                    String url = "http://127.0.0.1:8080/direct?index=" + index;
                     String response = sendGetRequest(url);
                     if (response != null) {
                         logger.info("请求成功，响应内容: {}", response);
