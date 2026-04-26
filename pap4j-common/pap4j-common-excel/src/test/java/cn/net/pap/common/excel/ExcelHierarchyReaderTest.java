@@ -11,6 +11,8 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,13 +28,15 @@ import java.util.Map;
  */
 public class ExcelHierarchyReaderTest {
 
+    private static final Logger log = LoggerFactory.getLogger(ExcelHierarchyReaderTest.class);
+
     @Test
     public void readPrintTest() {
         try {
             String desktop = TestResourceUtil.getFile("tree.xlsx").getAbsolutePath();;
             String jsonResult = readExcelToJson(desktop);
 
-            System.out.println(jsonResult);
+            log.info("{}", jsonResult);
 
         } catch (IOException e) {
             e.printStackTrace();

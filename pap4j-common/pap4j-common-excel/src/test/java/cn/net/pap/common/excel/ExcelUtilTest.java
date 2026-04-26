@@ -73,7 +73,7 @@ public class ExcelUtilTest {
         LocalDate endDate = LocalDate.now();
 
         long weeksBetween = ChronoUnit.WEEKS.between(startDate, endDate);
-        System.out.println(weeksBetween);
+        log.info("{}", weeksBetween);
     }
 
     @Test
@@ -134,7 +134,7 @@ public class ExcelUtilTest {
     public void parentChild() {
         String fileAbsolutePath = TestResourceUtil.getFile("parent-child.xlsx").getAbsolutePath();
         List<Map<String, Object>> rowList = ExcelUtil.getRowList(fileAbsolutePath, "Sheet1", null);
-        System.out.println(rowList);
+        log.info("{}", rowList);
         List<ParentChildDTO> parentChildDTOS = ParentChildDTO.convertToParentChildList(rowList);
         try {
             // 自定义父子关系的 序列化
@@ -143,7 +143,7 @@ public class ExcelUtilTest {
             module.addSerializer(ParentChildDTO.class, new ParentChildSerializer());
             objectMapperSerializer.registerModule(module);
             String serializerStr = objectMapperSerializer.writeValueAsString(parentChildDTOS);
-            System.out.println(serializerStr);
+            log.info("{}", serializerStr);
 
             // 自定义父子关系的 反序列化
             ObjectMapper objectMapperDeserializer = new ObjectMapper();
@@ -151,7 +151,7 @@ public class ExcelUtilTest {
             module2.addDeserializer(ParentChildDTO.class, new ParentChildDeserializer());
             objectMapperDeserializer.registerModule(module2);
             List<ParentChildDTO> parentChildDTOList = objectMapperDeserializer.readValue(serializerStr, new TypeReference<List<ParentChildDTO>>() {});
-            System.out.println(parentChildDTOList);
+            log.info("{}", parentChildDTOList);
 
         } catch (JsonProcessingException e) {
             e.printStackTrace();
@@ -162,7 +162,7 @@ public class ExcelUtilTest {
     public void formulaTest() {
         String fileAbsolutePath = TestResourceUtil.getFile("formula.xlsx").getAbsolutePath();
         List<Map<String, Object>> sheet2 = ExcelUtil.getRowList(fileAbsolutePath, "Sheet1", null);
-        System.out.println(sheet2);
+        log.info("{}", sheet2);
     }
 
     @Test
@@ -182,14 +182,14 @@ public class ExcelUtilTest {
                 "_children");
 
         ObjectMapper objectMapper = new ObjectMapper();
-        System.out.println(objectMapper.writeValueAsString(oneToManyRowList));
+        log.info("{}", objectMapper.writeValueAsString(oneToManyRowList));
     }
 
     @Test
     public void findHiddenRowsTest() {
         String excelAbsolutePath = TestResourceUtil.getFile("hidden.xlsx").getAbsolutePath();
         List<Integer> hiddenRows = ExcelUtil.findHiddenRows(excelAbsolutePath, "Sheet1");
-        System.out.println(hiddenRows);
+        log.info("{}", hiddenRows);
     }
 
     @Test
@@ -201,7 +201,7 @@ public class ExcelUtilTest {
         for(Map<String, Object> row : sheet2) {
             String input = row.get("标识号").toString();
             if(!allLines.contains(input)) {
-                System.out.println(input);
+                log.info("{}", input);
             }
         }
     }
@@ -215,7 +215,7 @@ public class ExcelUtilTest {
         for(Map<String, Object> row : sheet2) {
             String jgjlbsh = row.get("标识号").toString();
             String fl = row.get("备注1").toString();
-            System.out.println(String.format(template, "asdf", "qer", fl, "book_id", jgjlbsh));
+            log.info(String.format(template, "asdf", "qer", fl, "book_id", jgjlbsh));
         }
     }
 
@@ -231,7 +231,7 @@ public class ExcelUtilTest {
                         .setKeepGroupFieldsInChildren(false)
         );
         ObjectMapper objectMapper = new ObjectMapper();
-        System.out.println(objectMapper.writeValueAsString(result));
+        log.info("{}", objectMapper.writeValueAsString(result));
     }
 
 }

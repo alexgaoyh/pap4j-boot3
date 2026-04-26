@@ -9,6 +9,9 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.*;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -21,16 +24,18 @@ import java.util.Random;
 
 public class POIUtilTest {
 
+    private static final Logger log = LoggerFactory.getLogger(POIUtilTest.class);
+
     @Test
     public void testReadExcelWithImages() throws IOException {
         String excelFilePath = TestResourceUtil.getFile("pictures.xlsx").getAbsolutePath();
         List<ImportDTO> importDTOS = readExcelWithImages(excelFilePath);
 
         Path tempDir = Files.createTempDirectory("excel-test-");
-        System.out.println("测试使用的临时目录: " + tempDir.toAbsolutePath());
+        log.info("测试使用的临时目录:  {}", tempDir.toAbsolutePath());
 
         for (ImportDTO dto : importDTOS) {
-            System.out.println(dto);
+            log.info("{}", dto);
             if(dto.getPicture() != null) {
                 File tempFile = tempDir.resolve(dto.getName() + "." + dto.getImageType()).toFile();
                 try (FileOutputStream fos = new FileOutputStream(tempFile)) {
@@ -114,10 +119,10 @@ public class POIUtilTest {
         List<ImportDTO> importDTOS = readExcelWithEmbeddedImages(excelFilePath);
 
         Path tempDir = Files.createTempDirectory("excel-embedded-test-");
-        System.out.println("测试使用的临时目录: " + tempDir.toAbsolutePath());
+        log.info("测试使用的临时目录:  {}", tempDir.toAbsolutePath());
 
         for (ImportDTO dto : importDTOS) {
-            System.out.println(dto);
+            log.info("{}", dto);
             if(dto.getPicture() != null) {
                 File tempFile = tempDir.resolve(dto.getName() + "." + dto.getImageType()).toFile();
                 try (FileOutputStream fos = new FileOutputStream(tempFile)) {
