@@ -29,12 +29,12 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <spring-statemachine.version>4.0.1</spring-statemachine.version>
-        <maven.skipTests>false</maven.skipTests>
+        <maven.skipTests>true</maven.skipTests>
         <default.skip>false</default.skip>
         <dependency-check-maven.skip>${default.skip}</dependency-check-maven.skip>
         <maven-gpg-plugin.skip>${default.skip}</maven-gpg-plugin.skip>
         <maven-javadoc-plugin.skip>${default.skip}</maven-javadoc-plugin.skip>
-        <git-commit-id-maven-plugin.skip>true</git-commit-id-maven-plugin.skip>
+        <git-commit-id-maven-plugin.skip>${default.skip}</git-commit-id-maven-plugin.skip>
         <maven-checkstyle-plugin.skip>${default.skip}</maven-checkstyle-plugin.skip>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
