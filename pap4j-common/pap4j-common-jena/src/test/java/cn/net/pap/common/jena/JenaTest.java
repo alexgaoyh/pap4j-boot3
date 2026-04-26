@@ -5,6 +5,8 @@ import org.apache.jena.rdf.model.*;
 import org.apache.jena.vocabulary.VCARD;
 import org.junit.jupiter.api.Test;
 
+import java.nio.file.Files;
+
 public class JenaTest {
 
     @Test
@@ -78,9 +80,10 @@ public class JenaTest {
     }
 
     @Test
-    public void test2Kuangbiao() {
+    public void test2Kuangbiao() throws Exception {
         Model model = ModelFactory.createDefaultModel();
-        model = model.read("C:\\Users\\86181\\Desktop\\kuangbiao\\kuangbiao_240410145535.nt");
+        String fileAbsolutePath = TestResourceUtil.getFile("kuangbiao_240410145535.nt").getAbsolutePath().toString();
+        model = model.read(fileAbsolutePath);
 
         System.out.println("----------------------QUERY--FILTER--STR(?o) != ------------------------------");
         String sparqlQueryString = "SELECT ?x ?p ?o \n" +
