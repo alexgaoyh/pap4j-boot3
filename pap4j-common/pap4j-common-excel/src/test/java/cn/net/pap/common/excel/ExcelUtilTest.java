@@ -18,6 +18,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -27,6 +29,7 @@ import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -35,9 +38,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ExcelUtilTest {
 
-    // @Test
+    private static final Logger log = LoggerFactory.getLogger(ExcelUtilTest.class);
+
+    @Test
     public void extract() {
-        String excelAbsolutePath = "C:\\Users\\86181\\Desktop\\test.xlsx";
+        String excelAbsolutePath = TestResourceUtil.getFile("test.xlsx").getAbsolutePath();
 
         List<CompareDTO> compareDTOS = new ArrayList<>();
         compareDTOS.add(new CompareDTO("订单编号", "订单编号"));
@@ -50,11 +55,11 @@ public class ExcelUtilTest {
                 "cn_net_pap_index",
                 "cn_net_pap_child");
 
-        System.out.println(oneToManyRowList);
+        log.info(oneToManyRowList.toString());
 
     }
 
-    // @Test
+    @Test
     public void compareString() {
         String minStr = "!!!!"; // ASCII 33
         String maxStr = "~~~~"; // ASCII 126
@@ -62,7 +67,7 @@ public class ExcelUtilTest {
         assertTrue(checkStr.compareTo(maxStr) <= 0 && checkStr.compareTo(minStr) >= 0);
     }
 
-    // @Test
+    @Test
     public void weeksBetween() {
         LocalDate startDate = LocalDate.of(2024, 2, 5); // 开始日期
         LocalDate endDate = LocalDate.now();
@@ -71,48 +76,53 @@ public class ExcelUtilTest {
         System.out.println(weeksBetween);
     }
 
-    // @Test
+    @Test
     public void pictureExport() throws Exception {
-        String tempFileName = "template.xlsx";
+        String tempFileName = TestResourceUtil.getFile("template1.xlsx").getAbsolutePath();
         try(InputStream resourceAsStream = new FileInputStream(new File(tempFileName));) {
-            String fileName = "out.xlsx";
+            String fileName = Files.createTempFile("pictureExport", ".xlsx").toAbsolutePath().toString();
 
             List<ExportDTO> dataList = new ArrayList<>();
-            dataList.add(new ExportDTO(new File("3.jpg")));
-            dataList.add(new ExportDTO(new File("2.jpg")));
-            dataList.add(new ExportDTO(new File("1.jpg")));
+            dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("bmp.bmp").getAbsolutePath())));
+            dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("jpg.jpg").getAbsolutePath())));
+            dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("png.png").getAbsolutePath())));
 
             try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
                 WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler()).build();
                 FillConfig fillConfig0 = FillConfig.builder().forceNewRow(Boolean.TRUE).build();
                 excelWriter.fill(dataList, fillConfig0, writeSheet0);
             }
+            log.info(fileName);
+            new File(fileName).deleteOnExit();
         }
 
     }
 
-    // @Test
+    @Test
     public void pictureExport2() throws Exception {
         // 合并后的单元格，每个单元格定义为  {picture1} {picture2} {picture3}
-        String tempFileName = "template.xlsx";
+        String tempFileName = TestResourceUtil.getFile("template2.xlsx").getAbsolutePath();
         try(InputStream resourceAsStream = new FileInputStream(new File(tempFileName));) {
-            String fileName = "out.xlsx";
+            String fileName = Files.createTempFile("pictureExport2", ".xlsx").toAbsolutePath().toString();
 
             try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
                 WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler2()).build();
                 Map<String, Object> map = new HashMap<>();
-                map.put("picture1", new File("1.jpg"));
-                map.put("picture2", new File("2.jpg"));
-                map.put("picture3", new File("3.jpg"));
+                map.put("picture1", new File(TestResourceUtil.getFile("bmp.bmp").getAbsolutePath()));
+                map.put("picture2", new File(TestResourceUtil.getFile("jpg.jpg").getAbsolutePath()));
+                map.put("picture3", new File(TestResourceUtil.getFile("png.png").getAbsolutePath()));
                 excelWriter.fill(map, writeSheet0);
             }
+            log.info(fileName);
+            new File(fileName).deleteOnExit();
         }
 
     }
 
-    // @Test
+    @Test
     public void triple() {
-        List<Map<String, Object>> rowList = ExcelUtil.getRowListWithMergeCell("merge.xls", "Sheet1", "pap");
+        String fileAbsolutePath = TestResourceUtil.getFile("merge.xlsx").getAbsolutePath();
+        List<Map<String, Object>> rowList = ExcelUtil.getRowListWithMergeCell(fileAbsolutePath, "Sheet1", "pap");
         List<SimpleTriple<String, String, Object>> tripleList = ExcelUtil.convert2SimpleTriple(rowList, "名字", new ArrayList<>());
         assertTrue(tripleList.size() > 0);
     }
@@ -120,9 +130,10 @@ public class ExcelUtilTest {
     /**
      * parent-child.xlsx 文件中有三列： 部门、上级部门、备注， '部门/上级部门'是对应的，‘备注’是记录额外属性.
      */
-    // @Test
+    @Test
     public void parentChild() {
-        List<Map<String, Object>> rowList = ExcelUtil.getRowList("parent-child.xlsx", "Sheet1", null);
+        String fileAbsolutePath = TestResourceUtil.getFile("parent-child.xlsx").getAbsolutePath();
+        List<Map<String, Object>> rowList = ExcelUtil.getRowList(fileAbsolutePath, "Sheet1", null);
         System.out.println(rowList);
         List<ParentChildDTO> parentChildDTOS = ParentChildDTO.convertToParentChildList(rowList);
         try {
@@ -147,15 +158,16 @@ public class ExcelUtilTest {
         }
     }
 
-    // @Test
+    @Test
     public void formulaTest() {
-        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList("C:\\Users\\86181\\Desktop\\formula.xlsx", "Sheet2", null);
+        String fileAbsolutePath = TestResourceUtil.getFile("formula.xlsx").getAbsolutePath();
+        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList(fileAbsolutePath, "Sheet1", null);
         System.out.println(sheet2);
     }
 
-    // @Test
+    @Test
     public void gerRowListTest() throws Exception {
-        String excelAbsolutePath = "C:\\Users\\86181\\Desktop\\input.xlsx";
+        String excelAbsolutePath = TestResourceUtil.getFile("input.xlsx").getAbsolutePath();
 
         List<CompareDTO> compareDTOS = new ArrayList<>();
         compareDTOS.add(new CompareDTO("标识号", "標識號"));
@@ -173,43 +185,47 @@ public class ExcelUtilTest {
         System.out.println(objectMapper.writeValueAsString(oneToManyRowList));
     }
 
-    // @Test
+    @Test
     public void findHiddenRowsTest() {
-        List<Integer> hiddenRows = ExcelUtil.findHiddenRows("C:\\Users\\86181\\Desktop\\扫描清单(1).xlsx", "Sheet1");
+        String excelAbsolutePath = TestResourceUtil.getFile("hidden.xlsx").getAbsolutePath();
+        List<Integer> hiddenRows = ExcelUtil.findHiddenRows(excelAbsolutePath, "Sheet1");
         System.out.println(hiddenRows);
     }
 
-    // @Test
+    @Test
     public void getRowListTest() throws Exception {
-        List<String> allLines = Files.readAllLines(Paths.get("C:\\Users\\86181\\Desktop\\2.txt"));
+        List<String> allLines = Arrays.asList("A1", "A2", "A5");
 
-        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList("C:\\Users\\86181\\Desktop\\aa.xlsx", "Sheet1", null);
+        String excelAbsolutePath = TestResourceUtil.getFile("input.xlsx").getAbsolutePath();
+        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList(excelAbsolutePath, "Sheet1", null);
         for(Map<String, Object> row : sheet2) {
-            String input = row.get("分類").toString();
+            String input = row.get("标识号").toString();
             if(!allLines.contains(input)) {
                 System.out.println(input);
             }
         }
     }
 
-    // @Test
+    @Test
     public void replaceTest() throws Exception {
         String template = "UPDATE %s SET %s = '%s' WHERE %s = '%s';";
 
-        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList("C:\\Users\\86181\\Desktop\\aa.xlsx", "Sheet1", null);
+        String excelAbsolutePath = TestResourceUtil.getFile("input.xlsx").getAbsolutePath();
+        List<Map<String, Object>> sheet2 = ExcelUtil.getRowList(excelAbsolutePath, "Sheet1", null);
         for(Map<String, Object> row : sheet2) {
-            String jgjlbsh = row.get("加工记录标识号").toString();
-            String fl = row.get("分類").toString();
+            String jgjlbsh = row.get("标识号").toString();
+            String fl = row.get("备注1").toString();
             System.out.println(String.format(template, "asdf", "qer", fl, "book_id", jgjlbsh));
         }
     }
 
-    // @Test
+    @Test
     public void groupRowTest() throws Exception {
-        List<Map<String, Object>> dataList = ExcelUtil.getRowList("C:\\Users\\86181\\Desktop\\aa.xlsx", "Sheet1", null);
+        String excelAbsolutePath = TestResourceUtil.getFile("input.xlsx").getAbsolutePath();
+        List<Map<String, Object>> dataList = ExcelUtil.getRowList(excelAbsolutePath, "Sheet2", null);
         List<Map<String, Object>> result = ListMapGroupUtil.groupByFields(
                 dataList,
-                new String[]{"tm", "bsh"},
+                new String[]{"標識號"},
                 new ListMapGroupUtil.GroupOptions()
                         .setChildrenFieldName("details")
                         .setKeepGroupFieldsInChildren(false)

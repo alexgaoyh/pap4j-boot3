@@ -29,16 +29,10 @@ public class ExcelHierarchyReaderTest {
     @Test
     public void readPrintTest() {
         try {
-            String desktop = System.getProperty("user.home") + File.separator + "Desktop";
-            String jsonResult = readExcelToJson(desktop + File.separator + "input.xlsx");
+            String desktop = TestResourceUtil.getFile("tree.xlsx").getAbsolutePath();;
+            String jsonResult = readExcelToJson(desktop);
 
             System.out.println(jsonResult);
-
-            if (null != jsonResult) {
-                try (java.io.FileWriter file = new java.io.FileWriter(desktop + File.separator + "input.json")) {
-                    file.write(jsonResult);
-                }
-            }
 
         } catch (IOException e) {
             e.printStackTrace();

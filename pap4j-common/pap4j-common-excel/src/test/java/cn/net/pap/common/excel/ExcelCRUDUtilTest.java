@@ -3,13 +3,15 @@ package cn.net.pap.common.excel;
 import cn.net.pap.common.excel.dto.PageData;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
+import java.nio.file.Files;
 import java.util.List;
 
 public class ExcelCRUDUtilTest {
 
-    // @Test
+    @Test
     public void testCRUD() throws Exception {
-        String path = "C:\\Users\\86181\\Desktop\\crud.xlsx";
+        String path = Files.createTempFile("crud", ".xlsx").toAbsolutePath().toString();
         String sheet = "Sheet1";
 
         ExcelCRUDUtil.createXlsx(path, sheet);
@@ -33,6 +35,8 @@ public class ExcelCRUDUtilTest {
         ExcelCRUDUtil.update(1, 1, "2222", path, sheet);
 
         ExcelCRUDUtil.delete(0, path, sheet);
+
+        new File(path).deleteOnExit();
 
     }
 
