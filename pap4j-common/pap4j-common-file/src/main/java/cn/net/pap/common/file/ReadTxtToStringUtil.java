@@ -10,15 +10,26 @@ import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CodingErrorAction;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class ReadTxtToStringUtil {
+
+    /**
+     * 编码白名单，不在名单内的编码将触发 guessEncoding
+     */
+    private static final Set<String> CHARSET_WHITE_LIST = new HashSet<>(Arrays.asList(
+            "UTF-8", "UTF-16LE", "UTF-16BE", "GBK", "BIG5"
+    ));
+
     /**
      * 检测文件编码，先检测 BOM，如果没有再使用 UniversalDetector
      */
     public static String detectEncoding(File file) throws IOException {
         try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
-            bis.mark(4); // 标记当前位置，后续可重置
+            bis.mark(1024 * 1024 * 2); // 标记当前位置，后续可重置
 
             byte[] bom = new byte[4];
             int read = bis.read(bom, 0, 4);
@@ -48,6 +59,12 @@ public class ReadTxtToStringUtil {
             detector.dataEnd();
             String encoding = detector.getDetectedCharset();
             detector.reset();
+
+            // 白名单过滤
+            if (encoding != null && !CHARSET_WHITE_LIST.contains(encoding.toUpperCase())) {
+                bis.reset();
+                encoding = guessEncoding(bis.readAllBytes());
+            }
 
             if(encoding == null) {
                 try {
@@ -71,7 +88,7 @@ public class ReadTxtToStringUtil {
      */
     public static String detectEncoding(ByteArrayOutputStream outputStream) throws IOException {
         try (ByteArrayInputStream bis = new ByteArrayInputStream(outputStream.toByteArray())) {
-            bis.mark(4); // 标记当前位置，后续可重置
+            bis.mark(outputStream.size()); // 标记当前位置，后续可重置
 
             byte[] bom = new byte[4];
             int read = bis.read(bom, 0, 4);
@@ -101,6 +118,12 @@ public class ReadTxtToStringUtil {
             detector.dataEnd();
             String encoding = detector.getDetectedCharset();
             detector.reset();
+
+            // 增量逻辑：白名单过滤
+            if (encoding != null && !CHARSET_WHITE_LIST.contains(encoding.toUpperCase())) {
+                bis.reset();
+                encoding = guessEncoding(bis.readAllBytes());
+            }
 
             if(encoding == null) {
                 try {
@@ -147,7 +170,8 @@ public class ReadTxtToStringUtil {
 
         if (match != null) {
             String name = match.getName();
-            if(name != null && ("ISO-8859-1".equals(name) || "ISO-8859-7".equals(name) || "Big5".equals(name))) {
+            // 同步白名单过滤逻辑
+            if(name != null && (!CHARSET_WHITE_LIST.contains(name.toUpperCase()) || "ISO-8859-1".equals(name) || "ISO-8859-7".equals(name) || "Big5".equals(name))) {
                 return guessEncoding(data);
             } else {
                 return name;
