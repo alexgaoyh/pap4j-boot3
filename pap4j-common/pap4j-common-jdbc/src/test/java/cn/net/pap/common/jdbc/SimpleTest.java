@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.DataClassRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SingleConnectionDataSource;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DatabaseMetaData;
 import java.sql.DriverManager;
@@ -34,7 +35,7 @@ public class SimpleTest {
     @Test
     @DisplayName("手动初始化并查询数据")
     void testStandaloneJdbcQuery() throws Exception {
-        String dbPath = "C:\\Users\\86181\\Desktop\\test.mdb";
+        String dbPath = TestResourceUtil.getFile("access.mdb").getAbsolutePath().toString();
         // memory=false（内存模式开关） 它的作用： 控制 HSQLDB 镜像数据库建在哪里。 默认情况下（memory=true），UCanAccess 会把整个数据库加载到 JVM 的**内存（RAM）**中。如果你的 .mdb 文件很小，这没问题，速度极快。
         // 当设置为 memory=false 时，它会将镜像数据库建立在硬盘的临时文件中，而不是塞进内存。
 
@@ -57,14 +58,15 @@ public class SimpleTest {
                 }
                 return names;
             });
-            tableNames.forEach(System.out::println);
+            tableNames.forEach(s -> log.info("{}", s));
 
-            String sql = "SELECT ID as id, 文字 as temp FROM [CZYX]";
+            String sql = "SELECT ID as id, null as temp FROM [Users]";
             List<TestRecord> testRecordList = jdbcTemplate.query(sql, new DataClassRowMapper<>(TestRecord.class));
             if (testRecordList != null && !testRecordList.isEmpty()) {
-                testRecordList.forEach(System.out::println);
+                testRecordList.forEach(s -> log.info("{}", s));
             }
         }
+        new File(dbPath).deleteOnExit();
 
     }
 

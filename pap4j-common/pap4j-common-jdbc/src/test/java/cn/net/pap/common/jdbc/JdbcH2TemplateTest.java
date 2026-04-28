@@ -1,5 +1,8 @@
 package cn.net.pap.common.jdbc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -35,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.fail;
 @ContextConfiguration(classes = JdbcH2TemplateTest.Config.class)
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 class JdbcH2TemplateTest {
+    private static final Logger log = LoggerFactory.getLogger(JdbcH2TemplateTest.class);
 
     @Configuration
     static class Config {
@@ -98,7 +102,7 @@ class JdbcH2TemplateTest {
             }
         });
 
-        System.out.println("✅ 插入 " + count + " 条测试数据完成");
+        log.info("{}", "插入 " + count + " 条测试数据完成");
     }
 
     @Test
@@ -118,7 +122,7 @@ class JdbcH2TemplateTest {
                 stmt.setFetchSize(1000);
 
                 try (ResultSet rs = stmt.executeQuery("select * from user_info")) {
-                    System.out.println("开始流式读取数据...");
+                    log.info("开始流式读取数据...");
                     long startTime = System.currentTimeMillis();
                     while (rs.next()) {
                         rowCount.incrementAndGet();
@@ -134,17 +138,17 @@ class JdbcH2TemplateTest {
 
                         // 每处理10000条记录输出一次进度
                         if (rowCount.get() % 10000 == 0) {
-                            System.out.printf("已处理 %d 条记录，当前ID: %d%n", rowCount.get(), id);
+                            log.info(String.format("已处理 %d 条记录，当前ID: %d%n", rowCount.get(), id));
                         }
                     }
 
                     long endTime = System.currentTimeMillis();
                     long endMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
-                    System.out.printf("✅ 流式查询完成！\n");
-                    System.out.printf("总记录数: %d\n", rowCount.get());
-                    System.out.printf("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0);
-                    System.out.printf("内存增量: %.2f MB\n", (endMemory - startMemory) / (1024.0 * 1024.0));
+                    log.info(String.format("流式查询完成！\n"));
+                    log.info(String.format("总记录数: %d\n", rowCount.get()));
+                    log.info(String.format("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0));
+                    log.info(String.format("内存增量: %.2f MB\n", (endMemory - startMemory) / (1024.0 * 1024.0)));
 
                     // 验证读取了所有记录
                     assertEquals(100000, rowCount.get());
@@ -183,16 +187,16 @@ class JdbcH2TemplateTest {
 
                 // 每处理5000条记录输出一次进度
                 if (rowCount.get() % 5000 == 0) {
-                    System.out.printf("JdbcTemplate处理进度: %d 条记录，当前ID: %d%n", rowCount.get(), id);
+                    log.info(String.format("JdbcTemplate处理进度: %d 条记录，当前ID: %d%n", rowCount.get(), id));
                 }
             }
         });
 
         long endTime = System.currentTimeMillis();
 
-        System.out.printf("✅ JdbcTemplate流式查询完成！\n");
-        System.out.printf("总记录数: %d\n", rowCount.get());
-        System.out.printf("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0);
+        log.info(String.format("JdbcTemplate流式查询完成！\n"));
+        log.info(String.format("总记录数: %d\n", rowCount.get()));
+        log.info(String.format("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0));
 
         // 验证读取了所有记录
         assertEquals(50000, rowCount.get());
@@ -206,7 +210,7 @@ class JdbcH2TemplateTest {
 
         // 创建临时CSV文件
         Path tempFile = Files.createTempFile("user_export_", ".csv");
-        System.out.println("CSV文件路径: " + tempFile.toAbsolutePath());
+        log.info("{}", "CSV文件路径: " + tempFile.toAbsolutePath());
 
         long startTime = System.currentTimeMillis();
         AtomicInteger rowCount = new AtomicInteger(0);
@@ -220,7 +224,7 @@ class JdbcH2TemplateTest {
                     writer.write("ID,Name,Age,Email,Status,CreatedAt");
                     writer.newLine();
 
-                    System.out.println("开始流式导出到CSV...");
+                    log.info("开始流式导出到CSV...");
 
                     while (rs.next()) {
                         // 构建CSV行
@@ -234,7 +238,7 @@ class JdbcH2TemplateTest {
                         // 每10000行刷新一次缓冲区
                         if (rowCount.get() % 10000 == 0) {
                             writer.flush();
-                            System.out.printf("已导出 %d 条记录到CSV%n", rowCount.get());
+                            log.info(String.format("已导出 %d 条记录到CSV%n", rowCount.get()));
                         }
                     }
 
@@ -256,10 +260,10 @@ class JdbcH2TemplateTest {
         assertTrue(Files.exists(tempFile));
         assertTrue(Files.size(tempFile) > 0);
 
-        System.out.printf("✅ CSV导出完成！\n");
-        System.out.printf("文件大小: %.2f MB\n", Files.size(tempFile) / (1024.0 * 1024.0));
-        System.out.printf("导出时间: %.2f秒\n", (endTime - startTime) / 1000.0);
-        System.out.printf("总记录数: %d\n", rowCount.get());
+        log.info(String.format("CSV导出完成！\n"));
+        log.info(String.format("文件大小: %.2f MB\n", Files.size(tempFile) / (1024.0 * 1024.0)));
+        log.info(String.format("导出时间: %.2f秒\n", (endTime - startTime) / 1000.0));
+        log.info(String.format("总记录数: %d\n", rowCount.get()));
 
         // 清理临时文件
         Files.deleteIfExists(tempFile);
@@ -277,7 +281,7 @@ class JdbcH2TemplateTest {
 
         long baselineMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
-        System.out.printf("基准内存使用: %.2f MB\n", baselineMemory / (1024.0 * 1024.0));
+        log.info(String.format("基准内存使用: %.2f MB\n", baselineMemory / (1024.0 * 1024.0)));
 
         try (Connection conn = dataSource.getConnection(); ) {
             try (Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ){
@@ -299,11 +303,11 @@ class JdbcH2TemplateTest {
                             // 关键断言：内存增长应该有限
                             assertThat(memoryIncrease).withFailMessage("处理 %d 条记录后内存增长 %.2f MB，可能发生了全量加载", totalRows, memoryIncrease).isLessThan(50.0);  // 内存增长不应超过50MB
 
-                            System.out.printf("已处理 %d 条记录，当前内存增量: %.2f MB\n", totalRows, memoryIncrease);
+                            log.info(String.format("已处理 %d 条记录，当前内存增量: %.2f MB\n", totalRows, memoryIncrease));
                         }
                     }
 
-                    System.out.printf("✅ 流式查询完成，共处理 %d 条记录，最大内存增量: %.2f MB\n", totalRows, maxMemoryIncrease);
+                    log.info(String.format("流式查询完成，共处理 %d 条记录，最大内存增量: %.2f MB\n", totalRows, maxMemoryIncrease));
 
                     assertEquals(150000, totalRows);
                 }
@@ -317,7 +321,7 @@ class JdbcH2TemplateTest {
         // 插入8万条测试数据
         insertLargeTestData(80000);
 
-        System.out.println("\n🔬 性能对比测试：分页 vs 流式");
+        log.info("\n性能对比测试：分页 vs 流式");
 
         // 1. 测试分页查询性能
         long paginationStart = System.currentTimeMillis();
@@ -336,7 +340,7 @@ class JdbcH2TemplateTest {
             paginationRowCount += pageSize;
 
             if ((page + 1) % 10 == 0) {
-                System.out.printf("分页查询进度: %d/%d 页\n", page + 1, totalPages);
+                log.info(String.format("分页查询进度: %d/%d 页\n", page + 1, totalPages));
             }
         }
 
@@ -358,10 +362,10 @@ class JdbcH2TemplateTest {
                 long streamingEnd = System.currentTimeMillis();
                 long streamingTime = streamingEnd - streamingStart;
 
-                System.out.println("\n📊 性能对比结果:");
-                System.out.printf("分页查询: %d 条记录，耗时 %.2f 秒\n", paginationRowCount, paginationTime / 1000.0);
-                System.out.printf("流式查询: %d 条记录，耗时 %.2f 秒\n", streamingRowCount.get(), streamingTime / 1000.0);
-                System.out.printf("性能提升: %.1f%%\n", ((double) (paginationTime - streamingTime) / paginationTime) * 100);
+                log.info("\n性能对比结果:");
+                log.info(String.format("分页查询: %d 条记录，耗时 %.2f 秒\n", paginationRowCount, paginationTime / 1000.0));
+                log.info(String.format("流式查询: %d 条记录，耗时 %.2f 秒\n", streamingRowCount.get(), streamingTime / 1000.0));
+                log.info(String.format("性能提升: %.1f%%\n", ((double) (paginationTime - streamingTime) / paginationTime) * 100));
 
                 // 验证两种方式都处理了所有记录
                 assertEquals(paginationRowCount, streamingRowCount.get());
@@ -398,7 +402,7 @@ class JdbcH2TemplateTest {
             String whereColumn = "id";
             Object whereValue = row.get("ID");
             String updateSql = String.format(template, table, setColumn, setValue, whereColumn, whereValue);
-            System.out.println(updateSql);
+            log.info("{}", updateSql);
         }
     }
 }

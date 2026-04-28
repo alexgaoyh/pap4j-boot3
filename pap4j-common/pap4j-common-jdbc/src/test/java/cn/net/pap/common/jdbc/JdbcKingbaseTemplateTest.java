@@ -75,6 +75,9 @@ class JdbcKingbaseTemplateTest {
 
     @BeforeEach
     void setup() {
+        if(!isDatabaseConnected()) {
+            return;
+        }
         // 创建测试表并插入大数据量
         jdbcTemplate.execute("""
                     CREATE TABLE IF NOT EXISTS user_info (
@@ -94,6 +97,9 @@ class JdbcKingbaseTemplateTest {
     @Test
     @DisplayName("幻读")
     void phantomReadTest() throws Exception {
+        if(!isDatabaseConnected()) {
+            return;
+        }
 
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
 
@@ -117,7 +123,7 @@ class JdbcKingbaseTemplateTest {
             Future<Integer> diffFuture = pool.submit(() -> tx.execute(status -> {
                 // 第一次查询
                 List<Long> first = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
-                System.out.println("T1 first = " + first);
+                log.info("{}", "T1 first = " + first);
 
                 t1Ready.countDown();
 
@@ -129,7 +135,7 @@ class JdbcKingbaseTemplateTest {
 
                 // 第二次查询
                 List<Long> second = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
-                System.out.println("T1 second = " + second);
+                log.info("{}", "T1 second = " + second);
 
                 return second.size() - first.size();
             }));
@@ -150,7 +156,7 @@ class JdbcKingbaseTemplateTest {
 
             Integer diff = diffFuture.get();
 
-            System.out.println("phantom diff = " + diff);
+            log.info("{}", "phantom diff = " + diff);
         } finally {
             pool.shutdown();
             try {

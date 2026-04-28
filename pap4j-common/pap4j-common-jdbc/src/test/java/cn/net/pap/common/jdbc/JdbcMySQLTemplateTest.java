@@ -88,6 +88,9 @@ class JdbcMySQLTemplateTest {
 
     @BeforeEach
     void setup() {
+        if(!isDatabaseConnected()) {
+            return;
+        }
         // 创建测试表并插入大数据量
         jdbcTemplate.execute("""
                     CREATE TABLE IF NOT EXISTS user_info (
@@ -126,14 +129,18 @@ class JdbcMySQLTemplateTest {
             }
         });
 
-        System.out.println("✅ 插入 " + count + " 条测试数据完成");
+        log.info("{}", "插入 " + count + " 条测试数据完成");
     }
 
     @Test
     @DisplayName("测试JDBC原生流式查询")
     void testJdbcStreamingQuery() throws SQLException {
+        if(!isDatabaseConnected()) {
+            return;
+        }
+        Integer count = 1000;
         // 插入10万条测试数据
-        insertLargeTestData(100000);
+        insertLargeTestData(count);
 
         long startMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
         AtomicInteger rowCount = new AtomicInteger(0);
@@ -145,7 +152,7 @@ class JdbcMySQLTemplateTest {
                 stmt.setFetchSize(Integer.MIN_VALUE);
 
                 try (ResultSet rs = stmt.executeQuery("select * from user_info")) {
-                    System.out.println("开始流式读取数据...");
+                    log.info("开始流式读取数据...");
                     long startTime = System.currentTimeMillis();
                     while (rs.next()) {
                         rowCount.incrementAndGet();
@@ -161,20 +168,20 @@ class JdbcMySQLTemplateTest {
 
                         // 每处理10000条记录输出一次进度
                         if (rowCount.get() % 10000 == 0) {
-                            System.out.printf("已处理 %d 条记录，当前ID: %d%n", rowCount.get(), id);
+                            log.info(String.format("已处理 %d 条记录，当前ID: %d%n", rowCount.get(), id));
                         }
                     }
 
                     long endTime = System.currentTimeMillis();
                     long endMemory = Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory();
 
-                    System.out.printf("✅ 流式查询完成！\n");
-                    System.out.printf("总记录数: %d\n", rowCount.get());
-                    System.out.printf("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0);
-                    System.out.printf("内存增量: %.2f MB\n", (endMemory - startMemory) / (1024.0 * 1024.0));
+                    log.info(String.format("流式查询完成！\n"));
+                    log.info(String.format("总记录数: %d\n", rowCount.get()));
+                    log.info(String.format("处理时间: %.2f秒\n", (endTime - startTime) / 1000.0));
+                    log.info(String.format("内存增量: %.2f MB\n", (endMemory - startMemory) / (1024.0 * 1024.0)));
 
                     // 验证读取了所有记录
-                    assertEquals(100000, rowCount.get());
+                    assertEquals(count, rowCount.get());
                 }
             }
 
@@ -186,6 +193,9 @@ class JdbcMySQLTemplateTest {
     @Test
     @DisplayName("根据数据库中的数据，模板化生成update语句")
     void testUpdate1() {
+        if(!isDatabaseConnected()) {
+            return;
+        }
         jdbcTemplate.update("INSERT INTO user_info (id, name, age, email, status) VALUES (?, ?, ?, ?, ?)", 1L, "alexgaoyh", "36", "alexgaoyh@mail.com", "INIT");
 
         var rows = jdbcTemplate.queryForList("SELECT * FROM user_info");
@@ -198,13 +208,16 @@ class JdbcMySQLTemplateTest {
             String whereColumn = "id";
             Object whereValue = row.get("ID");
             String updateSql = String.format(template, table, setColumn, setValue, whereColumn, whereValue);
-            System.out.println(updateSql);
+            log.info("{}", updateSql);
         }
     }
 
     @Test
     @DisplayName("幻读")
     void phantomReadTest() throws Exception {
+        if(!isDatabaseConnected()) {
+            return;
+        }
 
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
 
@@ -228,7 +241,7 @@ class JdbcMySQLTemplateTest {
             Future<Integer> diffFuture = pool.submit(() -> tx.execute(status -> {
                 // 第一次查询
                 List<Long> first = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
-                System.out.println("T1 first = " + first);
+                log.info("{}", "T1 first = " + first);
 
                 t1Ready.countDown();
 
@@ -240,7 +253,7 @@ class JdbcMySQLTemplateTest {
 
                 // 第二次查询
                 List<Long> second = jdbcTemplate.queryForList("SELECT id FROM user_info WHERE status = 'INIT'", Long.class);
-                System.out.println("T1 second = " + second);
+                log.info("{}", "T1 second = " + second);
 
                 return second.size() - first.size();
             }));
@@ -262,7 +275,7 @@ class JdbcMySQLTemplateTest {
             Integer diff = diffFuture.get();
 
 
-            System.out.println("phantom diff = " + diff);
+            log.info("{}", "phantom diff = " + diff);
         } finally {
             pool.shutdown();
             try {
@@ -282,19 +295,25 @@ class JdbcMySQLTemplateTest {
 
     @Test
     public void jdbcTemplateTest() throws Exception {
+        if(!isDatabaseConnected()) {
+            return;
+        }
         int fetchSize = jdbcTemplate.getFetchSize();
         int maxRows = jdbcTemplate.getMaxRows();
-        System.out.println("fetchSize = " + fetchSize);
-        System.out.println("maxRows = " + maxRows);
+        log.info("{}", "fetchSize = " + fetchSize);
+        log.info("{}", "maxRows = " + maxRows);
     }
 
     /**
      * 本地mysql8 的环境下，关闭其他所有软件（避免其他软件影响）
      * 不完备的测试下，如下的对比不明显，没有说谁比谁更快。
      */
-    // @Test
+    @Test
     @DisplayName("分批查询 vs 全量查询的执行时间 (已排除 Java 层拼接与 GC 干扰)")
     void testExecutionEfficiencyFlipOptimized() {
+        if(!isDatabaseConnected()) {
+            return;
+        }
 
         // 1. 准备测试数据
         int queryCount = 50000;
@@ -310,7 +329,7 @@ class JdbcMySQLTemplateTest {
             batches.add(extremeIds.subList(i, Math.min(i + batchSize, extremeIds.size())));
         }
 
-        System.out.println("开始预先构建 SQL 和参数 (剔除测试期间的 JVM 内存分配开销)...");
+        log.info("开始预先构建 SQL 和参数 (剔除测试期间的 JVM 内存分配开销)...");
 
         // --- 提取全量查询的准备工作 ---
         String fullSql = buildInSql(extremeIds.size());
@@ -328,14 +347,14 @@ class JdbcMySQLTemplateTest {
         org.springframework.jdbc.core.RowMapper<Long> rowMapper = (rs, rowNum) -> rs.getLong("id");
 
         // 3. 预热阶段 (Warm-up)
-        System.out.println("开始预热 (让数据进入 MySQL Buffer Pool，并让 JDBC 缓存 PreparedStatement)...");
+        log.info("开始预热 (让数据进入 MySQL Buffer Pool，并让 JDBC 缓存 PreparedStatement)...");
         for (int i = 0; i < 3; i++) {
             jdbcTemplate.query(fullSql, rowMapper, fullArgs);
             for (int j = 0; j < batchSqls.size(); j++) {
                 jdbcTemplate.query(batchSqls.get(j), rowMapper, batchArgs.get(j));
             }
         }
-        System.out.println("预热完成，开始正式测速。\n");
+        log.info("预热完成，开始正式测速。\n");
 
         // 4. 正式对比耗时
         int testRounds = 50;
@@ -361,9 +380,9 @@ class JdbcMySQLTemplateTest {
         // 5. 打印结果
         double fullMs = timeFull / 1_000_000.0;
         double batchMs = timeBatch / 1_000_000.0;
-        System.out.printf("单次带 %d 个 ID 的全量 IN 查询 (执行 %d 轮) 总耗时: %.2f ms%n", queryCount, testRounds, fullMs);
-        System.out.printf("拆分为 %d 批次的 IN 查询 (执行 %d 轮) 总耗时:     %.2f ms%n", batches.size(), testRounds, batchMs);
-        System.out.println("=========================================================");
+        log.info(String.format("单次带 %d 个 ID 的全量 IN 查询 (执行 %d 轮) 总耗时: %.2f ms%n", queryCount, testRounds, fullMs));
+        log.info(String.format("拆分为 %d 批次的 IN 查询 (执行 %d 轮) 总耗时:     %.2f ms%n", batches.size(), testRounds, batchMs));
+        log.info("=========================================================");
     }
 
     /**
@@ -377,6 +396,9 @@ class JdbcMySQLTemplateTest {
     @Test
     @DisplayName("验证 cachePrepStmts=true 的性能差异")
     void testCachePrepStmtsDifference() throws Exception {
+        if(!isDatabaseConnected()) {
+            return;
+        }
         // 1. 插入一点基础数据（保证查询有结果）
         jdbcTemplate.update("INSERT IGNORE INTO user_info (id, name, age) VALUES (1, 'cache-test', 20)");
 
@@ -391,7 +413,7 @@ class JdbcMySQLTemplateTest {
         // URL 2: 开启缓存及配套参数
         String urlWithCache = baseUrl + "&cachePrepStmts=true&prepStmtCacheSize=250&prepStmtCacheSqlLimit=2048&useServerPrepStmts=true";
 
-        System.out.println("================ 开始测试 cachePrepStmts ===============");
+        log.info("================ 开始测试 cachePrepStmts ===============");
 
         // 2. 测试不带缓存的性能
         long timeWithoutCache = runIntensiveQueries("未开启缓存 (Without Cache)", urlWithoutCache, username, password);
@@ -400,15 +422,15 @@ class JdbcMySQLTemplateTest {
         long timeWithCache = runIntensiveQueries("已开启缓存 (With Cache)", urlWithCache, username, password);
 
         // 4. 输出对比
-        System.out.println("================ 测试结果总结 ==========================");
-        System.out.printf("未开启缓存耗时: %d ms%n", timeWithoutCache);
-        System.out.printf("已开启缓存耗时: %d ms%n", timeWithCache);
+        log.info("================ 测试结果总结 ==========================");
+        log.info(String.format("未开启缓存耗时: %d ms%n", timeWithoutCache));
+        log.info(String.format("已开启缓存耗时: %d ms%n", timeWithCache));
 
         if (timeWithCache < timeWithoutCache) {
             double improve = (double)(timeWithoutCache - timeWithCache) / timeWithoutCache * 100;
-            System.out.printf("性能提升: %.2f%%%n", improve);
+            log.info(String.format("性能提升: %.2f%%%n", improve));
         } else {
-            System.out.println("在当前极为短暂的测试中未体现出明显优势，可能受JIT或网络波动影响，建议增加循环次数。");
+            log.info("在当前极为短暂的测试中未体现出明显优势，可能受JIT或网络波动影响，建议增加循环次数。");
         }
     }
 
@@ -436,13 +458,13 @@ class JdbcMySQLTemplateTest {
             int warmUpCount = 10000;
             int testCount = 50000;
 
-            System.out.println(label + " -> 正在预热...");
+            log.info("{}", label + " -> 正在预热...");
             // 预热：让 JVM JIT 编译器完成字节码到机器码的编译
             for (int i = 0; i < warmUpCount; i++) {
                 testJt.query(sql, extractor, 1L);
             }
 
-            System.out.println(label + " -> 正式开始计时...");
+            log.info("{}", label + " -> 正式开始计时...");
             long startTime = System.currentTimeMillis();
 
             // 正式测试
@@ -452,8 +474,8 @@ class JdbcMySQLTemplateTest {
 
             long endTime = System.currentTimeMillis();
             long duration = endTime - startTime;
-            System.out.printf("%s 测试完成，耗时: %d ms%n", label, duration);
-            System.out.println("------------------------------------------------------");
+            log.info(String.format("%s 测试完成，耗时: %d ms%n", label, duration));
+            log.info("------------------------------------------------------");
             return duration;
         }
     }

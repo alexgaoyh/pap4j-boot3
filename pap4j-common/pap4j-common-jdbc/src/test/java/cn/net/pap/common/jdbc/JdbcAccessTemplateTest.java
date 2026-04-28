@@ -1,8 +1,12 @@
 package cn.net.pap.common.jdbc;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.DisposableBean;
 import org.springframework.boot.jdbc.DataSourceBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -15,6 +19,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 
 import javax.sql.DataSource;
 import java.io.File;
+import java.nio.file.Files;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.Map;
@@ -23,18 +28,23 @@ import java.util.Map;
 @ContextConfiguration(classes = JdbcAccessTemplateTest.Config.class)
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class JdbcAccessTemplateTest {
+    private static final Logger log = LoggerFactory.getLogger(JdbcAccessTemplateTest.class);
 
     static {
         System.setProperty("hsqldb.method_class_names", "net.ucanaccess.*");
     }
 
     @Configuration
-    static class Config {
+    static class Config implements DisposableBean {
+
+        private String mdbPath;
 
         @Bean
         DataSource dataSource() {
+            String mdb = TestResourceUtil.getFile("access.mdb").getAbsolutePath().toString();
+            this.mdbPath = mdb;
             return DataSourceBuilder.create().driverClassName("net.ucanaccess.jdbc.UcanaccessDriver")
-                    .url("jdbc:ucanaccess://" + "C:\\Users\\86181\\Desktop\\test.mdb" + ";memory=false;singleConnection=true").build();
+                    .url("jdbc:ucanaccess://" + mdb + ";memory=false;singleConnection=true").build();
         }
 
         @Bean
@@ -45,6 +55,20 @@ public class JdbcAccessTemplateTest {
         @Bean
         PlatformTransactionManager transactionManager(DataSource ds) {
             return new DataSourceTransactionManager(ds);
+        }
+
+        @Override
+        public void destroy(){
+            log.info("正在关闭数据库连接并清理文件...");
+            // 1. Ucanaccess 在所有连接关闭后会自动释放文件锁
+            // 2. 执行删除逻辑
+            if (mdbPath != null) {
+                File file = new File(mdbPath);
+                if (file.exists()) {
+                    boolean deleted = file.delete();
+                    log.info("{}", "临时数据库文件删除状态: " + deleted);
+                }
+            }
         }
     }
 
@@ -57,31 +81,30 @@ public class JdbcAccessTemplateTest {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    // @Test
+    @Test
     @DisplayName("查询数据")
     void testJdbcStreamingQuery() throws SQLException {
         try {
-            String sql = "SELECT ID as id, 文字 as temp FROM [tableName]";
+            String sql = "SELECT ID as id, null as temp FROM [Users]";
             List<TestRecord> testRecordList = jdbcTemplate.query(sql, new DataClassRowMapper<>(TestRecord.class));
             if (testRecordList != null && testRecordList.size() > 0) {
                 for (TestRecord testRecord : testRecordList) {
-                    System.out.println(testRecord);
+                    log.info("{}", testRecord);
                 }
             }
         } catch (Exception e) {
         }
     }
 
-    // @Test
+    @Test
     @DisplayName("创建新 mdb 数据库并插入数据")
-    void testCreateNewDatabaseAndInsertData() {
-        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
-        File newDbFile = new File(desktop + File.separator + "new_test.mdb");
+    void testCreateNewDatabaseAndInsertData() throws Exception {
+        File newDbFile = Files.createTempFile("testCreateNewDatabaseAndInsertData", ".mdb").toFile();
 
         // 如果文件已存在，先删除，确保每次测试都是从零开始创建
         if (newDbFile.exists()) {
             boolean deleted = newDbFile.delete();
-            System.out.println("清理旧的测试文件: " + deleted);
+            log.info("{}", "清理旧的测试文件: " + deleted);
         }
 
         // 2. 构造 JDBC URL，关键参数：;newdatabaseversion=V2003
@@ -99,7 +122,7 @@ public class JdbcAccessTemplateTest {
             JdbcTemplate localJdbcTemplate = new JdbcTemplate(localDataSource);
 
             // 4. 创建新表 (COUNTER 代表 Access 中的自动编号主键)
-            System.out.println("正在创建新表 [Users]...");
+            log.info("正在创建新表 [Users]...");
             String createTableSql = "CREATE TABLE Users (" +
                     "id COUNTER PRIMARY KEY, " +
                     "username VARCHAR(50), " +
@@ -107,27 +130,28 @@ public class JdbcAccessTemplateTest {
                     "status TEXT(100)" +
                     ")";
             localJdbcTemplate.execute(createTableSql);
-            System.out.println("建表成功！");
+            log.info("建表成功！");
 
             // 5. 插入数据
-            System.out.println("正在插入数据...");
+            log.info("正在插入数据...");
             String insertSql = "INSERT INTO Users (username, age, status) VALUES (?, ?, ?)";
             localJdbcTemplate.update(insertSql, "张三", 25, "活跃");
             localJdbcTemplate.update(insertSql, "李四", 30, "离线");
             localJdbcTemplate.update(insertSql, "王五", 28, "活跃");
-            System.out.println("数据插入成功！");
+            log.info("数据插入成功！");
 
             // 6. 查询并验证数据
-            System.out.println("查询刚插入的数据:");
+            log.info("查询刚插入的数据:");
             List<Map<String, Object>> results = localJdbcTemplate.queryForList("SELECT * FROM Users");
             for (Map<String, Object> row : results) {
-                System.out.println(row);
+                log.info("{}", row);
             }
 
         } catch (Exception e) {
             System.err.println("操作失败: " + e.getMessage());
             e.printStackTrace();
         }
+        newDbFile.deleteOnExit();
     }
 
 }
