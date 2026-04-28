@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<page page_id="page_001" relate_id="rel_123" width="1920" height="1080" page_middle_area="100,200,800,600">
+
+    <text_region_list>
+        <text_region region="10,10,500,100">
+            <text_line region="12,12,490,40" columnNo="1" direction="0" bussinessType="1" font_id="101" decoration="0" rotation="0">
+                <text>这是第一行测试文本</text>
+            </text_line>
+            <text_line region="12,50,490,90" columnNo="1" direction="0" bussinessType="1" font_id="101" decoration="0" rotation="0">
+                <text>这是第二行测试文本</text>
+            </text_line>
+        </text_region>
+    </text_region_list>
+
+    <page_text_list>页面独立文本段落1</page_text_list>
+    <page_text_list>页面独立文本段落2</page_text_list>
+
+    <image_list>
+        <image name="logo.png" region="800,10,900,50"/>
+        <image name="background.jpg" region="0,0,1920,1080"/>
+    </image_list>
+
+    <line_list>10,10,100,10</line_list>
+    <line_list>20,20,200,20</line_list>
+
+    <rectangle_list>50,50,150,150</rectangle_list>
+    <rectangle_list>200,200,300,300</rectangle_list>
+
+    <reverse_list>
+        <reverse type="color_invert" ids="img_01,txt_02" variant="1" image_name="invert_mask.png" region="500,500,600,600"/>
+    </reverse_list>
+
+</page>

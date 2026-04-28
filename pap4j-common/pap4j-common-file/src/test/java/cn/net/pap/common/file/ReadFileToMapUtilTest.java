@@ -1,15 +1,16 @@
 package cn.net.pap.common.file;
 
 import cn.net.pap.common.file.dto.FileSegmentDTO;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.file.Files;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -19,11 +20,46 @@ public class ReadFileToMapUtilTest {
 
     public static final Integer MAX_LINE_NUMBER = 10000000;
 
-    public static final Integer MAX_LINE_NUMBER2 = 50000000;
+    public static final Integer MAX_LINE_NUMBER2 = 10000000;
 
-    //@Test
-    public void createBigFile() throws Exception {
-        FileWriter fw = new FileWriter(new File("big-file.txt"));
+    // 提取统一的文件路径，使用相对路径以便于统一生成和清理
+    private static String FILE_PATH_1;
+    private static String FILE_PATH_2;
+    private static String FILE_PATH_3;
+
+    @BeforeAll
+    public static void setup() throws Exception {
+        FILE_PATH_1 = Files.createTempFile("big-file", ".txt").toAbsolutePath().toString();
+        FILE_PATH_2 = Files.createTempFile("big-file", ".txt").toAbsolutePath().toString();
+        FILE_PATH_3 = Files.createTempFile("big-file", ".txt").toAbsolutePath().toString();
+        System.out.println("====== [BeforeAll] 开始初始化测试大文件 ======");
+        createBigFile();
+        createBigFile2();
+        createBigFile3(); // 初始化 13g 测试文件
+        System.out.println("====== [BeforeAll] 测试文件初始化完成 ======\n");
+    }
+
+    @AfterAll
+    public static void tearDown() throws Exception {
+        System.out.println("\n====== [AfterAll] 开始清理测试文件 ======");
+        // 强制提示 JVM 执行垃圾回收，释放 MappedByteBuffer 占用的文件系统锁
+        System.gc();
+        System.runFinalization();
+
+        // 给 GC 一点时间来完成对象的回收和句柄的释放
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        new File((FILE_PATH_1)).deleteOnExit();
+        new File((FILE_PATH_2)).deleteOnExit();
+        new File((FILE_PATH_3)).deleteOnExit();
+        System.out.println("====== [AfterAll] 测试文件清理完成 ======");
+    }
+
+    public static void createBigFile() throws Exception {
+        FileWriter fw = new FileWriter(new File(FILE_PATH_1));
         BufferedWriter bw = new BufferedWriter(fw);
 
         for (int idx = 0; idx < MAX_LINE_NUMBER; idx++) {
@@ -33,9 +69,8 @@ public class ReadFileToMapUtilTest {
         fw.close();
     }
 
-    // @Test
-    public void createBigFile2() throws Exception {
-        FileWriter fw = new FileWriter(new File("C:\\Users\\86181\\Desktop\\big-file2.txt"));
+    public static void createBigFile2() throws Exception {
+        FileWriter fw = new FileWriter(new File(FILE_PATH_2));
         BufferedWriter bw = new BufferedWriter(fw);
 
         for (int idx = 0; idx < MAX_LINE_NUMBER2; idx++) {
@@ -45,42 +80,44 @@ public class ReadFileToMapUtilTest {
         fw.close();
     }
 
-    //@Test
-    public void toMapTest() {
-        String filePath = "big-file.txt";
+    public static void createBigFile3() throws Exception {
+        // 提供一个占位文件供 test4 和 test5 消费，避免 FileNotFoundException
+        FileWriter fw = new FileWriter(new File(FILE_PATH_3));
+        BufferedWriter bw = new BufferedWriter(fw);
+        for (int idx = 0; idx < 10000; idx++) { // 象征性写入部分数据
+            bw.write("test_data_" + idx + "\n");
+        }
+        bw.close();
+        fw.close();
+    }
 
+    @Test
+    public void toMapTest() {
         long startTime = System.nanoTime();
-        ConcurrentHashMap<String, String> fileMap = ReadFileToMapUtil.toMap(filePath, (byte) ',');
+        ConcurrentHashMap<String, String> fileMap = ReadFileToMapUtil.toMap(FILE_PATH_1, (byte) ',');
         long endTime = System.nanoTime();
 
         System.out.println("Optimized implementation took: " + (endTime - startTime) / 1e6 + " ms");
         System.out.println("file Map size: " + fileMap.size());
         assertTrue(fileMap.size() == MAX_LINE_NUMBER);
-
     }
 
-    //@Test
+    @Test
     public void toMapTest2() {
-        String filePath = "C:\\Users\\86181\\Desktop\\big-file2.txt";
-
         long startTime = System.currentTimeMillis();
-        ConcurrentHashMap<String, String> fileMap = ReadFileToMapUtil.toMap(filePath, (byte) ';');
+        ConcurrentHashMap<String, String> fileMap = ReadFileToMapUtil.toMap(FILE_PATH_2, (byte) ';');
         long endTime = System.currentTimeMillis();
 
         System.out.println("Optimized implementation took: " + (endTime - startTime) + " ms");
         System.out.println("file Map size: " + fileMap.size());
         System.out.println();
-
-        // todo compare with  Files.readAllLines(Paths.get(filePath)); method
     }
 
-    //@Test
+    @Test
     public void toMapTest3() throws Exception {
-        String filePath = "C:\\Users\\86181\\Desktop\\big-file2.txt";
-
         long startTime = System.currentTimeMillis();
 
-        BufferedReader reader = new BufferedReader(new FileReader(filePath));
+        BufferedReader reader = new BufferedReader(new FileReader(FILE_PATH_2));
         String line;
         List<String> words = new ArrayList<String>();
         while ((line = reader.readLine()) != null) {
@@ -95,17 +132,15 @@ public class ReadFileToMapUtilTest {
         System.out.println();
     }
 
-    // @Test
+    @Test
     public void toMapTest4() throws Exception {
-        String filePath = "13g-file.txt";
-
         AtomicInteger atomicInteger = new AtomicInteger(0);
 
         long startTime = System.currentTimeMillis();
 
         long bufferSize = 1024 * 1024 * 100;
 
-        try (RandomAccessFile file = new RandomAccessFile(filePath, "r");
+        try (RandomAccessFile file = new RandomAccessFile(FILE_PATH_3, "r");
              FileChannel fileChannel = file.getChannel()) {
 
             long fileSize = fileChannel.size();
@@ -131,26 +166,26 @@ public class ReadFileToMapUtilTest {
         System.out.println();
     }
 
-    // @Test
+    @Test
     public void toMapTest5() throws Exception {
-        String filePath = "13g-file.txt";
-
         AtomicInteger atomicInteger = new AtomicInteger(0);
 
         long startTime = System.currentTimeMillis();
 
         try {
-            FileInputStream fileInputStream = new FileInputStream(new File(filePath));
-            FileChannel fileChannel = fileInputStream.getChannel();
-            List<FileSegmentDTO> fileSegmentDTOS = getFileSegments(new File(filePath), fileChannel);
-            fileSegmentDTOS.parallelStream().forEach( fileSegmentDTO -> {
-                try {
-                    MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, fileSegmentDTO.getStart(), fileSegmentDTO.getEnd() - fileSegmentDTO.getStart());
-                    processBuffer(buffer, atomicInteger);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
+            try (FileInputStream fileInputStream = new FileInputStream(new File(FILE_PATH_3));
+                 FileChannel fileChannel = fileInputStream.getChannel()) {
+                List<FileSegmentDTO> fileSegmentDTOS = getFileSegments(new File(FILE_PATH_3), fileChannel);
+                fileSegmentDTOS.parallelStream().forEach( fileSegmentDTO -> {
+                    try {
+                        MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, fileSegmentDTO.getStart(), fileSegmentDTO.getEnd() - fileSegmentDTO.getStart());
+                        processBuffer(buffer, atomicInteger);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            }
+
         } catch (Exception e) {
             throw new RuntimeException(e);
         }

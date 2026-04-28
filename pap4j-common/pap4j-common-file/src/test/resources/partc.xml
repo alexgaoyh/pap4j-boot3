@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document>
+
+    <chapter identifier="CH-001" type="intro">
+        <content>这是一篇前言或导读，没有归属于任何 Part。</content>
+    </chapter>
+
+    <part>
+        <title>第一部分 基础理论</title>
+        <chapter identifier="CH-010" type="theory">
+            <content>理论第一章...</content>
+        </chapter>
+        <chapter identifier="CH-011" type="theory">
+            <content>理论第二章...</content>
+        </chapter>
+    </part>
+
+    <part>
+        <title>第二部分 进阶技术与实践</title>
+
+        <chapter identifier="CH-020" type="overview">
+            <content>第二部分的概述章节...</content>
+        </chapter>
+
+        <part>
+            <title>子部分 2.1 高级架构设计</title>
+            <chapter identifier="CH-021" type="core">
+                <content>微服务架构解析...</content>
+            </chapter>
+            <chapter identifier="CH-022" type="core">
+                <content>分布式事务管理...</content>
+            </chapter>
+        </part>
+
+        <part>
+            <title>子部分 2.2 性能调优</title>
+            <chapter identifier="CH-023" type="practice">
+                <content>JVM 调优实战...</content>
+            </chapter>
+        </part>
+    </part>
+
+    <part>
+        <title>第三部分 附录</title>
+        <chapter identifier="CH-099" type="appendix" />
+    </part>
+
+</document>

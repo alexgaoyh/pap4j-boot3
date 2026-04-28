@@ -5,6 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -39,9 +40,9 @@ public class TempDirUtilsTest {
         });
     }
 
-    // @Test
+    @Test
     public void test2() throws Exception {
-        Path customDir = Paths.get("d://");
+        Path customDir = Files.createTempDirectory("test2-");
 
         String returnStr = TempDirUtils.withTempFile(customDir, "data-", tempFile -> {
             try {
@@ -53,6 +54,7 @@ public class TempDirUtilsTest {
         });
 
         assertTrue(returnStr.equals("success"));
+        new File(customDir.toAbsolutePath().toString()).deleteOnExit();
     }
 
     // @Test
@@ -76,7 +78,7 @@ public class TempDirUtilsTest {
 
     // @Test
     public void test4() throws Exception {
-        Path workspace = Paths.get("d:/");
+        Path workspace = Files.createTempDirectory("test2-");
 
         List<String> returnList = TempDirUtils.withTempDir(workspace, "batch-", tempDir -> {
             try {
@@ -102,6 +104,7 @@ public class TempDirUtilsTest {
             }
         });
         assertTrue(returnList.contains("success"));
+        new File(workspace.toAbsolutePath().toString()).deleteOnExit();
     }
 
     // @Test

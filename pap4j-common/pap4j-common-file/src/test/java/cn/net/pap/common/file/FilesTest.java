@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -14,9 +15,9 @@ import java.util.stream.Stream;
 
 public class FilesTest {
 
-    // @Test
+    @Test
     public void walkFileTreeTest() throws IOException {
-        String folderPath = "D:\\knowledge";
+        String folderPath = System.getProperty("user.dir");
         Path start = Paths.get(folderPath);
 
         List<String> fileNames = new ArrayList<>();
@@ -43,7 +44,9 @@ public class FilesTest {
 
         Collections.sort(fileNames);
 
-        Files.write( Paths.get("C:\\Users\\86181\\Desktop\\file_names_out.txt"), fileNames, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        String destFilePath = Files.createTempFile("walkFileTreeTest", ".txt").toAbsolutePath().toString();
+        Files.write( Paths.get(destFilePath), fileNames, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        new File(destFilePath).deleteOnExit();
     }
 
     /**
@@ -60,9 +63,13 @@ public class FilesTest {
         Files.write(Paths.get(outputFilePath), lines);
     }
 
-    // @Test
+    @Test
     public void readTest1() throws Exception {
-        List<String> lines = Files.readAllLines(Paths.get(System.getProperty("user.home") + File.separator + "Desktop" + File.separator + "1.txt"));
+        List<String> lines = Arrays.asList(
+                "NodeA:Status1:1000",
+                "NodeB:Status2:1500",
+                "NodeC:Status3:2300"
+        );
         for(int idx = 1; idx < lines.size(); idx++) {
             String before = lines.get(idx - 1);
             String current = lines.get(idx);
@@ -72,19 +79,31 @@ public class FilesTest {
         }
     }
 
-    // @Test
+    @Test
     public void sortFileLinesWithComparatorTest() throws IOException {
-        sortFileLinesWithComparator("C:\\Users\\86181\\Desktop\\sort.txt",
-                "C:\\Users\\86181\\Desktop\\sort_out.txt",
-                Comparator.naturalOrder());
+        List<String> rawData = Arrays.asList("Banana", "Apple", "Cherry", "Date");
+        String inputPath = Files.createTempFile("sort-input", ".txt").toAbsolutePath().toString();
+        Files.write(Paths.get(inputPath), rawData, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+
+        String outputPath = Files.createTempFile("sort-output", ".txt").toAbsolutePath().toString();
+
+        sortFileLinesWithComparator(inputPath, outputPath, Comparator.naturalOrder());
+
+        List<String> sortedResult = Files.readAllLines(Paths.get(outputPath));
+        sortedResult.equals(Arrays.asList("Apple", "Banana", "Cherry", "Date"));
+
+        new File(inputPath).deleteOnExit();
+        new File(outputPath).deleteOnExit();
+
     }
 
-    // @Test
+    @Test
     public void convertLineEndingsTest() throws IOException {
-        Path startDir = Paths.get("C:\\Users\\86181\\Desktop");
+        String folderPath = System.getProperty("user.dir");
+        Path startDir = Paths.get(folderPath);
 
         try (Stream<Path> paths = Files.walk(startDir)) {
-            paths.filter(path -> path.toString().endsWith(".java"))
+            paths.filter(path -> path.toString().endsWith(".java") && path.toString().contains("PageDTO"))
                     .forEach(path -> {
                         convertLineEndings(path.toAbsolutePath().toString());
                         System.out.println("已处理: " + path);
@@ -110,10 +129,13 @@ public class FilesTest {
         }
     }
 
-    // @Test
+    @Test
     public void copyFileTest() throws Exception {
+        String srcPath = TestResourceUtil.getFile("PageDTO.xml").getAbsolutePath().toString();
         for(int i = 2; i < 200; i++) {
-            copyFile("D:\\knowledge\\600tiff\\1.tiff", "D:\\knowledge\\600tiff\\" + i + ".tiff");
+            String destFilePath = Files.createTempFile("copyFileTest", ".xml").toAbsolutePath().toString();
+            copyFile(srcPath, destFilePath);
+            new File(destFilePath).deleteOnExit();
         }
     }
 

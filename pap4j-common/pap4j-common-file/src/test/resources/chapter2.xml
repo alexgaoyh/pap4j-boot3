@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<book>
+    <chapter title="第一章">
+        <section title="第一节">
+            <paragraph title="第一小节"/>
+        </section>
+        <chapter title="第二节"/>
+    </chapter>
+    <appendix title="附录">
+        <note title="注意事项"/>
+    </appendix>
+</book>

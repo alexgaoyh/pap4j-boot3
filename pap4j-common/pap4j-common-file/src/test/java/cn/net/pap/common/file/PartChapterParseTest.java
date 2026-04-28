@@ -15,7 +15,7 @@ import java.util.List;
 
 public class PartChapterParseTest {
 
-    // @Test
+    @Test
     public void parsePartChapter() throws Exception {
         // 安全配置：禁用外部实体解析以防止XXE攻击
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -26,7 +26,7 @@ public class PartChapterParseTest {
         factory.setExpandEntityReferences(false);
 
         DocumentBuilder builder = factory.newDocumentBuilder();
-        Document document = builder.parse("C:\\Users\\86181\\Desktop\\partc.xml");
+        Document document = builder.parse(TestResourceUtil.getFile("partc.xml").getAbsolutePath().toString());
 
         Element root = document.getDocumentElement();
 

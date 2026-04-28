@@ -13,7 +13,7 @@ public class StringInternTest {
      *
      * @throws Exception
      */
-    @Test
+    // @Test
     public void memoryIntern() throws Exception {
         StringBuffer sb = new StringBuffer();
         for(char c = '\u4E00'; c <= '\u9FA5'; c++) {

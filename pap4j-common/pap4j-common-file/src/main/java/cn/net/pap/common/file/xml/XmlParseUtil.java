@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -96,7 +97,7 @@ public final class XmlParseUtil {
         factory.setCoalescing(true);
         factory.setIgnoringElementContentWhitespace(true);
         DocumentBuilder builder = factory.newDocumentBuilder();
-        Document document = builder.parse(new ByteArrayInputStream(xml.getBytes()));
+        Document document = builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
 
         // 复制根节点并剪裁到目标层级
         Node rootCopy = copyNodeToLevel(document.getDocumentElement(), 1, level, document, allowSelfClosing);

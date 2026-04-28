@@ -48,9 +48,8 @@ public class StaxXmlUtilTest {
         String firstNodeName = "firstNode";
         String secondNodeName = "secondNode";
         String thirdNodeName = "thirdNode";
-        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
 
-        String xmlText = Files.readString(Paths.get(desktop + File.separator + "input1.xml"));
+        String xmlText = Files.readString(Paths.get(TestResourceUtil.getFile("input1.xml").getAbsolutePath().toString()));
         // 处理 BOM 头
         xmlText = xmlText.startsWith("\uFEFF") ? xmlText.substring(1) : xmlText;
 
@@ -75,9 +74,8 @@ public class StaxXmlUtilTest {
         String firstNodeName = "firstNode";
         String secondNodeName = "secondNode";
         String thirdNodeName = "thirdNode";
-        String desktop = System.getProperty("user.home") + File.separator + "Desktop";
 
-        String xmlText = Files.readString(Paths.get(desktop + File.separator + "input.xml"));
+        String xmlText = Files.readString(Paths.get(TestResourceUtil.getFile("input1.xml").getAbsolutePath().toString()));
         // 处理 BOM 头
         xmlText = xmlText.startsWith("\uFEFF") ? xmlText.substring(1) : xmlText;
         // 第一层节点

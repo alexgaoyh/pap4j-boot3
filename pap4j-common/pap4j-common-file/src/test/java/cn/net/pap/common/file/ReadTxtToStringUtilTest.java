@@ -9,32 +9,34 @@ import java.nio.file.Paths;
 
 public class ReadTxtToStringUtilTest {
 
-    // @Test
+    @Test
     public void test1() throws IOException {
-        String txtPath = "D:\\knowledge\\中文\\中文文件.txt";
+        File file = TestResourceUtil.getFile("txt/中文文件.txt");
+        String txtPath = file.getAbsolutePath();
         String encode = ReadTxtToStringUtil.detectCharsetUsingICU4J(txtPath);
         System.out.println(encode);
         String content = Files.readString(Paths.get(txtPath), Charset.forName(encode));
         System.out.println(content);
     }
 
-    // @Test
+    @Test
     public void detectCharsetUsingICU4JTest() throws IOException {
-        String e = ReadTxtToStringUtil.detectCharsetUsingICU4J("C:\\Users\\86181\\Desktop\\ftp_426586352426085054.txt");
+        File file = TestResourceUtil.getFile("txt/ftp_426586352426085054.txt");
+        String e = ReadTxtToStringUtil.detectCharsetUsingICU4J(file.getAbsolutePath());
         System.out.println(e);
     }
 
-    // @Test
+    @Test
     public void readTxtToStringTest() throws IOException {
-        String utf8 = ReadTxtToStringUtil.readFileContent(new File("utf8.txt"));
-        String utf8bom = ReadTxtToStringUtil.readFileContent(new File("utf8bom.txt"));
-        String gbk = ReadTxtToStringUtil.readFileContent(new File("gbk.txt"));
-        String big5 = ReadTxtToStringUtil.readFileContent(new File("big5.txt"));
-        String gb2312 = ReadTxtToStringUtil.readFileContent(new File("gb2312.txt"));
+        String utf8 = ReadTxtToStringUtil.readFileContent(TestResourceUtil.getFile("txt/utf8.txt"));
+        String utf8bom = ReadTxtToStringUtil.readFileContent(TestResourceUtil.getFile("txt/utf8bom.txt"));
+        String gbk = ReadTxtToStringUtil.readFileContent(TestResourceUtil.getFile("txt/gbk.txt"));
+        String big5 = ReadTxtToStringUtil.readFileContent(TestResourceUtil.getFile("txt/big5.txt"));
+        String gb2312 = ReadTxtToStringUtil.readFileContent(TestResourceUtil.getFile("txt/gb2312.txt"));
         System.out.println(utf8 + "\n\n" + utf8bom + "\n\n" + gbk + "\n\n" + big5 + "\n\n" + gb2312);
     }
 
-    // @Test
+    @Test
     public void createBomFileTest() throws IOException {
         File file = new File("test_bom.txt");
         // UTF-8 BOM 字节序列

@@ -1,5 +1,6 @@
 package cn.net.pap.common.file.dto.xml;
 
+import cn.net.pap.common.file.TestResourceUtil;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Unmarshaller;
 import org.junit.jupiter.api.Test;
@@ -11,10 +12,10 @@ import java.nio.file.Paths;
 
 public class JaxBXMLTest {
 
-    // @Test
+    @Test
     public void test() {
         try {
-            String xmlString = Files.readString(Paths.get("C:\\Users\\86181\\Desktop\\xml.xml"), StandardCharsets.UTF_8);
+            String xmlString = Files.readString(Paths.get(TestResourceUtil.getFile("PageDTO.xml").getAbsolutePath().toString()), StandardCharsets.UTF_8);
             if (xmlString.startsWith("\uFEFF")) {
                 xmlString = xmlString.substring(1);
             }

@@ -9,7 +9,7 @@ import java.util.List;
 
 public class ParentChildXMLParseTest {
 
-    // @Test
+    @Test
     public void parseParentChild() throws Exception {
         // 安全配置：禁用外部实体解析以防止XXE攻击
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -20,39 +20,13 @@ public class ParentChildXMLParseTest {
         factory.setExpandEntityReferences(false);
 
         DocumentBuilder builder = factory.newDocumentBuilder();
-        /**
-         * <book>
-         *   <chapter title="第一章">
-         *     <chapter title="第一节">
-         *       <chapter title="第一小节"/>
-         *     </chapter>
-         *     <chapter title="第二节"/>
-         *   </chapter>
-         *   <chapter title="第二章">
-         *     <chapter title="概述"/>
-         *   </chapter>
-         * </book>
-         */
-        Document doc = builder.parse("C:\\Users\\86181\\Desktop\\chapter.xml");
+        Document doc = builder.parse(TestResourceUtil.getFile("chapter.xml").getAbsolutePath().toString());
 
         Chapter root = parseChapter(doc.getDocumentElement());
         printStructure(root, 0);
 
 
-        Document doc2 = builder.parse("C:\\Users\\86181\\Desktop\\chapter2.xml");
-        /**
-         * <book>
-         *   <chapter title="第一章">
-         *     <section title="第一节">
-         *       <paragraph title="第一小节"/>
-         *     </section>
-         *     <chapter title="第二节"/>
-         *   </chapter>
-         *   <appendix title="附录">
-         *     <note title="注意事项"/>
-         *   </appendix>
-         * </book>
-         */
+        Document doc2 = builder.parse(TestResourceUtil.getFile("chapter2.xml").getAbsolutePath().toString());
         XmlNode root2 = parseXmlNode2(doc2.getDocumentElement());
         printStructure2(root2, 0);
     }

@@ -2,36 +2,103 @@ package cn.net.pap.common.file;
 
 import org.junit.jupiter.api.Test;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 
 public class BigTextProcessorTest {
 
-    // @Test
+    @Test
     public void testBigText() throws IOException {
         try {
+            String outputPath = Files.createTempFile("testBigText", ".txt").toAbsolutePath().toString();
+            generateBigFile(Paths.get(outputPath), 1000000);
 
-            long totalMemory = Runtime.getRuntime().totalMemory();
-            long freeMemory = Runtime.getRuntime().freeMemory();
-
-            System.out.println("Total Memory: " + totalMemory / (1024 * 1024) + " Mb ; " + "Free Memory: " + freeMemory / (1024 * 1024) + " Mb");
-
-            readFile("C:\\Users\\86181\\Desktop\\big.txt", line -> {
-                List<String> words = new ArrayList<>();
-                words.add(line);
-                return words;
+            System.out.println("====== 测试一：流式读取 (BufferedReader) ======");
+            runWithMetrics(() -> {
+                try {
+                    readFile(outputPath.toString(), line -> {
+                        List<String> words = new ArrayList<>();
+                        words.add(line);
+                        return words;
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             });
 
-            // Files.readAllLines(Paths.get("C:\\Users\\86181\\Desktop\\big.txt"), StandardCharsets.UTF_8);
+            // ================= 阶段三：方式二对比 =================
+            System.out.println("\n====== 测试二：一次性全部读取 (Files.readAllLines) ======");
+            runWithMetrics(() -> {
+                try {
+                    List<String> allLines = Files.readAllLines(Paths.get(outputPath), StandardCharsets.UTF_8);
+                    // 模拟一下读取后的操作，防止被JVM优化掉
+                    if (!allLines.isEmpty()) {
+                        String first = allLines.get(0);
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            });
 
-            long totalMemory2 = Runtime.getRuntime().totalMemory();
-            long freeMemory2 = Runtime.getRuntime().freeMemory();
-            System.out.println("Total Memory2: " + totalMemory2 / (1024 * 1024) + " Mb ; " + "Free Memory2: " + freeMemory2 / (1024 * 1024) + " Mb");
+            new File(outputPath).deleteOnExit();
+
         } catch (IOException e) {
             e.printStackTrace();
         }
+    }
+
+    /**
+     * 生成测试用的文本大文件
+     */
+    private void generateBigFile(Path filePath, int lineCount) throws IOException {
+        try (BufferedWriter writer = Files.newBufferedWriter(filePath, StandardCharsets.UTF_8, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING)) {
+            for (int i = 0; i < lineCount; i++) {
+                writer.write("这是一行用于测试内存占用的长文本数据，行号为: " + i + "。使用流式读取与一次性读取会产生显著差异。");
+                writer.newLine();
+            }
+        }
+    }
+
+    /**
+     * 执行任务并监控耗时与内存增长
+     */
+    private void runWithMetrics(Runnable task) {
+        // 先建议JVM执行一次垃圾回收，尽量保证测试基线干净
+        System.gc();
+        try {
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+
+        Runtime runtime = Runtime.getRuntime();
+        // 计算执行前的已用内存
+        long beforeMemory = runtime.totalMemory() - runtime.freeMemory();
+        long startTime = System.currentTimeMillis();
+
+        // 执行具体的读取方法
+        task.run();
+
+        long endTime = System.currentTimeMillis();
+        // 计算执行后的已用内存
+        long afterMemory = runtime.totalMemory() - runtime.freeMemory();
+
+        long memoryUsed = afterMemory - beforeMemory;
+
+        System.out.println("-> 耗时: " + (endTime - startTime) + " ms");
+        // 如果触发了隐式的GC可能导致差值为负数，这里简单取 max(0, val) 处理
+        System.out.println("-> 内存消耗(估值): " + Math.max(0, memoryUsed / (1024 * 1024)) + " MB");
     }
 
     /**
