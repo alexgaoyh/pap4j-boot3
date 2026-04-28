@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.jsonorm.dto.JsonDTO;
 import cn.net.pap.common.jsonorm.dto.JsonDTO2;
 import cn.net.pap.common.jsonorm.parser.OptimizedJsonParser;
@@ -29,6 +32,7 @@ import java.util.UUID;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class OptimizedJsonParserTest {
+    private static final Logger log = LoggerFactory.getLogger(OptimizedJsonParserTest.class);
 
     public String generateBigJsonFile() throws Exception {
         File file = Files.createTempFile("generateBigJsonFile", ".json").toFile();
@@ -60,7 +64,7 @@ public class OptimizedJsonParserTest {
                 generator.writeEndObject();
 
                 if (i > 0 && i % 100000 == 0) {
-                    System.out.println("已生成: " + i + " 条 CharDTO 记录...");
+                    log.info("{}", "已生成: " + i + " 条 CharDTO 记录...");
                 }
             }
             generator.writeEndArray();
@@ -79,16 +83,16 @@ public class OptimizedJsonParserTest {
 
         long l = System.currentTimeMillis();
         JsonDTO jsonDTO = OptimizedJsonParser.parseWithOptimization(json, JsonDTO.class);
-        System.out.println(System.currentTimeMillis() - l);
+        log.info("{}", System.currentTimeMillis() - l);
 
         // 打印对象内部结构（对象头、字段对齐等）
-        System.out.println("ClassLayout:");
-        System.out.println(ClassLayout.parseInstance(jsonDTO).toPrintable());
+        log.info("ClassLayout:");
+        log.info("{}", ClassLayout.parseInstance(jsonDTO).toPrintable());
 
         // 打印对象图总大小（包括引用的对象）
-        System.out.println("GraphLayout:");
-        System.out.println(GraphLayout.parseInstance(jsonDTO).toFootprint());
-        System.out.println("Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
+        log.info("GraphLayout:");
+        log.info("{}", GraphLayout.parseInstance(jsonDTO).toFootprint());
+        log.info("{}", "Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
         file.deleteOnExit();
     }
 
@@ -103,16 +107,16 @@ public class OptimizedJsonParserTest {
 
         long l = System.currentTimeMillis();
         JsonDTO jsonDTO = OBJECT_MAPPER.readValue(json, JsonDTO.class);
-        System.out.println(System.currentTimeMillis() - l);
+        log.info("{}", System.currentTimeMillis() - l);
 
         // 打印对象内部结构（对象头、字段对齐等）
-        System.out.println("ClassLayout:");
-        System.out.println(ClassLayout.parseInstance(jsonDTO).toPrintable());
+        log.info("ClassLayout:");
+        log.info("{}", ClassLayout.parseInstance(jsonDTO).toPrintable());
 
         // 打印对象图总大小（包括引用的对象）
-        System.out.println("GraphLayout:");
-        System.out.println(GraphLayout.parseInstance(jsonDTO).toFootprint());
-        System.out.println("Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
+        log.info("GraphLayout:");
+        log.info("{}", GraphLayout.parseInstance(jsonDTO).toFootprint());
+        log.info("{}", "Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
         file.deleteOnExit();
     }
 
@@ -121,7 +125,7 @@ public class OptimizedJsonParserTest {
         String json = JsonORMUtil.readFileToString(TestResourceUtil.getFile("input.json"));
         ObjectMapper objectMapper = new ObjectMapper();
         List<Map<String, Object>> result = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
-        System.out.println(result.size());
+        log.info("{}", result.size());
     }
 
     @Test
@@ -150,7 +154,7 @@ public class OptimizedJsonParserTest {
         }
         long end = System.nanoTime();
 
-        System.out.println("Time per serialization: " +
+        log.info("{}", "Time per serialization: " +
                 (end - start) / 10000 / 1_000 + "μs");
     }
 
@@ -180,7 +184,7 @@ public class OptimizedJsonParserTest {
         }
         long end = System.nanoTime();
 
-        System.out.println("Time per serialization: " +
+        log.info("{}", "Time per serialization: " +
                 (end - start) / 10000 / 1_000 + "μs");
     }
 
@@ -211,7 +215,7 @@ public class OptimizedJsonParserTest {
         }
         long end = System.nanoTime();
 
-        System.out.println("Time per serialization: " +
+        log.info("{}", "Time per serialization: " +
                 (end - start) / 10000 / 1_000 + "μs");
     }
 
@@ -238,7 +242,7 @@ public class OptimizedJsonParserTest {
         }
         long end = System.nanoTime();
 
-        System.out.println("Time per serialization: " +
+        log.info("{}", "Time per serialization: " +
                 (end - start) / 10000 / 1_000 + "μs");
     }
 
@@ -273,7 +277,7 @@ public class OptimizedJsonParserTest {
         }
         long end = System.nanoTime();
 
-        System.out.println("Time per serialization: " +
+        log.info("{}", "Time per serialization: " +
                 (end - start) / 10000 / 1_000 + "μs");
     }
 
@@ -309,7 +313,7 @@ public class OptimizedJsonParserTest {
         }
         long end = System.nanoTime();
 
-        System.out.println("Time per serialization: " +
+        log.info("{}", "Time per serialization: " +
                 (end - start) / 10000 / 1_000 + "μs");
     }
 

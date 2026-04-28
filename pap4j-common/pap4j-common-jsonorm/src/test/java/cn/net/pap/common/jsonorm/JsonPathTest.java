@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -19,6 +22,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JsonPathTest {
+    private static final Logger log = LoggerFactory.getLogger(JsonPathTest.class);
 
     @Test
     public void jsonPath1Test() {
@@ -32,7 +36,7 @@ public class JsonPathTest {
         ctx.delete("$.store.book[?(@.price > 10)]");
 
         String json2 = ctx.jsonString();
-        System.out.println(json2);
+        log.info("{}", json2);
     }
 
     @Test
@@ -49,7 +53,7 @@ public class JsonPathTest {
         ctx.delete("$.orders[*].items[*].price");
 
         String result = ctx.jsonString();
-        System.out.println(result);
+        log.info("{}", result);
     }
 
     @Test
@@ -59,7 +63,7 @@ public class JsonPathTest {
         List<String> values = Arrays.asList("value1", "value2", "value3");
         ctx.put("$", "arrayNode", values);
         String result = ctx.jsonString();
-        System.out.println(result);
+        log.info("{}", result);
     }
 
     @Test
@@ -77,7 +81,7 @@ public class JsonPathTest {
         ctx.add("$.arrayNode", mapName2);
 
         String result = ctx.jsonString();
-        System.out.println(result);
+        log.info("{}", result);
     }
 
     @Test
@@ -86,7 +90,7 @@ public class JsonPathTest {
         com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
         for (int idx = 0; idx < Integer.parseInt(ctx.read("$.length()").toString()); idx++) {
             Map<String, Object> itemMap = (Map<String, Object>) ctx.read("$[" + idx + "]");
-            System.out.println(itemMap);
+            log.info("{}", itemMap);
         }
     }
 
@@ -99,7 +103,7 @@ public class JsonPathTest {
         JSONArray allChildren = ctx.read("$.._children[*]");
         for (Object child : allChildren) {
             Map<String, Object> childMap = (Map<String, Object>) child;
-            System.out.println(childMap.toString());
+            log.info("{}", childMap.toString());
         }
     }
 
@@ -113,7 +117,7 @@ public class JsonPathTest {
         List<Object> fileNodes = JsonPath.read(json, "$..[?(@.Type == 'File' || @.type == 'file')]");
         for (Object fileNode : fileNodes) {
             Map<String, Object> fileNodeMap = (Map<String, Object>) fileNode;
-            System.out.println(fileNodeMap.toString());
+            log.info("{}", fileNodeMap.toString());
         }
     }
 
@@ -125,7 +129,7 @@ public class JsonPathTest {
         ArrayNode root = (ArrayNode) mapper.readTree(json);
         addPathRecursive(root, "");
 
-        System.out.println(mapper.writeValueAsString(root));
+        log.info("{}", mapper.writeValueAsString(root));
     }
 
     private static void addPathRecursive(ArrayNode array, String parentPath) {
@@ -163,11 +167,11 @@ public class JsonPathTest {
         com.jayway.jsonpath.Configuration config = com.jayway.jsonpath.Configuration.builder().options(com.jayway.jsonpath.Option.AS_PATH_LIST).build();
         // 获取所有sub_items的路径
         List<String> paths = JsonPath.using(config).parse(dataJSON).read("$..sub_items[*]");
-        System.out.println(paths);
+        log.info("{}", paths);
 
         // 所有路径
         List<String> alls = JsonPath.using(config).parse(dataJSON).read("$..*");
-        System.out.println(alls);
+        log.info("{}", alls);
 
         // 筛选出最"深"的路径（通常是叶子节点）
         List<String> leafPaths = alls.stream()
@@ -177,7 +181,7 @@ public class JsonPathTest {
                             .noneMatch(otherPath -> !otherPath.equals(path) && otherPath.startsWith(path));
                 })
                 .collect(Collectors.toList());
-        System.out.println(leafPaths);
+        log.info("{}", leafPaths);
     }
 
 
@@ -225,7 +229,7 @@ public class JsonPathTest {
                 }
             }
         }
-        System.out.println(dataCtx.jsonString());
+        log.info("{}", dataCtx.jsonString());
 
         // 第二步， 一步一步的执行预定义的 SQL， 得到可执行的SQL
         Object mappingsObjs = mappingCtx.read("$.mappings[*]");
@@ -238,7 +242,7 @@ public class JsonPathTest {
                     List<String> params = (List<String>) mappingsObjMap.get("params");
                     // 渲染 SQL
                     List<String> renderedSqls = renderSqls(sqlTemplate, params, dataCtx);
-                    System.out.println(renderedSqls);
+                    log.info("{}", renderedSqls);
                 }
             }
         }
@@ -324,7 +328,7 @@ public class JsonPathTest {
                     if(render_where_sqls.size() > 0) {
                         sqlTemplate = sqlTemplate + " WHERE 1=1 " + String.join(" ", render_where_sqls);
                     }
-                    System.out.println(sqlTemplate);
+                    log.info("{}", sqlTemplate);
                 }
             }
         }
@@ -467,7 +471,7 @@ public class JsonPathTest {
 
         // 打印所有字段名称
         for (String fieldName : fieldNames) {
-            System.out.println(fieldName);
+            log.info("{}", fieldName);
         }
     }
 

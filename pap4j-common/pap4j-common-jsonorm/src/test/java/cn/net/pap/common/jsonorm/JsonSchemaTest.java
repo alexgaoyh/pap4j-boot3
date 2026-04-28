@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.jsonorm.dto.HeadDTO;
 import cn.net.pap.common.jsonorm.dto.MappingORMDTO;
 import cn.net.pap.common.jsonorm.util.JsonSchemaFormatValidation;
@@ -42,15 +45,16 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class JsonSchemaTest {
+    private static final Logger log = LoggerFactory.getLogger(JsonSchemaTest.class);
 
     @Test
     public void test1() throws Exception {
-        System.out.println(JsonSchemaUtil.toSchema(MappingORMDTO.class));
+        log.info("{}", JsonSchemaUtil.toSchema(MappingORMDTO.class));
     }
 
     @Test
     public void test2() throws Exception {
-        System.out.println(JsonSchemaUtil.toSchema(SchemaDTO.class));
+        log.info("{}", JsonSchemaUtil.toSchema(SchemaDTO.class));
     }
 
     /**
@@ -100,7 +104,7 @@ public class JsonSchemaTest {
             Schema schema = SchemaLoader.load(schemaJson);
             schema.validate(dataJson);
 
-            System.out.println("JSON数据验证成功！");
+            log.info("JSON数据验证成功！");
 
         } catch (FileNotFoundException e) {
             System.err.println("文件未找到异常: " + e.getMessage());
@@ -150,7 +154,7 @@ public class JsonSchemaTest {
                 }
                 """;
         String createTableSQL = JsonSchemaUtil.generateCreateTable("user_info", jsonSchema);
-        System.out.println(createTableSQL);
+        log.info("{}", createTableSQL);
     }
 
     @Test
@@ -443,7 +447,7 @@ public class JsonSchemaTest {
         SchemaGenerator generator = new SchemaGenerator(config);
 
         JsonNode jsonSchema = generator.generateSchema(HeadDTO.class);
-        System.out.println(jsonSchema.toPrettyString());
+        log.info("{}", jsonSchema.toPrettyString());
     }
 
     @Test

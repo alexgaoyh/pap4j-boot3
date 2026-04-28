@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fasterxml.jackson.annotation.JsonFilter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ser.FilterProvider;
@@ -12,6 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class JsonFilterTest {
+    private static final Logger log = LoggerFactory.getLogger(JsonFilterTest.class);
 
     @Test
     public void jsonFilterTest() throws Exception {
@@ -56,7 +60,7 @@ public class JsonFilterTest {
         SimpleBeanPropertyFilter filter = SimpleBeanPropertyFilter.serializeAllExcept("name");
         FilterProvider filters = new SimpleFilterProvider().addFilter("pap4j-boot3-type-filter", filter);
         String after = objectMapper.setFilterProvider(filters).writeValueAsString(one);
-        System.out.println(after);
+        log.info("{}", after);
     }
 
 

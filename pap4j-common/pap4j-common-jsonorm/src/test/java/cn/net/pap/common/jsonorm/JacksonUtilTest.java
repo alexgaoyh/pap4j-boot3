@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.ByteArrayOutputStream;
 
 import cn.net.pap.common.jsonorm.dto.CategoryDTO;
@@ -34,6 +37,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 
 public class JacksonUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(JacksonUtilTest.class);
 
     /**
      * 序列化的时候，忽略特定字段
@@ -56,7 +60,7 @@ public class JacksonUtilTest {
         List<String> fieldsToExclude = List.of("dName");
         ObjectMapper mapper = JacksonUtil.createObjectMapper(fieldsToExclude);
         String json = mapper.writeValueAsString(jacksonDTO);
-        System.out.println(json);
+        log.info("{}", json);
     }
 
     /**
@@ -72,16 +76,16 @@ public class JacksonUtilTest {
         JsonNode originalNode = objectMapper.readTree(originalJson);
         JsonNode targetStructureNode = objectMapper.readTree(targetStructureJson);
         JsonNode filteredJson = JacksonUtil.filterJson(originalNode, targetStructureNode);
-        System.out.println("Filtered JSON: " + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(filteredJson));
+        log.info("{}", "Filtered JSON: " + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(filteredJson));
 
-        System.out.println("-------------------------------------------------------------------------");
+        log.info("-------------------------------------------------------------------------");
 
         String originalJson2 = "{\"name\":\"name\",\"age\":\"age\",\"ext\":{\"detail\":{\"dName\":\"dName\",\"dAge\":\"dAge\"}},\"list\":[{\"a\": \"1\",\"b\": \"2\"}, {\"a\": \"3\",\"b\": \"4\"}]}";
         String targetStructureJson2 = "{\"name\":null,\"ext\":{\"detail\":{\"dName\":null}}}";
         JsonNode originalNode2 = objectMapper.readTree(originalJson2);
         JsonNode targetStructureNode2 = objectMapper.readTree(targetStructureJson2);
         JsonNode filteredJson2 = JacksonUtil.filterJson(originalNode2, targetStructureNode2);
-        System.out.println("Filtered JSON2: " + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(filteredJson2));
+        log.info("{}", "Filtered JSON2: " + objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(filteredJson2));
     }
 
     public class JacksonDTO implements Serializable {
@@ -146,7 +150,7 @@ public class JacksonUtilTest {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         List<HeadDTO> result = objectMapper.readValue(json, new TypeReference<List<HeadDTO>>() {});
-        System.out.println(result.size());
+        log.info("{}", result.size());
 
         ObjectMapper objectMapper2 = new ObjectMapper();
         // 自定义命名策略
@@ -167,7 +171,7 @@ public class JacksonUtilTest {
         });
         objectMapper2.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         List<HeadDTO> result2 = objectMapper2.readValue(json, new TypeReference<List<HeadDTO>>() {});
-        System.out.println(result2.size());
+        log.info("{}", result2.size());
 
         ObjectMapper objectMapper3 = new ObjectMapper();
         objectMapper3.setPropertyNamingStrategy(new PropertyNamingStrategy() {
@@ -189,7 +193,7 @@ public class JacksonUtilTest {
             }
         });
         String s = objectMapper3.writeValueAsString(result2);
-        System.out.println(s);
+        log.info("{}", s);
     }
 
     // @Test
@@ -200,7 +204,7 @@ public class JacksonUtilTest {
         keys.add("target_key");
 
         Map<String, String> extracted = JacksonUtil.extractKeys(desktop + File.separator + "large.json", keys);
-        extracted.forEach((k, v) -> System.out.println(k + " : " + v));
+        extracted.forEach((k, v) -> log.info("{}", k + " : " + v));
 
     }
 
@@ -213,10 +217,10 @@ public class JacksonUtilTest {
             try (JsonParser parser = factory.createParser(new File(filePath))) {
                 JsonToken token;
                 while ((token = parser.nextToken()) != null) {
-                    System.out.println("Token: " + token);
-                    System.out.println("Current name: " + parser.getCurrentName());
-                    System.out.println("Current value: " + parser.getText());
-                    System.out.println("---");
+                    log.info("{}", "Token: " + token);
+                    log.info("{}", "Current name: " + parser.getCurrentName());
+                    log.info("{}", "Current value: " + parser.getText());
+                    log.info("---");
                 }
             }
         }
@@ -228,7 +232,7 @@ public class JacksonUtilTest {
         String filePath = desktop + File.separator + "array.json";
         if(new File(filePath).exists()) {
             List<JsonNode> jsonNodes = JacksonUtil.readJsonArrayRange(filePath, 0, 2);
-            jsonNodes.stream().forEach(e -> System.out.println(e.toPrettyString()));
+            jsonNodes.stream().forEach(e -> log.info("{}", e.toPrettyString()));
         }
     }
 
@@ -238,7 +242,7 @@ public class JacksonUtilTest {
         String filePath = desktop + File.separator + "json.json";
         if(new File(filePath).exists()) {
             List<JsonNode> jsonNodes = JacksonUtil.readJsonArrayRange(filePath, "result", 0, 2);
-            jsonNodes.stream().forEach(e -> System.out.println(e.toPrettyString()));
+            jsonNodes.stream().forEach(e -> log.info("{}", e.toPrettyString()));
         }
     }
 
@@ -248,7 +252,7 @@ public class JacksonUtilTest {
         String filePath = desktop + File.separator + "json.json";
         if(new File(filePath).exists()) {
             ObjectNode objectNode = JacksonUtil.readObjectWithArraySlice(filePath, "result", 0, 2);
-            System.out.println(objectNode.toPrettyString());
+            log.info("{}", objectNode.toPrettyString());
         }
     }
 
@@ -370,21 +374,21 @@ public class JacksonUtilTest {
         }
 
         // ---------- 输出结果 ----------
-        System.out.println("====== Result (avg over " + LOOP + " runs) ======");
+        log.info("{}", "====== Result (avg over " + LOOP + " runs) ======");
 
-        System.out.println("JSON bytes length = " + jsonBytes.length);
-        System.out.printf("JSON serialize avg = %.3f ms%n",
-                jsonSerializeNs / 1_000_000.0 / LOOP);
-        System.out.printf("JSON deserialize avg = %.3f ms%n",
-                jsonDeserializeNs / 1_000_000.0 / LOOP);
+        log.info("{}", "JSON bytes length = " + jsonBytes.length);
+        log.info(String.format("JSON serialize avg = %.3f ms%n",
+                jsonSerializeNs / 1_000_000.0 / LOOP));
+        log.info(String.format("JSON deserialize avg = %.3f ms%n",
+                jsonDeserializeNs / 1_000_000.0 / LOOP));
 
-        System.out.println();
+        log.info("");
 
-        System.out.println("Kryo bytes length = " + kryoBytes.length);
-        System.out.printf("Kryo serialize avg = %.3f ms%n",
-                kryoSerializeNs / 1_000_000.0 / LOOP);
-        System.out.printf("Kryo deserialize avg = %.3f ms%n",
-                kryoDeserializeNs / 1_000_000.0 / LOOP);
+        log.info("{}", "Kryo bytes length = " + kryoBytes.length);
+        log.info(String.format("Kryo serialize avg = %.3f ms%n",
+                kryoSerializeNs / 1_000_000.0 / LOOP));
+        log.info(String.format("Kryo deserialize avg = %.3f ms%n",
+                kryoDeserializeNs / 1_000_000.0 / LOOP));
     }
 
     @Test
@@ -394,7 +398,7 @@ public class JacksonUtilTest {
         if(new File(inputJSON).exists()) {
             ObjectMapper objectMapper = new ObjectMapper();
             CategoryDTO root = objectMapper.readValue(Files.readString(Paths.get(inputJSON)), CategoryDTO.class);
-            System.out.println(root);
+            log.info("{}", root);
         }
     }
 

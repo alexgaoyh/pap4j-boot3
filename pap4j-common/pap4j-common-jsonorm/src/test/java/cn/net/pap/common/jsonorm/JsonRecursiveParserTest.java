@@ -26,17 +26,17 @@ public class JsonRecursiveParserTest {
         // 示例1：解析对象
         String jsonObject = "{\"name\":\"Alice\",\"age\":25,\"address\":{\"city\":\"Beijing\"}}";
         List<Map<String, Object>> result1 = JsonRecursiveParser.parseToUniversalList(jsonObject);
-        System.out.println("对象解析结果: " + JsonRecursiveParser.toJson(result1));
+        log.info("{}", "对象解析结果: " + JsonRecursiveParser.toJson(result1));
 
         // 示例2：解析数组
         String jsonArray = "[{\"name\":\"Alice\"},{\"name\":\"Bob\"}]";
         List<Map<String, Object>> result2 = JsonRecursiveParser.parseToUniversalList(jsonArray);
-        System.out.println("数组解析结果: " + JsonRecursiveParser.toJson(result2));
+        log.info("{}", "数组解析结果: " + JsonRecursiveParser.toJson(result2));
 
         // 示例3：解析复杂嵌套结构
         String complexJson = "{\"users\":[{\"name\":\"Alice\",\"scores\":[90,85],\"meta\":{\"active\":true}}],\"info\":{\"version\":1}}";
         List<Map<String, Object>> result3 = JsonRecursiveParser.parseToUniversalList(complexJson);
-        System.out.println("复杂结构解析结果: " + JsonRecursiveParser.toJson(result3));
+        log.info("{}", "复杂结构解析结果: " + JsonRecursiveParser.toJson(result3));
 
         // json schema normalize
 
@@ -111,7 +111,7 @@ public class JsonRecursiveParserTest {
                 """;
         List<Map<String, Object>> result3Normalized = JsonRecursiveParser.normalize(result3, schema3);
 
-        System.out.println("");
+        log.info("");
 
     }
 

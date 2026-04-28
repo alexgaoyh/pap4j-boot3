@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm.tree;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.jsonorm.util.JacksonUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -16,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 public class LinuxTreeToJsonUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(LinuxTreeToJsonUtilTest.class);
 
     // @Test
     public void test1() {
@@ -36,12 +40,12 @@ public class LinuxTreeToJsonUtilTest {
 
                 // 读取 json 到 List<Map>。 为了后续做数据处理
                 JacksonUtil.parseLargeJsonInBatches(filenameJson, batch -> {
-                    System.out.println("Processing batch with " + batch.size() + " items");
+                    log.info("{}", "Processing batch with " + batch.size() + " items");
                 });
 
 
             } else {
-                System.out.println("Failed to parse tree file.");
+                log.info("Failed to parse tree file.");
             }
         } catch (IOException e) {
             System.err.println("Error reading file: " + e.getMessage());
@@ -67,7 +71,7 @@ public class LinuxTreeToJsonUtilTest {
                 fileCountInt++;
             } else {
                 if(fileCountInt > 0) {
-                    System.out.println(String.join("/", dirMap.values()) + " : " + fileCountInt);
+                    log.info("{}", String.join("/", dirMap.values()) + " : " + fileCountInt);
                 }
                 dirMap.put(levelIdx, dirOrFileName);
                 fileCountInt = 0;

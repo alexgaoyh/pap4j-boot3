@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.jsonorm.util.JacksonUtil;
 import cn.net.pap.common.jsonorm.util.JsonSchemaGeneratorUtil;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -11,6 +14,7 @@ import java.io.IOException;
 import java.util.List;
 
 public class JsonSchemaGeneratorUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(JsonSchemaGeneratorUtilTest.class);
 
     /**
      * 效果： 完成一个 json 结构的过滤操作
@@ -29,39 +33,39 @@ public class JsonSchemaGeneratorUtilTest {
 
         try {
             String jsonSchema = JsonSchemaGeneratorUtil.convertJsonToJsonSchema(json);
-            System.out.println(jsonSchema);
+            log.info("{}", jsonSchema);
 
-            System.out.println("-----------------------------------------------------");
+            log.info("-----------------------------------------------------");
 
             String reJson = JsonSchemaGeneratorUtil.generateJsonFromSchema(jsonSchema);
-            System.out.println(reJson);
+            log.info("{}", reJson);
 
-            System.out.println("-----------------------------------------------------");
+            log.info("-----------------------------------------------------");
 
             List<String> fieldKeys = JsonSchemaGeneratorUtil.flattenJson(reJson);
-            System.out.println(fieldKeys);
+            log.info("{}", fieldKeys);
 
-            System.out.println("-----------------------------------------------------");
+            log.info("-----------------------------------------------------");
 
             fieldKeys.remove(5);
             fieldKeys.remove(7);
 
-            System.out.println("-----------------------------------------------------");
+            log.info("-----------------------------------------------------");
 
-            System.out.println(fieldKeys);
+            log.info("{}", fieldKeys);
 
-            System.out.println("-----------------------------------------------------");
+            log.info("-----------------------------------------------------");
 
             String unflattenJson = JsonSchemaGeneratorUtil.unflattenJson(fieldKeys);
-            System.out.println(unflattenJson);
+            log.info("{}", unflattenJson);
 
-            System.out.println("-----------------------------------------------------");
+            log.info("-----------------------------------------------------");
 
             ObjectMapper objectMapper = new ObjectMapper();
             JsonNode originalNode = objectMapper.readTree(json);
             JsonNode targetStructureNode = objectMapper.readTree(unflattenJson);
             JsonNode filteredJson = JacksonUtil.filterJson(originalNode, targetStructureNode);
-            System.out.println("Filtered JSON2: " + objectMapper.writeValueAsString(filteredJson));
+            log.info("{}", "Filtered JSON2: " + objectMapper.writeValueAsString(filteredJson));
 
 
         } catch (IOException e) {
@@ -91,7 +95,7 @@ public class JsonSchemaGeneratorUtilTest {
                 }
                 """;
         String reJson = JsonSchemaGeneratorUtil.generateJsonFromSchema(jsonSchema);
-        System.out.println(reJson);
+        log.info("{}", reJson);
     }
 
 }

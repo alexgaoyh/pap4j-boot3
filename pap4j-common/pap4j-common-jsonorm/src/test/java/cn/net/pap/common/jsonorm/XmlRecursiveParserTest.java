@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.jsonorm.parser.XmlRecursiveParser;
 import org.junit.jupiter.api.Test;
 
@@ -13,6 +16,7 @@ import java.util.Map;
  * XML 递归解析工具类 测试类
  */
 public class XmlRecursiveParserTest {
+    private static final Logger log = LoggerFactory.getLogger(XmlRecursiveParserTest.class);
 
     @Test
     public void parseTest1() throws Exception {
@@ -36,7 +40,7 @@ public class XmlRecursiveParserTest {
                 """;
 
         List<Map<String, Object>> result = XmlRecursiveParser.parseToUniversalList(xml);
-        System.out.println(result);
+        log.info("{}", result);
     }
 
     @Test
@@ -45,15 +49,15 @@ public class XmlRecursiveParserTest {
         if(new File(filePath).exists()) {
             String xml = Files.readString(Paths.get(filePath));
             List<Map<String, Object>> result = XmlRecursiveParser.parseToUniversalList2(xml);
-            System.out.println(result);
+            log.info("{}", result);
 
             // 节点解析 数组
             Object catalogItems = XmlRecursiveParser.extract2(result, "$[0].catalog[0].catalogItem");
-            System.out.println(catalogItems);
+            log.info("{}", catalogItems);
 
             // 节点解析 属性
             Object page = XmlRecursiveParser.extract2(result, "$[0].catalog[0].catalogItem[0].@page");
-            System.out.println(page);
+            log.info("{}", page);
         }
 
     }
@@ -71,16 +75,16 @@ public class XmlRecursiveParserTest {
                 </pap>
                 """;
         List<Map<String, Object>> result = XmlRecursiveParser.parseToUniversalList(xml);
-        System.out.println(result);
+        log.info("{}", result);
 
         // 把解析过得集合重新还原为xml
         String reconstructedXml = XmlRecursiveParser.convertToXmlString(result);
-        System.out.println(reconstructedXml);
+        log.info("{}", reconstructedXml);
 
         // 取特定节点下的数据，然后还原为xml
         List<Map<String, Object>> details2List = (List<Map<String, Object>>)XmlRecursiveParser.extract(result, "$[0]._children[1]._children");
         String reconstructedXml2 = XmlRecursiveParser.convertToXmlString(details2List);
-        System.out.println(reconstructedXml2);
+        log.info("{}", reconstructedXml2);
 
     }
 

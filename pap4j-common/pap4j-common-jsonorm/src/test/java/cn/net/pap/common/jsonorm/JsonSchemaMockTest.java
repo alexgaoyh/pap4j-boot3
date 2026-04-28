@@ -1,5 +1,8 @@
 package cn.net.pap.common.jsonorm;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,6 +25,7 @@ import java.util.Random;
  * 根据 json schema 生成 json 数据，应用场景可以是生成一个大 json，用于后面的解析试验
  */
 public class JsonSchemaMockTest {
+    private static final Logger log = LoggerFactory.getLogger(JsonSchemaMockTest.class);
 
     // @Test
     public void geneTest1() throws Exception {
@@ -33,7 +37,7 @@ public class JsonSchemaMockTest {
             JsonNode schema = mapper.readTree(new File(filePath));
             // may OOM
             JsonNode mock = mock(schema);
-            // System.out.println(mapper.writeValueAsString(mock));
+            // log.info(mapper.writeValueAsString(mock));
             mapper.writeValue(new File(desktop + File.separator + "data.json"), mock);
 
         }
@@ -51,7 +55,7 @@ public class JsonSchemaMockTest {
         gen.flush();
         gen.close();
         out.close();
-        System.out.println("生成完成：data.json");
+        log.info("生成完成：data.json");
     }
 
     private static final ObjectMapper mapper = new ObjectMapper();
