@@ -177,20 +177,13 @@ public class MilvusTextSimilarityTest {
     private List<JsonObject> insertRows() throws Exception {
         List<JsonObject> rowsData = new ArrayList<>();
         try {
-            java.net.URL url = MilvusTextSimilarityTest.class.getResource("/dir");
-            if (url == null) {
-                log.warn("Resource /dir not found");
-                return rowsData;
-            }
-            File file = new File(url.toURI());
-            File[] files = file.listFiles();
-            if (files == null) {
-                return rowsData;
-            }
+            org.springframework.core.io.support.PathMatchingResourcePatternResolver resolver = new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+            org.springframework.core.io.Resource[] resources = resolver.getResources("classpath*:/dir/*.jpg");
 
-            for(File imageAbsPath : files) {
+            for(org.springframework.core.io.Resource resource : resources) {
+                File imageAbsPath = TestResourceUtil.getFile("/dir/" + resource.getFilename());
                 float[] vector = convertImageToVector(imageAbsPath.getPath());
-                String name = imageAbsPath.getName();
+                String name = resource.getFilename();
                 JsonObject row = new JsonObject();
                 row.addProperty("name", name);
                 row.add("vector", convert2(vector));
@@ -209,12 +202,8 @@ public class MilvusTextSimilarityTest {
     private List<Float> searchVector() throws Exception {
         List<Float> floatList = new ArrayList<>();
         try {
-            java.net.URL url = MilvusTextSimilarityTest.class.getResource("/dir/一.jpg");
-            if (url == null) {
-                log.warn("Resource /dir/一.jpg not found");
-                return floatList;
-            }
-            float[] floats = convertImageToVector(new File(url.toURI()).getPath());
+            File file = TestResourceUtil.getFile("/dir/一.jpg");
+            float[] floats = convertImageToVector(file.getPath());
             for (float value : floats) {
                 floatList.add(value);
             }
