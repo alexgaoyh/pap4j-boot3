@@ -12,6 +12,8 @@ import com.itextpdf.kernel.pdf.canvas.parser.data.TextRenderInfo;
 import com.itextpdf.kernel.pdf.canvas.parser.listener.IEventListener;
 import com.itextpdf.kernel.pdf.xobject.PdfImageXObject;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.*;
 import javax.imageio.stream.ImageOutputStream;
@@ -24,9 +26,11 @@ import java.util.List;
 
 public class ITextTest {
 
-    // @Test
+    private static final Logger log = LoggerFactory.getLogger(ITextTest.class);
+
+    @Test
     public void extractTextTest() throws Exception {
-        File file = new File("C:\\Users\\86181\\Desktop\\019.pdf");
+        File file = TestResourceUtil.getFile("jpg.pdf");
         try (PdfReader reader = new PdfReader(file.getPath());PdfDocument pdfDoc = new PdfDocument(reader)) {
             PdfPage page = pdfDoc.getPage(1);
             PapTextExtractionStrategy7 strategy = new PapTextExtractionStrategy7(
@@ -38,9 +42,9 @@ public class ITextTest {
             PdfCanvasProcessor processor = new PdfCanvasProcessor(strategy);
             processor.processPageContent(page);
             String resultText = strategy.getResultantText();
-            System.out.println("Extracted text:\n" + resultText);
+            log.info("{}" + resultText);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("{}", e);
         }
 
     }
@@ -138,7 +142,7 @@ public class ITextTest {
                 }
 
             } catch (Exception e) {
-                e.printStackTrace();
+                log.error("{}", e);
             }
         }
 
@@ -287,7 +291,7 @@ public class ITextTest {
                 return image;
 
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error("{}", e);
                 return null;
             }
         }
