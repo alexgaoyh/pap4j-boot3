@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.file.dto.FileSegmentDTO;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ReadFileToMapUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(ReadFileToMapUtilTest.class);
 
     public static final Integer MAX_LINE_NUMBER = 10000000;
 
@@ -32,16 +36,16 @@ public class ReadFileToMapUtilTest {
         FILE_PATH_1 = Files.createTempFile("big-file", ".txt").toAbsolutePath().toString();
         FILE_PATH_2 = Files.createTempFile("big-file", ".txt").toAbsolutePath().toString();
         FILE_PATH_3 = Files.createTempFile("big-file", ".txt").toAbsolutePath().toString();
-        System.out.println("====== [BeforeAll] 开始初始化测试大文件 ======");
+        log.info("====== [BeforeAll] 开始初始化测试大文件 ======");
         createBigFile();
         createBigFile2();
         createBigFile3(); // 初始化 13g 测试文件
-        System.out.println("====== [BeforeAll] 测试文件初始化完成 ======\n");
+        log.info("====== [BeforeAll] 测试文件初始化完成 ======\n");
     }
 
     @AfterAll
     public static void tearDown() throws Exception {
-        System.out.println("\n====== [AfterAll] 开始清理测试文件 ======");
+        log.info("\n====== [AfterAll] 开始清理测试文件 ======");
         // 强制提示 JVM 执行垃圾回收，释放 MappedByteBuffer 占用的文件系统锁
         System.gc();
         System.runFinalization();
@@ -55,7 +59,7 @@ public class ReadFileToMapUtilTest {
         new File((FILE_PATH_1)).deleteOnExit();
         new File((FILE_PATH_2)).deleteOnExit();
         new File((FILE_PATH_3)).deleteOnExit();
-        System.out.println("====== [AfterAll] 测试文件清理完成 ======");
+        log.info("====== [AfterAll] 测试文件清理完成 ======");
     }
 
     public static void createBigFile() throws Exception {
@@ -97,8 +101,8 @@ public class ReadFileToMapUtilTest {
         ConcurrentHashMap<String, String> fileMap = ReadFileToMapUtil.toMap(FILE_PATH_1, (byte) ',');
         long endTime = System.nanoTime();
 
-        System.out.println("Optimized implementation took: " + (endTime - startTime) / 1e6 + " ms");
-        System.out.println("file Map size: " + fileMap.size());
+        log.info("{}", "Optimized implementation took: " + (endTime - startTime) / 1e6 + " ms");
+        log.info("{}", "file Map size: " + fileMap.size());
         assertTrue(fileMap.size() == MAX_LINE_NUMBER);
     }
 
@@ -108,9 +112,9 @@ public class ReadFileToMapUtilTest {
         ConcurrentHashMap<String, String> fileMap = ReadFileToMapUtil.toMap(FILE_PATH_2, (byte) ';');
         long endTime = System.currentTimeMillis();
 
-        System.out.println("Optimized implementation took: " + (endTime - startTime) + " ms");
-        System.out.println("file Map size: " + fileMap.size());
-        System.out.println();
+        log.info("{}", "Optimized implementation took: " + (endTime - startTime) + " ms");
+        log.info("{}", "file Map size: " + fileMap.size());
+        log.info("");
     }
 
     @Test
@@ -127,9 +131,9 @@ public class ReadFileToMapUtilTest {
 
         long endTime = System.currentTimeMillis();
 
-        System.out.println("Optimized implementation took: " + (endTime - startTime) + " ms");
-        System.out.println("file Map size: " + words.size());
-        System.out.println();
+        log.info("{}", "Optimized implementation took: " + (endTime - startTime) + " ms");
+        log.info("{}", "file Map size: " + words.size());
+        log.info("");
     }
 
     @Test
@@ -162,8 +166,8 @@ public class ReadFileToMapUtilTest {
 
         long endTime = System.currentTimeMillis();
 
-        System.out.println("Optimized implementation took: " + (endTime - startTime) + " ms");
-        System.out.println();
+        log.info("{}", "Optimized implementation took: " + (endTime - startTime) + " ms");
+        log.info("");
     }
 
     @Test
@@ -193,9 +197,9 @@ public class ReadFileToMapUtilTest {
 
         long endTime = System.currentTimeMillis();
 
-        System.out.println("Optimized implementation took: " + (endTime - startTime) + " ms");
-        System.out.println("atomicInteger size: " + (atomicInteger));
-        System.out.println();
+        log.info("{}", "Optimized implementation took: " + (endTime - startTime) + " ms");
+        log.info("{}", "atomicInteger size: " + (atomicInteger));
+        log.info("");
     }
 
     private static List<FileSegmentDTO> getFileSegments(final File file, final FileChannel fileChannel) throws IOException {
@@ -247,7 +251,7 @@ public class ReadFileToMapUtilTest {
         }
 
         if (line.length() > 0) {
-            // todo System.out.println(line.toString());
+            // todo log.info(line.toString());
             // can check size using atomicInteger.incrementAndGet();
         }
     }

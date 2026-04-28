@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.file.xml.StaxXmlUtil;
 import cn.net.pap.common.file.xml.XmlParseUtil;
 import cn.net.pap.common.file.xml.xpath.ExtFunctionResolver;
@@ -34,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StaxXmlUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(StaxXmlUtilTest.class);
 
     /**
      * <root><firstNode><secondNode><thirdNode>alexgaoyh</thirdNode></secondNode></firstNode></root>
@@ -63,7 +67,7 @@ public class StaxXmlUtilTest {
                 List<String> thirdNodeXMLs = StaxXmlUtil.readChildrenXmlByStax(secondNodeXML, thirdNodeName);
                 for (String thirdNodeXML : thirdNodeXMLs) {
                     String value = StaxXmlUtil.readNodeValueByStax(thirdNodeXML, thirdNodeName).orElse(null);
-                    System.out.println(value);
+                    log.info("{}", value);
                 }
             }
         }
@@ -88,7 +92,7 @@ public class StaxXmlUtilTest {
                 List<String> thirdNodeXMLs = StaxXmlUtil.readChildrenXmlByStax(secondNodeXML, thirdNodeName);
                 for (String thirdNodeXML : thirdNodeXMLs) {
                     String value = StaxXmlUtil.readChildrenXmlValueByStax(thirdNodeXML, thirdNodeName).orElse(null);
-                    System.out.println(value);
+                    log.info("{}", value);
                 }
             }
         }
@@ -118,15 +122,15 @@ public class StaxXmlUtilTest {
         """;
         List<String> props = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "prop");
         List<String> propExts = StaxXmlUtil.readChildrenXmlByStax(xml.trim(), "propExt");
-        System.out.println(props);
-        System.out.println(propExts);
+        log.info("{}", props);
+        log.info("{}", propExts);
         for(String prop : props) {
             String s = StaxXmlUtil.parseXMLInRootAndOriginalTags(prop, "prop", keepOriginalTags);
-            System.out.println(s);
+            log.info("{}", s);
         }
         for(String prop : props) {
             Map<String, String> anchorAttrs = StaxXmlUtil.extractAllAttributes(prop, "anchor");
-            System.out.println(anchorAttrs);
+            log.info("{}", anchorAttrs);
         }
 
     }
@@ -152,7 +156,7 @@ public class StaxXmlUtilTest {
             Document documentByContent = XmlParseUtil.getDocumentByContent(xml.trim());
             List<String> paths = StaxXmlUtil.extractAllPaths(xml.trim());
             for (String path : paths) {
-                System.out.println(path + " : " + XmlParseUtil.getValueByXPath(documentByContent, path));
+                log.info("{}", path + " : " + XmlParseUtil.getValueByXPath(documentByContent, path));
             }
         } catch (Exception e) {
             throw new RuntimeException(e);
@@ -274,11 +278,11 @@ public class StaxXmlUtilTest {
                 }
             }
             String s = StaxXmlUtil.parseXMLWithCustomAttributes(zhengwen, "zhengwen", new HashSet<>(), biaoshiMapList);
-            System.out.println(s);
-            System.out.println();
+            log.info("{}", s);
+            log.info("");
             String s2 = StaxXmlUtil.parseXMLWithCustomAttributes(zhengwen, null, new HashSet<>(), biaoshiMapList);
-            System.out.println(s2);
-            System.out.println("==================================");
+            log.info("{}", s2);
+            log.info("==================================");
 
         }
 

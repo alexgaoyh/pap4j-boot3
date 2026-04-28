@@ -1,5 +1,8 @@
 package cn.net.pap.common.file.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +19,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class TempDirUtilsTest {
+    private static final Logger log = LoggerFactory.getLogger(TempDirUtilsTest.class);
 
     @BeforeEach
     void setUp() {
@@ -33,7 +37,7 @@ public class TempDirUtilsTest {
             try {
                 Files.writeString(tempFile, "Hello, World!");
                 String content = Files.readString(tempFile);
-                System.out.println("文件内容: " + content);
+                log.info("{}", "文件内容: " + content);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -130,7 +134,7 @@ public class TempDirUtilsTest {
                 try {
                     Files.writeString(tempFile, "Hello, World!");
                     String content = Files.readString(tempFile);
-                    System.out.println("文件内容: " + content);
+                    log.info("{}", "文件内容: " + content);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }

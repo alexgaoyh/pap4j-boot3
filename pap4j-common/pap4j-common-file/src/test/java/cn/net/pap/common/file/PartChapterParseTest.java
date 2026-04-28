@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -14,6 +17,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class PartChapterParseTest {
+    private static final Logger log = LoggerFactory.getLogger(PartChapterParseTest.class);
 
     @Test
     public void parsePartChapter() throws Exception {
@@ -36,14 +40,14 @@ public class PartChapterParseTest {
         List<ChapterInfo> chapters = parseChapters(root, new ArrayList<>());
 
         for (ChapterInfo info : chapters) {
-            System.out.println("Chapter: " + info.getIdentifier() + ", Type: " + info.getType() + ", Seq: " + info.getSeq() + ", Chapter Element: " + info.getChapterElement().getTagName() + " with ID: " + info.getChapterElement().getAttribute("identifier"));
-            System.out.println("Part titles: " + info.getPartTitles());
+            log.info("{}", "Chapter: " + info.getIdentifier() + ", Type: " + info.getType() + ", Seq: " + info.getSeq() + ", Chapter Element: " + info.getChapterElement().getTagName() + " with ID: " + info.getChapterElement().getAttribute("identifier"));
+            log.info("{}", "Part titles: " + info.getPartTitles());
 
-            System.out.println("Part Elements hierarchy:");
+            log.info("Part Elements hierarchy:");
             for (PartInfo part : info.getPartHierarchy()) {
-                System.out.println("  Part title: " + part.getTitle() + ", Element: " + part.getPartElement().getTagName() + ", Seq: " + part.getSeq());
+                log.info("{}", "  Part title: " + part.getTitle() + ", Element: " + part.getPartElement().getTagName() + ", Seq: " + part.getSeq());
             }
-            System.out.println("-------------------");
+            log.info("-------------------");
         }
     }
 

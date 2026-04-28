@@ -1,5 +1,8 @@
 package cn.net.pap.common.file.fileListener;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.monitor.FileAlterationListenerAdaptor;
 import org.apache.commons.io.monitor.FileAlterationMonitor;
 import org.apache.commons.io.monitor.FileAlterationObserver;
@@ -10,6 +13,8 @@ import java.nio.file.*;
 import java.util.concurrent.TimeUnit;
 
 public class PapFileListenerTest {
+
+    private static final Logger log = LoggerFactory.getLogger(PapFileListenerTest.class);
 
     @Test
     public void test() throws Exception {
@@ -25,7 +30,7 @@ public class PapFileListenerTest {
             public void onFileChange(File changedFile) {
                 // 保持原状的输出逻辑
                 if (changedFile.equals(file)) {
-                    System.out.println("File " + changedFile.getName() + " has been modified. lastModified in : " + changedFile.lastModified());
+                    log.info("{}", "File " + changedFile.getName() + " has been modified. lastModified in : " + changedFile.lastModified());
                 }
             }
         });
@@ -74,9 +79,9 @@ public class PapFileListenerTest {
                 if(Files.exists(file)) {
                     long currentModifiedTime = Files.getLastModifiedTime(file).toMillis();
 
-                    System.out.println( "Event kind:" + event.kind() + ". File affected: " + event.context() + ". ModifiedTime : " + currentModifiedTime + ". FilePath : " + file.toString() + ".");
+                    log.info("{}",  "Event kind:" + event.kind() + ". File affected: " + event.context() + ". ModifiedTime : " + currentModifiedTime + ". FilePath : " + file.toString() + ".");
                 } else {
-                    System.out.println( "Event kind:" + event.kind() + ". File affected: " + event.context() + ". ModifiedTime : " + System.currentTimeMillis() + ". FilePath : " + file.toString() + ".");
+                    log.info("{}",  "Event kind:" + event.kind() + ". File affected: " + event.context() + ". ModifiedTime : " + System.currentTimeMillis() + ". FilePath : " + file.toString() + ".");
                 }
             }
             key.reset();

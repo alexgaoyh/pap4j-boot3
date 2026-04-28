@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.ibm.icu.text.BreakIterator;
 import com.ibm.icu.text.Collator;
 import org.junit.jupiter.api.Test;
@@ -10,6 +13,7 @@ import java.util.List;
 import java.util.Locale;
 
 public class ICU4JTest {
+    private static final Logger log = LoggerFactory.getLogger(ICU4JTest.class);
 
     @Test
     public void test1() {
@@ -17,12 +21,12 @@ public class ICU4JTest {
         Collator collator = Collator.getInstance(Locale.CHINA);
         List<String> words = Arrays.asList("张三", "李四", "王五");
         words.sort(collator);
-        System.out.println(words);
+        log.info("{}", words);
 
         words = Arrays.asList("王五", "张三", "李四");
         // unicode
         words.sort(Comparator.naturalOrder());
-        System.out.println(words);
+        log.info("{}", words);
     }
 
     @Test
@@ -33,7 +37,7 @@ public class ICU4JTest {
 
         int start = bi.first();
         for (int end = bi.next(); end != BreakIterator.DONE; start = end, end = bi.next()) {
-            System.out.println(text.substring(start, end));
+            log.info("{}", text.substring(start, end));
         }
     }
 

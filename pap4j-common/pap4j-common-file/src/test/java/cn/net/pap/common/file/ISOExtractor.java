@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import net.sf.sevenzipjbinding.ExtractOperationResult;
 import net.sf.sevenzipjbinding.IInArchive;
 import net.sf.sevenzipjbinding.SevenZip;
@@ -17,6 +20,7 @@ import java.io.RandomAccessFile;
  * ISO Extract
  */
 public class ISOExtractor {
+    private static final Logger log = LoggerFactory.getLogger(ISOExtractor.class);
 
     /**
      * ISO Extract Test
@@ -30,7 +34,7 @@ public class ISOExtractor {
             long startTime = System.currentTimeMillis();
             extractISO(isoFilePath, outputDir);
             long endTime = System.currentTimeMillis();
-            System.out.println("Extraction complete. Time taken: " + (endTime - startTime) + " ms");
+            log.info("{}", "Extraction complete. Time taken: " + (endTime - startTime) + " ms");
         } catch (IOException e) {
             e.printStackTrace();
         }

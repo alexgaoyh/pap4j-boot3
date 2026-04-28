@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.*;
 
@@ -8,6 +11,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ParentChildXMLParseTest {
+    private static final Logger log = LoggerFactory.getLogger(ParentChildXMLParseTest.class);
 
     @Test
     public void parseParentChild() throws Exception {
@@ -54,7 +58,7 @@ public class ParentChildXMLParseTest {
     private static void printStructure(Chapter chapter, int level) {
         StringBuilder indent = new StringBuilder();
         for (int i = 0; i < level; i++) indent.append("  ");
-        System.out.println(indent + "└─ " + chapter.title);
+        log.info("{}", indent + "└─ " + chapter.title);
         for (Chapter sub : chapter.subChapters) {
             printStructure(sub, level + 1);
         }
@@ -92,7 +96,7 @@ public class ParentChildXMLParseTest {
             nodeInfo += " [title: " + node.title + "]";
         }
 
-        System.out.println(indent + "└─ " + nodeInfo);
+        log.info("{}", indent + "└─ " + nodeInfo);
         for (XmlNode child : node.children) {
             printStructure2(child, level + 1);
         }

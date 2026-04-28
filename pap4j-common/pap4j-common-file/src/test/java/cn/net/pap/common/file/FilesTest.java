@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
@@ -14,6 +17,7 @@ import java.util.List;
 import java.util.stream.Stream;
 
 public class FilesTest {
+    private static final Logger log = LoggerFactory.getLogger(FilesTest.class);
 
     @Test
     public void walkFileTreeTest() throws IOException {
@@ -31,7 +35,7 @@ public class FilesTest {
 
             @Override
             public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                //System.out.println("进入目录: " + dir.toAbsolutePath());
+                //log.info("进入目录: " + dir.toAbsolutePath());
                 return FileVisitResult.CONTINUE;
             }
 
@@ -75,7 +79,7 @@ public class FilesTest {
             String current = lines.get(idx);
             String[] beforeSplit = before.split(":");
             String[] currentSplit = current.split(":");
-            System.out.println(Long.parseLong(currentSplit[2].trim()) - Long.parseLong(beforeSplit[2].trim()));
+            log.info("{}", Long.parseLong(currentSplit[2].trim()) - Long.parseLong(beforeSplit[2].trim()));
         }
     }
 
@@ -106,7 +110,7 @@ public class FilesTest {
             paths.filter(path -> path.toString().endsWith(".java") && path.toString().contains("PageDTO"))
                     .forEach(path -> {
                         convertLineEndings(path.toAbsolutePath().toString());
-                        System.out.println("已处理: " + path);
+                        log.info("{}", "已处理: " + path);
                     });
         } catch (IOException e) {
             System.err.println("遍历目录时出错: " + e.getMessage());

@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedWriter;
@@ -16,6 +19,7 @@ import java.util.List;
  * Memory Test
  */
 public class FileMemoryTest {
+    private static final Logger log = LoggerFactory.getLogger(FileMemoryTest.class);
 
     @Test
     public void memoryPrintTest() throws Exception {
@@ -25,16 +29,16 @@ public class FileMemoryTest {
         long totalMemory = Runtime.getRuntime().totalMemory();
         long freeMemory = Runtime.getRuntime().freeMemory();
 
-        System.out.println("Total Memory: " + totalMemory / (1024 * 1024) + " Mb");
-        System.out.println("Free Memory: " + freeMemory / (1024 * 1024) + " Mb");
+        log.info("{}", "Total Memory: " + totalMemory / (1024 * 1024) + " Mb");
+        log.info("{}", "Free Memory: " + freeMemory / (1024 * 1024) + " Mb");
 
         List<String> lines = Files.readAllLines(Paths.get(outputPath), StandardCharsets.UTF_8);
 
         long totalMemory2 = Runtime.getRuntime().totalMemory();
         long freeMemory2 = Runtime.getRuntime().freeMemory();
 
-        System.out.println("Total Memory2: " + totalMemory2 / (1024 * 1024) + " Mb");
-        System.out.println("Free Memory2: " + freeMemory2 / (1024 * 1024) + " Mb");
+        log.info("{}", "Total Memory2: " + totalMemory2 / (1024 * 1024) + " Mb");
+        log.info("{}", "Free Memory2: " + freeMemory2 / (1024 * 1024) + " Mb");
 
         new File(outputPath).deleteOnExit();
     }

@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.file.xml.XmlParseUtil;
 import cn.net.pap.common.file.xml.record.Segment;
 import org.junit.jupiter.api.DisplayName;
@@ -16,6 +19,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class XmlParseUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(XmlParseUtilTest.class);
 
     /**
      * 更新xml中的特定节点
@@ -42,7 +46,7 @@ public class XmlParseUtilTest {
         List<Map<String, Object>> result = XmlParseUtil.parse(documentByPath, "/root/chapter", nodeMap,
                 null, null, null, null, ";", null);
 
-        System.out.println(result);
+        log.info("{}", result);
 
     }
 
@@ -72,7 +76,7 @@ public class XmlParseUtilTest {
                     for (Map.Entry<String, String> entry : anchorMap.entrySet()) {
                         String key = entry.getKey();
                         String value = entry.getValue();
-                        System.out.println(key + "=" + value);
+                        log.info("{}", key + "=" + value);
                     }
 
                 }
@@ -103,7 +107,7 @@ public class XmlParseUtilTest {
         String nodesByLevel2 = XmlParseUtil.getXmlByLevel(xml.trim(), 2, true);
         String nodesByLevel3 = XmlParseUtil.getXmlByLevel(xml.trim(), 3, true);
         String nodesByLevel4 = XmlParseUtil.getXmlByLevel(xml.trim(), 4, true);
-        System.out.println("");
+        log.info("");
         assertTrue(nodesByLevel1.equals("<student/>"));
         assertTrue(nodesByLevel2.equals("<student><props/><propExts/></student>"));
         assertTrue(nodesByLevel3.equals("<student><props><prop/><prop/><prop/></props><propExts><propExt/><propExt/><propExt/></propExts></student>"));
@@ -116,7 +120,7 @@ public class XmlParseUtilTest {
                     二<glass id="002">章</glass><class id="002">内容<anchor fileName="1" pageNum="1" />测试</class>正文<anchor fileName="2" pageNum="2" />结尾
                 """;
         List<Segment> segments = XmlParseUtil.splitByAnchorAddMissingNode(xml.trim());
-        segments.forEach(System.out::println);
+        segments.forEach(s -> log.info("{}", s));
     }
 
 }

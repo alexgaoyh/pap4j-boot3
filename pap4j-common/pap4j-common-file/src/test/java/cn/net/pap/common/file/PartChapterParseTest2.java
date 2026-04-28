@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -25,6 +28,7 @@ import java.util.List;
  * 并为其分配顺序号、还原完整的父子/祖孙层级链路。
  */
 public class PartChapterParseTest2 {
+    private static final Logger log = LoggerFactory.getLogger(PartChapterParseTest2.class);
 
     @Test
     public void parsePartChapter() throws Exception {
@@ -163,25 +167,25 @@ public class PartChapterParseTest2 {
         }
 
         // 7. 打印完整目录结果，验证解析准确性
-        System.out.println("================ 完整文档目录解析结果 ================\n");
+        log.info("================ 完整文档目录解析结果 ================\n");
         for (StructureNode node : catalog) {
             String nodeDisplay = "part".equals(node.getTagName()) ? "[Part] Title: " + node.getTitle() : "[Chapter] Type: " + node.getType();
 
-            System.out.println("【当前节点】" + nodeDisplay + " | ID: " + node.getIdentifier() + " | Seq: " + node.getSeq());
-            System.out.println("  完整层级溯源:");
+            log.info("{}", "【当前节点】" + nodeDisplay + " | ID: " + node.getIdentifier() + " | Seq: " + node.getSeq());
+            log.info("  完整层级溯源:");
 
             if (node.getHierarchyChain().isEmpty()) {
-                System.out.println("    (顶层/孤儿节点，无父级)");
+                log.info("    (顶层/孤儿节点，无父级)");
             } else {
                 for (int j = 0; j < node.getHierarchyChain().size(); j++) {
                     StructureNode anc = node.getHierarchyChain().get(j);
                     // 模拟层级缩进，越内层的祖先缩进越深
                     String indent = "  ".repeat(j + 2);
                     String ancDisplay = "part".equals(anc.getTagName()) ? "[Part] ID: " + anc.getIdentifier() + " | Title: " + anc.getTitle() : "[Chapter] ID: " + anc.getIdentifier() + " | Type: " + anc.getType();
-                    System.out.println(indent + "-> " + ancDisplay + " | Seq: " + anc.getSeq());
+                    log.info("{}", indent + "-> " + ancDisplay + " | Seq: " + anc.getSeq());
                 }
             }
-            System.out.println("---------------------------------------------------");
+            log.info("---------------------------------------------------");
         }
     }
 

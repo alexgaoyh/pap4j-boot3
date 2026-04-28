@@ -1,5 +1,8 @@
 package cn.net.pap.common.file.dto.xml;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.file.TestResourceUtil;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Unmarshaller;
@@ -12,6 +15,8 @@ import java.nio.file.Paths;
 
 public class JaxBXMLTest {
 
+    private static final Logger log = LoggerFactory.getLogger(JaxBXMLTest.class);
+
     @Test
     public void test() {
         try {
@@ -22,7 +27,7 @@ public class JaxBXMLTest {
             JAXBContext jaxbContext = JAXBContext.newInstance(PageDTO.class);
             Unmarshaller jaxbUnmarshaller = jaxbContext.createUnmarshaller();
             PageDTO pageDTO = (PageDTO) jaxbUnmarshaller.unmarshal(new StringReader(xmlString));
-            System.out.println(pageDTO);
+            log.info("{}", pageDTO);
         } catch (Exception e) {
             e.printStackTrace();
         }

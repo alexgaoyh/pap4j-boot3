@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.commons.io.input.BOMInputStream;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
@@ -35,6 +38,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class W3CDocumentXmlParseMemoryTest {
+    private static final Logger log = LoggerFactory.getLogger(W3CDocumentXmlParseMemoryTest.class);
 
     private static final DocumentBuilderFactory DOCUMENT_BUILDER_FACTORY = DocumentBuilderFactory.newInstance();
     private static Path largeXmlPath;
@@ -43,7 +47,7 @@ public class W3CDocumentXmlParseMemoryTest {
     static void setUp(@TempDir Path tempDir) throws IOException {
         // 1. 生成一个约 50MB 的大型 XML 文件用于测试
         largeXmlPath = tempDir.resolve("large_test.xml");
-        System.out.println("正在生成大型 XML 测试文件...");
+        log.info("正在生成大型 XML 测试文件...");
 
         try (BufferedWriter writer = Files.newBufferedWriter(largeXmlPath, StandardCharsets.UTF_8)) {
             writer.write("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
@@ -56,8 +60,8 @@ public class W3CDocumentXmlParseMemoryTest {
         }
 
         long fileSizeMb = Files.size(largeXmlPath) / (1024 * 1024);
-        System.out.println("测试文件生成完毕，大小: " + fileSizeMb + " MB");
-        System.out.println("--------------------------------------------------");
+        log.info("{}", "测试文件生成完毕，大小: " + fileSizeMb + " MB");
+        log.info("--------------------------------------------------");
     }
 
     @Test
@@ -96,10 +100,10 @@ public class W3CDocumentXmlParseMemoryTest {
 
     private void printStats(String methodName, long allocatedBytes, long timeTakenMs) {
         double allocatedMb = allocatedBytes / (1024.0 * 1024.0);
-        System.out.printf("[%s] 执行完毕:\n", methodName);
-        System.out.printf("  - 耗时: %d ms\n", timeTakenMs);
-        System.out.printf("  - 期间分配的内存总量: %.2f MB\n", allocatedMb);
-        System.out.println("--------------------------------------------------");
+        log.info(String.format("[%s] 执行完毕:\n", methodName));
+        log.info(String.format("  - 耗时: %d ms\n", timeTakenMs));
+        log.info(String.format("  - 期间分配的内存总量: %.2f MB\n", allocatedMb));
+        log.info("--------------------------------------------------");
     }
 
     /**

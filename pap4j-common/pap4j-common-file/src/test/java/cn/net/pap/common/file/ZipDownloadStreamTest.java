@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -8,10 +11,11 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 public class ZipDownloadStreamTest {
+    private static final Logger log = LoggerFactory.getLogger(ZipDownloadStreamTest.class);
 
     @Test
     public void zipDownloadStream() throws IOException {
-        System.out.println("zip download stream");
+        log.info("zip download stream");
     }
 
 //    public void downloadStreamingZip(HttpServletResponse response) throws IOException {

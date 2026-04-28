@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
@@ -17,6 +20,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class BigTextProcessorTest {
+    private static final Logger log = LoggerFactory.getLogger(BigTextProcessorTest.class);
 
     @Test
     public void testBigText() throws IOException {
@@ -24,7 +28,7 @@ public class BigTextProcessorTest {
             String outputPath = Files.createTempFile("testBigText", ".txt").toAbsolutePath().toString();
             generateBigFile(Paths.get(outputPath), 1000000);
 
-            System.out.println("====== 测试一：流式读取 (BufferedReader) ======");
+            log.info("====== 测试一：流式读取 (BufferedReader) ======");
             runWithMetrics(() -> {
                 try {
                     readFile(outputPath.toString(), line -> {
@@ -38,7 +42,7 @@ public class BigTextProcessorTest {
             });
 
             // ================= 阶段三：方式二对比 =================
-            System.out.println("\n====== 测试二：一次性全部读取 (Files.readAllLines) ======");
+            log.info("\n====== 测试二：一次性全部读取 (Files.readAllLines) ======");
             runWithMetrics(() -> {
                 try {
                     List<String> allLines = Files.readAllLines(Paths.get(outputPath), StandardCharsets.UTF_8);
@@ -96,9 +100,9 @@ public class BigTextProcessorTest {
 
         long memoryUsed = afterMemory - beforeMemory;
 
-        System.out.println("-> 耗时: " + (endTime - startTime) + " ms");
+        log.info("{}", "-> 耗时: " + (endTime - startTime) + " ms");
         // 如果触发了隐式的GC可能导致差值为负数，这里简单取 max(0, val) 处理
-        System.out.println("-> 内存消耗(估值): " + Math.max(0, memoryUsed / (1024 * 1024)) + " MB");
+        log.info("{}", "-> 内存消耗(估值): " + Math.max(0, memoryUsed / (1024 * 1024)) + " MB");
     }
 
     /**
@@ -113,7 +117,7 @@ public class BigTextProcessorTest {
             String line;
             while ((line = reader.readLine()) != null) {
                 List<String> words = lineProcessor.process(line);
-                // System.out.println(words);
+                // log.info(words);
             }
         }
     }

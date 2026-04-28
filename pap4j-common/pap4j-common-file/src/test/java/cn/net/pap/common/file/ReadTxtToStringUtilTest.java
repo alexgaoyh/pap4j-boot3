@@ -1,5 +1,8 @@
 package cn.net.pap.common.file;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 
 import java.io.*;
@@ -8,22 +11,23 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public class ReadTxtToStringUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(ReadTxtToStringUtilTest.class);
 
     @Test
     public void test1() throws IOException {
         File file = TestResourceUtil.getFile("txt/中文文件.txt");
         String txtPath = file.getAbsolutePath();
         String encode = ReadTxtToStringUtil.detectCharsetUsingICU4J(txtPath);
-        System.out.println(encode);
+        log.info("{}", encode);
         String content = Files.readString(Paths.get(txtPath), Charset.forName(encode));
-        System.out.println(content);
+        log.info("{}", content);
     }
 
     @Test
     public void detectCharsetUsingICU4JTest() throws IOException {
         File file = TestResourceUtil.getFile("txt/ftp_426586352426085054.txt");
         String e = ReadTxtToStringUtil.detectCharsetUsingICU4J(file.getAbsolutePath());
-        System.out.println(e);
+        log.info("{}", e);
     }
 
     @Test
@@ -33,7 +37,7 @@ public class ReadTxtToStringUtilTest {
         String gbk = ReadTxtToStringUtil.readFileContent(TestResourceUtil.getFile("txt/gbk.txt"));
         String big5 = ReadTxtToStringUtil.readFileContent(TestResourceUtil.getFile("txt/big5.txt"));
         String gb2312 = ReadTxtToStringUtil.readFileContent(TestResourceUtil.getFile("txt/gb2312.txt"));
-        System.out.println(utf8 + "\n\n" + utf8bom + "\n\n" + gbk + "\n\n" + big5 + "\n\n" + gb2312);
+        log.info("{}", utf8 + "\n\n" + utf8bom + "\n\n" + gbk + "\n\n" + big5 + "\n\n" + gb2312);
     }
 
     @Test
@@ -47,7 +51,7 @@ public class ReadTxtToStringUtilTest {
             // 写入内容（UTF-8编码）
             os.write("你好，这是一个带BOM的UTF-8文件。".getBytes("UTF-8"));
         }
-        System.out.println("文件已创建: " + file.getAbsolutePath());
+        log.info("{}", "文件已创建: " + file.getAbsolutePath());
 
         try (InputStream is = new FileInputStream(file)) {
             byte[] head = new byte[3];
@@ -55,9 +59,9 @@ public class ReadTxtToStringUtilTest {
                     head[0] == (byte) 0xEF &&
                     head[1] == (byte) 0xBB &&
                     head[2] == (byte) 0xBF) {
-                System.out.println("文件包含UTF-8 BOM");
+                log.info("文件包含UTF-8 BOM");
             } else {
-                System.out.println("文件无BOM");
+                log.info("文件无BOM");
             }
         }
         file.delete();
