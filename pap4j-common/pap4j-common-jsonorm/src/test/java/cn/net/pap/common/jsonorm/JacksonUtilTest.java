@@ -140,9 +140,9 @@ public class JacksonUtilTest {
         }
     }
 
-    // @Test
+    @Test
     public void jsonToListMapTest() throws Exception {
-        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        String json = JsonORMUtil.readFileToString(TestResourceUtil.getFile("input.json"));
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         List<HeadDTO> result = objectMapper.readValue(json, new TypeReference<List<HeadDTO>>() {});

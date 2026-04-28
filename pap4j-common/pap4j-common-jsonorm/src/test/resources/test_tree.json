@@ -1,0 +1,35 @@
+[
+  {
+    "type": "directory",
+    "name": "./src",
+    "contents": [
+      {
+        "type": "directory",
+        "name": "./src/components",
+        "contents": [
+          {
+            "type": "file",
+            "name": "./src/components/Header.vue"
+          },
+          {
+            "type": "file",
+            "name": "./src/components/Footer.vue"
+          }
+        ]
+      },
+      {
+        "type": "file",
+        "name": "./src/main.js"
+      },
+      {
+        "type": "file",
+        "name": "./src/config.json"
+      }
+    ]
+  },
+  {
+    "type": "report",
+    "directories": 1,
+    "files": 4
+  }
+]

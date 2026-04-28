@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root id="140013020250391" project="ABCD">
+    <catalog type="main_content">
+        <catalogItem id="100" page="1">
+        </catalogItem>
+        <catalogItem id="101" page="5">
+        </catalogItem>
+    </catalog>
+
+    <catalog type="appendix">
+        <catalogItem id="200" page="12">
+        </catalogItem>
+    </catalog>
+</root>

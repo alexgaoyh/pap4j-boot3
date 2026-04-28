@@ -198,6 +198,110 @@ public class XmlRecursiveParser {
         }
     }
 
+
+    public static List<Map<String, Object>> parseToUniversalList2(String xmlString) {
+        try {
+            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+            // 启用CDATA节点处理
+            factory.setCoalescing(true);
+            factory.setIgnoringComments(true);
+            DocumentBuilder builder = factory.newDocumentBuilder();
+            Document document = builder.parse(new ByteArrayInputStream(xmlString.getBytes()));
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            Node root = document.getDocumentElement();
+
+            if (root.getNodeType() == Node.ELEMENT_NODE) {
+                result.add(parseElement2((Element) root));
+            }
+
+            return result;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Invalid XML string", e);
+        }
+    }
+
+    /**
+     * 递归解析 XML 元素 (调整后：按节点名称分组)
+     */
+    private static Map<String, Object> parseElement2(Element element) {
+        Map<String, Object> map = new LinkedHashMap<>();
+
+        // 保留元素名称和属性
+        map.put("_name", element.getNodeName());
+
+        NamedNodeMap attributes = element.getAttributes();
+        if (attributes != null && attributes.getLength() > 0) {
+            Map<String, String> attrMap = new LinkedHashMap<>();
+            for (int i = 0; i < attributes.getLength(); i++) {
+                Node attr = attributes.item(i);
+                attrMap.put(attr.getNodeName(), attr.getNodeValue());
+            }
+            map.put("_attributes", attrMap);
+        }
+
+        // 处理子节点
+        NodeList children = element.getChildNodes();
+
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+
+            if (child.getNodeType() == Node.ELEMENT_NODE) {
+                String nodeName = child.getNodeName();
+                Map<String, Object> childMap = parseElement2((Element) child);
+
+                // 核心修改：以节点名称为 Key，将子节点存入 List
+                if (!map.containsKey(nodeName)) {
+                    List<Object> list = new ArrayList<>();
+                    list.add(childMap);
+                    map.put(nodeName, list);
+                } else {
+                    @SuppressWarnings("unchecked")
+                    List<Object> list = (List<Object>) map.get(nodeName);
+                    list.add(childMap);
+                }
+            } else if (child.getNodeType() == Node.TEXT_NODE && !child.getNodeValue().trim().isEmpty()) {
+                map.put("_text", child.getNodeValue().trim());
+            } else if (child.getNodeType() == Node.CDATA_SECTION_NODE) {
+                map.put("_cdata", child.getNodeValue().trim());
+            }
+        }
+
+        return map;
+    }
+
+    public static Object extract2(List<Map<String, Object>> result, String pathRule) {
+        String[] parts = pathRule.split("\\.");
+        Object current = result;
+
+        for (String part : parts) {
+            if (current == null) {
+                return null; // 中途遇到null直接返回
+            }
+
+            if (part.startsWith("$[")) {
+                // 处理数组索引，如 $[0]
+                int index = Integer.parseInt(part.substring(2, part.length() - 1));
+                current = safeGetFromList((List<?>) current, index);
+            } else if (part.contains("[")) {
+                // 处理带数组的key，如 catalog[0]
+                String key = part.substring(0, part.indexOf("["));
+                int index = Integer.parseInt(part.substring(part.indexOf("[") + 1, part.indexOf("]")));
+                current = safeGetFromMap((Map<?, ?>) current, key);
+                current = safeGetFromList((List<?>) current, index);
+            } else if (part.startsWith("@")) {
+                // 处理属性访问，如 @id 或 @attributes.name
+                String attrPath = part.substring(1);
+                current = getAttributeValue(current, attrPath);
+            } else {
+                // 普通map key
+                current = safeGetFromMap((Map<?, ?>) current, part);
+            }
+        }
+
+        return current;
+    }
+
     /**
      * 根据路径规则从结果中提取值
      *

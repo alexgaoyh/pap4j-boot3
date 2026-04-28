@@ -1,0 +1,126 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://school.edu/student-profile.schema.json",
+  "title": "Student Profile Metadata",
+  "description": "一个包含了 JSON Schema 几乎所有可能验证特性的全面示例文件，适用于班级学生管理场景。",
+  "type": "object",
+  "properties": {
+    "studentId": {
+      "type": "string",
+      "format": "uuid",
+      "description": "学生的全局唯一标识符"
+    },
+    "recordType": {
+      "const": "STUDENT_PROFILE",
+      "description": "常量值测试，必须精确匹配此值"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["enrolled", "graduated", "suspended", "dropped_out"],
+      "description": "枚举值测试：学生学籍状态"
+    },
+    "studentName": {
+      "type": "string",
+      "minLength": 2,
+      "maxLength": 20,
+      "pattern": "^[\\u4e00-\\u9fa5a-zA-Z\\s]+$",
+      "description": "字符串验证：长度与正则表达式（仅限中英文和空格）"
+    },
+    "enrollmentYear": {
+      "type": "integer",
+      "minimum": 2000,
+      "maximum": 2026,
+      "multipleOf": 1,
+      "description": "数值验证：入学年份整数、最大/最小值"
+    },
+    "academicScores": {
+      "type": "object",
+      "properties": {
+        "gpa": { "type": "number", "minimum": 0, "maximum": 4.0 },
+        "credits": { "type": "integer", "minimum": 0 }
+      },
+      "required": ["gpa", "credits"],
+      "additionalProperties": false,
+      "description": "对象验证：不允许额外属性，数值范围限制"
+    },
+    "hasScholarship": {
+      "type": "boolean"
+    },
+    "scholarshipDetails": {
+      "type": ["string", "null"],
+      "description": "多类型测试：允许是字符串或者 null"
+    },
+    "extracurriculars": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "maxLength": 30
+      },
+      "minItems": 1,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "description": "数组验证：课外活动列表，元素类型、数量限制、元素必须唯一"
+    },
+    "homeCoordinates": {
+      "type": "array",
+      "prefixItems": [
+        { "type": "number", "minimum": -90, "maximum": 90, "description": "纬度" },
+        { "type": "number", "minimum": -180, "maximum": 180, "description": "经度" }
+      ],
+      "additionalItems": false,
+      "description": "元组（Tuple）验证：必须且只能包含两个特定顺序和范围的数字（家庭住址经纬度）"
+    },
+    "emergencyContact": {
+      "oneOf": [
+        { "$ref": "#/$defs/phoneContact" },
+        { "$ref": "#/$defs/emailContact" }
+      ],
+      "description": "组合验证：紧急联系方式必须完全符合其中之一（电话或邮箱）"
+    },
+    "systemPermissions": {
+      "type": "object",
+      "patternProperties": {
+        "^perm_[a-z_]+$": { "type": "boolean" }
+      },
+      "additionalProperties": false,
+      "description": "模式属性（Pattern Properties）：权限标识必须符合正则，且值必须为布尔值"
+    }
+  },
+  "required": ["studentId", "recordType", "status", "studentName", "hasScholarship"],
+  "dependentRequired": {
+    "hasScholarship": ["scholarshipDetails"]
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "status": { "const": "graduated" } }
+      },
+      "then": {
+        "required": ["academicScores"]
+      },
+      "else": {
+        "properties": {
+          "academicScores": { "not": {} }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "phoneContact": {
+      "type": "object",
+      "properties": {
+        "phoneNumber": { "type": "string", "pattern": "^\\+?[0-9]{10,15}$" },
+        "relation": { "type": "string" }
+      },
+      "required": ["phoneNumber", "relation"]
+    },
+    "emailContact": {
+      "type": "object",
+      "properties": {
+        "emailAddress": { "type": "string", "format": "email" },
+        "relation": { "type": "string" }
+      },
+      "required": ["emailAddress", "relation"]
+    }
+  }
+}

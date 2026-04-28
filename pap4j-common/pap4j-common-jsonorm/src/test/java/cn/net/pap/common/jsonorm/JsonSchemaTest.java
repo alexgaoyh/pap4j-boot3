@@ -56,11 +56,11 @@ public class JsonSchemaTest {
     /**
      * json schema check json
      */
-    // @Test
+    @Test
     public void test3() {
         try {
             // 读取Schema文件
-            Path schemaPath = Paths.get("C:\\Users\\86181\\Desktop\\schema.json");
+            Path schemaPath = Paths.get(TestResourceUtil.getFile("schema.json").getAbsolutePath().toString());
             if (!Files.exists(schemaPath)) {
                 throw new FileNotFoundException("Schema文件不存在: " + schemaPath);
             }
@@ -69,7 +69,7 @@ public class JsonSchemaTest {
             }
 
             // 读取Data文件
-            Path dataPath = Paths.get("C:\\Users\\86181\\Desktop\\data.json");
+            Path dataPath = Paths.get(TestResourceUtil.getFile("data.json").getAbsolutePath().toString());
             if (!Files.exists(dataPath)) {
                 throw new FileNotFoundException("Data文件不存在: " + dataPath);
             }

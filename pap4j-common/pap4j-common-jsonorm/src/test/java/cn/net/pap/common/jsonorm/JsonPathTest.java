@@ -80,9 +80,9 @@ public class JsonPathTest {
         System.out.println(result);
     }
 
-    // @Test
+    @Test
     public void jsonToListMapTest() throws Exception {
-        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        String json = JsonORMUtil.readFileToString(TestResourceUtil.getFile("input.json"));
         com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
         for (int idx = 0; idx < Integer.parseInt(ctx.read("$.length()").toString()); idx++) {
             Map<String, Object> itemMap = (Map<String, Object>) ctx.read("$[" + idx + "]");
@@ -90,9 +90,9 @@ public class JsonPathTest {
         }
     }
 
-    // @Test
+    @Test
     public void jsonToListMapTest2() throws Exception {
-        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        String json = JsonORMUtil.readFileToString(TestResourceUtil.getFile("input.json"));
         // 读取的时候，有可能会读取出来 utf8-bom 的头，要提前做处理
         com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
         // ctx.read("$..Chars[*].Code");
@@ -103,11 +103,11 @@ public class JsonPathTest {
         }
     }
 
-    // @Test
+    @Test
     public void jsonPathTest2() throws Exception {
         // 如下 json ，数据来源是 count_file.md 文件中的 Export-DirectoryTree.ps1 部分的输出。
         // 同样的的，也可以是 linux 下 tree -J -f 的输出， 但是两者的结果会有不同，当前仅做数据的解析与输出，具体业务需要额外进行逻辑添加。
-        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\test_tree.json"));
+        String json = JsonORMUtil.readFileToString(TestResourceUtil.getFile("test_tree.json"));
         com.jayway.jsonpath.DocumentContext ctx = JsonPath.parse(json);
         // .. 表示递归下降，搜索所有层级的属性，如下命令是找到 Type 属性的值为 File 的部分。
         List<Object> fileNodes = JsonPath.read(json, "$..[?(@.Type == 'File' || @.type == 'file')]");
@@ -117,9 +117,9 @@ public class JsonPathTest {
         }
     }
 
-    // @Test
+    @Test
     public void jsonHandleTest3() throws Exception {
-        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\test_tree.json"));
+        String json = JsonORMUtil.readFileToString(TestResourceUtil.getFile("test_tree.json"));
 
         ObjectMapper mapper = new ObjectMapper();
         ArrayNode root = (ArrayNode) mapper.readTree(json);

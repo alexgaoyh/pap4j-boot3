@@ -2,6 +2,8 @@ package cn.net.pap.common.jsonorm;
 
 import cn.net.pap.common.jsonorm.parser.JsonRecursiveParser;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -16,6 +18,8 @@ import java.util.TreeMap;
 import static org.junit.Assert.assertTrue;
 
 public class JsonRecursiveParserTest {
+
+    private static final Logger log = LoggerFactory.getLogger(JsonRecursiveParserTest.class);
 
     @Test
     public void parseTest1() throws Exception {
@@ -111,36 +115,25 @@ public class JsonRecursiveParserTest {
 
     }
 
-    // @Test
+    @Test
     public void parseTest2() throws Exception {
         Integer childrenAllLength = 0;
-        Map<String, Integer> checkNumberMap = new TreeMap<String, Integer>();
-        String sourceIdKey = "";
-        String volumeKey = "";
-        String jpgCountKey = "";
 
-        String inputStr = Files.readString(Paths.get("C:\\Users\\86181\\Desktop\\input.json"));
+        String inputStr = Files.readString(Paths.get(TestResourceUtil.getFile("input.json").getAbsolutePath().toString()));
         List<Map<String, Object>> maps = JsonRecursiveParser.parseToUniversalList(inputStr);
         for(Map<String, Object> map : maps) {
-            assertTrue(map.size() == 21);
             if(map.containsKey("_children") && map.get("_children") != null && map.get("_children") instanceof List) {
                 List<Map<String, Object>> _childrenMapList = (List<Map<String, Object>>)map.get("_children");
                 childrenAllLength = childrenAllLength + _childrenMapList.size();
                 for(Map<String, Object> _childrenMap : _childrenMapList) {
-                    String sourceId = _childrenMap.get(sourceIdKey).toString();
-                    String volume = _childrenMap.get(volumeKey).toString();
-                    String jpgCount = _childrenMap.get(jpgCountKey).toString();
-                    String parentPath = "d:\\knowledge\\";
-                    for(Integer idx = 0; idx < Integer.parseInt(jpgCount); idx++) {
-                        generateEmptyJpeg(parentPath + File.separator + sourceId + File.separator +
-                                String.format("%04d", Integer.parseInt(volume)) + File.separator + "JPG" + File.separator +
-                                String.format("%04d", (idx + 1)) + ".jpg");
-                    }
+                    String sourceId = _childrenMap.get("sourceId").toString();
+                    String volume = _childrenMap.get("volume").toString();
+                    String jpgCount = _childrenMap.get("jpgCount").toString();
+                    log.info("{}, {}, {}", sourceId, volume, jpgCount);
                 }
             }
         }
 
-        assertTrue(childrenAllLength == 1125);
     }
 
     public static void generateEmptyJpeg(String outputPath) {

@@ -4,6 +4,8 @@ import cn.net.pap.common.jsonorm.dto.JsonDTO;
 import cn.net.pap.common.jsonorm.dto.JsonDTO2;
 import cn.net.pap.common.jsonorm.parser.OptimizedJsonParser;
 import cn.net.pap.common.jsonorm.util.JsonORMUtil;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,16 +20,60 @@ import org.openjdk.jol.info.ClassLayout;
 import org.openjdk.jol.info.GraphLayout;
 
 import java.io.File;
+import java.io.FileWriter;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @TestInstance(TestInstance.Lifecycle.PER_METHOD)
 public class OptimizedJsonParserTest {
 
-    //@Test
+    public String generateBigJsonFile() throws Exception {
+        File file = Files.createTempFile("generateBigJsonFile", ".json").toFile();
+        if (file.exists()) {
+            file.delete();
+        }
+        JsonFactory factory = new JsonFactory();
+        long targetRecords = 10000;
+        try (JsonGenerator generator = factory.createGenerator(new FileWriter(file))) {
+            generator.writeStartObject();
+            generator.writeFieldName("chars");
+            generator.writeStartArray();
+            for (long i = 0; i < targetRecords; i++) {
+                generator.writeStartObject();
+                generator.writeNumberField("distance", (int) (Math.random() * 100));
+                generator.writeFieldName("coords");
+                generator.writeStartArray();
+                generator.writeNumber(Math.random() * 1000.0); // 模拟坐标 X
+                generator.writeNumber(Math.random() * 1000.0); // 模拟坐标 Y
+                generator.writeEndArray();
+                generator.writeFieldName("box");
+                generator.writeStartArray();
+                generator.writeNumber(Math.random() * 100.0);
+                generator.writeNumber(Math.random() * 100.0);
+                generator.writeNumber(Math.random() * 100.0);
+                generator.writeNumber(Math.random() * 100.0);
+                generator.writeEndArray();
+                generator.writeStringField("text", "MockText_" + i);
+                generator.writeEndObject();
+
+                if (i > 0 && i % 100000 == 0) {
+                    System.out.println("已生成: " + i + " 条 CharDTO 记录...");
+                }
+            }
+            generator.writeEndArray();
+            generator.writeEndObject();
+        }
+
+        return file.getAbsolutePath();
+    }
+
+    @Test
     public void optimizedTest1() throws Exception {
-        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\bigjson.txt"));
+        File file = new File(generateBigJsonFile());
+        String json = JsonORMUtil.readFileToString(file);
         // 这里就是初始化一下
         JsonDTO jsonDTO2 = OptimizedJsonParser.parseWithOptimization(json, JsonDTO.class);
 
@@ -43,13 +89,14 @@ public class OptimizedJsonParserTest {
         System.out.println("GraphLayout:");
         System.out.println(GraphLayout.parseInstance(jsonDTO).toFootprint());
         System.out.println("Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
-
+        file.deleteOnExit();
     }
 
 
-    //@Test
+    @Test
     public void noOptimizedTest1() throws Exception {
-        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\bigjson.txt"));
+        File file = new File(generateBigJsonFile());
+        String json = JsonORMUtil.readFileToString(file);
         ObjectMapper OBJECT_MAPPER = new ObjectMapper();
         OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         JsonDTO jsonDTO2 = OBJECT_MAPPER.readValue(json, JsonDTO.class);
@@ -66,12 +113,12 @@ public class OptimizedJsonParserTest {
         System.out.println("GraphLayout:");
         System.out.println(GraphLayout.parseInstance(jsonDTO).toFootprint());
         System.out.println("Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
-
+        file.deleteOnExit();
     }
 
-    // @Test
+    @Test
     public void jsonToListMapTest() throws Exception {
-        String json = JsonORMUtil.readFileToString(new File("C:\\Users\\86181\\Desktop\\input.json"));
+        String json = JsonORMUtil.readFileToString(TestResourceUtil.getFile("input.json"));
         ObjectMapper objectMapper = new ObjectMapper();
         List<Map<String, Object>> result = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
         System.out.println(result.size());

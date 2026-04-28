@@ -41,18 +41,18 @@ public class XmlRecursiveParserTest {
 
     @Test
     public void parseTest2() throws Exception {
-        String filePath = "C:\\Users\\86181\\Desktop\\140013020250391.xml";
+        String filePath = TestResourceUtil.getFile("140013020250391.xml").getAbsolutePath().toString();
         if(new File(filePath).exists()) {
             String xml = Files.readString(Paths.get(filePath));
-            List<Map<String, Object>> result = XmlRecursiveParser.parseToUniversalList(xml);
+            List<Map<String, Object>> result = XmlRecursiveParser.parseToUniversalList2(xml);
             System.out.println(result);
 
             // 节点解析 数组
-            Object catalogItems = XmlRecursiveParser.extract(result, "$[0].catalog[0].catalogItem");
+            Object catalogItems = XmlRecursiveParser.extract2(result, "$[0].catalog[0].catalogItem");
             System.out.println(catalogItems);
 
             // 节点解析 属性
-            Object page = XmlRecursiveParser.extract(result, "$[0].catalog[0].catalogItem[0].@page");
+            Object page = XmlRecursiveParser.extract2(result, "$[0].catalog[0].catalogItem[0].@page");
             System.out.println(page);
         }
 

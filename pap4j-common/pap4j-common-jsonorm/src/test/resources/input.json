@@ -1,0 +1,31 @@
+[
+  {
+    "description": "这是第一批数据",
+    "备注": "备注1",
+    "语种": "语种1",
+    "_children": [
+      {
+        "sourceId": "1001",
+        "volume": "Vol.1",
+        "jpgCount": "25"
+      },
+      {
+        "sourceId": "1002",
+        "volume": "Vol.2",
+        "jpgCount": "40"
+      }
+    ]
+  },
+  {
+    "description": "这是第二批数据，_children 可以存在于多个对象中",
+    "备注": "备注2",
+    "语种": "语种2",
+    "_children": [
+      {
+        "sourceId": "2001",
+        "volume": "Vol.3",
+        "jpgCount": "15"
+      }
+    ]
+  }
+]

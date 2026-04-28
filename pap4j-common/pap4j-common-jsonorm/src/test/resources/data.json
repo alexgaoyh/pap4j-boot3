@@ -1,0 +1,30 @@
+{
+  "studentId": "a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d",
+  "recordType": "STUDENT_PROFILE",
+  "status": "graduated",
+  "studentName": "林小明",
+  "enrollmentYear": 2022,
+  "academicScores": {
+    "gpa": 3.8,
+    "credits": 144
+  },
+  "hasScholarship": true,
+  "scholarshipDetails": "一等优秀学业奖学金",
+  "extracurriculars": [
+    "校辩论队",
+    "计算机科学社团",
+    "篮球校队"
+  ],
+  "homeCoordinates": [
+    25.0329,
+    121.5654
+  ],
+  "emergencyContact": {
+    "phoneNumber": "+886912345678",
+    "relation": "Mother"
+  },
+  "systemPermissions": {
+    "perm_library_access": true,
+    "perm_lab_booking": false
+  }
+}
