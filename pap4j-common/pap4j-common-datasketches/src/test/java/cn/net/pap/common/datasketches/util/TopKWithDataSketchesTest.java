@@ -18,7 +18,7 @@ public class TopKWithDataSketchesTest {
     @Test
     public void readTxtTestDetailed() throws IOException {
         ItemsSketch<String> sketch = new ItemsSketch<>(256);
-        String filePath = "C:\\Users\\86181\\Desktop\\gcd.txt";
+        String filePath = TestResourceUtil.getFile("gcd.txt").getAbsolutePath().toString();
         if(!new File(filePath).exists()) {
             return;
         }
