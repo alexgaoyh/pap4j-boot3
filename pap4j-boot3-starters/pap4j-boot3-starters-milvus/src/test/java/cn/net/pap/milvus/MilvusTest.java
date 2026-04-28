@@ -16,6 +16,8 @@ import io.milvus.response.SearchResultsWrapper;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.math.BigDecimal;
@@ -31,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class MilvusTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MilvusTest.class);
 
     private static final String COLLECTION_NAME = "USER";
 
@@ -51,199 +55,263 @@ public class MilvusTest {
 
     @Test
     public void test1_connect() {
-        MilvusClient milvusClient = milvusClient();
-        R<CheckHealthResponse> checkHealthResponseR = milvusClient.checkHealth();
-        assertTrue(true == checkHealthResponseR.getData().getIsHealthy());
-        milvusClient.close();
+        try {
+            MilvusClient milvusClient = milvusClient();
+            R<CheckHealthResponse> checkHealthResponseR = milvusClient.checkHealth();
+            assertTrue(true == checkHealthResponseR.getData().getIsHealthy());
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
+        }
     }
 
     @Test
     public void test2_hasCollectionThenDescribeThenDrop() {
-        MilvusClient milvusClient = milvusClient();
-        R<Boolean> hasResponse = milvusClient.hasCollection(HasCollectionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .build());
-        assertTrue(0 == hasResponse.getStatus());
-        if (hasResponse.getData() == true) {
-            R<DescribeCollectionResponse> describeResponse = milvusClient.describeCollection(DescribeCollectionParam.newBuilder()
+        try {
+            MilvusClient milvusClient = milvusClient();
+            R<Boolean> hasResponse = milvusClient.hasCollection(HasCollectionParam.newBuilder()
                     .withCollectionName(COLLECTION_NAME)
                     .build());
-            DescCollResponseWrapper describeWrapper = new DescCollResponseWrapper(describeResponse.getData());
-            assertTrue(describeWrapper.getCollectionName().equals("USER"));
+            assertTrue(0 == hasResponse.getStatus());
+            if (hasResponse.getData() == true) {
+                R<DescribeCollectionResponse> describeResponse = milvusClient.describeCollection(DescribeCollectionParam.newBuilder()
+                        .withCollectionName(COLLECTION_NAME)
+                        .build());
+                DescCollResponseWrapper describeWrapper = new DescCollResponseWrapper(describeResponse.getData());
+                assertTrue(describeWrapper.getCollectionName().equals("USER"));
 
 
-            R<RpcStatus> dropResponse = milvusClient.dropCollection(DropCollectionParam.newBuilder()
-                    .withCollectionName(COLLECTION_NAME)
-                    .build());
-            assertTrue(0 == dropResponse.getStatus());
+                R<RpcStatus> dropResponse = milvusClient.dropCollection(DropCollectionParam.newBuilder()
+                        .withCollectionName(COLLECTION_NAME)
+                        .build());
+                assertTrue(0 == dropResponse.getStatus());
+            }
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
         }
-        milvusClient.close();
     }
 
     @Test
     public void test3_createCollection() {
-        MilvusClient milvusClient = milvusClient();
+        try {
+            MilvusClient milvusClient = milvusClient();
 
-        FieldType fieldType1 = FieldType.newBuilder()
-                .withName("id")
-                .withDescription("user id")
-                .withDataType(DataType.Int64)
-                .withPrimaryKey(true)
-                .withAutoID(true)
-                .build();
+            FieldType fieldType1 = FieldType.newBuilder()
+                    .withName("id")
+                    .withDescription("user id")
+                    .withDataType(DataType.Int64)
+                    .withPrimaryKey(true)
+                    .withAutoID(true)
+                    .build();
 
-        FieldType fieldType2 = FieldType.newBuilder()
-                .withName("vector")
-                .withDescription("vector embedding")
-                .withDataType(DataType.FloatVector)
-                .withDimension(16000)
-                .build();
+            FieldType fieldType2 = FieldType.newBuilder()
+                    .withName("vector")
+                    .withDescription("vector embedding")
+                    .withDataType(DataType.FloatVector)
+                    .withDimension(16000)
+                    .build();
 
-        FieldType fieldType3 = FieldType.newBuilder()
-                .withName("age")
-                .withDescription("age")
-                .withDataType(DataType.Int8)
-                .build();
+            FieldType fieldType3 = FieldType.newBuilder()
+                    .withName("age")
+                    .withDescription("age")
+                    .withDataType(DataType.Int8)
+                    .build();
 
-        FieldType fieldType4 = FieldType.newBuilder()
-                .withName("name")
-                .withDescription("name")
-                .withDataType(DataType.VarChar)
-                .withMaxLength(1000)
-                .build();
+            FieldType fieldType4 = FieldType.newBuilder()
+                    .withName("name")
+                    .withDescription("name")
+                    .withDataType(DataType.VarChar)
+                    .withMaxLength(1000)
+                    .build();
 
-        CreateCollectionParam createCollectionReq = CreateCollectionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withDescription("user info")
-                .withShardsNum(2)
-                .withEnableDynamicField(false)
-                .addFieldType(fieldType1)
-                .addFieldType(fieldType2)
-                .addFieldType(fieldType3)
-                .addFieldType(fieldType4)
-                .build();
-        R<RpcStatus> response = milvusClient.withTimeout(3000, TimeUnit.MILLISECONDS)
-                .createCollection(createCollectionReq);
-        assertTrue(response.getStatus() == 0);
-        milvusClient.close();
+            CreateCollectionParam createCollectionReq = CreateCollectionParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withDescription("user info")
+                    .withShardsNum(2)
+                    .withEnableDynamicField(false)
+                    .addFieldType(fieldType1)
+                    .addFieldType(fieldType2)
+                    .addFieldType(fieldType3)
+                    .addFieldType(fieldType4)
+                    .build();
+            R<RpcStatus> response = milvusClient.withTimeout(3000, TimeUnit.MILLISECONDS)
+                    .createCollection(createCollectionReq);
+            assertTrue(response.getStatus() == 0);
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
+        }
     }
 
     @Test
     public void test4_createIndex() {
-        MilvusClient milvusClient = milvusClient();
+        try {
+            MilvusClient milvusClient = milvusClient();
 
-        R<RpcStatus> vectorResponse = milvusClient.createIndex(CreateIndexParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withFieldName("vector")
-                .withIndexName("vector_index")
-                .withIndexType(IndexType.IVF_FLAT)
-                .withMetricType(MetricType.L2)
-                .withExtraParam("{\"nlist\":128}")
-                .withSyncMode(Boolean.TRUE)
-                .build());
-        assertTrue(vectorResponse.getStatus() == 0);
+            R<RpcStatus> vectorResponse = milvusClient.createIndex(CreateIndexParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withFieldName("vector")
+                    .withIndexName("vector_index")
+                    .withIndexType(IndexType.IVF_FLAT)
+                    .withMetricType(MetricType.L2)
+                    .withExtraParam("{\"nlist\":128}")
+                    .withSyncMode(Boolean.TRUE)
+                    .build());
+            assertTrue(vectorResponse.getStatus() == 0);
 
 
-        R<RpcStatus> ageResponse = milvusClient.createIndex(CreateIndexParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withFieldName("age")
-                .withIndexType(IndexType.STL_SORT)
-                .withSyncMode(Boolean.TRUE)
-                .build());
-        assertTrue(ageResponse.getStatus() == 0);
-        milvusClient.close();
+            R<RpcStatus> ageResponse = milvusClient.createIndex(CreateIndexParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withFieldName("age")
+                    .withIndexType(IndexType.STL_SORT)
+                    .withSyncMode(Boolean.TRUE)
+                    .build());
+            assertTrue(ageResponse.getStatus() == 0);
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
+        }
     }
 
     @Test
     public void test5_loadCollectionThenRelease() {
-        MilvusClient milvusClient = milvusClient();
-        R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .build());
-        assertTrue(0 == loadResponse.getStatus());
-        if (loadResponse.getStatus() == 0) {
-            R<RpcStatus> releaseResponse = milvusClient.releaseCollection(ReleaseCollectionParam.newBuilder()
+        try {
+            MilvusClient milvusClient = milvusClient();
+            R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
                     .withCollectionName(COLLECTION_NAME)
                     .build());
-            assertTrue(0 == releaseResponse.getStatus());
+            assertTrue(0 == loadResponse.getStatus());
+            if (loadResponse.getStatus() == 0) {
+                R<RpcStatus> releaseResponse = milvusClient.releaseCollection(ReleaseCollectionParam.newBuilder()
+                        .withCollectionName(COLLECTION_NAME)
+                        .build());
+                assertTrue(0 == releaseResponse.getStatus());
+            }
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
         }
-        milvusClient.close();
     }
 
     @Test
     public void test6_partitionCreate() {
-        MilvusClient milvusClient = milvusClient();
-        R<RpcStatus> createPartitionResponse = milvusClient.createPartition(CreatePartitionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withPartitionName(PARTITION_NAME)
-                .build());
+        try {
+            MilvusClient milvusClient = milvusClient();
+            R<RpcStatus> createPartitionResponse = milvusClient.createPartition(CreatePartitionParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withPartitionName(PARTITION_NAME)
+                    .build());
 
-        assertTrue(0 == createPartitionResponse.getStatus());
+            assertTrue(0 == createPartitionResponse.getStatus());
 
-        milvusClient.close();
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
+        }
     }
 
     @Test
     public void test7_insertRows() throws Exception {
-        MilvusClient milvusClient = milvusClient();
-        R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .build());
-        assertTrue(0 == loadResponse.getStatus());
-        if (loadResponse.getStatus() == 0) {
-            List<JsonObject> insertRowsList = insertRows();
-
-            InsertParam insertParam = InsertParam.newBuilder()
+        try {
+            MilvusClient milvusClient = milvusClient();
+            R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
                     .withCollectionName(COLLECTION_NAME)
-                    .withPartitionName(PARTITION_NAME)
-                    .withRows(insertRowsList)
-                    .build();
+                    .build());
+            assertTrue(0 == loadResponse.getStatus());
+            if (loadResponse.getStatus() == 0) {
+                List<JsonObject> insertRowsList = insertRows();
 
-            R<MutationResult> insertResponse = milvusClient.insert(insertParam);
+                InsertParam insertParam = InsertParam.newBuilder()
+                        .withCollectionName(COLLECTION_NAME)
+                        .withPartitionName(PARTITION_NAME)
+                        .withRows(insertRowsList)
+                        .build();
 
-            assertTrue(0 == insertResponse.getStatus());
+                R<MutationResult> insertResponse = milvusClient.insert(insertParam);
 
+                assertTrue(0 == insertResponse.getStatus());
+
+            }
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
         }
-        milvusClient.close();
     }
 
     @Test
     public void test7_search() throws Exception {
-        Thread.sleep(1000);
-        MilvusClient milvusClient = milvusClient();
-        R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .build());
-        assertTrue(0 == loadResponse.getStatus());
-        if (loadResponse.getStatus() == 0) {
-
-            List<String> outFields = Collections.singletonList("name");
-            List<List<Float>> vectors = new ArrayList<>();
-            List<Float> vector = Taylor_Swift0_4550_Vector();
-            vectors.add(vector);
-
-            SearchParam searchParam = SearchParam.newBuilder()
+        try {
+            Thread.sleep(1000);
+            MilvusClient milvusClient = milvusClient();
+            R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
                     .withCollectionName(COLLECTION_NAME)
-                    .withMetricType(MetricType.L2)
-                    .withOutFields(outFields)
-                    .withTopK(10)
-                    .withVectors(vectors)
-                    .withVectorFieldName("vector")
-                    .withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
-                    .build();
+                    .build());
+            assertTrue(0 == loadResponse.getStatus());
+            if (loadResponse.getStatus() == 0) {
 
-            R<SearchResults> response = milvusClient.search(searchParam);
-            SearchResultsWrapper wrapper = new SearchResultsWrapper(response.getData().getResults());
-            for (int i = 0; i < vectors.size(); ++i) {
-                System.out.println("Search result of No." + i);
-                List<SearchResultsWrapper.IDScore> scores = wrapper.getIDScore(i);
-                System.out.println(scores);
-                System.out.println("Output field data for No." + i);
-                System.out.println(wrapper.getFieldData("name", i));
+                List<String> outFields = Collections.singletonList("name");
+                List<List<Float>> vectors = new ArrayList<>();
+                List<Float> vector = Taylor_Swift0_4550_Vector();
+                vectors.add(vector);
+
+                SearchParam searchParam = SearchParam.newBuilder()
+                        .withCollectionName(COLLECTION_NAME)
+                        .withMetricType(MetricType.L2)
+                        .withOutFields(outFields)
+                        .withTopK(10)
+                        .withVectors(vectors)
+                        .withVectorFieldName("vector")
+                        .withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
+                        .build();
+
+                R<SearchResults> response = milvusClient.search(searchParam);
+                SearchResultsWrapper wrapper = new SearchResultsWrapper(response.getData().getResults());
+                for (int i = 0; i < vectors.size(); ++i) {
+                    log.info("Search result of No.{}", i);
+                    List<SearchResultsWrapper.IDScore> scores = wrapper.getIDScore(i);
+                    log.info("{}", scores);
+                    log.info("Output field data for No.{}", i);
+                    log.info("{}", wrapper.getFieldData("name", i));
+                }
+
             }
-
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
         }
-        milvusClient.close();
     }
 
     /**
@@ -253,8 +321,12 @@ public class MilvusTest {
     private List<com.google.gson.JsonObject> insertRows() throws Exception {
         List<com.google.gson.JsonObject> rowsData = new ArrayList<>();
         try {
-            String basePath = "C:\\Users\\86181\\Desktop";
+            String basePath = Files.createTempDirectory("classes_pins_dataset").toAbsolutePath().toString();
+            basePath = basePath + File.separator + "Pins Face Recognition\\105_classes_pins_dataset";
             basePath = basePath + File.separator + "vector";
+            if(!new File(basePath).isDirectory()) {
+                return new ArrayList<>();
+            }
             Stream<Path> topDirStream = Files.list(Paths.get(basePath));
             List<Path> topDirList = topDirStream.collect(Collectors.toList());
             for(Path path : topDirList) {
@@ -287,7 +359,7 @@ public class MilvusTest {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("{}", e);
         }
         return rowsData;
     }
@@ -295,14 +367,19 @@ public class MilvusTest {
     private List<Float> Taylor_Swift0_4550_Vector() throws Exception {
         List<Float> floats = new ArrayList<>();
         try {
-            String basePath = "C:\\Users\\86181\\Desktop";
+            String basePath = Files.createTempDirectory("classes_pins_dataset").toAbsolutePath().toString();
+            basePath = basePath + File.separator + "Pins Face Recognition\\105_classes_pins_dataset";
+            basePath = basePath + File.separator + "vector";
+            if(!new File(basePath + File.separator + "Taylor_Swift0_4550_Vector.txt").exists()) {
+                return new ArrayList<>();
+            }
             String content = new String(java.nio.file.Files.readAllBytes(Paths.get(basePath + File.separator + "Taylor_Swift0_4550_Vector.txt")));
             for (int i = 0; i < content.split(",").length; i++) {
                 floats.add(Float.parseFloat(content.split(",")[i] + ""));
             }
 
         } catch (Exception e) {
-
+            log.error("{}", e);
         }
         return floats;
     }

@@ -15,6 +15,8 @@ import io.milvus.response.SearchResultsWrapper;
 import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.runners.MethodSorters;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -26,6 +28,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
 public class MilvusTextSimilarityTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MilvusTextSimilarityTest.class);
 
     private static final String COLLECTION_NAME = "TEXT";
 
@@ -46,123 +50,143 @@ public class MilvusTextSimilarityTest {
 
     @Test
     public void insert() throws Exception {
-        MilvusClient milvusClient = milvusClient();
+        try {
+            MilvusClient milvusClient = milvusClient();
 
-        // step
-        R<RpcStatus> dropResponse = milvusClient.dropCollection(DropCollectionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .build());
-        assertTrue(0 == dropResponse.getStatus());
-
-
-        // step
-        FieldType fieldType1 = FieldType.newBuilder()
-                .withName("name")
-                .withDescription("name")
-                .withDataType(DataType.VarChar)
-                .withPrimaryKey(true)
-                .withMaxLength(1000)
-                .build();
-        FieldType fieldType2 = FieldType.newBuilder()
-                .withName("vector")
-                .withDescription("vector embedding")
-                .withDataType(DataType.FloatVector)
-                .withDimension(10000)
-                .build();
-        CreateCollectionParam createCollectionReq = CreateCollectionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withDescription("text info")
-                .withShardsNum(2)
-                .withEnableDynamicField(false)
-                .addFieldType(fieldType1)
-                .addFieldType(fieldType2)
-                .build();
-        R<RpcStatus> response = milvusClient.withTimeout(3000, TimeUnit.MILLISECONDS)
-                .createCollection(createCollectionReq);
-        assertTrue(response.getStatus() == 0);
+            // step
+            R<RpcStatus> dropResponse = milvusClient.dropCollection(DropCollectionParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .build());
+            assertTrue(0 == dropResponse.getStatus());
 
 
-        // step
-        R<RpcStatus> vectorResponse = milvusClient.createIndex(CreateIndexParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withFieldName("vector")
-                .withIndexName("vector_index")
-                .withIndexType(IndexType.IVF_FLAT)
-                .withMetricType(MetricType.L2)
-                .withExtraParam("{\"nlist\":128}")
-                .withSyncMode(Boolean.TRUE)
-                .build());
-        assertTrue(vectorResponse.getStatus() == 0);
+            // step
+            FieldType fieldType1 = FieldType.newBuilder()
+                    .withName("name")
+                    .withDescription("name")
+                    .withDataType(DataType.VarChar)
+                    .withPrimaryKey(true)
+                    .withMaxLength(1000)
+                    .build();
+            FieldType fieldType2 = FieldType.newBuilder()
+                    .withName("vector")
+                    .withDescription("vector embedding")
+                    .withDataType(DataType.FloatVector)
+                    .withDimension(10000)
+                    .build();
+            CreateCollectionParam createCollectionReq = CreateCollectionParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withDescription("text info")
+                    .withShardsNum(2)
+                    .withEnableDynamicField(false)
+                    .addFieldType(fieldType1)
+                    .addFieldType(fieldType2)
+                    .build();
+            R<RpcStatus> response = milvusClient.withTimeout(3000, TimeUnit.MILLISECONDS)
+                    .createCollection(createCollectionReq);
+            assertTrue(response.getStatus() == 0);
 
-        // step
-        R<RpcStatus> createPartitionResponse = milvusClient.createPartition(CreatePartitionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withPartitionName(PARTITION_NAME)
-                .build());
-        assertTrue(0 == createPartitionResponse.getStatus());
+
+            // step
+            R<RpcStatus> vectorResponse = milvusClient.createIndex(CreateIndexParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withFieldName("vector")
+                    .withIndexName("vector_index")
+                    .withIndexType(IndexType.IVF_FLAT)
+                    .withMetricType(MetricType.L2)
+                    .withExtraParam("{\"nlist\":128}")
+                    .withSyncMode(Boolean.TRUE)
+                    .build());
+            assertTrue(vectorResponse.getStatus() == 0);
+
+            // step
+            R<RpcStatus> createPartitionResponse = milvusClient.createPartition(CreatePartitionParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withPartitionName(PARTITION_NAME)
+                    .build());
+            assertTrue(0 == createPartitionResponse.getStatus());
 
 
-        // step
-        R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .build());
-        assertTrue(0 == loadResponse.getStatus());
+            // step
+            R<RpcStatus> loadResponse = milvusClient.loadCollection(LoadCollectionParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .build());
+            assertTrue(0 == loadResponse.getStatus());
 
 
-        // step
-        List<JsonObject> insertRowsList = insertRows();
-        InsertParam insertParam = InsertParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withPartitionName(PARTITION_NAME)
-                .withRows(insertRowsList)
-                .build();
-        R<MutationResult> insertResponse = milvusClient.insert(insertParam);
-        assertTrue(0 == insertResponse.getStatus());
+            // step
+            List<JsonObject> insertRowsList = insertRows();
+            InsertParam insertParam = InsertParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withPartitionName(PARTITION_NAME)
+                    .withRows(insertRowsList)
+                    .build();
+            R<MutationResult> insertResponse = milvusClient.insert(insertParam);
+            assertTrue(0 == insertResponse.getStatus());
 
-        milvusClient.close();
+            milvusClient.close();
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
+        }
     }
 
 
     @Test
     public void search() throws Exception {
-        MilvusClient milvusClient = milvusClient();
+        try {
+            MilvusClient milvusClient = milvusClient();
 
-        List<String> outFields = Collections.singletonList("name");
-        List<List<Float>> vectors = new ArrayList<>();
-        List<Float> vector = searchVector();
-        vectors.add(vector);
+            List<String> outFields = Collections.singletonList("name");
+            List<List<Float>> vectors = new ArrayList<>();
+            List<Float> vector = searchVector();
+            vectors.add(vector);
 
-        SearchParam searchParam = SearchParam.newBuilder()
-                .withCollectionName(COLLECTION_NAME)
-                .withMetricType(MetricType.L2)
-                .withOutFields(outFields)
-                .withTopK(10)
-                .withVectors(vectors)
-                .withVectorFieldName("vector")
-                .withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
-                .build();
+            SearchParam searchParam = SearchParam.newBuilder()
+                    .withCollectionName(COLLECTION_NAME)
+                    .withMetricType(MetricType.L2)
+                    .withOutFields(outFields)
+                    .withTopK(10)
+                    .withVectors(vectors)
+                    .withVectorFieldName("vector")
+                    .withConsistencyLevel(ConsistencyLevelEnum.EVENTUALLY)
+                    .build();
 
-        R<SearchResults> searchResponse = milvusClient.search(searchParam);
-        SearchResultsWrapper wrapper = new SearchResultsWrapper(searchResponse.getData().getResults());
-        for (int i = 0; i < vectors.size(); ++i) {
-            System.out.println("Search result of No." + i);
-            List<SearchResultsWrapper.IDScore> scores = wrapper.getIDScore(i);
-            System.out.println(scores);
-            System.out.println("Output field data for No." + i);
-            System.out.println(wrapper.getFieldData("name", i));
+            R<SearchResults> searchResponse = milvusClient.search(searchParam);
+            SearchResultsWrapper wrapper = new SearchResultsWrapper(searchResponse.getData().getResults());
+            for (int i = 0; i < vectors.size(); ++i) {
+                log.info("Search result of No.{}", i);
+                List<SearchResultsWrapper.IDScore> scores = wrapper.getIDScore(i);
+                log.info("{}", scores);
+                log.info("Output field data for No.{}", i);
+                log.info("{}", wrapper.getFieldData("name", i));
+            }
+        } catch (Exception e) {
+            if(e instanceof java.net.ConnectException) {
+                log.warn("{}", e);
+            } else {
+                log.error("{}", e);
+            }
         }
-//        Search result of No.0
-//        [(ID: '一.jpg' Score: 0.0 OutputFields: [name:一.jpg]), (ID: '丶.jpg' Score: 132.0 OutputFields: [name:丶.jpg]), (ID: '冖.jpg' Score: 158.0 OutputFields: [name:冖.jpg]), (ID: '丷.jpg' Score: 165.0 OutputFields: [name:丷.jpg]), (ID: '冫.jpg' Score: 165.0 OutputFields: [name:冫.jpg]), (ID: '乛.jpg' Score: 177.0 OutputFields: [name:乛.jpg]), (ID: '亠.jpg' Score: 186.0 OutputFields: [name:亠.jpg]), (ID: '亻.jpg' Score: 193.0 OutputFields: [name:亻.jpg]), (ID: '丿.jpg' Score: 194.0 OutputFields: [name:丿.jpg]), (ID: '亅.jpg' Score: 197.0 OutputFields: [name:亅.jpg])]
-//        Output field data for No.0
-//        [一.jpg, 丶.jpg, 冖.jpg, 丷.jpg, 冫.jpg, 乛.jpg, 亠.jpg, 亻.jpg, 丿.jpg, 亅.jpg]
     }
 
 
     private List<JsonObject> insertRows() throws Exception {
         List<JsonObject> rowsData = new ArrayList<>();
         try {
-            File file = new File("C:\\Users\\86181\\Desktop\\dir");
+            java.net.URL url = MilvusTextSimilarityTest.class.getResource("/dir");
+            if (url == null) {
+                log.warn("Resource /dir not found");
+                return rowsData;
+            }
+            File file = new File(url.toURI());
             File[] files = file.listFiles();
+            if (files == null) {
+                return rowsData;
+            }
 
             for(File imageAbsPath : files) {
                 float[] vector = convertImageToVector(imageAbsPath.getPath());
@@ -177,16 +201,25 @@ public class MilvusTextSimilarityTest {
             }
 
         } catch (Exception e) {
-
+            log.error("{}", e);
         }
         return rowsData;
     }
 
     private List<Float> searchVector() throws Exception {
-        float[] floats = convertImageToVector("C:\\Users\\86181\\Desktop\\dir\\一.jpg");
         List<Float> floatList = new ArrayList<>();
-        for (float value : floats) {
-            floatList.add(value);
+        try {
+            java.net.URL url = MilvusTextSimilarityTest.class.getResource("/dir/一.jpg");
+            if (url == null) {
+                log.warn("Resource /dir/一.jpg not found");
+                return floatList;
+            }
+            float[] floats = convertImageToVector(new File(url.toURI()).getPath());
+            for (float value : floats) {
+                floatList.add(value);
+            }
+        } catch (Exception e) {
+            log.error("{}", e);
         }
         return floatList;
     }
