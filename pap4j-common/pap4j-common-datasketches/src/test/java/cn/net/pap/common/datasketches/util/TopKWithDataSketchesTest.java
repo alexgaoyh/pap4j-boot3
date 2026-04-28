@@ -1,5 +1,8 @@
 package cn.net.pap.common.datasketches.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.datasketches.frequencies.ErrorType;
 import org.apache.datasketches.frequencies.ItemsSketch;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,7 @@ import static org.springframework.test.util.AssertionErrors.assertTrue;
 
 
 public class TopKWithDataSketchesTest {
+    private static final Logger log = LoggerFactory.getLogger(TopKWithDataSketchesTest.class);
 
     @Test
     public void readTxtTestDetailed() throws IOException {
@@ -37,9 +41,9 @@ public class TopKWithDataSketchesTest {
 
         // 获取Top 100
         ItemsSketch.Row<String>[] topItems = sketch.getFrequentItems(2, ErrorType.NO_FALSE_POSITIVES);
-        System.out.println("\nTop " + topItems.length + " items:");
+        log.info("{}", "\nTop " + topItems.length + " items:");
         for (ItemsSketch.Row<String> item : topItems) {
-            System.out.println("Item: '" + escapeSpecialChars(item.getItem()) +
+            log.info("{}", "Item: '" + escapeSpecialChars(item.getItem()) +
                     "', Est. Frequency: " + item.getEstimate());
         }
     }
@@ -74,9 +78,9 @@ public class TopKWithDataSketchesTest {
         ItemsSketch.Row<String>[] topItems = sketch.getFrequentItems(3, ErrorType.NO_FALSE_POSITIVES);
 
         // 打印Top-K结果用于验证
-        System.out.println("Top " + topItems.length + " items:");
+        log.info("{}", "Top " + topItems.length + " items:");
         for (ItemsSketch.Row<String> item : topItems) {
-            System.out.println("Item: " + item.getItem() + ", Est. Frequency: " + item.getEstimate());
+            log.info("{}", "Item: " + item.getItem() + ", Est. Frequency: " + item.getEstimate());
         }
 
         // 进行断言验证：检查"apple"是否是出现最频繁的项
@@ -101,9 +105,9 @@ public class TopKWithDataSketchesTest {
         // 获取最频繁的2个数字（我们知道0-9每个都出现了10次，但sketch会返回所有，我们取Top2）
         ItemsSketch.Row<Integer>[] topNumbers = intSketch.getFrequentItems(2, ErrorType.NO_FALSE_POSITIVES);
 
-        System.out.println("Top " + topNumbers.length + " numbers:");
+        log.info("{}", "Top " + topNumbers.length + " numbers:");
         for (ItemsSketch.Row<Integer> num : topNumbers) {
-            System.out.println("Number: " + num.getItem() + ", Est. Frequency: " + num.getEstimate());
+            log.info("{}", "Number: " + num.getItem() + ", Est. Frequency: " + num.getEstimate());
         }
 
         // 由于哈希冲突和近似算法，频率是估计值，但应该接近10

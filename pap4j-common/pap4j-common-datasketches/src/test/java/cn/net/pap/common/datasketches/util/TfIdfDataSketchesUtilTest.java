@@ -1,5 +1,8 @@
 package cn.net.pap.common.datasketches.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -12,6 +15,7 @@ import java.util.Comparator;
 import java.util.Map;
 
 public class TfIdfDataSketchesUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(TfIdfDataSketchesUtilTest.class);
 
     @Test
     public void test1() {
@@ -19,7 +23,7 @@ public class TfIdfDataSketchesUtilTest {
             // 初始化 TF-IDF 计算器
             TfIdfDataSketchesUtil calculator = new TfIdfDataSketchesUtil(4096, 2000, 5, 12345); // 4096 items
 
-            System.out.println("Processing documents...");
+            log.info("Processing documents...");
 
             // 处理示例文档
             String[] sampleDocuments = {
@@ -44,20 +48,20 @@ public class TfIdfDataSketchesUtilTest {
 
             // 计算特定词的 TF-IDF
             String targetWord = "datasketches";
-            System.out.println("\nTF-IDF for '" + targetWord + "':");
+            log.info("{}", "\nTF-IDF for '" + targetWord + "':");
             double[] tfidfScores = calculator.getTfIdfVector(targetWord);
             for (int i = 0; i < tfidfScores.length; i++) {
-                System.out.printf("Document %d: %.4f%n", i, tfidfScores[i]);
+                log.info(String.format("Document %d: %.4f%n", i, tfidfScores[i]));
             }
 
             // 获取第一个文档中最重要的词
-            System.out.println("\nTop words in document 0:");
+            log.info("\nTop words in document 0:");
             Map<String, Double> docScores = calculator.getDocumentTfIdfScores(0, 5);
             docScores.entrySet().stream()
                     .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                     .limit(5)
                     .forEach(entry ->
-                            System.out.printf("  %s: %.4f%n", entry.getKey(), entry.getValue()));
+                            log.info(String.format("  %s: %.4f%n", entry.getKey(), entry.getValue())));
 
         } catch (Exception e) {
             e.printStackTrace();
@@ -94,7 +98,7 @@ public class TfIdfDataSketchesUtilTest {
             // 初始化 TF-IDF 计算器
             TfIdfDataSketchesUtil calculator = new TfIdfDataSketchesUtil(65536, 2000, 5, 12345); // 4096 items
 
-            System.out.println("Processing documents...");
+            log.info("Processing documents...");
 
             String folderPath = "D:\\小说0101";
             Path start = Paths.get(folderPath);
@@ -102,7 +106,7 @@ public class TfIdfDataSketchesUtilTest {
             Files.walkFileTree(start, new SimpleFileVisitor<Path>() {
                 @Override
                 public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                    System.out.println("文件: " + file.toAbsolutePath());
+                    log.info("{}", "文件: " + file.toAbsolutePath());
                     try {
                         String strings = readFileWithAutoEncoding(file.toAbsolutePath());
                         calculator.processDocument(strings);
@@ -115,7 +119,7 @@ public class TfIdfDataSketchesUtilTest {
 
                 @Override
                 public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) {
-                    //System.out.println("进入目录: " + dir.toAbsolutePath());
+                    //log.info("进入目录: " + dir.toAbsolutePath());
                     return FileVisitResult.CONTINUE;
                 }
 
@@ -131,21 +135,21 @@ public class TfIdfDataSketchesUtilTest {
 
             // 计算特定词的 TF-IDF
             String targetWord = "的";
-            System.out.println("\nTF-IDF for '" + targetWord + "':");
+            log.info("{}", "\nTF-IDF for '" + targetWord + "':");
             double[] tfidfScores = calculator.getTfIdfVector(targetWord);
             for (int i = 0; i < tfidfScores.length; i++) {
-                System.out.printf("Document %d: %.4f%n", i, tfidfScores[i]);
+                log.info(String.format("Document %d: %.4f%n", i, tfidfScores[i]));
             }
 
             // 获取第一个文档中最重要的词
-            System.out.println("\nTop words in document 1:");
+            log.info("\nTop words in document 1:");
             if(calculator.getTotalDocuments() > 0) {
                 Map<String, Double> docScores = calculator.getDocumentTfIdfScores(1, Integer.MAX_VALUE);
                 docScores.entrySet().stream()
                         .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
                         // .limit(100)
                         .forEach(entry ->
-                                System.out.printf("  %s: %.4f%n", entry.getKey(), entry.getValue()));
+                                log.info(String.format("  %s: %.4f%n", entry.getKey(), entry.getValue())));
             }
 
         } catch (Exception e) {

@@ -1,5 +1,8 @@
 package cn.net.pap.common.datasketches.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.datasketches.quantiles.ItemsSketch;
 import org.apache.datasketches.quantilescommon.ItemsSketchSortedView;
 import org.junit.jupiter.api.Test;
@@ -8,6 +11,7 @@ import java.io.Serializable;
 import java.util.Comparator;
 
 public class ItemsSketchTest {
+    private static final Logger log = LoggerFactory.getLogger(ItemsSketchTest.class);
 
     class TermStatDTO implements Serializable {
 
@@ -26,7 +30,7 @@ public class ItemsSketchTest {
         }
     }
 
-    // @Test
+    @Test
     public void test1() {
         ItemsSketch<TermStatDTO> sketch = ItemsSketch.getInstance(TermStatDTO.class, 32768, new TermStatComparator());
 
@@ -42,18 +46,18 @@ public class ItemsSketchTest {
 
             TermStatDTO top = sortedView.getMaxItem();
             if (top != null) {
-                System.out.println("TOP:");
-                System.out.println(
+                log.info("TOP:");
+                log.info("{}", 
                         top.globalTotalCount + " : " + top.docCount
                 );
             }
 
             int topN = 10;
             TermStatDTO[] retained = sortedView.getQuantiles();
-            System.out.println("TOP " + topN + ":");
+            log.info("{}", "TOP " + topN + ":");
             for (int i = retained.length - 1, c = 0; i >= 0 && c < topN; i--, c++) {
                 TermStatDTO t = retained[i];
-                System.out.println(
+                log.info("{}", 
                         t.globalTotalCount + " : " + t.docCount
                 );
             }

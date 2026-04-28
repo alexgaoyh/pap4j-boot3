@@ -1,5 +1,8 @@
 package cn.net.pap.common.datasketches.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.apache.datasketches.frequencies.ErrorType;
 import org.apache.datasketches.frequencies.ItemsSketch;
 
@@ -14,6 +17,7 @@ import java.util.concurrent.atomic.AtomicLong;
  * 使用 Apache DataSketches + Count-Min Sketch 实现近似 TF-IDF
  */
 public class TfIdfDataSketchesUtil {
+    private static final Logger log = LoggerFactory.getLogger(TfIdfDataSketchesUtil.class);
 
     // 用 ItemsSketch 来估计文档频率 (DF)
     private ItemsSketch<String> dfSketch;
@@ -67,7 +71,7 @@ public class TfIdfDataSketchesUtil {
                 lineCount++;
 
                 if (lineCount % 10000 == 0) {
-                    System.out.printf("Processed %d documents, active items: %d%n", lineCount, dfSketch.getNumActiveItems());
+                    log.info(String.format("Processed %d documents, active items: %d%n", lineCount, dfSketch.getNumActiveItems()));
                 }
             }
         }
@@ -208,17 +212,17 @@ public class TfIdfDataSketchesUtil {
     }
 
     public void printStatistics() {
-        System.out.println("=== TF-IDF Statistics ===");
-        System.out.println("Total documents: " + getTotalDocuments());
-        System.out.println("Vocabulary size: " + getVocabularySize());
-        System.out.println("Maximum error: " + getMaximumError());
+        log.info("=== TF-IDF Statistics ===");
+        log.info("{}", "Total documents: " + getTotalDocuments());
+        log.info("{}", "Vocabulary size: " + getVocabularySize());
+        log.info("{}", "Maximum error: " + getMaximumError());
 
         // 显示前10个高频词
         List<String> topWords = getFrequentWords(10);
-        System.out.println("\nTop 10 frequent words:");
+        log.info("\nTop 10 frequent words:");
         for (String word : topWords) {
             long freq = dfSketch.getEstimate(word);
-            System.out.printf("  %s: %d documents%n", word, freq);
+            log.info(String.format("  %s: %d documents%n", word, freq));
         }
     }
 
