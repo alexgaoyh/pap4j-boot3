@@ -285,7 +285,7 @@ public class WebClientTest {
      *     }
      * @throws Exception
      */
-    @Test
+    // @Test
     public void httpClientCookieTest() throws Exception {
         // CookieManager负责存储与匹配Cookie,它是Java提供的标准实现,类似于浏览器的“Cookie 存储”.当HttpClient收到响应时,它会查看是否有Set-Cookie.如果有就调用 CookieManager的put()方法把它保存。
         CookieManager cookieManager = new CookieManager();
@@ -310,7 +310,7 @@ public class WebClientTest {
      * 同上，验证对于同一个域名下的多次请求，cookie的连续性。区别是当前单元测试使用了 WebClient
      * @throws Exception
      */
-    @Test
+    // @Test
     public void httpClientCookieTest2() throws Exception {
         Mono<WebClientBodyDTO> webClientBodyDTOMono1 = WebClientUtil.postMono("http://localhost:30000/first", "{}", null).flatMap(response -> handleResponse(response))
                 .onErrorResume(e -> {
@@ -336,7 +336,7 @@ public class WebClientTest {
      * 5. 成功与失败请求分别计数，并将每个请求的返回结果存入线程安全列表 responseList。
      * 6. blockLast() 阻塞等待所有请求完成，用于单元测试环境同步输出统计结果。
      */
-    @Test
+    // @Test
     public void highFrequencyAsyncTest() {
         String url = "http://127.0.0.1:30000/longtime";
         int requestCount = 500;       // 总请求数
@@ -392,7 +392,7 @@ public class WebClientTest {
         }
     }
 
-    @Test
+    // @Test
     public void highFrequencyLoopTest() throws Exception {
         String url = "http://127.0.0.1:30000/longtime";
         int requestCount = 500; // 请求次数

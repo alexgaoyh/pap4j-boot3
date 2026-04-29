@@ -5,12 +5,14 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.test.annotation.DirtiesContext;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @SpringBootTest(classes = ScheduleThreadTest.ScheduleConfig.class)
 @EnableScheduling
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class ScheduleThreadTest {
 
     @Test

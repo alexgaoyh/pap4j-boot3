@@ -29,7 +29,7 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <spring-statemachine.version>4.0.1</spring-statemachine.version>
-        <maven.skipTests>true</maven.skipTests>
+        <maven.skipTests>false</maven.skipTests>
         <default.skip>false</default.skip>
         <dependency-check-maven.skip>${default.skip}</dependency-check-maven.skip>
         <maven-gpg-plugin.skip>${default.skip}</maven-gpg-plugin.skip>

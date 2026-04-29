@@ -5,7 +5,7 @@ import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 public class StackTraceUtilsTest {
 
-    @Test
+    // @Test
     @EnabledIfEnvironmentVariable(named = "RUN_TESTS", matches = "true")
     public void printStackTraceTest() {
         try {

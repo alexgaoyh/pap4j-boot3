@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
-public class Nej4jTest {
+public class Nej4jTest extends Neo4jBaseTest {
 
     private final PersonRepository personRepository;
     private final HobbyRepository hobbyRepository;

@@ -184,7 +184,9 @@ public class HttpTest {
     }
 
     // @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     public void downloadFileURLTest() {
+        java.nio.file.Path tempFile = null;
         try {
             String ftpURL = "ftp://" +
                     "bj" + ":" +
@@ -196,8 +198,8 @@ public class HttpTest {
             URLConnection connection = url.openConnection();
 
             // 创建输出目录（如果不存在）
-            File outputFile = new File("d://222222.tiff");
-            outputFile.getParentFile().mkdirs();
+            tempFile = java.nio.file.Files.createTempFile("downloaded_", ".tiff");
+            File outputFile = tempFile.toFile();
 
             // 使用try-with-resources确保流关闭
             try (InputStream in = connection.getInputStream();
@@ -212,6 +214,14 @@ public class HttpTest {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (tempFile != null) {
+                try {
+                    java.nio.file.Files.deleteIfExists(tempFile);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 

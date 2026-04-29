@@ -93,14 +93,17 @@ public class TfIdfDataSketchesUtilTest {
     }
 
     @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     public void test2() {
+        java.nio.file.Path tempDir = null;
         try {
+            tempDir = java.nio.file.Files.createTempDirectory("novel_0101");
             // 初始化 TF-IDF 计算器
             TfIdfDataSketchesUtil calculator = new TfIdfDataSketchesUtil(65536, 2000, 5, 12345); // 4096 items
 
             log.info("Processing documents...");
 
-            String folderPath = "D:\\小说0101";
+            String folderPath = tempDir.toAbsolutePath().toString();
             Path start = Paths.get(folderPath);
 
             Files.walkFileTree(start, new SimpleFileVisitor<Path>() {

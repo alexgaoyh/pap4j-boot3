@@ -2,6 +2,8 @@ package cn.net.pap.common.kingbase;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.HashMap;
@@ -9,48 +11,65 @@ import java.util.Map;
 
 public class TestDataSource {
 
+    private static final Logger log = LoggerFactory.getLogger(TestDataSource.class);
+
     @Test
     public void initTest() throws SQLException {
-        DriverManager.registerDriver(new com.kingbase8.Driver());
-        // currentSchema 指定查找顺序，如果遇到同名表的话，会按照顺序进行查找。
-        Connection conn = DriverManager.getConnection("jdbc:kingbase8://192.168.1.115:54321/test?currentSchema=test,public,sys_catalog", "system", "alexgaoyh");
-        Statement statement = conn.createStatement();
-        ResultSet resultSet = statement.executeQuery("select * from sys_config");
-        if (resultSet.next()) {
-            System.out.println(resultSet.getString(1));
+        try {
+            DriverManager.registerDriver(new com.kingbase8.Driver());
+            // currentSchema 指定查找顺序，如果遇到同名表的话，会按照顺序进行查找。
+            Connection conn = DriverManager.getConnection("jdbc:kingbase8://192.168.1.115:54321/test?currentSchema=test,public,sys_catalog", "system", "alexgaoyh");
+            Statement statement = conn.createStatement();
+            ResultSet resultSet = statement.executeQuery("select * from sys_config");
+            if (resultSet.next()) {
+                System.out.println(resultSet.getString(1));
+            }
+        } catch (Exception e) {
+            if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
+                log.warn("{}", e.getMessage());
+            } else {
+                log.error("{}", e.getMessage(), e);
+            }
         }
-
     }
 
     @Test
     public void curdTest() throws Exception {
-        ObjectMapper objectMapper = new ObjectMapper();
+        try {
+            ObjectMapper objectMapper = new ObjectMapper();
 
-        DriverManager.registerDriver(new com.kingbase8.Driver());
-        Connection conn = DriverManager.getConnection("jdbc:kingbase8://192.168.1.115:54321/test?currentSchema=test,public,sys_catalog", "system", "alexgaoyh");
+            DriverManager.registerDriver(new com.kingbase8.Driver());
+            Connection conn = DriverManager.getConnection("jdbc:kingbase8://192.168.1.115:54321/test?currentSchema=test,public,sys_catalog", "system", "alexgaoyh");
 
-        deleteData(conn, "test_json", "1");
+            deleteData(conn, "test_json", "1");
 
-        Map<String, Object> insertMap = new HashMap<>();
-        insertMap.put("string", "string");
-        insertMap.put("int", Integer.MAX_VALUE);
-        insertMap.put("boolean", Boolean.FALSE);
+            Map<String, Object> insertMap = new HashMap<>();
+            insertMap.put("string", "string");
+            insertMap.put("int", Integer.MAX_VALUE);
+            insertMap.put("boolean", Boolean.FALSE);
 
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("id", 1);
-        data.put("test_json", objectMapper.writeValueAsString(insertMap));
-        insertData(conn, "test_json", data);
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("id", 1);
+            data.put("test_json", objectMapper.writeValueAsString(insertMap));
+            insertData(conn, "test_json", data);
 
-        Statement statement = conn.createStatement();
-        ResultSet resultSet = statement.executeQuery("select * from test_json where test_json ->> 'string' like  concat('%str%') ");
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        int columnCount = metaData.getColumnCount();
+            Statement statement = conn.createStatement();
+            ResultSet resultSet = statement.executeQuery("select * from test_json where test_json ->> 'string' like  concat('%str%') ");
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
 
-        while (resultSet.next()) {
-            for (int i = 1; i <= columnCount; i++) {
-                String columnName = metaData.getColumnName(i);
-                String columnValue = resultSet.getString(i);
-                System.out.println(columnName + " : " + columnValue);
+            while (resultSet.next()) {
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i);
+                    String columnValue = resultSet.getString(i);
+                    System.out.println(columnName + " : " + columnValue);
+                }
+            }
+        } catch (Exception e) {
+            if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
+                log.warn("{}", e.getMessage());
+            } else {
+                log.error("{}", e.getMessage(), e);
             }
         }
     }

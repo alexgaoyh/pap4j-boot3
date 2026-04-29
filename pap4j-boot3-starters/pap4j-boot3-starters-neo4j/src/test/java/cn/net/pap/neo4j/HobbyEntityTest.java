@@ -11,7 +11,7 @@ import java.util.*;
 
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
-public class HobbyEntityTest {
+public class HobbyEntityTest extends Neo4jBaseTest {
 
     private final HobbyRepository hobbyRepository;
     private final Neo4jClient neo4jClient;

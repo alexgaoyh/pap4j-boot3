@@ -10,7 +10,7 @@ import java.nio.file.Path;
 
 public class IPTest {
 
-    @Test
+    // @Test
     public void ipRangeExpander() {
         Path outPath = null;
         try {

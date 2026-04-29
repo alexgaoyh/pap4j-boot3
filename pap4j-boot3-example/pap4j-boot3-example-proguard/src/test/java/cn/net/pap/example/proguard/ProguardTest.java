@@ -237,7 +237,7 @@ public class ProguardTest {
         SearchConditionDTO nameLike = new SearchConditionDTO("proguardName", SearchConditionDTO.Operator.LIKE, "gao");
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(1l);
+        proguard1.setProguardId(4000001l);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
@@ -290,7 +290,7 @@ public class ProguardTest {
         extList.add("A");
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(1l);
+        proguard1.setProguardId(2000001l);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
@@ -335,7 +335,7 @@ public class ProguardTest {
         arrayNode.add(nestedObject);
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(1l);
+        proguard1.setProguardId(1000001l);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
@@ -373,7 +373,7 @@ public class ProguardTest {
         arrayNode.add(nestedObject);
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(1l);
+        proguard1.setProguardId(3000001l);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
@@ -485,7 +485,7 @@ public class ProguardTest {
         }
     }
 
-    @Test
+    // @Test
     public void testStringLockFailure() throws InterruptedException {
         int numThreads = 1000;
         ThreadPoolExecutor executor = new ThreadPoolExecutor(

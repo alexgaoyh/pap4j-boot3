@@ -27,6 +27,7 @@ public class ProcessExecUtils {
     private static final Logger log = LoggerFactory.getLogger(ProcessExecUtils.class);
 
     @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     public void test1() throws Exception {
         ExecResult result = execWithShell("echo Hello Commons Exec!", null, null, 2000);
         log.info("{}", "ExitCode: " + result.getExitCode());
@@ -60,6 +61,7 @@ public class ProcessExecUtils {
      * @throws Exception
      */
     @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     public void test2() throws Exception {
         String userHome = System.getProperty("user.home");
         Map<String, String> envHome = new HashMap<>();

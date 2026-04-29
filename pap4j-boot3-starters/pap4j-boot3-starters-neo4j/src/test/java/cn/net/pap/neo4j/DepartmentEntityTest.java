@@ -19,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
-public class DepartmentEntityTest {
+public class DepartmentEntityTest extends Neo4jBaseTest {
 
     private final DepartmentRepository departmentRepository;
     private final Neo4jClient neo4jClient;

@@ -408,6 +408,7 @@ public class ImageMagickEnvCheckerUtilTest {
     }
 
     @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     public void batTest() throws IOException, InterruptedException {
         List<String> command = Arrays.asList(
                 "cmd.exe", "/c",

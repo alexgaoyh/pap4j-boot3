@@ -60,7 +60,9 @@ public class JsoupUtil {
                 field.setAccessible(true);
                 String fieldName = field.getName();
                 Object fieldValue = field.get(dto);
-                span.attr(fieldName, fieldValue.toString());
+                if(fieldValue != null) {
+                    span.attr(fieldName, fieldValue.toString());
+                }
             }
             doc.body().appendChild(span);
             return doc.body().html();

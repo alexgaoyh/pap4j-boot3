@@ -4,6 +4,7 @@ import cn.net.pap.quartz.bean.QuartzService;
 import org.junit.jupiter.api.Test;
 import org.quartz.*;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.Date;
@@ -20,6 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
         "org.quartz.scheduler.instanceId=AUTO"
 })
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class QuartzFailoverTest {
 
     private final Scheduler scheduler;

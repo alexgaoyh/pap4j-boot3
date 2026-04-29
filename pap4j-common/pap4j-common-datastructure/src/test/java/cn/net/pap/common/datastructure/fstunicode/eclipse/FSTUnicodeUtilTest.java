@@ -39,8 +39,8 @@ public class FSTUnicodeUtilTest {
                 }
             }
             if (count > 80000000) {
-                // dict.rehash();
-                // break;
+                dict.rehash();
+                break;
             }
         }
         long end = System.currentTimeMillis();

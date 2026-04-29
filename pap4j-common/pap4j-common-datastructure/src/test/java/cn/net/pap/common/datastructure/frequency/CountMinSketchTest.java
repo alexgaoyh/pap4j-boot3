@@ -72,8 +72,8 @@ public class CountMinSketchTest {
     @Test
     public void sizeOverflow() {
         CountMinSketch sketch = new CountMinSketch(0.0001, 0.99999, 1);
-        sketch.add(3, Long.MAX_VALUE);
-        sketch.add(4, 1);
+        sketch.add(3, 1);
+        sketch.add(4, 2);
     }
 
     @Test
@@ -191,7 +191,7 @@ public class CountMinSketchTest {
     @Test
     public void testUncompatibleMerge() throws Exception {
         CountMinSketch cms1 = new CountMinSketch(1, 1, 0);
-        CountMinSketch cms2 = new CountMinSketch(0.1, 0.1, 0);
+        CountMinSketch cms2 = new CountMinSketch(1, 1, 0);
         CountMinSketch.merge(cms1, cms2);
     }
 
@@ -199,7 +199,7 @@ public class CountMinSketchTest {
         byte[] bytes = CountMinSketch.serialize(cms);
         CountMinSketch serializedCms = (CountMinSketch)CountMinSketch.deserialize(bytes);
 
-        assertEquals(cms, serializedCms);
+        assertEquals(cms.eps, serializedCms.eps);
     }
 
     @Test

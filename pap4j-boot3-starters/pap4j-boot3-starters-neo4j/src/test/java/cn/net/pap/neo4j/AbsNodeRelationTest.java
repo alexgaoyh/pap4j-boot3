@@ -16,7 +16,7 @@ import java.util.Set;
 
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
-public class AbsNodeRelationTest {
+public class AbsNodeRelationTest extends Neo4jBaseTest {
 
     private final AbsNodeRepository absNodeRepository;
 

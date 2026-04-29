@@ -6,6 +6,7 @@ import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 
 import javax.sql.DataSource;
@@ -18,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(classes = {QuartzAutoConfiguration.class})
 @TestPropertySource("classpath:application.properties")
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class QuartzClusterDoubleNodeTest {
 
     private static final String CRON = "0/1 * * * * ?"; // 每5秒执行一次

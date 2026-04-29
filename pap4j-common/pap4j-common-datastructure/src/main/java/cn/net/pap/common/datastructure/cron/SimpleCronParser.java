@@ -76,7 +76,15 @@ public class SimpleCronParser {
     public LocalDateTime getNextExecutionTime() {
         LocalDateTime nextTime = currentTime.plusSeconds(1).truncatedTo(ChronoUnit.SECONDS);
 
+        // 设置一个安全阈值：比如最多查找未来的 10 年
+        LocalDateTime limitTime = nextTime.plusYears(10);
+
         while (true) {
+            if (nextTime.isAfter(limitTime)) {
+                // 超过阈值仍未找到，说明该 Cron 表达式可能在未来永远不会执行
+                throw new IllegalStateException("无法找到下一次执行时间，Cron 表达式可能已过期或逻辑不可达");
+            }
+
             if (!matches(nextTime)) {
                 nextTime = increment(nextTime);
                 continue;

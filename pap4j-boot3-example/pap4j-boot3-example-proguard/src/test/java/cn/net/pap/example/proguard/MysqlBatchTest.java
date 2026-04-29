@@ -1,27 +1,48 @@
 package cn.net.pap.example.proguard;
 
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Statement;
 
 public class MysqlBatchTest {
 
-    // @Test
+    @BeforeAll
+    public static void checkMysqlAvailable() {
+        boolean isUp = false;
+        try (Socket s = new Socket()) {
+            s.connect(new InetSocketAddress("127.0.0.1", 3306), 1000);
+            isUp = true;
+        } catch (Exception e) {
+            // connection failed
+        }
+        Assumptions.assumeTrue(isUp, "mysql is not running on 127.0.0.1:3306. Skipping tests.");
+    }
+
+    @Test
     public void batchTest() throws SQLException {
         String url = "jdbc:mysql://127.0.0.1:3306/cf?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8";
 
         try (Connection connection = DriverManager.getConnection(url, "root", "alexgaoyh")) {
             connection.setAutoCommit(false);
+            try (Statement clearStmt = connection.createStatement()) {
+                clearStmt.executeUpdate("TRUNCATE TABLE t_ad");
+                System.out.println("History data cleared!");
+            }
             String insertSql = "INSERT INTO t_ad (AD_ID, AD_CODE) VALUES (?, ?)";
             //  diff batchSize setting
             int batchSize = 1000;
             try (PreparedStatement statement = connection.prepareStatement(insertSql)) {
-                for (int i = 1; i <= 100000; i++) {
+                for (int i = 1; i <= 10000; i++) {
                     statement.setString(1, "" + i);
                     statement.setString(2, "name_" + i);
                     statement.addBatch();
@@ -45,7 +66,7 @@ public class MysqlBatchTest {
 
     }
 
-    // @Test
+    @Test
     public void batchTest2() throws SQLException {
         String url = "jdbc:mysql://127.0.0.1:3306/cf?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8";
 
@@ -57,7 +78,7 @@ public class MysqlBatchTest {
             try (PreparedStatement statement = connection.prepareStatement(insertSql)) {
                 // 记录是否有批处理失败
                 boolean batchFailed = false;
-                for (int i = 1; i <= 100000; i++) {
+                for (int i = 1; i <= 10000; i++) {
                     statement.setString(1, "" + i);
                     if(i == 99999) {
                         statement.setString(2, "alexgaoyh".repeat(10));

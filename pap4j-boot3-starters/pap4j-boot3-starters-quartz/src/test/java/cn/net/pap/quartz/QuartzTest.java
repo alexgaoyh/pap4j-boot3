@@ -6,6 +6,7 @@ import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.Trigger;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
 
 import javax.sql.DataSource;
@@ -16,6 +17,7 @@ import java.util.Set;
 @SpringBootTest(classes = {QuartzAutoConfiguration.class})
 @TestPropertySource("classpath:application.properties")
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class QuartzTest {
 
     private final Scheduler scheduler;

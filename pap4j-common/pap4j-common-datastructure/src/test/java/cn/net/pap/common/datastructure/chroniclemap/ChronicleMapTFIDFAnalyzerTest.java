@@ -52,20 +52,26 @@ public class ChronicleMapTFIDFAnalyzerTest {
     }
 
     // @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     void testTfIdfProcessing2() throws IOException {
-        RandomWordSelector.init("d:\\Chinese_Names.txt");
-
-        String path = tempDir.resolve("tfidf_data").toAbsolutePath().toString();
-
-        try (ChronicleMapTFIDFAnalyzer analyzer = new ChronicleMapTFIDFAnalyzer(path)) {
-            for(int i = 0; i < 10000000; i++) {
-                List<String> randomWords = RandomWordSelector.getRandomWords(50);
-                analyzer.processDocument(randomWords);
-                if(i % 10000 == 0) {
-                    System.out.println(i);
+        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("Chinese_Names", ".txt");
+        try {
+            RandomWordSelector.init(tempFile.toAbsolutePath().toString());
+    
+            String path = tempDir.resolve("tfidf_data").toAbsolutePath().toString();
+    
+            try (ChronicleMapTFIDFAnalyzer analyzer = new ChronicleMapTFIDFAnalyzer(path)) {
+                for(int i = 0; i < 10000000; i++) {
+                    List<String> randomWords = RandomWordSelector.getRandomWords(50);
+                    analyzer.processDocument(randomWords);
+                    if(i % 10000 == 0) {
+                        System.out.println(i);
+                    }
                 }
+                analyzer.printTopResults(100);
             }
-            analyzer.printTopResults(100);
+        } finally {
+            java.nio.file.Files.deleteIfExists(tempFile);
         }
     }
 

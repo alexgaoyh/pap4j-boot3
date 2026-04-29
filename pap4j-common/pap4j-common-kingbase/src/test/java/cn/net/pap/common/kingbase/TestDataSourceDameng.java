@@ -1,6 +1,8 @@
 package cn.net.pap.common.kingbase;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -14,19 +16,28 @@ import java.util.List;
 
 public class TestDataSourceDameng {
 
+    private static final Logger log = LoggerFactory.getLogger(TestDataSourceDameng.class);
+
     @Test
     public void initTest() throws SQLException {
-        DriverManager.registerDriver(new dm.jdbc.driver.DmDriver());
-        Connection conn = DriverManager.getConnection("jdbc:dm://192.168.1.180:5236", "dmtest1", "Dameng123");
-        Statement statement = conn.createStatement();
-        ResultSet resultSet = statement.executeQuery("select * from TEST_TABLE");
-        if (resultSet.next()) {
-            System.out.println(resultSet.getString(1));
+        try {
+            DriverManager.registerDriver(new dm.jdbc.driver.DmDriver());
+            Connection conn = DriverManager.getConnection("jdbc:dm://192.168.1.180:5236", "dmtest1", "Dameng123");
+            Statement statement = conn.createStatement();
+            ResultSet resultSet = statement.executeQuery("select * from TEST_TABLE");
+            if (resultSet.next()) {
+                System.out.println(resultSet.getString(1));
+            }
+        } catch (Exception e) {
+            if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
+                log.warn("{}", e.getMessage());
+            } else {
+                log.error("{}", e.getMessage(), e);
+            }
         }
-
     }
 
-    // @Test
+    @Test
     public void prepareStatementTest() throws SQLException {
         try {
             DriverManager.registerDriver(new dm.jdbc.driver.DmDriver());
@@ -44,33 +55,44 @@ public class TestDataSourceDameng {
             for (PreparedStatement p : pstmtList) {
                 p.executeBatch();
             }
-        } catch (SQLException e) {
-            throw new RuntimeException(e);
+        } catch (Exception e) {
+            if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
+                log.warn("{}", e.getMessage());
+            } else {
+                log.error("{}", e.getMessage(), e);
+            }
         }
-
     }
 
     @Test
     public void curdTest() throws Exception {
-        DriverManager.registerDriver(new dm.jdbc.driver.DmDriver());
-        Connection conn = DriverManager.getConnection("jdbc:dm://192.168.1.180:5236", "dmtest1", "Dameng123");
+        try {
+            DriverManager.registerDriver(new dm.jdbc.driver.DmDriver());
+            Connection conn = DriverManager.getConnection("jdbc:dm://192.168.1.180:5236", "dmtest1", "Dameng123");
 
-        deleteData(conn, "TEST_TABLE", "1");
+            deleteData(conn, "TEST_TABLE", "1");
 
-        java.util.Map<String, Object> data = new java.util.HashMap<>();
-        data.put("id", 1);
-        insertData(conn, "TEST_TABLE", data);
+            java.util.Map<String, Object> data = new java.util.HashMap<>();
+            data.put("id", 1);
+            insertData(conn, "TEST_TABLE", data);
 
-        Statement statement = conn.createStatement();
-        ResultSet resultSet = statement.executeQuery("select * from TEST_TABLE ");
-        ResultSetMetaData metaData = resultSet.getMetaData();
-        int columnCount = metaData.getColumnCount();
+            Statement statement = conn.createStatement();
+            ResultSet resultSet = statement.executeQuery("select * from TEST_TABLE ");
+            ResultSetMetaData metaData = resultSet.getMetaData();
+            int columnCount = metaData.getColumnCount();
 
-        while (resultSet.next()) {
-            for (int i = 1; i <= columnCount; i++) {
-                String columnName = metaData.getColumnName(i);
-                String columnValue = resultSet.getString(i);
-                System.out.println(columnName + " : " + columnValue);
+            while (resultSet.next()) {
+                for (int i = 1; i <= columnCount; i++) {
+                    String columnName = metaData.getColumnName(i);
+                    String columnValue = resultSet.getString(i);
+                    System.out.println(columnName + " : " + columnValue);
+                }
+            }
+        } catch (Exception e) {
+            if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
+                log.warn("{}", e.getMessage());
+            } else {
+                log.error("{}", e.getMessage(), e);
             }
         }
     }

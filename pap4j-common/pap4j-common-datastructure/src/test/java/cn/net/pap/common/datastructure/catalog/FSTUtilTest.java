@@ -113,42 +113,48 @@ public class FSTUtilTest {
      * @throws Exception
      */
     // @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     public void billionSegment() throws Exception {
-        String filePath = "d:\\measurements.txt";
-
-        AtomicInteger atomicInteger = new AtomicInteger(0);
-        FST dict = new FST();
-
-        long startTime = System.currentTimeMillis();
-
+        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("measurements", ".txt");
         try {
-            FileInputStream fileInputStream = new FileInputStream(new File(filePath));
-            FileChannel fileChannel = fileInputStream.getChannel();
-            List<FileSegmentDTO> fileSegmentDTOS = getFileSegments(new File(filePath), fileChannel);
-            fileSegmentDTOS.parallelStream().forEach( fileSegmentDTO -> {
-                try {
-                    MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, fileSegmentDTO.getStart(), fileSegmentDTO.getEnd() - fileSegmentDTO.getStart());
-                    processBuffer(buffer, atomicInteger, dict);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-        } catch (Exception e) {
-            throw new RuntimeException(e);
+            String filePath = tempFile.toAbsolutePath().toString();
+    
+            AtomicInteger atomicInteger = new AtomicInteger(0);
+            FST dict = new FST();
+    
+            long startTime = System.currentTimeMillis();
+    
+            try {
+                FileInputStream fileInputStream = new FileInputStream(new File(filePath));
+                FileChannel fileChannel = fileInputStream.getChannel();
+                List<FileSegmentDTO> fileSegmentDTOS = getFileSegments(new File(filePath), fileChannel);
+                fileSegmentDTOS.parallelStream().forEach( fileSegmentDTO -> {
+                    try {
+                        MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, fileSegmentDTO.getStart(), fileSegmentDTO.getEnd() - fileSegmentDTO.getStart());
+                        processBuffer(buffer, atomicInteger, dict);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                });
+            } catch (Exception e) {
+                throw new RuntimeException(e);
+            }
+    
+    
+            long endTime = System.currentTimeMillis();
+    
+            System.out.println("Optimized implementation took: " + (endTime - startTime) + " ms");
+            System.out.println("atomicInteger size: " + (atomicInteger));
+            System.out.println();
+    
+            long startTimeSeg = System.currentTimeMillis();
+            List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation("气象站Kano;27.2是某温度", dict);
+            System.out.println(result2);
+            long endTimeSeg = System.currentTimeMillis();
+            System.out.println("segment took: " + (endTimeSeg - startTimeSeg) + " ms");
+        } finally {
+            java.nio.file.Files.deleteIfExists(tempFile);
         }
-
-
-        long endTime = System.currentTimeMillis();
-
-        System.out.println("Optimized implementation took: " + (endTime - startTime) + " ms");
-        System.out.println("atomicInteger size: " + (atomicInteger));
-        System.out.println();
-
-        long startTimeSeg = System.currentTimeMillis();
-        List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation("气象站Kano;27.2是某温度", dict);
-        System.out.println(result2);
-        long endTimeSeg = System.currentTimeMillis();
-        System.out.println("segment took: " + (endTimeSeg - startTimeSeg) + " ms");
 
     }
 

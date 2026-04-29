@@ -46,16 +46,25 @@ public class JsonSchemaMockTest {
     // @Test
     public void geneTestStreaming() throws Exception {
         String desktop = System.getProperty("user.home") + File.separator + "Desktop";
-        JsonNode schema = mapper.readTree(new File(desktop + File.separator + "schema.json"));
-        FileOutputStream out = new FileOutputStream("d:\\" + File.separator + "data.json");
-        JsonFactory factory = new JsonFactory();
-        JsonGenerator gen = factory.createGenerator(out);
-        // 启动递归生成
-        writeMockJson(gen, schema);
-        gen.flush();
-        gen.close();
-        out.close();
-        log.info("生成完成：data.json");
+        File schemaFile = new File(desktop + File.separator + "schema.json");
+        if (!schemaFile.exists()) {
+            return;
+        }
+        JsonNode schema = mapper.readTree(schemaFile);
+        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("data_", ".json");
+        try {
+            FileOutputStream out = new FileOutputStream(tempFile.toFile());
+            JsonFactory factory = new JsonFactory();
+            JsonGenerator gen = factory.createGenerator(out);
+            // 启动递归生成
+            writeMockJson(gen, schema);
+            gen.flush();
+            gen.close();
+            out.close();
+            log.info("生成完成：" + tempFile.toAbsolutePath());
+        } finally {
+            java.nio.file.Files.deleteIfExists(tempFile);
+        }
     }
 
     private static final ObjectMapper mapper = new ObjectMapper();

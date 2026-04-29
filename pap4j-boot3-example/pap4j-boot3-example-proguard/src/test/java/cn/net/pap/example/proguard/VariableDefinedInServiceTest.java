@@ -44,7 +44,7 @@ public class VariableDefinedInServiceTest {
 
     @Test
     public void testIncrement() {
-        IntStream.range(0, 1000).parallel().forEach(i -> {
+        IntStream.range(10000, 11000).parallel().forEach(i -> {
             errorServiceConfig.increment();
             System.out.println(errorServiceConfig.getCount());
         });

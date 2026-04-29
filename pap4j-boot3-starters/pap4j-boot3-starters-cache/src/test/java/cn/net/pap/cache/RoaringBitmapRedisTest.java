@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(classes = {cn.net.pap.cache.CacheApplication.class})
 @TestPropertySource("classpath:application.properties")
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
-public class RoaringBitmapRedisTest {
+public class RoaringBitmapRedisTest extends CacheBaseTest {
 
     private final RedisTemplate<String, Object> redisTemplate;
 

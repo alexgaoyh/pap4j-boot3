@@ -7,6 +7,7 @@ import org.openqa.selenium.chrome.ChromeDriver;
 public class SeleniumTest {
 
     // @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     public void checkPathTestWithCookie() {
         System.setProperty("webdriver.chrome.driver", "D:\\chromedriver-win64\\chromedriver.exe");
 
@@ -35,6 +36,7 @@ public class SeleniumTest {
     }
 
     // @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     public void browserTest() {
         // 设置 ChromeDriver 路径
         System.setProperty("webdriver.chrome.driver", "D:\\chromedriver-win64\\chromedriver.exe");

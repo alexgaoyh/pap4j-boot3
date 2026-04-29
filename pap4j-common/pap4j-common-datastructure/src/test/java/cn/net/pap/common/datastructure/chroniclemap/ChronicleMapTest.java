@@ -108,12 +108,14 @@ public class ChronicleMapTest {
     }
 
     // @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     void testTenMillionNodes() throws IOException {
         long entries = 10_000_000L; // 一千万个节点
         int avgNeighbors = 10;      // 每个节点平均 10 个邻居
 
         // 1. 定义存储文件（确保磁盘有 2GB+ 空间）
-        File file = new File("D:/large_graph_test.dat");
+        java.nio.file.Path tempFile = java.nio.file.Files.createTempFile("large_graph_test", ".dat");
+        File file = tempFile.toFile();
         if (file.exists()) {
             file.delete();
         }
@@ -152,52 +154,59 @@ public class ChronicleMapTest {
 
             // 4. 验证磁盘占用
             System.out.println("磁盘映射文件大小: " + (file.length() / 1024 / 1024) + " MB");
+        } finally {
+            java.nio.file.Files.deleteIfExists(tempFile);
         }
     }
 
     // @Test
+    @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
     void customerValueBatchTest() throws IOException {
         // 定义要写入的数据条目数
         final int ENTRY_COUNT = 5;
         // 存储写入时的邻居索引，用于稍后的批量验证
         final Map<Long, Long> expectedNeighborsIndices = new HashMap<>();
 
-        // 1. 初始化 ChronicleMap (存储 ValueDataDTO)
-        try (ChronicleMap<Long, ValueDataDTO> map = ChronicleMap
-                .of(Long.class, ValueDataDTO.class)
-                .name("value-data-map-batch")
-                .averageValue(new ValueDataDTO())
-                .entries(ENTRY_COUNT * 2) // 预期条目数
-                .createPersistedTo(new File("D:/chromicle_map_customer_batch.dat"))) {
+        java.nio.file.Path mapTempFile = java.nio.file.Files.createTempFile("chromicle_map_customer_batch", ".dat");
+        java.nio.file.Path queueTempDir = java.nio.file.Files.createTempDirectory("chromicle_queue_customer_batch");
 
-            // 2. 初始化 ChronicleQueue (存储 ValueDataNeighborsDTO)
-            try (ChronicleQueue queue = SingleChronicleQueueBuilder.builder(new File("D:/chromicle_queue_customer_batch.dat"), WireType.BINARY).blockSize(1024*64).build()) {
-
-                // --- 3. 批量写入数据到 Queue 和 Map ---
-                System.out.println("--- 3. 开始批量写入数据 ---");
-
-                for (long i = 1; i <= ENTRY_COUNT; i++) {
-                    // 3.1 准备邻居数据 (Neighbors Data)
-                    ValueDataNeighborsDTO neighborsData = new ValueDataNeighborsDTO();
-                    // 邻居 ID 根据主键 i 偏移
-                    neighborsData.neighbors = new long[]{1000L + i, 2000L + i, 3000L + i};
-
-                    // 3.2 写入邻居数据到 Queue
-                    ExcerptAppender appender = queue.createAppender();
-                    // 记录写入时的索引
-                    appender.writeBytes(out -> neighborsData.writeMarshallable(out));
-                    long neighborsIndex = appender.lastIndexAppended();
-
-                    // 存储 Key 和 索引，用于后续验证
-                    expectedNeighborsIndices.put(i, neighborsIndex);
-
-                    // 3.3 准备主数据 (Main Data)
-                    Long primaryKey = i;
-                    ValueDataDTO mainData = new ValueDataDTO();
-                    mainData.label = (int) (i * 10); // 标签根据 i 变化
-                    mainData.weight = i * 0.1;      // 权重根据 i 变化
-                    mainData.timestamp = System.currentTimeMillis();
-                    // 设置 Queue 索引
+        try {
+            // 1. 初始化 ChronicleMap (存储 ValueDataDTO)
+            try (ChronicleMap<Long, ValueDataDTO> map = ChronicleMap
+                    .of(Long.class, ValueDataDTO.class)
+                    .name("value-data-map-batch")
+                    .averageValue(new ValueDataDTO())
+                    .entries(ENTRY_COUNT * 2) // 预期条目数
+                    .createPersistedTo(mapTempFile.toFile())) {
+    
+                // 2. 初始化 ChronicleQueue (存储 ValueDataNeighborsDTO)
+                try (ChronicleQueue queue = SingleChronicleQueueBuilder.builder(queueTempDir.toFile(), WireType.BINARY).blockSize(1024*64).build()) {
+    
+                    // --- 3. 批量写入数据到 Queue 和 Map ---
+                    System.out.println("--- 3. 开始批量写入数据 ---");
+    
+                    for (long i = 1; i <= ENTRY_COUNT; i++) {
+                        // 3.1 准备邻居数据 (Neighbors Data)
+                        ValueDataNeighborsDTO neighborsData = new ValueDataNeighborsDTO();
+                        // 邻居 ID 根据主键 i 偏移
+                        neighborsData.neighbors = new long[]{1000L + i, 2000L + i, 3000L + i};
+    
+                        // 3.2 写入邻居数据到 Queue
+                        ExcerptAppender appender = queue.createAppender();
+                        // 记录写入时的索引
+                        appender.writeBytes(out -> neighborsData.writeMarshallable(out));
+                        long neighborsIndex = appender.lastIndexAppended();
+    
+                        // 存储 Key 和 索引，用于后续验证
+                        expectedNeighborsIndices.put(i, neighborsIndex);
+    
+                        // 3.3 准备主数据 (Main Data)
+                        Long primaryKey = i;
+                        ValueDataDTO mainData = new ValueDataDTO();
+                        mainData.label = (int) (i * 10); // 标签根据 i 变化
+                        mainData.weight = i * 0.1;      // 权重根据 i 变化
+                        mainData.timestamp = System.currentTimeMillis();
+                        // 设置 Queue 索引
                     mainData.neighborsIndex = neighborsIndex;
 
                     // 3.4 写入主数据到 Map
@@ -247,6 +256,23 @@ public class ChronicleMapTest {
                             java.util.Arrays.toString(retrievedNeighborsData.neighbors));
                 }
                 System.out.println("--- 所有数据验证成功！ ---");
+                }
+            }
+        } finally {
+            java.nio.file.Files.deleteIfExists(mapTempFile);
+            if (queueTempDir != null) {
+                java.nio.file.Files.walkFileTree(queueTempDir, new java.nio.file.SimpleFileVisitor<java.nio.file.Path>() {
+                    @Override
+                    public java.nio.file.FileVisitResult visitFile(java.nio.file.Path file, java.nio.file.attribute.BasicFileAttributes attrs) throws IOException {
+                        java.nio.file.Files.delete(file);
+                        return java.nio.file.FileVisitResult.CONTINUE;
+                    }
+                    @Override
+                    public java.nio.file.FileVisitResult postVisitDirectory(java.nio.file.Path dir, IOException exc) throws IOException {
+                        java.nio.file.Files.delete(dir);
+                        return java.nio.file.FileVisitResult.CONTINUE;
+                    }
+                });
             }
         }
     }

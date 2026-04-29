@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
-public class HLMEntityTest {
+public class HLMEntityTest extends Neo4jBaseTest {
 
     private final HLMRepository hlmRepository;
     private final HLMRelationshipRepository hlmRelationshipRepository;
