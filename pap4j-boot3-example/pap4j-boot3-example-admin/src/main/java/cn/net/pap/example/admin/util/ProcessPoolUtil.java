@@ -142,10 +142,6 @@ public class ProcessPoolUtil {
             return new ProcessResult(false, -1, out + "\nERROR: " + e.getMessage());
         } finally {
             if (process != null) {
-                // 先关闭流，触发底层 SIGPIPE，防止进程死前挣扎向缓冲区继续写入导致挂起
-                closeQuietly(process.getInputStream());
-                closeQuietly(process.getOutputStream());
-                closeQuietly(process.getErrorStream());
 
                 if (process.isAlive()) {
                     // 递归获取所有子进程并强杀。 如果传入的命令是一个脚本（例如 sh script.sh 或 cmd /c script.bat），
@@ -161,6 +157,12 @@ public class ProcessPoolUtil {
                     } catch (InterruptedException ignored) {
                     }
                 }
+
+                // 后关闭流，触发底层 SIGPIPE，防止进程死前挣扎向缓冲区继续写入导致挂起
+                closeQuietly(process.getInputStream());
+                closeQuietly(process.getOutputStream());
+                closeQuietly(process.getErrorStream());
+
             }
             if (streamReaderFuture != null && !streamReaderFuture.isDone()) {
                 streamReaderFuture.cancel(true);
