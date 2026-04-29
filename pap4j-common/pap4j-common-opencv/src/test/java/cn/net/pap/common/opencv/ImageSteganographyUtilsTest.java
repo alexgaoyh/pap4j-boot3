@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Mat;
 
@@ -8,6 +11,7 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 
 public class ImageSteganographyUtilsTest {
+    private static final Logger log = LoggerFactory.getLogger(ImageSteganographyUtilsTest.class);
 
     @Test
     public void hiddenAndReveal() {
@@ -21,7 +25,7 @@ public class ImageSteganographyUtilsTest {
             // 提取隐藏的信息
             String extractedMessage = ImageSteganographyUtils.extractMessage(stegoImage);
             // 输出提取的信息
-            System.out.println("Extracted Message: " + extractedMessage);
+            log.info("{}", "Extracted Message: " + extractedMessage);
             // 保存含有隐藏信息的图像
             File output = TestResourceUtil.createTempFile("pap-out", ".jpg");
             ImageIO.write(stegoImage, "jpg", output);
@@ -43,7 +47,7 @@ public class ImageSteganographyUtilsTest {
             // 提取隐藏的信息
             String extractedMessage = OpenCVUtils.extractMessage(stegoImage);
             // 输出提取的信息
-            System.out.println("Extracted Message: " + extractedMessage);
+            log.info("{}", "Extracted Message: " + extractedMessage);
         } catch (Exception e) {
             e.printStackTrace();
         }

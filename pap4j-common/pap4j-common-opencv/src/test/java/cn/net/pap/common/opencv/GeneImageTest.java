@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.opencv.jpeg.JpegDPIProcessor;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +24,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GeneImageTest {
+    private static final Logger log = LoggerFactory.getLogger(GeneImageTest.class);
 
     private static final int SIZE = 200;
     private static final int FONT_SIZE = 120;
@@ -62,7 +66,7 @@ public class GeneImageTest {
                 File output = new File(dir, ch + ".jpg");
                 ImageIO.write(image, "jpg", output);
                 assertTrue(output.exists(), "文件应成功创建: " + output.getName());
-                System.out.println("已生成: " + output.getAbsolutePath());
+                log.info("{}", "已生成: " + output.getAbsolutePath());
             }
         } finally {
             Files.walkFileTree(Paths.get(dir.getAbsolutePath().toString()), new SimpleFileVisitor<Path>() {
@@ -122,7 +126,7 @@ public class GeneImageTest {
             Files.write(tempFilePath, imgData);
 
             // 打印生成信息
-            System.out.println("临时图片已生成: " + tempFilePath.toAbsolutePath());
+            log.info("{}", "临时图片已生成: " + tempFilePath.toAbsolutePath());
 
             // 验证文件是否存在
             assertTrue(Files.exists(tempFilePath), "文件应该生成成功");
@@ -130,7 +134,7 @@ public class GeneImageTest {
         } finally {
             // 执行完删除
             Files.deleteIfExists(tempFilePath);
-            System.out.println("临时文件已清理。");
+            log.info("{}", "临时文件已清理。");
         }
     }
 
@@ -169,7 +173,7 @@ public class GeneImageTest {
             try (FileOutputStream outputStream = new FileOutputStream(fileDirPath + newFileName);){
                 outputStream.write(img);
             }
-            System.out.println("Image " + number + " has been generated.");
+            log.info("{}", "Image " + number + " has been generated.");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -268,7 +272,7 @@ public class GeneImageTest {
                 // 拷贝文件
                 Files.copy(sourceFilePath, newFilePath, StandardCopyOption.REPLACE_EXISTING);
 
-                System.out.println("Copied " + newFileName);
+                log.info("{}", "Copied " + newFileName);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -296,7 +300,7 @@ public class GeneImageTest {
         File file = TestResourceUtil.getFile("1.jpg");
         createImageWithDPI(file.getAbsolutePath(), 1, 300);
         Integer dpi = getDPI(file.getAbsolutePath());
-        System.out.println(dpi);
+        log.info("{}", dpi);
     }
 
     /**

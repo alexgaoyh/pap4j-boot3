@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
@@ -17,6 +20,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 public class PinsFaceRecognitionVectorTest {
+    private static final Logger log = LoggerFactory.getLogger(PinsFaceRecognitionVectorTest.class);
 
     /**
      * 人脸数据集\Pins Face Recognition\105_classes_pins_dataset
@@ -42,7 +46,7 @@ public class PinsFaceRecognitionVectorTest {
                 Stream<Path> picStream = Files.list(Paths.get(path.toUri()));
                 List<Path> picPathList = picStream.collect(Collectors.toList());
                 for(Path picPath : picPathList) {
-                    System.out.println(picPath);
+                    log.info("{}", picPath);
                     float[] floats = OpenCVUtils.matOfKeyPointImage2(picPath.toString());
 
                     Map<String, Object> vectorMap = new HashMap<>();

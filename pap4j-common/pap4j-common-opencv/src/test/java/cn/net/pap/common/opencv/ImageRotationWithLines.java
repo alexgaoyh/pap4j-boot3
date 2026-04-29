@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 import org.opencv.core.*;
 import org.opencv.core.Point;
@@ -12,6 +15,7 @@ import java.util.List;
 import java.util.Random;
 
 public class ImageRotationWithLines {
+    private static final Logger log = LoggerFactory.getLogger(ImageRotationWithLines.class);
 
     /**
      *
@@ -22,7 +26,7 @@ public class ImageRotationWithLines {
         Mat srcImage = OpenCVUtils.imread(TestResourceUtil.getFile("0.jpg").getAbsolutePath().toString()); // 替换为你的图像路径
 
         if (srcImage.empty()) {
-            System.out.println("无法加载图像，请检查路径是否正确");
+            log.info("{}", "无法加载图像，请检查路径是否正确");
             return;
         }
 
@@ -111,16 +115,16 @@ public class ImageRotationWithLines {
         }
 
         // 显示坐标变换信息
-        System.out.println("=== 坐标变换信息 ===");
-        System.out.println("原图尺寸: " + srcImage.cols() + "x" + srcImage.rows());
-        System.out.println("旋转图尺寸: " + rotatedImage.cols() + "x" + rotatedImage.rows());
-        System.out.println("\n点对应关系:");
+        log.info("{}", "=== 坐标变换信息 ===");
+        log.info("{}", "原图尺寸: " + srcImage.cols() + "x" + srcImage.rows());
+        log.info("{}", "旋转图尺寸: " + rotatedImage.cols() + "x" + rotatedImage.rows());
+        log.info("{}", "\n点对应关系:");
         for (int i = 0; i < srcPoints.size(); i++) {
             Point srcPoint = srcPoints.get(i);
             Point rotatedPoint = rotatedPoints.get(i);
-            System.out.printf("P%d: (%d,%d) -> (%d,%d)\n",
+            log.info(String.format("P%d: (%d,%d) -> (%d,%d)\n",
                     i, (int)srcPoint.x, (int)srcPoint.y,
-                    (int)rotatedPoint.x, (int)rotatedPoint.y);
+                    (int)rotatedPoint.x, (int)rotatedPoint.y));
         }
 
         // 创建两个独立的窗口
@@ -137,7 +141,7 @@ public class ImageRotationWithLines {
 
         // 等待按键
         int delaySeconds = 5; // 设置你想要延迟关闭的秒数
-        System.out.println("\n窗口将在 " + delaySeconds + " 秒后自动关闭，或按任意键提前跳出...");
+        log.info("{}", "\n窗口将在 " + delaySeconds + " 秒后自动关闭，或按任意键提前跳出...");
 
         // waitKey 接收的是毫秒数。乘以1000转成毫秒。
         // 如果在倒计时内按下任意键，也会提前结束等待。
@@ -145,7 +149,7 @@ public class ImageRotationWithLines {
 
         // 销毁所有窗口，结束测试
         HighGui.destroyAllWindows();
-        System.out.println("测试结束，窗口已关闭。");
+        log.info("{}", "测试结束，窗口已关闭。");
 
     }
 
@@ -162,7 +166,7 @@ public class ImageRotationWithLines {
         Mat srcImage = OpenCVUtils.imread(System.getProperty("user.home") + File.separator + "Desktop" + File.separator + "ocr.jpg"); // 替换为你的图像路径
 
         if (srcImage.empty()) {
-            System.out.println("无法加载图像，请检查路径是否正确");
+            log.info("{}", "无法加载图像，请检查路径是否正确");
             return;
         }
 
@@ -286,16 +290,16 @@ public class ImageRotationWithLines {
         }
 
         // 显示坐标变换信息
-        System.out.println("=== 坐标变换信息 ===");
-        System.out.println("原图尺寸: " + srcImage.cols() + "x" + srcImage.rows());
-        System.out.println("旋转图尺寸: " + rotatedImage.cols() + "x" + rotatedImage.rows());
-        System.out.println("\n点对应关系:");
+        log.info("{}", "=== 坐标变换信息 ===");
+        log.info("{}", "原图尺寸: " + srcImage.cols() + "x" + srcImage.rows());
+        log.info("{}", "旋转图尺寸: " + rotatedImage.cols() + "x" + rotatedImage.rows());
+        log.info("{}", "\n点对应关系:");
         for (int i = 0; i < srcPoints.size(); i++) {
             Point srcPoint = srcPoints.get(i);
             Point rotatedPoint = rotatedPoints.get(i);
-            System.out.printf("P%d: (%d,%d) -> (%d,%d)\n",
+            log.info(String.format("P%d: (%d,%d) -> (%d,%d)\n",
                     i, (int)srcPoint.x, (int)srcPoint.y,
-                    (int)rotatedPoint.x, (int)rotatedPoint.y);
+                    (int)rotatedPoint.x, (int)rotatedPoint.y));
         }
 
         // 创建窗口并显示合并后的图像
@@ -304,7 +308,7 @@ public class ImageRotationWithLines {
         HighGui.imshow("图像旋转与对应点连线", combinedImage);
 
         // 等待按键
-        System.out.println("\n按任意键退出...");
+        log.info("{}", "\n按任意键退出...");
         HighGui.waitKey(0);
         HighGui.destroyAllWindows();
     }

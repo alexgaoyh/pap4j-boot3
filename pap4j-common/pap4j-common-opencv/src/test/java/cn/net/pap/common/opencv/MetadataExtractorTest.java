@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 
 import com.drew.imaging.ImageMetadataReader;
@@ -10,6 +13,7 @@ import com.drew.metadata.exif.ExifSubIFDDirectory;
 import org.junit.jupiter.api.Test;
 
 public class MetadataExtractorTest {
+    private static final Logger log = LoggerFactory.getLogger(MetadataExtractorTest.class);
 
     @Test
     public void getTest() {
@@ -19,14 +23,14 @@ public class MetadataExtractorTest {
             if(imageFile.exists()){
                 Metadata metadata = ImageMetadataReader.readMetadata(imageFile);
                 for (Directory directory : metadata.getDirectories()) {
-                    System.out.println("---- " + directory.getName() + " ----");
+                    log.info("{}", "---- " + directory.getName() + " ----");
                     for (Tag tag : directory.getTags()) {
-                        System.out.println(tag.getTagName() + " : " + tag.getDescription());
+                        log.info("{}", tag.getTagName() + " : " + tag.getDescription());
                     }
                 }
                 ExifSubIFDDirectory exifDirectory = metadata.getFirstDirectoryOfType(ExifSubIFDDirectory.class);
                 if (exifDirectory != null) {
-                    System.out.println("拍摄时间: " + exifDirectory.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL));
+                    log.info("{}", "拍摄时间: " + exifDirectory.getDate(ExifSubIFDDirectory.TAG_DATETIME_ORIGINAL));
                 }
             }
         } catch (Exception e) {

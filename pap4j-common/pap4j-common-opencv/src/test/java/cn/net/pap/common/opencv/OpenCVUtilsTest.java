@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.opencv.core.Core;
@@ -15,13 +18,14 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class OpenCVUtilsTest {
+    private static final Logger log = LoggerFactory.getLogger(OpenCVUtilsTest.class);
 
     @Test
     void testOpenCVLoaded() {
         Mat mat = null;
         try {
             String version = Core.VERSION;
-            System.out.println("OpenCV version: " + version);
+            log.info("{}", "OpenCV version: " + version);
             assertNotNull(version);
 
             mat = OpenCVUtils.eye(3, 3, CvType.CV_8UC1);
@@ -48,7 +52,7 @@ public class OpenCVUtilsTest {
         List<String> typeList = Arrays.asList(new String[]{"Histogram"});
         for (String type : typeList) {
             double v = OpenCVUtils.similarityImage(image1Path, image2Path, type);
-            System.out.println(v);
+            log.info("{}", v);
         }
     }
 
@@ -203,7 +207,7 @@ public class OpenCVUtilsTest {
             long start = System.currentTimeMillis();
             imageJP2 = OpenCVUtils.imread(TestResourceUtil.getFile("origin.jpg").getAbsolutePath());
             boolean success = Imgcodecs.imwrite(TestResourceUtil.createTempFile("jpg", ".jpg").getAbsolutePath(), imageJP2);
-            System.out.println("" + success + (System.currentTimeMillis() - start));
+            log.info("{}", "" + success + (System.currentTimeMillis() - start));
         } finally {
             if (imageJP2 != null) imageJP2.release();
         }
@@ -212,14 +216,14 @@ public class OpenCVUtilsTest {
     @Test
     public void autoCorrectionGetAngle2Test() throws Exception {
         Double v = OpenCVUtils.autoCorrectionGetAngle2(TestResourceUtil.getFile("edges.png").getAbsolutePath());
-        System.out.println(v);
+        log.info("{}", v);
     }
 
     // @Test
     @DisplayName("对照函数，Mat对象的release调用：不调用release，会有 cv::OutOfMemoryError")
     public void testMatReleaseMemoryLeakTrue() throws Exception {
         OpenCVUtils.empty();
-        System.out.println("--- 开始执行内存泄露测试 ---");
+        log.info("{}", "--- 开始执行内存泄露测试 ---");
         try {
             // 模拟处理 10000 图像
             for (int i = 1; i <= 10000; i++) {
@@ -229,21 +233,21 @@ public class OpenCVUtilsTest {
                 // 【致命错误】：没有调用 frame.release()
                 // 每 100 次打印一次进度
                 if (i % 100 == 0) {
-                    System.out.println("已处理 " + i + " 帧，预计原生内存已占用: " + (i * 6.2) + " MB");
+                    log.info("{}", "已处理 " + i + " 帧，预计原生内存已占用: " + (i * 6.2) + " MB");
                 }
             }
         } catch (Throwable t) {
             // 捕获 Throwable 是因为内存溢出通常抛出的是 java.lang.OutOfMemoryError，而不是 Exception
-            System.err.println("程序崩溃！捕获到异常/错误: " + t.getMessage());
+            log.error("{}", "程序崩溃！捕获到异常/错误: " + t.getMessage());
         }
-        System.out.println("--- 内存泄露测试结束 ---");
+        log.info("{}", "--- 内存泄露测试结束 ---");
     }
 
     @Test
     @DisplayName("对照函数，Mat对象的release调用：调用release，正常执行完毕")
     public void testMatReleaseMemoryLeakFalse() throws Exception {
         OpenCVUtils.empty();
-        System.out.println("--- 开始执行内存安全测试 ---");
+        log.info("{}", "--- 开始执行内存安全测试 ---");
         try {
             for (int i = 1; i <= 10000; i++) {
                 Mat frame = null;
@@ -256,14 +260,14 @@ public class OpenCVUtilsTest {
                     }
                 }
                 if (i % 1000 == 0) {
-                    System.out.println("已安全处理 " + i + " 帧。");
+                    log.info("{}", "已安全处理 " + i + " 帧。");
                 }
             }
-            System.out.println("成功处理全部 10000 帧，没有发生内存崩溃！");
+            log.info("{}", "成功处理全部 10000 帧，没有发生内存崩溃！");
         } catch (Throwable t) {
-            System.err.println("发生意外异常: " + t.getMessage());
+            log.error("{}", "发生意外异常: " + t.getMessage());
         }
-        System.out.println("--- 内存安全测试结束 ---");
+        log.info("{}", "--- 内存安全测试结束 ---");
     }
 
 

@@ -1,11 +1,15 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.util.*;
 
 public class VertorUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(VertorUtilTest.class);
 
     @Test
     public void testQuery2() throws Exception {
@@ -45,7 +49,7 @@ public class VertorUtilTest {
 
         // 打印排序后的结果
         for (Map.Entry<String, Double> entry : sortedEntries) {
-            System.out.println(entry.getKey());
+            log.info("{}", entry.getKey());
         }
     }
 }

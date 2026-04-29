@@ -1,11 +1,15 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.opencv.enums.PaperSize;
 import org.junit.jupiter.api.Test;
 
 import java.awt.*;
 
 public class PaperSizeTest {
+    private static final Logger log = LoggerFactory.getLogger(PaperSizeTest.class);
 
     @Test
     public void test1() {
@@ -18,7 +22,7 @@ public class PaperSizeTest {
                 landscape ? "Landscape" : "Portrait",
                 dpi,
                 dimension.width, dimension.height);
-        System.out.println(info);
+        log.info("{}", info);
 
     }
 

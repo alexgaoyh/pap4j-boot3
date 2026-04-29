@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;
@@ -19,6 +22,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ImageUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(ImageUtilTest.class);
 
     @Test
     public void imageioTest() throws IOException {
@@ -64,7 +68,7 @@ public class ImageUtilTest {
         File afterOut = TestResourceUtil.createTempFile("after", ".jpg");
         afterOut.deleteOnExit();
         boolean b = ImageUtil.scaleAndGray(origin.getAbsolutePath(), afterOut.getAbsolutePath(), 100);
-        System.out.println(b);
+        log.info("{}", b);
     }
 
     @Test
@@ -96,7 +100,7 @@ public class ImageUtilTest {
         boolean b = ImageUtil.rotateImage(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(),
                 TestResourceUtil.createTempFile("123456", ".jpg").getAbsolutePath(),
                 10);
-        System.out.println(b);
+        log.info("{}", b);
     }
 
     @Test
@@ -167,7 +171,7 @@ public class ImageUtilTest {
 
             // 6. 保存结果
             ImageIO.write(result, "jpg", TestResourceUtil.createTempFile("result", ".jpg"));
-            System.out.println("拼接完成！");
+            log.info("{}", "拼接完成！");
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -256,19 +260,19 @@ public class ImageUtilTest {
         Point b2 = new Point(100, 424);
         Point b3 = generateThirdPoint(b1, b2);
 
-        System.out.println(String.format("\"%d,%d\"", a3.x, a3.y));
-        System.out.println(String.format("\"%d,%d\"", b3.x, b3.y));
+        log.info("{}", String.format("\"%d,%d\"", a3.x, a3.y));
+        log.info("{}", String.format("\"%d,%d\"", b3.x, b3.y));
 
-        System.out.println(String.format("\"%d,%d %d,%d %d,%d %d,%d %d,%d %d,%d\"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y));
+        log.info("{}", String.format("\"%d,%d %d,%d %d,%d %d,%d %d,%d %d,%d\"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y));
 
-        System.out.println(String.format("\"%d,%d %d,%d %d,%d %d,%d %d,%d %d,%d\"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y));
+        log.info("{}", String.format("\"%d,%d %d,%d %d,%d %d,%d %d,%d %d,%d\"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y));
 
         List<String> command = Arrays.asList(
                 "magick", "right.jpg", "-distort", "Affine",
                 String.format("\" %d,%d %d,%d %d,%d %d,%d %d,%d %d,%d \"", a1.x, a1.y, b1.x, b1.y, a2.x, a2.y, b2.x, b2.y, a3.x, a3.y, b3.x, b3.y), "transformedB.jpg"
         );
         String commandStr = String.join(" ", command);
-        System.out.println(commandStr);
+        log.info("{}", commandStr);
 
         // 一个拼接命令 需要首先计算出来拼接后的图像的大小，然后映射点的话，只取一组映射点的 X坐标，然后设置一个偏移，即可完成拼接. 需要动态算出来图像的尺寸.
         // magick -size 2000x2000 canvas:none ( transformedB.jpg -geometry +0+0 ) -composite ( left.jpg -geometry +600+0 ) -composite output.jpg
@@ -311,7 +315,7 @@ public class ImageUtilTest {
 
         Point p3 = generateThirdPoint(p1, p2);
 
-        System.out.printf("第三个点为：(%d, %d)%n", p3.x, p3.y);
+        log.info(String.format("第三个点为：(%d, %d)%n", p3.x, p3.y));
     }
 
     /**
@@ -340,58 +344,58 @@ public class ImageUtilTest {
         long l = System.currentTimeMillis();
         BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         long l1 = System.currentTimeMillis();
-        System.out.println("Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(lowMemoryThumbnail).totalSize() + " bytes");
-        System.out.println(l1 - l);
+        log.info("{}", "Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(lowMemoryThumbnail).totalSize() + " bytes");
+        log.info("{}", l1 - l);
 
         long l2 = System.currentTimeMillis();
         BufferedImage scaleImage = ImageUtil.scaleImage(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         long l3 = System.currentTimeMillis();
-        System.out.println("Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(scaleImage).totalSize() + " bytes");
-        System.out.println(l3 - l2);
+        log.info("{}", "Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(scaleImage).totalSize() + " bytes");
+        log.info("{}", l3 - l2);
 
-        System.out.println("=== 方法1 (getLowMemoryThumbnail) 内存详情 ===");
-        System.out.println(org.openjdk.jol.info.GraphLayout.parseInstance(lowMemoryThumbnail).toFootprint());
+        log.info("{}", "=== 方法1 (getLowMemoryThumbnail) 内存详情 ===");
+        log.info("{}", org.openjdk.jol.info.GraphLayout.parseInstance(lowMemoryThumbnail).toFootprint());
 
-        System.out.println("\n=== 方法2 (scaleImage) 内存详情 ===");
-        System.out.println(org.openjdk.jol.info.GraphLayout.parseInstance(scaleImage).toFootprint());
+        log.info("{}", "\n=== 方法2 (scaleImage) 内存详情 ===");
+        log.info("{}", org.openjdk.jol.info.GraphLayout.parseInstance(scaleImage).toFootprint());
 
         BufferedImage img1 = lowMemoryThumbnail;
         BufferedImage img2 = scaleImage;
-        System.out.println("=== 方法1: getLowMemoryThumbnail ===");
-        System.out.println("类型: " + img1.getType() + " (" + getTypeName(img1.getType()) + ")");
-        System.out.println("色彩模型: " + img1.getColorModel().getClass().getName());
-        System.out.println("像素位数: " + img1.getColorModel().getPixelSize());
-        System.out.println("Raster: " + img1.getRaster().getClass().getName());
+        log.info("{}", "=== 方法1: getLowMemoryThumbnail ===");
+        log.info("{}", "类型: " + img1.getType() + " (" + getTypeName(img1.getType()) + ")");
+        log.info("{}", "色彩模型: " + img1.getColorModel().getClass().getName());
+        log.info("{}", "像素位数: " + img1.getColorModel().getPixelSize());
+        log.info("{}", "Raster: " + img1.getRaster().getClass().getName());
 
-        System.out.println("\n=== 方法2: scaleImage ===");
-        System.out.println("类型: " + img2.getType() + " (" + getTypeName(img2.getType()) + ")");
-        System.out.println("色彩模型: " + img2.getColorModel().getClass().getName());
-        System.out.println("像素位数: " + img2.getColorModel().getPixelSize());
-        System.out.println("Raster: " + img2.getRaster().getClass().getName());
+        log.info("{}", "\n=== 方法2: scaleImage ===");
+        log.info("{}", "类型: " + img2.getType() + " (" + getTypeName(img2.getType()) + ")");
+        log.info("{}", "色彩模型: " + img2.getColorModel().getClass().getName());
+        log.info("{}", "像素位数: " + img2.getColorModel().getPixelSize());
+        log.info("{}", "Raster: " + img2.getRaster().getClass().getName());
 
         // 检查是否真的相同
-        System.out.println("\n=== 实际内存差异 ===");
-        System.out.println("img1.equals(img2): " + img1.equals(img2));
-        System.out.println("img1.getType() == img2.getType(): " + (img1.getType() == img2.getType()));
+        log.info("{}", "\n=== 实际内存差异 ===");
+        log.info("{}", "img1.equals(img2): " + img1.equals(img2));
+        log.info("{}", "img1.getType() == img2.getType(): " + (img1.getType() == img2.getType()));
 
         // 手动检查像素数据
-        System.out.println("\n=== 像素数据格式 ===");
-        System.out.println("img1 SampleModel: " + img1.getSampleModel().getClass().getName());
-        System.out.println("img2 SampleModel: " + img2.getSampleModel().getClass().getName());
+        log.info("{}", "\n=== 像素数据格式 ===");
+        log.info("{}", "img1 SampleModel: " + img1.getSampleModel().getClass().getName());
+        log.info("{}", "img2 SampleModel: " + img2.getSampleModel().getClass().getName());
 
         // 添加以下代码来检查详细信息
-        System.out.println("\n=== 详细比较 ===");
-        System.out.println("img1 Raster: " + img1.getRaster());
-        System.out.println("img2 Raster: " + img2.getRaster());
+        log.info("{}", "\n=== 详细比较 ===");
+        log.info("{}", "img1 Raster: " + img1.getRaster());
+        log.info("{}", "img2 Raster: " + img2.getRaster());
 
-        System.out.println("\nimg1 SampleModel: " + img1.getSampleModel());
-        System.out.println("img2 SampleModel: " + img2.getSampleModel());
+        log.info("{}", "\nimg1 SampleModel: " + img1.getSampleModel());
+        log.info("{}", "img2 SampleModel: " + img2.getSampleModel());
 
         // 检查DataBuffer
         java.awt.image.DataBuffer db1 = img1.getRaster().getDataBuffer();
         java.awt.image.DataBuffer db2 = img2.getRaster().getDataBuffer();
-        System.out.println("\nimg1 DataBuffer: " + db1.getClass() + ", size: " + db1.getSize());
-        System.out.println("img2 DataBuffer: " + db2.getClass() + ", size: " + db2.getSize());
+        log.info("{}", "\nimg1 DataBuffer: " + db1.getClass() + ", size: " + db1.getSize());
+        log.info("{}", "img2 DataBuffer: " + db2.getClass() + ", size: " + db2.getSize());
 
         // 检查SampleModel的参数
         java.awt.image.SampleModel sm1 = img1.getSampleModel();
@@ -399,11 +403,11 @@ public class ImageUtilTest {
         if (sm1 instanceof PixelInterleavedSampleModel && sm2 instanceof PixelInterleavedSampleModel) {
             PixelInterleavedSampleModel psm1 = (PixelInterleavedSampleModel) sm1;
             PixelInterleavedSampleModel psm2 = (PixelInterleavedSampleModel) sm2;
-            System.out.println("\nPixelInterleavedSampleModel 参数比较:");
-            System.out.println("img1 扫描行跨距: " + psm1.getScanlineStride());
-            System.out.println("img2 扫描行跨距: " + psm2.getScanlineStride());
-            System.out.println("img1 像素跨距: " + psm1.getPixelStride());
-            System.out.println("img2 像素跨距: " + psm2.getPixelStride());
+            log.info("{}", "\nPixelInterleavedSampleModel 参数比较:");
+            log.info("{}", "img1 扫描行跨距: " + psm1.getScanlineStride());
+            log.info("{}", "img2 扫描行跨距: " + psm2.getScanlineStride());
+            log.info("{}", "img1 像素跨距: " + psm1.getPixelStride());
+            log.info("{}", "img2 像素跨距: " + psm2.getPixelStride());
         }
     }
 

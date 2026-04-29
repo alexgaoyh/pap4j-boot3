@@ -39,7 +39,7 @@ public class ImageMagickCannyHougeAngleTest {
     @Test
     public void test1() throws Exception {
         String s = angleInfoStrList(TestResourceUtil.getFile("angle.jpg").getAbsolutePath(), TestResourceUtil.createTempFile("angle_canny", ".jpg").getAbsolutePath(), 300);
-        System.out.println(getDetailedAnalysis(s));
+        log.info("{}", getDetailedAnalysis(s));
     }
 
     @Test
@@ -65,7 +65,7 @@ public class ImageMagickCannyHougeAngleTest {
     public void test3() throws Exception {
         String s = angleInfoStrList(TestResourceUtil.getFile("1.jpg").getAbsolutePath(), TestResourceUtil.createTempFile("1_canny", ".jpg").getAbsolutePath(), 300);
         Direction dir = detectTextDirection(s);
-        System.out.println("文本方向: " + dir.getDesc());
+        log.info("{}", "文本方向: " + dir.getDesc());
     }
 
     public static String angleInfoStrList(String inputPath, String tmpCannyPath, Integer minLength) throws Exception {
@@ -89,7 +89,7 @@ public class ImageMagickCannyHougeAngleTest {
         );
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
-            System.out.println(result);
+            log.info("{}", result);
             return result.getOutput();
         } catch (Exception e) {
             return "false";
@@ -154,7 +154,7 @@ public class ImageMagickCannyHougeAngleTest {
 
                     } catch (Exception e) {
                         // 忽略解析错误
-                        System.err.println("解析错误: " + line);
+                        log.error("{}", "解析错误: " + line);
                     }
                 }
             }
@@ -292,7 +292,7 @@ public class ImageMagickCannyHougeAngleTest {
                         double y2 = Double.parseDouble(p2[1]);
                         lines.add(new Double[]{x1, y1, x2, y2});
                     } catch (Exception e) {
-                        System.err.println("解析 Hough 线失败: " + line);
+                        log.error("{}", "解析 Hough 线失败: " + line);
                     }
                 }
             }
@@ -355,7 +355,7 @@ public class ImageMagickCannyHougeAngleTest {
                         int height = Integer.parseInt(parts[4]);
                         return new int[]{width, height};
                     } catch (Exception e) {
-                        System.err.println("解析图像尺寸错误: " + line);
+                        log.error("{}", "解析图像尺寸错误: " + line);
                     }
                 }
             }
@@ -490,7 +490,7 @@ public class ImageMagickCannyHougeAngleTest {
                 "\"",
                 removedPath
         );
-        System.out.println(String.join(" ", command));
+        log.info("{}", String.join(" ", command));
     }
 
     /**

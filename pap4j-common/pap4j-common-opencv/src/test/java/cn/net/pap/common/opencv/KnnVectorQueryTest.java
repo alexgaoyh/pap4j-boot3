@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,6 +27,7 @@ import org.junit.jupiter.api.Test;
  * 将图像的特征向量放入 lucene 中，后续通过 KNN 进行相似度查询，类似以图搜图的功能实现。
  */
 public class KnnVectorQueryTest {
+    private static final Logger log = LoggerFactory.getLogger(KnnVectorQueryTest.class);
 
     public static final Path indexPath = Paths.get("target/index");
 
@@ -51,16 +55,16 @@ public class KnnVectorQueryTest {
                     writer.addDocument(doc);
                 }
             }
-            System.out.println();
+            log.info("");
             try (IndexReader reader = DirectoryReader.open(dir)) {
                 IndexSearcher searcher = new IndexSearcher(reader);
 
                 TopDocs results = searcher.search(new KnnVectorQuery("field", firstVector, 3), 10);
-                System.out.println("Hits: " + results.totalHits);
+                log.info("{}", "Hits: " + results.totalHits);
                 for (ScoreDoc sdoc : results.scoreDocs) {
                     Document doc = reader.document(sdoc.doc);
                     StoredField idField = (StoredField) doc.getField("id");
-                    System.out.println("Found: " + idField.toString() + " = " + String.format("%.1f", sdoc.score));
+                    log.info("{}", "Found: " + idField.toString() + " = " + String.format("%.1f", sdoc.score));
                 }
             }
         }

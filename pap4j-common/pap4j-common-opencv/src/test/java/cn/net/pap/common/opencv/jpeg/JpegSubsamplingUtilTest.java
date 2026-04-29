@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv.jpeg;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import cn.net.pap.common.opencv.util.TempDirUtils;
 import org.junit.jupiter.api.Test;
 
@@ -11,6 +14,7 @@ import java.nio.file.Path;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class JpegSubsamplingUtilTest {
+    private static final Logger log = LoggerFactory.getLogger(JpegSubsamplingUtilTest.class);
 
 //    static {
 //        System.setProperty("temp.dir.utils.dev", "true");
@@ -31,12 +35,12 @@ public class JpegSubsamplingUtilTest {
 
                 // 测试 1：高画质 (0.8) 下，强制开启 2x2 子采样 (4:2:0)
                 JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile420, 0.80f, SubsamplingMode.YUV_420);
-                System.out.println("成功生成 4:2:0 图像: " + Files.size(outputFile420) + " bytes");
+                log.info("{}", "成功生成 4:2:0 图像: " + Files.size(outputFile420) + " bytes");
                 assertTrue(Files.exists(outputFile420) && Files.size(outputFile420) > 0);
 
                 // 测试 2：同样的高画质 (0.9) 下，强制关闭子采样 (4:4:4)
                 JpegSubsamplingUtil.writeJpegWithSubsampling(image, outputFile444, 0.9f, SubsamplingMode.YUV_444);
-                System.out.println("成功生成 4:4:4 图像: " + Files.size(outputFile444) + " bytes");
+                log.info("{}", "成功生成 4:4:4 图像: " + Files.size(outputFile444) + " bytes");
                 assertTrue(Files.exists(outputFile444) && Files.size(outputFile444) > 0);
 
                 // --- 质量（Quality）验证逻辑 ---

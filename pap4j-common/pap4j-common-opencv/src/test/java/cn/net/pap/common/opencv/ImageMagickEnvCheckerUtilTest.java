@@ -105,7 +105,7 @@ public class ImageMagickEnvCheckerUtilTest {
             for (String[] command : new String[][]{command1, command2, command3, command4}) {
                 ProcessResult result = ProcessPoolUtil.runCommand(Arrays.stream(command).toList(), 10, tempExecutor);
                 long start = System.currentTimeMillis();
-                System.out.println((result.exitCode == 0) + " : " + (System.currentTimeMillis() - start));
+                log.info("{}", (result.exitCode == 0) + " : " + (System.currentTimeMillis() - start));
             }
         } catch (Exception e) {
         } finally {
@@ -470,8 +470,8 @@ public class ImageMagickEnvCheckerUtilTest {
         double angle = computeAngleDifference(x1, y1, x2, y2, x3, y3, x4, y4);
         double scale = computeScaleRatio(x1, y1, x2, y2, x3, y3, x4, y4);
 
-        System.out.printf("Angle to rotate (degrees): %.2f\n", angle);
-        System.out.printf("Scale ratio: %.4f\n", scale);
+        log.info(String.format("Angle to rotate (degrees): %.2f\n", angle));
+        log.info(String.format("Scale ratio: %.4f\n", scale));
 
         generateImageMagickCommand("right.jpg", "output.jpg", angle, scale);
     }
@@ -505,15 +505,15 @@ public class ImageMagickEnvCheckerUtilTest {
         // 生成命令示例： magick right.jpg -virtual-pixel transparent -background none -distort SRT "%[fx:w/2],%[fx:h/2] 0.6615 -90.00" output.jpg
         // 如下命令可以裁剪掉多于的黑色的填充区域，重置图像的虚拟画布，确保裁剪后的图像没有多余的偏移信息. -trim +repage
         // magick right.jpg -virtual-pixel transparent -background none -distort SRT "%[fx:w/2],%[fx:h/2] 0.6615 -90.00" -trim +repage output.jpg
-        System.out.println("ImageMagick command:");
-        System.out.println(command);
+        log.info("{}", "ImageMagick command:");
+        log.info("{}", command);
     }
 
     @Test
     public void rotateTest() throws Exception {
         // 测试(100,50)逆时针旋转90°
         double[] rotated = rotatePoint(100d, 50d, 90);
-        System.out.printf("旋转后坐标: (%.2f, %.2f)%n", rotated[0], rotated[1]);
+        log.info(String.format("旋转后坐标: (%.2f, %.2f)%n", rotated[0], rotated[1]));
     }
 
     /**
@@ -574,8 +574,8 @@ public class ImageMagickEnvCheckerUtilTest {
                 scale
         );
 
-        System.out.println("原始坐标: (" + originalPoint.x + ", " + originalPoint.y + ")");
-        System.out.println("变换后坐标: (" + transformedPoint.x + ", " + transformedPoint.y + ")");
+        log.info("{}", "原始坐标: (" + originalPoint.x + ", " + originalPoint.y + ")");
+        log.info("{}", "变换后坐标: (" + transformedPoint.x + ", " + transformedPoint.y + ")");
     }
 
     /**

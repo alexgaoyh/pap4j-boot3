@@ -29,12 +29,12 @@ public class ProcessExecUtils {
     @Test
     public void test1() throws Exception {
         ExecResult result = execWithShell("echo Hello Commons Exec!", null, null, 2000);
-        System.out.println("ExitCode: " + result.getExitCode());
-        System.out.println("Output: " + result.getStdout());
+        log.info("{}", "ExitCode: " + result.getExitCode());
+        log.info("{}", "Output: " + result.getStdout());
 
         Map<String, String> env = Map.of("MY_VAR", "123");
         ProcessExecUtils.ExecResult r2 = ProcessExecUtils.execWithShell("echo %MY_VAR%", env, new File("."), 3000);
-        System.out.println("STDOUT: " + r2.getStdout());
+        log.info("{}", "STDOUT: " + r2.getStdout());
 
         // todo 改一下 javaHome 的路径
         String javaHome = "D:\\.jdks\\jdk-17.0.16+8";
@@ -43,14 +43,14 @@ public class ProcessExecUtils {
         String oldPath = System.getenv("PATH");
         envJavaHome.put("PATH", (javaHome + File.separator + "bin") + File.pathSeparator + oldPath);
         ProcessExecUtils.ExecResult r3 = ProcessExecUtils.execWithShell("java -version", envJavaHome, new File("."), 3000);
-        System.out.println("STDOUT: " + r3.getStderr());
+        log.info("{}", "STDOUT: " + r3.getStderr());
 
         // 中文乱码校验
         ExecResult r4 = execWithShell("echo 中文!", null, null, 2000);
-        System.out.println("r4: " + r4.getStdout());
+        log.info("{}", "r4: " + r4.getStdout());
 
         ExecResult r6 = execWithShell("dir /b", null, new File("d:\\"), 2000);
-        System.out.println("r6: " + r6.getStdout());
+        log.info("{}", "r6: " + r6.getStdout());
 
     }
 
@@ -70,7 +70,7 @@ public class ProcessExecUtils {
         String filePath = userHome + File.separator + "1.tiff";
         String cmd = batPath + " " + filePath + " 200 200 2500 2500";
         ExecResult execResult = execWithShell(cmd, envHome, new File(userHome), 60000);
-        System.out.println("ExitCode: " + execResult.toString());
+        log.info("{}", "ExitCode: " + execResult.toString());
     }
 
     private static Map<String, String> mergeEnv(Map<String, String> extra) {
