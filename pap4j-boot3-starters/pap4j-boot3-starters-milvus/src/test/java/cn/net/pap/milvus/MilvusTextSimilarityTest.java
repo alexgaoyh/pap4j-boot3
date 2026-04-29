@@ -178,7 +178,7 @@ public class MilvusTextSimilarityTest {
         List<JsonObject> rowsData = new ArrayList<>();
         try {
             org.springframework.core.io.support.PathMatchingResourcePatternResolver resolver = new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
-            org.springframework.core.io.Resource[] resources = resolver.getResources("classpath*:/dir/*.jpg");
+            org.springframework.core.io.Resource[] resources = resolver.getResources("classpath:/dir/*.jpg");
 
             for(org.springframework.core.io.Resource resource : resources) {
                 File imageAbsPath = TestResourceUtil.getFile("/dir/" + resource.getFilename());
