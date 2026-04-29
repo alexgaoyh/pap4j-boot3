@@ -84,7 +84,7 @@ public class ImageMagickEnvCheckerUtilTest {
         return envMagickBool;
     }
 
-    // @Test
+    @Test
     public void commandTest1() {
 
         String[] command1 = {"echo", "Hello"};
@@ -127,16 +127,11 @@ public class ImageMagickEnvCheckerUtilTest {
         }
     }
 
-    // @Test
+    @Test
     public void magickTest() {
         try {
-            String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
-            desktop = desktop + "temp" + File.separator;
-            List<Path> jpgFiles = Files.list(Paths.get(desktop))
-                    .filter(Files::isRegularFile)
-                    .filter(path -> path.toString().toLowerCase().endsWith(".jpg"))
-                    .collect(Collectors.toList());
-            for(Path jpgFile : jpgFiles) {
+            List<String> jpgFiles = Arrays.asList(new String[]{TestResourceUtil.getFile("0.jpg").getAbsolutePath().toString()});
+            for(String jpgFile : jpgFiles) {
                 String command = "magick "+jpgFile.toString()+" -fill white -draw \"rectangle %[fx:w*0.80],%[fx:h*0.9] %[w],%[h]\" " + jpgFile.toString();
                 magickCommand(command);
             }
@@ -377,7 +372,7 @@ public class ImageMagickEnvCheckerUtilTest {
 
     @Test
     public void tiffCompressionTest() throws IOException, InterruptedException {
-        List<String> command = Arrays.asList("magick", "identify", "-format", "%[compression]", "C:\\Users\\86181\\Desktop\\input.tiff");
+        List<String> command = Arrays.asList("magick", "identify", "-format", "%[compression]", TestResourceUtil.getFile("input.tiff").getAbsolutePath());
         // 由于是短暂的初始化检查，分配一个专属的单线程池，用完即毁
         ExecutorService tempExecutor = new ThreadPoolExecutor(
                 1,

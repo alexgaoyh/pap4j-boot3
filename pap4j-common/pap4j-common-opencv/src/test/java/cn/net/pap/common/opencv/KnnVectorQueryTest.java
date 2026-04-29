@@ -27,7 +27,7 @@ public class KnnVectorQueryTest {
 
     public static final Path indexPath = Paths.get("target/index");
 
-    // @Test
+    @Test
     public void testQuery() throws IOException {
 
         float[] firstVector = null;
@@ -35,9 +35,9 @@ public class KnnVectorQueryTest {
         try (MMapDirectory dir = new MMapDirectory(indexPath)) {
             try (IndexWriter writer = new IndexWriter(dir, new IndexWriterConfig())) {
                 List<String> imageAbsPathList = new ArrayList<>();
-                imageAbsPathList.add("1.jpg");
-                imageAbsPathList.add("2.jpg");
-                imageAbsPathList.add("3.jpg");
+                imageAbsPathList.add(TestResourceUtil.getFile("0.jpg").getAbsolutePath().toString());
+                imageAbsPathList.add(TestResourceUtil.getFile("0.jpg").getAbsolutePath().toString());
+                imageAbsPathList.add(TestResourceUtil.getFile("0.jpg").getAbsolutePath().toString());
                 for(String imageAbsPath : imageAbsPathList) {
                     byte[] bytes = OpenCVUtils.matOfKeyPointImage(imageAbsPath, true, 500, 500);
                     // added PCA to reduce dimensions

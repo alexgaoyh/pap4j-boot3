@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ImageUtilTest {
 
-    //@Test
+    @Test
     public void imageioTest() throws IOException {
         List<String> formatList = new ArrayList<>();
         for (String format : ImageIO.getReaderFormatNames()) {
@@ -58,67 +58,66 @@ public class ImageUtilTest {
 
     }
 
-    //@Test
-    public void scaleAndGrayTest() {
-        File file = new File("\\Images");
-        File[] files = file.listFiles();
-        for(File file1 : files) {
-            boolean b = ImageUtil.scaleAndGray(file1.getPath(), "\\after\\" + file1.getName(), 100);
-            System.out.println(b);
-        }
+    @Test
+    public void scaleAndGrayTest() throws Exception {
+        File origin = TestResourceUtil.getFile("origin.jpg");
+        File afterOut = TestResourceUtil.createTempFile("after", ".jpg");
+        afterOut.deleteOnExit();
+        boolean b = ImageUtil.scaleAndGray(origin.getAbsolutePath(), afterOut.getAbsolutePath(), 100);
+        System.out.println(b);
     }
 
-    // @Test
+    @Test
     public void cropImageCutListTest() {
         List<Rectangle> regions = new ArrayList<>();
-        Rectangle rect1 = new Rectangle(000, 000, 050, 050);
-        Rectangle rect2 = new Rectangle(050, 050, 050, 050);
-        Rectangle rect3 = new Rectangle(100, 100, 050, 050);
-        Rectangle rect4 = new Rectangle(150, 150, 050, 050);
+        Rectangle rect1 = new Rectangle(0, 0, 25, 25);
+        Rectangle rect2 = new Rectangle(25, 25, 25, 25);
+        Rectangle rect3 = new Rectangle(50, 50, 25, 25);
+        Rectangle rect4 = new Rectangle(75, 75, 25, 25);
         regions.add(rect1);
         regions.add(rect2);
         regions.add(rect3);
         regions.add(rect4);
 
-        List<String> base64s = ImageUtil.cropImageCutList("input.jpg", regions);
+        List<String> base64s = ImageUtil.cropImageCutList(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), regions);
         assertTrue(base64s.size() == regions.size());
     }
 
-    // @Test
+    @Test
     public void mergeImagesTest() throws Exception {
-        BufferedImage bufferedImage = ImageUtil.mergeImages("1.png",
-                "2.png",
+        BufferedImage bufferedImage = ImageUtil.mergeImages(TestResourceUtil.getFile("left.jpg").getAbsolutePath(),
+                TestResourceUtil.getFile("right.jpg").getAbsolutePath(),
                 0, 0, 0, 100);
-        ImageIO.write(bufferedImage, "png", new File("out.png"));
+        ImageIO.write(bufferedImage, "jpg", TestResourceUtil.createTempFile("out", ".jpg"));
     }
 
-    // @Test
+    @Test
     public void rotateImageTest() throws Exception {
-        boolean b = ImageUtil.rotateImage("C:\\Users\\86181\\Desktop\\origin.jpg",
-                "C:\\Users\\86181\\Desktop\\123456.jpg",
+        boolean b = ImageUtil.rotateImage(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(),
+                TestResourceUtil.createTempFile("123456", ".jpg").getAbsolutePath(),
                 10);
         System.out.println(b);
     }
 
-    // @Test
+    @Test
     public void coverTest() throws Exception {
-        BufferedImage originalImage = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\origin.jpg"));
-        BufferedImage targetImage = ImageUtil.cover(originalImage, 100, 100, 100, 100, 0, 0);
-        ImageIO.write(targetImage, "jpg", new File("C:\\Users\\86181\\Desktop\\out.png"));
+        BufferedImage originalImage = ImageIO.read(TestResourceUtil.getFile("origin.jpg"));
+        BufferedImage targetImage = ImageUtil.cover(originalImage, 10, 10, 10, 10, 0, 0);
+        ImageIO.write(targetImage, "jpg", TestResourceUtil.createTempFile("out", ".jpg"));
     }
 
-    // @Test
+    @Test
     public void mergeByPointInTwoPicTest() throws Exception {
-        BufferedImage leftImage = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\100.jpg"));
-        BufferedImage rightImage = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\1002.jpg"));
+        BufferedImage leftImage = ImageIO.read(TestResourceUtil.getFile("100.jpg"));
+        BufferedImage rightImage = ImageIO.read(TestResourceUtil.getFile("1002.jpg"));
 
         BufferedImage mergedImage = ImageUtil.mergeByPointInTwoPic(leftImage, 100, 0, 100, 100,
                 rightImage, 0, 0, 0, 100);
-        ImageIO.write(mergedImage, "jpg", new File("C:\\Users\\86181\\Desktop\\out.jpg"));
+        ImageIO.write(mergedImage, "jpg", TestResourceUtil.createTempFile("out", ".jpg"));
 
     }
 
-    // @Test
+    @Test
     public void createImageWithRegionsTest() throws Exception {
         int width = 5432;
         int height = 9967;
@@ -129,27 +128,27 @@ public class ImageUtilTest {
         };
 
         BufferedImage image = ImageUtil.createImageWithRegions(width, height, Color.YELLOW, regions);
-        ImageIO.write(image, "jpg", new File("C:\\Users\\86181\\Desktop\\regions.jpg"));
+        ImageIO.write(image, "jpg", TestResourceUtil.createTempFile("regions", ".jpg"));
 
     }
 
-    // @Test
+    @Test
     public void base64ToImageTest() throws Exception {
-        String content = new String(java.nio.file.Files.readAllBytes(Paths.get("C:\\Users\\86181\\Desktop\\base64.txt")));
-        ImageUtil.base64ToImage(content, "C:\\Users\\86181\\Desktop\\base64.jpg");
+        String content = new String(java.nio.file.Files.readAllBytes(Paths.get(TestResourceUtil.getFile("base64.txt").getAbsolutePath())));
+        ImageUtil.base64ToImage(content, TestResourceUtil.createTempFile("base64", ".jpg").getAbsolutePath());
     }
 
-    // @Test
+    @Test
     public void rotate90ClockwiseAndOverwriteTest() throws Exception {
-        ImageUtil.rotate90ClockwiseAndOverwrite(new File("C:\\Users\\86181\\Desktop\\0.jpg"));
+        ImageUtil.rotate90ClockwiseAndOverwrite(TestResourceUtil.getFile("0.jpg"));
     }
 
-    // @Test
+    @Test
     public void pointTest() {
         try {
             // 1. 读取两张图像（替换为你的图像路径）
-            BufferedImage imageA = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\left.jpg"));
-            BufferedImage imageB = ImageIO.read(new File("C:\\Users\\86181\\Desktop\\right.jpg"));
+            BufferedImage imageA = ImageIO.read(TestResourceUtil.getFile("left.jpg"));
+            BufferedImage imageB = ImageIO.read(TestResourceUtil.getFile("right.jpg"));
 
             // 2. 定义对应的点（替换为你的坐标）
             Point a1 = new Point(641, 0); // 图像A中的点a1
@@ -167,7 +166,7 @@ public class ImageUtilTest {
             BufferedImage result = stitchImages(imageA, transformedB);
 
             // 6. 保存结果
-            ImageIO.write(result, "jpg", new File("C:\\Users\\86181\\Desktop\\result.jpg"));
+            ImageIO.write(result, "jpg", TestResourceUtil.createTempFile("result", ".jpg"));
             System.out.println("拼接完成！");
         } catch (Exception e) {
             e.printStackTrace();
@@ -305,7 +304,7 @@ public class ImageUtilTest {
         };
     }
 
-    // @Test
+    @Test
     public void generateThirdPointTest() {
         Point p1 = new Point(100, 100);
         Point p2 = new Point(300, 100);
@@ -328,24 +327,24 @@ public class ImageUtilTest {
      *  Graphics2D 本身是一个临时对象（你调用了 dispose()），但它在 BufferedImage 内部留下的“足迹”（缓存和状态对象）是持久存在的。
      * @throws Exception
      */
-    // @Test
+    @Test
     public void bufferedImageCompareTest1() throws Exception {
         // 预热一下
         for(int i = 0; i < 5; i++) {
-            BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail("D:\\knowledge\\big-plane-yes.jpg", 100);
+            BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         }
         for(int i = 0; i < 5; i++) {
-            BufferedImage scaleImage = ImageUtil.scaleImage("D:\\knowledge\\big-plane-yes.jpg", 100);
+            BufferedImage scaleImage = ImageUtil.scaleImage(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         }
 
         long l = System.currentTimeMillis();
-        BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail("D:\\knowledge\\big-plane-yes.jpg", 100);
+        BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         long l1 = System.currentTimeMillis();
         System.out.println("Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(lowMemoryThumbnail).totalSize() + " bytes");
         System.out.println(l1 - l);
 
         long l2 = System.currentTimeMillis();
-        BufferedImage scaleImage = ImageUtil.scaleImage("D:\\knowledge\\big-plane-yes.jpg", 100);
+        BufferedImage scaleImage = ImageUtil.scaleImage(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         long l3 = System.currentTimeMillis();
         System.out.println("Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(scaleImage).totalSize() + " bytes");
         System.out.println(l3 - l2);

@@ -4,23 +4,24 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.util.*;
+
 public class VertorUtilTest {
 
-    // @Test
+    @Test
     public void testQuery2() throws Exception {
 
         Map<String, float[]> vectorMap = new LinkedHashMap<>();
 
         float[] firstVector = null;
 
-        File file = new File("C:\\Users\\86181\\Desktop\\dir");
-        File[] files = file.listFiles();
-
-        for(File imageAbsPath : files) {
+        org.springframework.core.io.support.PathMatchingResourcePatternResolver resolver = new org.springframework.core.io.support.PathMatchingResourcePatternResolver();
+        org.springframework.core.io.Resource[] resources = resolver.getResources("classpath:/dir/*.jpg");
+        for(org.springframework.core.io.Resource resource : resources) {
+            File imageAbsPath = TestResourceUtil.getFile("/dir/" + resource.getFilename());
             float[] vectors = VectorUtil.convertImageToVector(imageAbsPath.getPath());
             String name = imageAbsPath.getName();
-            vectorMap.put(name, vectors);
-            if(name.equals("王.jpg")) {
+            vectorMap.put(resource.getFilename(), vectors);
+            if(resource.getFilename().equals("乛.jpg")) {
                 firstVector = vectors;
             }
         }

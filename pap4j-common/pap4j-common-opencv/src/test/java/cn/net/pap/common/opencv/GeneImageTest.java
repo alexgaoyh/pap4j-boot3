@@ -9,15 +9,79 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.FileVisitResult;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GeneImageTest {
+
+    private static final int SIZE = 200;
+    private static final int FONT_SIZE = 120;
+    private static final String[] CHARACTERS = {"一", "丶", "冖", "丷", "冫", "乛", "亠", "亻", "丿", "亅"};
+
+    @Test
+    void generateImages() throws IOException {
+        Font font = new Font("微软雅黑", Font.PLAIN, FONT_SIZE);
+        // 如果微软雅黑不存在，使用系统默认字体
+        if (!font.canDisplay('中')) {
+            font = new Font("宋体", Font.PLAIN, FONT_SIZE);
+        }
+
+        File dir = Files.createTempDirectory("generateImages").toFile();
+        dir.mkdirs();
+
+        try {
+            for (String ch : CHARACTERS) {
+                BufferedImage image = new BufferedImage(SIZE, SIZE, BufferedImage.TYPE_INT_RGB);
+                Graphics2D g = image.createGraphics();
+
+                // 白色背景
+                g.setColor(Color.WHITE);
+                g.fillRect(0, 0, SIZE, SIZE);
+
+                // 黑色文字
+                g.setColor(Color.BLACK);
+                g.setFont(font);
+                g.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+                // 居中绘制
+                FontMetrics fm = g.getFontMetrics();
+                int x = (SIZE - fm.stringWidth(ch)) / 2;
+                int y = (SIZE - fm.getHeight()) / 2 + fm.getAscent();
+                g.drawString(ch, x, y);
+
+                g.dispose();
+
+                File output = new File(dir, ch + ".jpg");
+                ImageIO.write(image, "jpg", output);
+                assertTrue(output.exists(), "文件应成功创建: " + output.getName());
+                System.out.println("已生成: " + output.getAbsolutePath());
+            }
+        } finally {
+            Files.walkFileTree(Paths.get(dir.getAbsolutePath().toString()), new SimpleFileVisitor<Path>() {
+                // 先删除文件
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                // 再删除文件夹（此时文件夹已为空）
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
+    }
 
     @Test
     void testGenerateImageProcess() throws IOException {
@@ -111,26 +175,64 @@ public class GeneImageTest {
         }
     }
 
-    // @Test
-    public void generateImageTest() {
-        String basePath = "C:\\Users\\86181\\Desktop\\";
-        for(int dirIdx = 0; dirIdx < 1; dirIdx++) {
-            String detailPath = "tmp\\" + String.format("%04d", dirIdx);
-            String basePath2 = basePath + detailPath;
-            new File(basePath2).mkdirs();
-            for(int idx = 0; idx < 60000; idx++) {
-                generateImage(basePath2 + "\\", idx, String.format("%04d", dirIdx));
-            }
-        }
+    @Test
+    public void generateImageTest() throws Exception {
+        // 保持为 Path 对象，方便后续操作
+        Path basePath = Files.createTempDirectory("generateImageTest");
+        try {
+            for(int dirIdx = 0; dirIdx < 1; dirIdx++) {
+                // 使用 resolve 自动处理路径分隔符
+                Path detailPath = basePath.resolve("tmp").resolve(String.format("%04d", dirIdx));
+                // 使用 NIO API 创建多级目录
+                Files.createDirectories(detailPath);
 
+                for(int idx = 0; idx < 1; idx++) {
+                    // 确保传递给生成方法的路径是正确的，如果 generateImage 需要尾部斜杠，手动加上 File.separator
+                    generateImage(detailPath.toString() + File.separator, idx, String.format("%04d", dirIdx));
+                }
+            }
+        } finally {
+            Files.walkFileTree(basePath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
+        }
     }
 
-    // @Test
+    @Test
     public void generateImageTest2() throws IOException {
-        String basePath = "D:\\knowledge\\";
-        List<String> paths = Files.readAllLines(Paths.get("C:\\Users\\86181\\Desktop\\filename.txt"));
-        for(String path : paths) {
-            generateEmptyJpeg(basePath + path);
+        Path basePath = Files.createTempDirectory("generateImageTest");
+        try {
+            List<String> paths = Files.readAllLines(Paths.get(TestResourceUtil.getFile("filename.txt").getAbsolutePath()));
+            for(String path : paths) {
+                // resolve 会安全地将 path 追加到 basePath 后面
+                // 即使 path 是 "a.jpg" 或 "/a.jpg"，都能正确生成 /temp/.../a.jpg
+                Path targetFile = basePath.resolve(path);
+                generateEmptyJpeg(targetFile.toString());
+            }
+        } finally {
+            Files.walkFileTree(basePath, new SimpleFileVisitor<Path>() {
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         }
     }
 
@@ -149,10 +251,10 @@ public class GeneImageTest {
         }
     }
 
-    // @Test
-    public void test() {
-        Path sourceFilePath = Paths.get("");
-        Path destinationFolderPath = Paths.get("");
+    @Test
+    public void test() throws Exception {
+        Path sourceFilePath = TestResourceUtil.getFile("0.jpg").toPath();
+        Path destinationFolderPath = Files.createTempDirectory("test");
         try {
             // 确保目标文件夹存在
             Files.createDirectories(destinationFolderPath);
@@ -170,13 +272,30 @@ public class GeneImageTest {
             }
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            Files.walkFileTree(destinationFolderPath, new SimpleFileVisitor<Path>() {
+                // 先删除文件
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                // 再删除文件夹（此时文件夹已为空）
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         }
     }
 
-    // @Test
+    @Test
     public void geneAndCheckImageTest() throws Exception {
-        createImageWithDPI("C:\\Users\\86181\\Desktop\\geneAndCheckImageTest.jpg", 1, 300);
-        Integer dpi = getDPI("C:\\Users\\86181\\Desktop\\geneAndCheckImageTest.jpg");
+        File file = TestResourceUtil.getFile("1.jpg");
+        createImageWithDPI(file.getAbsolutePath(), 1, 300);
+        Integer dpi = getDPI(file.getAbsolutePath());
         System.out.println(dpi);
     }
 
@@ -270,31 +389,70 @@ public class GeneImageTest {
         }
     }
 
-    // @Test
-    public void geneTextTest() {
-        String basePath = "C:\\Users\\86181\\Desktop\\dir";
-        int idx = 0;
-        for(char c = '\u4E00'; c <= '\u9FA5'; c++) {
-            generateTextImage(basePath + File.separator + String.valueOf(c) + ".jpg", String.valueOf(c));
-            idx++;
-            if(idx > 1000) {
-                break;
+    @Test
+    public void geneTextTest() throws Exception {
+        String basePath = Files.createTempDirectory("test").toAbsolutePath().toString();
+        try {
+            int idx = 0;
+            for(char c = '\u4E00'; c <= '\u4E00' + 10; c++) {
+                generateTextImage(basePath + File.separator + String.valueOf(c) + ".jpg", String.valueOf(c));
+                idx++;
+                if(idx > 1000) {
+                    break;
+                }
             }
+        } finally {
+            Files.walkFileTree(Paths.get(basePath), new SimpleFileVisitor<Path>() {
+                // 先删除文件
+                @Override
+                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                    Files.delete(file);
+                    return FileVisitResult.CONTINUE;
+                }
+
+                // 再删除文件夹（此时文件夹已为空）
+                @Override
+                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                    Files.delete(dir);
+                    return FileVisitResult.CONTINUE;
+                }
+            });
         }
 
     }
 
-    // @Test
+    @Test
     public void copyAndReNameTest() {
+        String outputDir = null;
         try {
-            String outputDir = "C:\\Users\\86181\\Desktop\\dir\\";
-            BufferedImage originalImage = ImageIO.read(new File("input.jpg"));
+            outputDir = Files.createTempDirectory("test").toAbsolutePath().toString() + File.separator;
+            BufferedImage originalImage = ImageIO.read(TestResourceUtil.getFile("0.jpg"));
             for (int i = 1; i <= 5; i++) {
                 String outputImagePath = outputDir + String.format("%06d.jpg", i);
                 ImageIO.write(originalImage, "jpg", new File(outputImagePath));
             }
         } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            if (outputDir != null) {
+                try {
+                    Files.walkFileTree(Paths.get(outputDir), new SimpleFileVisitor<Path>() {
+                        @Override
+                        public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                            Files.delete(file);
+                            return FileVisitResult.CONTINUE;
+                        }
 
+                        @Override
+                        public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                            Files.delete(dir);
+                            return FileVisitResult.CONTINUE;
+                        }
+                    });
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 }

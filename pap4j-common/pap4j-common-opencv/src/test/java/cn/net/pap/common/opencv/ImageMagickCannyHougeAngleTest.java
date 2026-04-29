@@ -36,16 +36,16 @@ public class ImageMagickCannyHougeAngleTest {
      * todo 注意这里 hough-lines 后面的这个 300 , 可以根据图像的宽高做一个比例， 然后实际的代码中，可以从大到小， 然后慢慢的算一个输出.
      * magick angle.jpg -canny 0x1+10%+30% +write canny.png -background none -fill red -hough-lines 9x9+300 MVG:-
      */
-    // @Test
+    @Test
     public void test1() throws Exception {
-        String s = angleInfoStrList("C:\\Users\\86181\\Desktop\\angle.jpg", "C:\\Users\\86181\\Desktop\\angle_canny.jpg", 300);
+        String s = angleInfoStrList(TestResourceUtil.getFile("angle.jpg").getAbsolutePath(), TestResourceUtil.createTempFile("angle_canny", ".jpg").getAbsolutePath(), 300);
         System.out.println(getDetailedAnalysis(s));
     }
 
-    // @Test
+    @Test
     public void test2() throws Exception {
-        String s = angleInfoStrList("C:\\Users\\86181\\Desktop\\0.jpg", "C:\\Users\\86181\\Desktop\\0_canny.jpg", 300);
-        drawHoughLinesJava("C:\\Users\\86181\\Desktop\\0.jpg", "C:\\Users\\86181\\Desktop\\0_lines.jpg", s, Color.RED, 2f);
+        String s = angleInfoStrList(TestResourceUtil.getFile("0.jpg").getAbsolutePath(), TestResourceUtil.createTempFile("0_canny", ".jpg").getAbsolutePath(), 300);
+        drawHoughLinesJava(TestResourceUtil.getFile("0.jpg").getAbsolutePath(), TestResourceUtil.createTempFile("0_lines", ".jpg").getAbsolutePath(), s, Color.RED, 2f);
     }
 
     /**
@@ -61,9 +61,9 @@ public class ImageMagickCannyHougeAngleTest {
      *  magick col_projection.png -format "%[fx:standard_deviation^2]" info:
      * @throws Exception
      */
-    // @Test
+    @Test
     public void test3() throws Exception {
-        String s = angleInfoStrList("C:\\Users\\86181\\Desktop\\1.jpg", "C:\\Users\\86181\\Desktop\\1_canny.jpg", 300);
+        String s = angleInfoStrList(TestResourceUtil.getFile("1.jpg").getAbsolutePath(), TestResourceUtil.createTempFile("1_canny", ".jpg").getAbsolutePath(), 300);
         Direction dir = detectTextDirection(s);
         System.out.println("文本方向: " + dir.getDesc());
     }
@@ -445,10 +445,10 @@ public class ImageMagickCannyHougeAngleTest {
      */
     @Test
     public void getBorderTest() throws Exception {
-        String inputPath = "C:\\Users\\86181\\Desktop\\edges.png";
-        String colPath = "C:\\Users\\86181\\Desktop\\col_projection.png";
-        String rowPath = "C:\\Users\\86181\\Desktop\\row_projection.png";
-        String removedPath = "C:\\Users\\86181\\Desktop\\removed.png";
+        String inputPath = TestResourceUtil.getFile("edges.png").getAbsolutePath();
+        String colPath = TestResourceUtil.createTempFile("col_projection", ".png").getAbsolutePath();
+        String rowPath = TestResourceUtil.createTempFile("row_projection", ".png").getAbsolutePath();
+        String removedPath = TestResourceUtil.createTempFile("removed", ".png").getAbsolutePath();
 
         // 生成图像
         geneColProjection(inputPath, colPath, "col");

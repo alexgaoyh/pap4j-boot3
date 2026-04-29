@@ -11,11 +11,11 @@ import org.junit.jupiter.api.Test;
 
 public class MetadataExtractorTest {
 
-    // @Test
+    @Test
     public void getTest() {
         try {
             // 读取图片文件
-            File imageFile = new File("C:\\Users\\86181\\Desktop\\tiff1.jpg");
+            File imageFile = TestResourceUtil.getFile("tiff1.jpg");
             if(imageFile.exists()){
                 Metadata metadata = ImageMetadataReader.readMetadata(imageFile);
                 for (Directory directory : metadata.getDirectories()) {
