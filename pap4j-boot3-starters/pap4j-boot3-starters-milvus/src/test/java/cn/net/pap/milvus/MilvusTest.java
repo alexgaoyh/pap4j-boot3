@@ -20,6 +20,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -320,8 +321,10 @@ public class MilvusTest {
      */
     private List<com.google.gson.JsonObject> insertRows() throws Exception {
         List<com.google.gson.JsonObject> rowsData = new ArrayList<>();
+        java.nio.file.Path tempDir = null;
         try {
-            String basePath = Files.createTempDirectory("classes_pins_dataset").toAbsolutePath().toString();
+            tempDir = Files.createTempDirectory("classes_pins_dataset");
+            String basePath = tempDir.toAbsolutePath().toString();
             basePath = basePath + File.separator + "Pins Face Recognition\\105_classes_pins_dataset";
             basePath = basePath + File.separator + "vector";
             if(!new File(basePath).isDirectory()) {
@@ -360,14 +363,20 @@ public class MilvusTest {
             }
         } catch (Exception e) {
             log.error("{}", e);
+        } finally {
+            if (tempDir != null) {
+                deleteDirectoryRecursively(tempDir);
+            }
         }
         return rowsData;
     }
 
     private List<Float> Taylor_Swift0_4550_Vector() throws Exception {
         List<Float> floats = new ArrayList<>();
+        java.nio.file.Path tempDir = null;
         try {
-            String basePath = Files.createTempDirectory("classes_pins_dataset").toAbsolutePath().toString();
+            tempDir = Files.createTempDirectory("classes_pins_dataset");
+            String basePath = tempDir.toAbsolutePath().toString();
             basePath = basePath + File.separator + "Pins Face Recognition\\105_classes_pins_dataset";
             basePath = basePath + File.separator + "vector";
             if(!new File(basePath + File.separator + "Taylor_Swift0_4550_Vector.txt").exists()) {
@@ -380,7 +389,24 @@ public class MilvusTest {
 
         } catch (Exception e) {
             log.error("{}", e);
+        } finally {
+            if (tempDir != null) {
+                deleteDirectoryRecursively(tempDir);
+            }
         }
         return floats;
+    }
+
+    private void deleteDirectoryRecursively(java.nio.file.Path path) {
+        try {
+            if (Files.exists(path)) {
+                Files.walk(path)
+                        .sorted(Comparator.reverseOrder())
+                        .map(Path::toFile)
+                        .forEach(File::delete);
+            }
+        } catch (IOException e) {
+            log.warn("Failed to delete temp directory: " + path, e);
+        }
     }
 }

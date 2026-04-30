@@ -24,23 +24,28 @@ public class FileMemoryTest {
     @Test
     public void memoryPrintTest() throws Exception {
         String outputPath = Files.createTempFile("testBigText", ".txt").toAbsolutePath().toString();
-        generateBigFile(Paths.get(outputPath), 1000000);
+        try {
+            generateBigFile(Paths.get(outputPath), 1000000);
 
-        long totalMemory = Runtime.getRuntime().totalMemory();
-        long freeMemory = Runtime.getRuntime().freeMemory();
+            long totalMemory = Runtime.getRuntime().totalMemory();
+            long freeMemory = Runtime.getRuntime().freeMemory();
 
-        log.info("{}", "Total Memory: " + totalMemory / (1024 * 1024) + " Mb");
-        log.info("{}", "Free Memory: " + freeMemory / (1024 * 1024) + " Mb");
+            log.info("{}", "Total Memory: " + totalMemory / (1024 * 1024) + " Mb");
+            log.info("{}", "Free Memory: " + freeMemory / (1024 * 1024) + " Mb");
 
-        List<String> lines = Files.readAllLines(Paths.get(outputPath), StandardCharsets.UTF_8);
+            List<String> lines = Files.readAllLines(Paths.get(outputPath), StandardCharsets.UTF_8);
 
-        long totalMemory2 = Runtime.getRuntime().totalMemory();
-        long freeMemory2 = Runtime.getRuntime().freeMemory();
+            long totalMemory2 = Runtime.getRuntime().totalMemory();
+            long freeMemory2 = Runtime.getRuntime().freeMemory();
 
-        log.info("{}", "Total Memory2: " + totalMemory2 / (1024 * 1024) + " Mb");
-        log.info("{}", "Free Memory2: " + freeMemory2 / (1024 * 1024) + " Mb");
-
-        new File(outputPath).deleteOnExit();
+            log.info("{}", "Total Memory2: " + totalMemory2 / (1024 * 1024) + " Mb");
+            log.info("{}", "Free Memory2: " + freeMemory2 / (1024 * 1024) + " Mb");
+        } finally {
+            File file = new File(outputPath);
+            if (file.exists()) {
+                file.delete();
+            }
+        }
     }
 
     /**

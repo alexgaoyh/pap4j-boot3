@@ -6,8 +6,10 @@ import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.parser.*;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.io.FileOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -18,6 +20,8 @@ import java.util.List;
  * 2、尝试替换字体，改为嵌入式字体，从而在某些场景下，达到缩小PDF大小的效果.
  */
 public class PDFFontTest {
+
+    private static final Logger log = LoggerFactory.getLogger(PDFFontTest.class);
 
     /**
      * 字体信息类，包含字体名称和是否嵌入的标志
@@ -68,27 +72,55 @@ public class PDFFontTest {
      */
     @Test
     public void pdfTest() throws IOException {
-        List<FontInfo> fontInfos = listAllFonts(TestResourceUtil.getFile("font.pdf").getAbsolutePath());
-        for (FontInfo fontInfo : fontInfos) {
-            System.out.println(fontInfo);
+        File file = null;
+        try {
+            file = TestResourceUtil.getFile("font.pdf");
+            log.info("pdfTest: {}", file.getAbsolutePath().toString());
+            List<FontInfo> fontInfos = listAllFonts(file.getAbsolutePath());
+            for (FontInfo fontInfo : fontInfos) {
+                System.out.println(fontInfo);
+            }
+        } finally {
+            if (file != null && file.exists()) {
+                // 优先尝试立即删除
+                boolean deleted = file.delete();
+                // 如果因为某些原因立即删除失败（比如被其他进程占用），再作为兜底方案注册 JVM 退出删除
+                if (!deleted) {
+                    file.deleteOnExit();
+                }
+            }
         }
     }
 
     /**
      * Creates a list containing information about all fonts within the src PDF file.
-     *
+     * 修改参数类型或内部实现，手动管理 FileInputStream
      * @param src the path to a PDF file
      * @throws IOException
      */
     public List<FontInfo> listAllFonts(String src) throws IOException {
         List<FontInfo> fontList = new ArrayList<>();
-        PdfReader reader = new PdfReader(src);
-        PdfDictionary resources;
-        for (int k = 1; k <= reader.getNumberOfPages(); ++k) {
-            resources = reader.getPageN(k).getAsDict(PdfName.RESOURCES);
-            processResource(fontList, resources, k);
+        PdfReader reader = null;
+        java.io.FileInputStream fis = null;
+        try {
+            fis = new java.io.FileInputStream(src);
+            // 传入 InputStream 而不是 String 路径，阻止 iText 锁定物理文件
+            reader = new PdfReader(fis);
+
+            PdfDictionary resources;
+            for (int k = 1; k <= reader.getNumberOfPages(); ++k) {
+                resources = reader.getPageN(k).getAsDict(PdfName.RESOURCES);
+                processResource(fontList, resources, k);
+            }
+        } finally {
+            // 依次安全关闭
+            if (reader != null) {
+                try { reader.close(); } catch (Exception e) {}
+            }
+            if (fis != null) {
+                try { fis.close(); } catch (Exception e) {} // 彻底切断文件占用
+            }
         }
-        reader.close();
         return fontList;
     }
 
@@ -181,8 +213,11 @@ public class PDFFontTest {
         java.io.File tempDest = null;
         java.io.FileInputStream srcFis = null;
         java.io.FileOutputStream destFos = null;
+        PdfReader reader = null;
+        Document document = null;
         try {
             srcFile = TestResourceUtil.getFile("font.pdf");
+            log.info("reGenePdfTest:{}", srcFile.getAbsolutePath().toString());
             fontFile = TestResourceUtil.getFile(fontResourceName);
             tempDest = java.io.File.createTempFile("output_", ".pdf");
             tempDest.deleteOnExit();
@@ -192,9 +227,9 @@ public class PDFFontTest {
 
             //  对于源 PDF (srcFile) 和目标 PDF (tempDest)： 我不再直接把文件路径传给 iText。而是自己手动创建了 java.io.FileInputStream 和 java.io.FileOutputStream。
             //  这样，在 finally 块里，我们可以主动调用 srcFis.close() 和 destFos.close()。只要我们自己掐断了流，iText 就无法再占用这两个文件。
-            PdfReader reader = new PdfReader(srcFis);
+            reader = new PdfReader(srcFis);
 
-            Document document = new Document();
+            document = new Document();
             PdfWriter writer = PdfWriter.getInstance(document, destFos);
             document.open();
 
@@ -301,6 +336,12 @@ public class PDFFontTest {
         } finally {
             //  在 finally 中保证所有的 try { fis.close(); } catch(...) {} 执行完毕后，调用 srcFile.delete()、fontFile.delete()、tempDest.delete()。
             //  因为已经没有任何进程和句柄在占用它们了，它们会被立即顺畅删除，Temp 文件夹终于干净了。
+            if (document != null && document.isOpen()) {
+                try { document.close(); } catch (Exception e) {}
+            }
+            if (reader != null) {
+                try { reader.close(); } catch (Exception e) {}
+            }
             if (srcFis != null) {
                 try { srcFis.close(); } catch (Exception e) {}
             }

@@ -298,9 +298,15 @@ public class GeneImageTest {
     @Test
     public void geneAndCheckImageTest() throws Exception {
         File file = TestResourceUtil.getFile("1.jpg");
-        createImageWithDPI(file.getAbsolutePath(), 1, 300);
-        Integer dpi = getDPI(file.getAbsolutePath());
-        log.info("{}", dpi);
+        try {
+            createImageWithDPI(file.getAbsolutePath(), 1, 300);
+            Integer dpi = getDPI(file.getAbsolutePath());
+            log.info("{}", dpi);
+        } finally {
+            if (file != null && file.exists()) {
+                file.delete();
+            }
+        }
     }
 
     /**

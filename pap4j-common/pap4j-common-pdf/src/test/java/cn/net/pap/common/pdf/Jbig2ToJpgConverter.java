@@ -13,16 +13,22 @@ public class Jbig2ToJpgConverter {
 
     @Test
     public void convertTest() throws IOException {
+        File jb2eFile = null;
+        File jb2gFile = null;
+        File tempFile = null;
         try {
-            String jb2ePath = TestResourceUtil.getFile("003.jb2e").getAbsolutePath();
-            String jb2gPath = TestResourceUtil.getFile("003.jb2g").getAbsolutePath();
-            File tempFile = File.createTempFile("003-", ".jpg");
-            tempFile.deleteOnExit();
+            jb2eFile = TestResourceUtil.getFile("003.jb2e");
+            jb2gFile = TestResourceUtil.getFile("003.jb2g");
+            tempFile = File.createTempFile("003-", ".jpg");
             String outputJpg = tempFile.getAbsolutePath();
 
-            Jbig2ToJpgConverter.convert(jb2ePath, jb2gPath, outputJpg);
+            Jbig2ToJpgConverter.convert(jb2eFile.getAbsolutePath(), jb2gFile.getAbsolutePath(), outputJpg);
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (jb2eFile != null && jb2eFile.exists()) jb2eFile.delete();
+            if (jb2gFile != null && jb2gFile.exists()) jb2gFile.delete();
+            if (tempFile != null && tempFile.exists()) tempFile.delete();
         }
     }
 

@@ -181,13 +181,20 @@ public class MilvusTextSimilarityTest {
             org.springframework.core.io.Resource[] resources = resolver.getResources("classpath:/dir/*.jpg");
 
             for(org.springframework.core.io.Resource resource : resources) {
-                File imageAbsPath = TestResourceUtil.getFile("/dir/" + resource.getFilename());
-                float[] vector = convertImageToVector(imageAbsPath.getPath());
-                String name = resource.getFilename();
-                JsonObject row = new JsonObject();
-                row.addProperty("name", name);
-                row.add("vector", convert2(vector));
-                rowsData.add(row);
+                File imageAbsPath = null;
+                try {
+                    imageAbsPath = TestResourceUtil.getFile("/dir/" + resource.getFilename());
+                    float[] vector = convertImageToVector(imageAbsPath.getPath());
+                    String name = resource.getFilename();
+                    JsonObject row = new JsonObject();
+                    row.addProperty("name", name);
+                    row.add("vector", convert2(vector));
+                    rowsData.add(row);
+                } finally {
+                    if (imageAbsPath != null && imageAbsPath.exists()) {
+                        imageAbsPath.delete();
+                    }
+                }
                 if(rowsData.size() > 1000) {
                     break;
                 }
@@ -201,14 +208,19 @@ public class MilvusTextSimilarityTest {
 
     private List<Float> searchVector() throws Exception {
         List<Float> floatList = new ArrayList<>();
+        File file = null;
         try {
-            File file = TestResourceUtil.getFile("/dir/一.jpg");
+            file = TestResourceUtil.getFile("/dir/一.jpg");
             float[] floats = convertImageToVector(file.getPath());
             for (float value : floats) {
                 floatList.add(value);
             }
         } catch (Exception e) {
             log.error("{}", e);
+        } finally {
+            if (file != null && file.exists()) {
+                file.delete();
+            }
         }
         return floatList;
     }

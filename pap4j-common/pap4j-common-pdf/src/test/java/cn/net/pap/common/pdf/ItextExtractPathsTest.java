@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.Serializable;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -27,19 +28,30 @@ public class ItextExtractPathsTest {
      */
     @Test
     public void extractPathTest() throws Exception {
-        PdfReader pdfReader = new PdfReader(TestResourceUtil.getFile("format.pdf").getAbsolutePath());
+        File tempFile = TestResourceUtil.getFile("format.pdf");
+        PdfReader pdfReader = null;
+        try {
+            pdfReader = new PdfReader(tempFile.getAbsolutePath());
 
-        for (int page = 1; page <= pdfReader.getNumberOfPages(); page++) {
-            System.out.printf("Page %s\n", page);
+            for (int page = 1; page <= pdfReader.getNumberOfPages(); page++) {
+                System.out.printf("Page %s\n", page);
 
-            List<PDFPathDTO> pathData = new ArrayList<>();
-            ExtRenderListener extRenderListener = new PapExtRenderListener(pathData);
+                List<PDFPathDTO> pathData = new ArrayList<>();
+                ExtRenderListener extRenderListener = new PapExtRenderListener(pathData);
 
-            PdfReaderContentParser parser = new PdfReaderContentParser(pdfReader);
-            parser.processContent(page, extRenderListener);
+                PdfReaderContentParser parser = new PdfReaderContentParser(pdfReader);
+                parser.processContent(page, extRenderListener);
 
-            for (PDFPathDTO path : pathData) {
-                System.out.println(path);
+                for (PDFPathDTO path : pathData) {
+                    System.out.println(path);
+                }
+            }
+        } finally {
+            if (pdfReader != null) {
+                pdfReader.close();
+            }
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
             }
         }
     }

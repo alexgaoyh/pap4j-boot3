@@ -49,8 +49,14 @@ public class FilesTest {
         Collections.sort(fileNames);
 
         String destFilePath = Files.createTempFile("walkFileTreeTest", ".txt").toAbsolutePath().toString();
-        Files.write( Paths.get(destFilePath), fileNames, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-        new File(destFilePath).deleteOnExit();
+        try {
+            Files.write( Paths.get(destFilePath), fileNames, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+        } finally {
+            File file = new File(destFilePath);
+            if (file.exists()) {
+                file.delete();
+            }
+        }
     }
 
     /**
@@ -87,17 +93,25 @@ public class FilesTest {
     public void sortFileLinesWithComparatorTest() throws IOException {
         List<String> rawData = Arrays.asList("Banana", "Apple", "Cherry", "Date");
         String inputPath = Files.createTempFile("sort-input", ".txt").toAbsolutePath().toString();
-        Files.write(Paths.get(inputPath), rawData, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-
         String outputPath = Files.createTempFile("sort-output", ".txt").toAbsolutePath().toString();
+        try {
+            Files.write(Paths.get(inputPath), rawData, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
 
-        sortFileLinesWithComparator(inputPath, outputPath, Comparator.naturalOrder());
+            sortFileLinesWithComparator(inputPath, outputPath, Comparator.naturalOrder());
 
-        List<String> sortedResult = Files.readAllLines(Paths.get(outputPath));
-        sortedResult.equals(Arrays.asList("Apple", "Banana", "Cherry", "Date"));
+            List<String> sortedResult = Files.readAllLines(Paths.get(outputPath));
+            sortedResult.equals(Arrays.asList("Apple", "Banana", "Cherry", "Date"));
 
-        new File(inputPath).deleteOnExit();
-        new File(outputPath).deleteOnExit();
+        } finally {
+            File inputFile = new File(inputPath);
+            if (inputFile.exists()) {
+                inputFile.delete();
+            }
+            File outputFile = new File(outputPath);
+            if (outputFile.exists()) {
+                outputFile.delete();
+            }
+        }
 
     }
 
@@ -138,8 +152,14 @@ public class FilesTest {
         String srcPath = TestResourceUtil.getFile("PageDTO.xml").getAbsolutePath().toString();
         for(int i = 2; i < 200; i++) {
             String destFilePath = Files.createTempFile("copyFileTest", ".xml").toAbsolutePath().toString();
-            copyFile(srcPath, destFilePath);
-            new File(destFilePath).deleteOnExit();
+            try {
+                copyFile(srcPath, destFilePath);
+            } finally {
+                File file = new File(destFilePath);
+                if (file.exists()) {
+                    file.delete();
+                }
+            }
         }
     }
 

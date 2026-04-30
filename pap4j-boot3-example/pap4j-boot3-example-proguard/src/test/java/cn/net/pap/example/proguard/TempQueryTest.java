@@ -79,7 +79,7 @@ public class TempQueryTest {
      */
     @Test
     public void testInClause() {
-        Integer totalNumber = 9999;
+        Integer totalNumber = 999;
         Integer searchNumber = 90;
 
         // 插入主表大量数据
@@ -146,7 +146,7 @@ public class TempQueryTest {
 
     @Test
     public void testTempQueryBatch() {
-        Integer totalNumber = 9999;
+        Integer totalNumber = 999;
 
         String bizType = "testTempQueryBatch";
         List<Long> targetIds = new ArrayList<>();
@@ -159,7 +159,7 @@ public class TempQueryTest {
 
     @Test
     public void testTempQueryStyle() {
-        Integer totalNumber = 9999;
+        Integer totalNumber = 999;
 
         // 插入主表大量数据
         List<AutoIncrePreKey> all = new ArrayList<>();

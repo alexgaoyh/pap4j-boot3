@@ -30,9 +30,20 @@ public class ItextPdfChangePicInPDFTest {
 
     @Test
     public void extractImagesTest() throws Exception {
-        File tempFile = File.createTempFile("input-jp2", ".pdf");
-        tempFile.deleteOnExit();
-        extractAndConvertImagesToJp2(TestResourceUtil.getFile("jpg.pdf").getAbsolutePath(), tempFile.getAbsolutePath());
+        File tempFile = null;
+        File sourceFile = null;
+        try {
+            tempFile = File.createTempFile("input-jp2", ".pdf");
+            sourceFile = TestResourceUtil.getFile("jpg.pdf");
+            extractAndConvertImagesToJp2(sourceFile.getAbsolutePath(), tempFile.getAbsolutePath());
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
+            }
+            if (sourceFile != null && sourceFile.exists()) {
+                sourceFile.delete();
+            }
+        }
     }
 
     /**

@@ -24,8 +24,8 @@ public class BigTextProcessorTest {
 
     @Test
     public void testBigText() throws IOException {
+        String outputPath = Files.createTempFile("testBigText", ".txt").toAbsolutePath().toString();
         try {
-            String outputPath = Files.createTempFile("testBigText", ".txt").toAbsolutePath().toString();
             generateBigFile(Paths.get(outputPath), 1000000);
 
             log.info("====== 测试一：流式读取 (BufferedReader) ======");
@@ -54,11 +54,13 @@ public class BigTextProcessorTest {
                     e.printStackTrace();
                 }
             });
-
-            new File(outputPath).deleteOnExit();
-
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            File file = new File(outputPath);
+            if (file.exists()) {
+                file.delete();
+            }
         }
     }
 

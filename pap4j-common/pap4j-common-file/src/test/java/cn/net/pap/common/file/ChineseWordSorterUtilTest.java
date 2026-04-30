@@ -11,14 +11,20 @@ public class ChineseWordSorterUtilTest {
     @Test
     public void testAdd() throws Exception {
         String basePath = Files.createTempFile("testAdd", ".txt").toAbsolutePath().toString();
-        ChineseWordSorterUtil.add(basePath, "\uD840\uDC00\uD840\uDC01");
-        ChineseWordSorterUtil.add(basePath, "\uD840\uDC02");
-        ChineseWordSorterUtil.add(basePath, "\uD840\uDC03");
-        ChineseWordSorterUtil.add(basePath, "\uD840\uDC04");
-        ChineseWordSorterUtil.add(basePath, "\uD840\uDC05");
-        ChineseWordSorterUtil.add(basePath, "\uD840\uDC06");
-        ChineseWordSorterUtil.add(basePath, "\uD840\uDC07");
-        new File(basePath).deleteOnExit();
+        try {
+            ChineseWordSorterUtil.add(basePath, "\uD840\uDC00\uD840\uDC01");
+            ChineseWordSorterUtil.add(basePath, "\uD840\uDC02");
+            ChineseWordSorterUtil.add(basePath, "\uD840\uDC03");
+            ChineseWordSorterUtil.add(basePath, "\uD840\uDC04");
+            ChineseWordSorterUtil.add(basePath, "\uD840\uDC05");
+            ChineseWordSorterUtil.add(basePath, "\uD840\uDC06");
+            ChineseWordSorterUtil.add(basePath, "\uD840\uDC07");
+        } finally {
+            File file = new File(basePath);
+            if (file.exists()) {
+                file.delete();
+            }
+        }
     }
 
 

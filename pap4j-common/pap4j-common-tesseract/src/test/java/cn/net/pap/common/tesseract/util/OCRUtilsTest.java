@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 
 public class OCRUtilsTest {
@@ -13,27 +15,37 @@ public class OCRUtilsTest {
 
     @Test
     public void test1() throws Exception {
+        java.io.File tempFile = null;
         try {
-            java.io.File tempFile = saveImageToFile(createTestImage("测试Tesseract OCR功能"), "ocr_test_1_");
+            tempFile = saveImageToFile(createTestImage("测试Tesseract OCR功能"), "ocr_test_1_");
             List<OCRUtils.OCRResult> chi = OCRUtils.recognizeWithCoordinates("d:\\tessdata", tempFile.getAbsolutePath(), "chi_sim");
             System.out.println(chi);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (OCRUtils.OCRException e) {
             log.error(e.getMessage());
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
+            }
         }
     }
 
     @Test
     public void test2() throws Exception {
+        java.io.File tempFile = null;
         try {
-            java.io.File tempFile = saveImageToFile(createTestImage("测试Tesseract OCR功能"), "ocr_test_2_");
+            tempFile = saveImageToFile(createTestImage("测试Tesseract OCR功能"), "ocr_test_2_");
             List<OCRUtils.OCRResult> chi = OCRUtils.recognizeWithWordCoordinates("d:\\tessdata", tempFile.getAbsolutePath(), "chi_sim");
             System.out.println(chi);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (OCRUtils.OCRException e) {
             log.error(e.getMessage());
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
+            }
         }
     }
 
@@ -43,6 +55,7 @@ public class OCRUtilsTest {
      */
     @Test
     public void test3() throws Exception {
+        List<File> tempFiles = new ArrayList<>();
         try {
             // 生成一张包含特定汉字的初始图片 (0度)
             java.awt.image.BufferedImage image0 = createTestImage("测试Tesseract OCR功能");
@@ -54,9 +67,13 @@ public class OCRUtilsTest {
 
             // 写入不同方向的图片并创建临时文件
             java.io.File file0 = saveImageToFile(image0, "ocr_test_0_");
+            tempFiles.add(file0);
             java.io.File file90 = saveImageToFile(image90, "ocr_test_90_");
+            tempFiles.add(file90);
             java.io.File file180 = saveImageToFile(image180, "ocr_test_180_");
+            tempFiles.add(file180);
             java.io.File file270 = saveImageToFile(image270, "ocr_test_270_");
+            tempFiles.add(file270);
 
             // 使用生成的临时文件进行 OCR 识别
             List<OCRUtils.OCRResult> list0 = OCRUtils.recognizeWithCoordinates("d:\\tessdata", file0.getAbsolutePath(), "chi_sim");
@@ -72,6 +89,12 @@ public class OCRUtilsTest {
             throw new RuntimeException(e);
         } catch (OCRUtils.OCRException e) {
             log.error(e.getMessage());
+        } finally {
+            for (File file : tempFiles) {
+                if (file.exists()) {
+                    file.delete();
+                }
+            }
         }
     }
 
@@ -100,7 +123,6 @@ public class OCRUtilsTest {
 
     private java.io.File saveImageToFile(java.awt.image.BufferedImage image, String prefix) throws IOException {
         java.io.File file = java.io.File.createTempFile(prefix, ".png");
-        file.deleteOnExit();
         
         // 写入 PNG 时附加 300 DPI 的元数据信息，防止 Tesseract 报 Invalid resolution 警告
         java.util.Iterator<javax.imageio.ImageWriter> writers = javax.imageio.ImageIO.getImageWritersByFormatName("png");

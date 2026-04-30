@@ -82,18 +82,24 @@ public class ExcelUtilTest {
         try(InputStream resourceAsStream = new FileInputStream(new File(tempFileName));) {
             String fileName = Files.createTempFile("pictureExport", ".xlsx").toAbsolutePath().toString();
 
-            List<ExportDTO> dataList = new ArrayList<>();
-            dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("bmp.bmp").getAbsolutePath())));
-            dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("jpg.jpg").getAbsolutePath())));
-            dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("png.png").getAbsolutePath())));
+            try {
+                List<ExportDTO> dataList = new ArrayList<>();
+                dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("bmp.bmp").getAbsolutePath())));
+                dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("jpg.jpg").getAbsolutePath())));
+                dataList.add(new ExportDTO(new File(TestResourceUtil.getFile("png.png").getAbsolutePath())));
 
-            try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
-                WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler()).build();
-                FillConfig fillConfig0 = FillConfig.builder().forceNewRow(Boolean.TRUE).build();
-                excelWriter.fill(dataList, fillConfig0, writeSheet0);
+                try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
+                    WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler()).build();
+                    FillConfig fillConfig0 = FillConfig.builder().forceNewRow(Boolean.TRUE).build();
+                    excelWriter.fill(dataList, fillConfig0, writeSheet0);
+                }
+                log.info(fileName);
+            } finally {
+                File file = new File(fileName);
+                if (file.exists()) {
+                    file.delete();
+                }
             }
-            log.info(fileName);
-            new File(fileName).deleteOnExit();
         }
 
     }
@@ -105,16 +111,22 @@ public class ExcelUtilTest {
         try(InputStream resourceAsStream = new FileInputStream(new File(tempFileName));) {
             String fileName = Files.createTempFile("pictureExport2", ".xlsx").toAbsolutePath().toString();
 
-            try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
-                WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler2()).build();
-                Map<String, Object> map = new HashMap<>();
-                map.put("picture1", new File(TestResourceUtil.getFile("bmp.bmp").getAbsolutePath()));
-                map.put("picture2", new File(TestResourceUtil.getFile("jpg.jpg").getAbsolutePath()));
-                map.put("picture3", new File(TestResourceUtil.getFile("png.png").getAbsolutePath()));
-                excelWriter.fill(map, writeSheet0);
+            try {
+                try (ExcelWriter excelWriter = EasyExcel.write(fileName).withTemplate(resourceAsStream).build()) {
+                    WriteSheet writeSheet0 = EasyExcel.writerSheet(0).registerWriteHandler(new ImageModifyHandler2()).build();
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("picture1", new File(TestResourceUtil.getFile("bmp.bmp").getAbsolutePath()));
+                    map.put("picture2", new File(TestResourceUtil.getFile("jpg.jpg").getAbsolutePath()));
+                    map.put("picture3", new File(TestResourceUtil.getFile("png.png").getAbsolutePath()));
+                    excelWriter.fill(map, writeSheet0);
+                }
+                log.info(fileName);
+            } finally {
+                File file = new File(fileName);
+                if (file.exists()) {
+                    file.delete();
+                }
             }
-            log.info(fileName);
-            new File(fileName).deleteOnExit();
         }
 
     }

@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 
 import org.junit.jupiter.api.Test;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.MalformedInputException;
@@ -157,6 +158,17 @@ public class TfIdfDataSketchesUtilTest {
 
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (tempDir != null) {
+                try {
+                    Files.walk(tempDir)
+                            .sorted(Comparator.reverseOrder())
+                            .map(Path::toFile)
+                            .forEach(File::delete);
+                } catch (IOException e) {
+                    log.warn("Failed to delete temp directory: " + tempDir, e);
+                }
+            }
         }
     }
 

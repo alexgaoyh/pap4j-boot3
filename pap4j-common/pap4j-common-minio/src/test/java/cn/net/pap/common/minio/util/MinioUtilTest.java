@@ -17,11 +17,12 @@ public class MinioUtilTest {
 
     @Test
     public void initTest() {
+        File file = null;
+        String targetFileStr = null;
         try {
-
-            File file = TestResourceUtil.getFile("jpg.jpg");
+            file = TestResourceUtil.getFile("jpg.jpg");
             String objectName = "upload.jpg";
-            String targetFileStr = Files.createTempFile("initTest", ".jpg").toAbsolutePath().toString();
+            targetFileStr = Files.createTempFile("initTest", ".jpg").toAbsolutePath().toString();
             if(file.exists()){
                 // 上传
                 try (FileInputStream fis = new FileInputStream(file);){
@@ -40,6 +41,17 @@ public class MinioUtilTest {
                 log.warn("{}", e);
             } else {
                 log.error("{}", e);
+            }
+        } finally {
+            if (file != null && file.exists()) {
+                file.delete();
+            }
+            if (targetFileStr != null) {
+                try {
+                    Files.deleteIfExists(Paths.get(targetFileStr));
+                } catch (Exception e) {
+                    log.warn("Failed to delete temp file: " + targetFileStr, e);
+                }
             }
         }
     }

@@ -34,17 +34,19 @@ public class POIUtilTest {
         Path tempDir = Files.createTempDirectory("excel-test-");
         log.info("测试使用的临时目录:  {}", tempDir.toAbsolutePath());
 
-        for (ImportDTO dto : importDTOS) {
-            log.info("{}", dto);
-            if(dto.getPicture() != null) {
-                File tempFile = tempDir.resolve(dto.getName() + "." + dto.getImageType()).toFile();
-                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                    fos.write(dto.getPicture());
+        try {
+            for (ImportDTO dto : importDTOS) {
+                log.info("{}", dto);
+                if(dto.getPicture() != null) {
+                    File tempFile = tempDir.resolve(dto.getName() + "." + dto.getImageType()).toFile();
+                    try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                        fos.write(dto.getPicture());
+                    }
                 }
-                tempFile.deleteOnExit();
             }
+        } finally {
+            FileUtils.deleteDirectory(tempDir.toFile());
         }
-        FileUtils.deleteDirectory(tempDir.toFile());
     }
 
     /**
@@ -121,17 +123,19 @@ public class POIUtilTest {
         Path tempDir = Files.createTempDirectory("excel-embedded-test-");
         log.info("测试使用的临时目录:  {}", tempDir.toAbsolutePath());
 
-        for (ImportDTO dto : importDTOS) {
-            log.info("{}", dto);
-            if(dto.getPicture() != null) {
-                File tempFile = tempDir.resolve(dto.getName() + "." + dto.getImageType()).toFile();
-                try (FileOutputStream fos = new FileOutputStream(tempFile)) {
-                    fos.write(dto.getPicture());
+        try {
+            for (ImportDTO dto : importDTOS) {
+                log.info("{}", dto);
+                if(dto.getPicture() != null) {
+                    File tempFile = tempDir.resolve(dto.getName() + "." + dto.getImageType()).toFile();
+                    try (FileOutputStream fos = new FileOutputStream(tempFile)) {
+                        fos.write(dto.getPicture());
+                    }
                 }
-                tempFile.deleteOnExit();
             }
+        } finally {
+            FileUtils.deleteDirectory(tempDir.toFile());
         }
-        FileUtils.deleteDirectory(tempDir.toFile());
     }
 
     /**

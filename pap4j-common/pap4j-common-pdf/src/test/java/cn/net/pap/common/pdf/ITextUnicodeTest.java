@@ -9,6 +9,7 @@ import org.springframework.core.io.ClassPathResource;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.List;
 
@@ -35,10 +36,19 @@ public class ITextUnicodeTest {
      */
     @Test
     public void unicodeSupportTest() {
+        File simfangFile = null;
+        byte[] fontBytes = null;
         try {
-            BaseFont chineseFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
+            simfangFile = TestResourceUtil.getFile("simfang.ttf");
+            fontBytes = Files.readAllBytes(simfangFile.toPath());
+            simfangFile.delete();
+            BaseFont chineseFont = BaseFont.createFont(
+                    "simfang.ttf",
                     BaseFont.IDENTITY_H,
-                    BaseFont.EMBEDDED
+                    BaseFont.EMBEDDED,
+                    true,
+                    fontBytes,
+                    null
             );
             System.out.println(chineseFont.charExists(0x1F600));// 😊 的码点 0x1F600
             System.out.println(chineseFont.charExists(0x9AD8 ));// 高 的码点 0x9AD8
@@ -46,6 +56,10 @@ public class ITextUnicodeTest {
 
         } catch (Exception e) {
 
+        } finally {
+            if (simfangFile != null && simfangFile.exists()) {
+                simfangFile.delete();
+            }
         }
     }
 
@@ -56,10 +70,19 @@ public class ITextUnicodeTest {
     public void unicodeRangeTest() {
         // 用于存储Unicode存在的区间
         List<String> unicodeRanges = new ArrayList<>();
+        File simfangFile = null;
+        byte[] fontBytes = null;
         try {
-            BaseFont chineseFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
+            simfangFile = TestResourceUtil.getFile("simfang.ttf");
+            fontBytes = Files.readAllBytes(simfangFile.toPath());
+            simfangFile.delete();
+            BaseFont chineseFont = BaseFont.createFont(
+                    "simfang.ttf",
                     BaseFont.IDENTITY_H,
-                    BaseFont.EMBEDDED
+                    BaseFont.EMBEDDED,
+                    true,
+                    fontBytes,
+                    null
             );
             // 逐区间遍历Unicode范围
             for (int start = 0x0000; start <= 0x10FFFF; start += 0x1000) {
@@ -88,6 +111,10 @@ public class ITextUnicodeTest {
             }
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (simfangFile != null && simfangFile.exists()) {
+                simfangFile.delete();
+            }
         }
     }
 
@@ -107,22 +134,40 @@ public class ITextUnicodeTest {
     public void emojiChineseTest() {
         // https://fonts.google.com/
         // https://fontforge.org/en-US/
+        File simfangFile1 = null;
+        File simfangFile2 = null;
+        byte[] fontBytes1 = null;
+        byte[] fontBytes2 = null;
+        java.io.File tempOut = null;
         try {
-            BaseFont chineseFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
+            simfangFile1 = TestResourceUtil.getFile("simfang.ttf");
+            simfangFile2 = TestResourceUtil.getFile("simfang.ttf");
+            fontBytes1 = Files.readAllBytes(simfangFile1.toPath());
+            simfangFile1.delete();
+            fontBytes2 = Files.readAllBytes(simfangFile2.toPath());
+            simfangFile2.delete();
+            BaseFont chineseFont = BaseFont.createFont(
+                    "simfang.ttf",
                     BaseFont.IDENTITY_H,
-                    BaseFont.EMBEDDED
+                    BaseFont.EMBEDDED,
+                    true,
+                    fontBytes1,
+                    null
             );
-            BaseFont emojiFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
+            BaseFont emojiFont = BaseFont.createFont(
+                    "simfang.ttf",
                     BaseFont.IDENTITY_H,
-                    BaseFont.EMBEDDED
+                    BaseFont.EMBEDDED,
+                    true,
+                    fontBytes2,
+                    null
             );
 
             Font chineseStyle = new Font(chineseFont, 12);
             Font emojiStyle = new Font(emojiFont, 12);
 
             Document document = new Document();
-            java.io.File tempOut = java.io.File.createTempFile("emoji_demo", ".pdf");
-            tempOut.deleteOnExit();
+            tempOut = java.io.File.createTempFile("emoji_demo", ".pdf");
             PdfWriter.getInstance(document, new FileOutputStream(tempOut));
             document.open();
 
@@ -136,27 +181,49 @@ public class ITextUnicodeTest {
 
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            if (tempOut != null && tempOut.exists()) tempOut.delete();
+            if (simfangFile1 != null && simfangFile1.exists()) simfangFile1.delete();
+            if (simfangFile2 != null && simfangFile2.exists()) simfangFile2.delete();
         }
     }
 
     @Test
     public void emoji2PdfTest() {
+        File simfangFile1 = null;
+        File simfangFile2 = null;
+        byte[] fontBytes1 = null;
+        byte[] fontBytes2 = null;
+        java.io.File tempOut = null;
         try {
-            BaseFont chineseFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
+            simfangFile1 = TestResourceUtil.getFile("simfang.ttf");
+            simfangFile2 = TestResourceUtil.getFile("simfang.ttf");
+            fontBytes1 = Files.readAllBytes(simfangFile1.toPath());
+            simfangFile1.delete();
+            fontBytes2 = Files.readAllBytes(simfangFile2.toPath());
+            simfangFile2.delete();
+            BaseFont chineseFont = BaseFont.createFont(
+                    "simfang.ttf",
                     BaseFont.IDENTITY_H,
-                    BaseFont.EMBEDDED
+                    BaseFont.EMBEDDED,
+                    true,
+                    fontBytes1,
+                    null
             );
-            BaseFont emojiFont = BaseFont.createFont(TestResourceUtil.getFile("simfang.ttf").getAbsolutePath(),
+            BaseFont emojiFont = BaseFont.createFont(
+                    "simfang.ttf",
                     BaseFont.IDENTITY_H,
-                    BaseFont.EMBEDDED
+                    BaseFont.EMBEDDED,
+                    true,
+                    fontBytes2,
+                    null
             );
 
             Font chineseStyle = new Font(chineseFont, 12);
             Font emojiStyle = new Font(emojiFont, 12);
 
             Document document = new Document();
-            java.io.File tempOut = java.io.File.createTempFile("emoji_demo", ".pdf");
-            tempOut.deleteOnExit();
+            tempOut = java.io.File.createTempFile("emoji_demo", ".pdf");
             PdfWriter.getInstance(document, new FileOutputStream(tempOut));
             document.open();
 
@@ -176,6 +243,10 @@ public class ITextUnicodeTest {
             System.out.println("PDF 生成成功！");
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (tempOut != null && tempOut.exists()) tempOut.delete();
+            if (simfangFile1 != null && simfangFile1.exists()) simfangFile1.delete();
+            if (simfangFile2 != null && simfangFile2.exists()) simfangFile2.delete();
         }
     }
 

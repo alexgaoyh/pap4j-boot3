@@ -43,28 +43,33 @@ public class ReadTxtToStringUtilTest {
     @Test
     public void createBomFileTest() throws IOException {
         File file = new File("test_bom.txt");
-        // UTF-8 BOM 字节序列
-        byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
-        try (OutputStream os = new FileOutputStream(file)) {
-            // 写入BOM
-            os.write(bom);
-            // 写入内容（UTF-8编码）
-            os.write("你好，这是一个带BOM的UTF-8文件。".getBytes("UTF-8"));
-        }
-        log.info("{}", "文件已创建: " + file.getAbsolutePath());
+        try {
+            // UTF-8 BOM 字节序列
+            byte[] bom = {(byte) 0xEF, (byte) 0xBB, (byte) 0xBF};
+            try (OutputStream os = new FileOutputStream(file)) {
+                // 写入BOM
+                os.write(bom);
+                // 写入内容（UTF-8编码）
+                os.write("你好，这是一个带BOM的UTF-8文件。".getBytes("UTF-8"));
+            }
+            log.info("{}", "文件已创建: " + file.getAbsolutePath());
 
-        try (InputStream is = new FileInputStream(file)) {
-            byte[] head = new byte[3];
-            if (is.read(head) == 3 &&
-                    head[0] == (byte) 0xEF &&
-                    head[1] == (byte) 0xBB &&
-                    head[2] == (byte) 0xBF) {
-                log.info("文件包含UTF-8 BOM");
-            } else {
-                log.info("文件无BOM");
+            try (InputStream is = new FileInputStream(file)) {
+                byte[] head = new byte[3];
+                if (is.read(head) == 3 &&
+                        head[0] == (byte) 0xEF &&
+                        head[1] == (byte) 0xBB &&
+                        head[2] == (byte) 0xBF) {
+                    log.info("文件包含UTF-8 BOM");
+                } else {
+                    log.info("文件无BOM");
+                }
+            }
+        } finally {
+            if (file.exists()) {
+                file.delete();
             }
         }
-        file.delete();
     }
 
 }

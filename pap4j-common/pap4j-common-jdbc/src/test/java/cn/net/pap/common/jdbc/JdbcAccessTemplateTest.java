@@ -101,57 +101,62 @@ public class JdbcAccessTemplateTest {
     void testCreateNewDatabaseAndInsertData() throws Exception {
         File newDbFile = Files.createTempFile("testCreateNewDatabaseAndInsertData", ".mdb").toFile();
 
-        // 如果文件已存在，先删除，确保每次测试都是从零开始创建
-        if (newDbFile.exists()) {
-            boolean deleted = newDbFile.delete();
-            log.info("{}", "清理旧的测试文件: " + deleted);
-        }
-
-        // 2. 构造 JDBC URL，关键参数：;newdatabaseversion=V2003
-        // V2003 代表创建 Access 2002/2003 格式的 .mdb 文件
-        // V2010 代表创建 Access 2010 格式的 .accdb 文件
-        String url = "jdbc:ucanaccess://" + newDbFile.getAbsolutePath() + ";newdatabaseversion=V2003";
-
         try {
-            // 3. 在测试方法内部创建一个独立的 DataSource 和 JdbcTemplate
-            org.springframework.jdbc.datasource.DriverManagerDataSource localDataSource =
-                    new org.springframework.jdbc.datasource.DriverManagerDataSource();
-            localDataSource.setDriverClassName("net.ucanaccess.jdbc.UcanaccessDriver");
-            localDataSource.setUrl(url);
-
-            JdbcTemplate localJdbcTemplate = new JdbcTemplate(localDataSource);
-
-            // 4. 创建新表 (COUNTER 代表 Access 中的自动编号主键)
-            log.info("正在创建新表 [Users]...");
-            String createTableSql = "CREATE TABLE Users (" +
-                    "id COUNTER PRIMARY KEY, " +
-                    "username VARCHAR(50), " +
-                    "age INT, " +
-                    "status TEXT(100)" +
-                    ")";
-            localJdbcTemplate.execute(createTableSql);
-            log.info("建表成功！");
-
-            // 5. 插入数据
-            log.info("正在插入数据...");
-            String insertSql = "INSERT INTO Users (username, age, status) VALUES (?, ?, ?)";
-            localJdbcTemplate.update(insertSql, "张三", 25, "活跃");
-            localJdbcTemplate.update(insertSql, "李四", 30, "离线");
-            localJdbcTemplate.update(insertSql, "王五", 28, "活跃");
-            log.info("数据插入成功！");
-
-            // 6. 查询并验证数据
-            log.info("查询刚插入的数据:");
-            List<Map<String, Object>> results = localJdbcTemplate.queryForList("SELECT * FROM Users");
-            for (Map<String, Object> row : results) {
-                log.info("{}", row);
+            // 如果文件已存在，先删除，确保每次测试都是从零开始创建
+            if (newDbFile.exists()) {
+                boolean deleted = newDbFile.delete();
+                log.info("{}", "清理旧的测试文件: " + deleted);
             }
 
-        } catch (Exception e) {
-            System.err.println("操作失败: " + e.getMessage());
-            e.printStackTrace();
+            // 2. 构造 JDBC URL，关键参数：;newdatabaseversion=V2003
+            // V2003 代表创建 Access 2002/2003 格式的 .mdb 文件
+            // V2010 代表创建 Access 2010 格式的 .accdb 文件
+            String url = "jdbc:ucanaccess://" + newDbFile.getAbsolutePath() + ";newdatabaseversion=V2003";
+
+            try {
+                // 3. 在测试方法内部创建一个独立的 DataSource 和 JdbcTemplate
+                org.springframework.jdbc.datasource.DriverManagerDataSource localDataSource =
+                        new org.springframework.jdbc.datasource.DriverManagerDataSource();
+                localDataSource.setDriverClassName("net.ucanaccess.jdbc.UcanaccessDriver");
+                localDataSource.setUrl(url);
+
+                JdbcTemplate localJdbcTemplate = new JdbcTemplate(localDataSource);
+
+                // 4. 创建新表 (COUNTER 代表 Access 中的自动编号主键)
+                log.info("正在创建新表 [Users]...");
+                String createTableSql = "CREATE TABLE Users (" +
+                        "id COUNTER PRIMARY KEY, " +
+                        "username VARCHAR(50), " +
+                        "age INT, " +
+                        "status TEXT(100)" +
+                        ")";
+                localJdbcTemplate.execute(createTableSql);
+                log.info("建表成功！");
+
+                // 5. 插入数据
+                log.info("正在插入数据...");
+                String insertSql = "INSERT INTO Users (username, age, status) VALUES (?, ?, ?)";
+                localJdbcTemplate.update(insertSql, "张三", 25, "活跃");
+                localJdbcTemplate.update(insertSql, "李四", 30, "离线");
+                localJdbcTemplate.update(insertSql, "王五", 28, "活跃");
+                log.info("数据插入成功！");
+
+                // 6. 查询并验证数据
+                log.info("查询刚插入的数据:");
+                List<Map<String, Object>> results = localJdbcTemplate.queryForList("SELECT * FROM Users");
+                for (Map<String, Object> row : results) {
+                    log.info("{}", row);
+                }
+
+            } catch (Exception e) {
+                System.err.println("操作失败: " + e.getMessage());
+                e.printStackTrace();
+            }
+        } finally {
+            if (newDbFile != null && newDbFile.exists()) {
+                newDbFile.delete();
+            }
         }
-        newDbFile.deleteOnExit();
     }
 
 }

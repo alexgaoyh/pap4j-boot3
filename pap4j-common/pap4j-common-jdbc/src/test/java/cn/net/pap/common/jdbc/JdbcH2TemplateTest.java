@@ -212,61 +212,63 @@ class JdbcH2TemplateTest {
         Path tempFile = Files.createTempFile("user_export_", ".csv");
         log.info("{}", "CSV文件路径: " + tempFile.toAbsolutePath());
 
-        long startTime = System.currentTimeMillis();
-        AtomicInteger rowCount = new AtomicInteger(0);
+        try {
+            long startTime = System.currentTimeMillis();
+            AtomicInteger rowCount = new AtomicInteger(0);
 
-        try (BufferedWriter writer = Files.newBufferedWriter(tempFile); Connection conn = dataSource.getConnection();) {
-            try (Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ){
-                // 设置fetchSize启用流式
-                stmt.setFetchSize(2000);
-                try (ResultSet rs = stmt.executeQuery("SELECT id, name, age, email, status, created_at FROM user_info ORDER BY id")){
-                    // 写入CSV表头
-                    writer.write("ID,Name,Age,Email,Status,CreatedAt");
-                    writer.newLine();
-
-                    log.info("开始流式导出到CSV...");
-
-                    while (rs.next()) {
-                        // 构建CSV行
-                        String csvLine = String.format("%d,%s,%d,%s,%s,%s", rs.getLong("id"), escapeCsv(rs.getString("name")), rs.getInt("age"), escapeCsv(rs.getString("email")), rs.getString("status"), rs.getTimestamp("created_at"));
-
-                        writer.write(csvLine);
+            try (BufferedWriter writer = Files.newBufferedWriter(tempFile); Connection conn = dataSource.getConnection();) {
+                try (Statement stmt = conn.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY); ){
+                    // 设置fetchSize启用流式
+                    stmt.setFetchSize(2000);
+                    try (ResultSet rs = stmt.executeQuery("SELECT id, name, age, email, status, created_at FROM user_info ORDER BY id")){
+                        // 写入CSV表头
+                        writer.write("ID,Name,Age,Email,Status,CreatedAt");
                         writer.newLine();
 
-                        rowCount.incrementAndGet();
+                        log.info("开始流式导出到CSV...");
 
-                        // 每10000行刷新一次缓冲区
-                        if (rowCount.get() % 10000 == 0) {
-                            writer.flush();
-                            log.info(String.format("已导出 %d 条记录到CSV%n", rowCount.get()));
+                        while (rs.next()) {
+                            // 构建CSV行
+                            String csvLine = String.format("%d,%s,%d,%s,%s,%s", rs.getLong("id"), escapeCsv(rs.getString("name")), rs.getInt("age"), escapeCsv(rs.getString("email")), rs.getString("status"), rs.getTimestamp("created_at"));
+
+                            writer.write(csvLine);
+                            writer.newLine();
+
+                            rowCount.incrementAndGet();
+
+                            // 每10000行刷新一次缓冲区
+                            if (rowCount.get() % 10000 == 0) {
+                                writer.flush();
+                                log.info(String.format("已导出 %d 条记录到CSV%n", rowCount.get()));
+                            }
                         }
-                    }
 
-                    // 最后刷新一次
-                    writer.flush();
+                        // 最后刷新一次
+                        writer.flush();
+                    }
                 }
+
+            } catch (SQLException | IOException e) {
+                fail("导出失败: " + e.getMessage());
             }
 
-        } catch (SQLException | IOException e) {
-            fail("导出失败: " + e.getMessage());
+            long endTime = System.currentTimeMillis();
+
+            // 验证导出结果
+            assertEquals(200000, rowCount.get());
+
+            // 验证文件存在且有内容
+            assertTrue(Files.exists(tempFile));
+            assertTrue(Files.size(tempFile) > 0);
+
+            log.info(String.format("CSV导出完成！\n"));
+            log.info(String.format("文件大小: %.2f MB\n", Files.size(tempFile) / (1024.0 * 1024.0)));
+            log.info(String.format("导出时间: %.2f秒\n", (endTime - startTime) / 1000.0));
+            log.info(String.format("总记录数: %d\n", rowCount.get()));
+        } finally {
+            // 清理临时文件
+            Files.deleteIfExists(tempFile);
         }
-
-        long endTime = System.currentTimeMillis();
-
-        // 验证导出结果
-        assertEquals(200000, rowCount.get());
-
-        // 验证文件存在且有内容
-        assertTrue(Files.exists(tempFile));
-        assertTrue(Files.size(tempFile) > 0);
-
-        log.info(String.format("CSV导出完成！\n"));
-        log.info(String.format("文件大小: %.2f MB\n", Files.size(tempFile) / (1024.0 * 1024.0)));
-        log.info(String.format("导出时间: %.2f秒\n", (endTime - startTime) / 1000.0));
-        log.info(String.format("总记录数: %d\n", rowCount.get()));
-
-        // 清理临时文件
-        Files.deleteIfExists(tempFile);
     }
 
     @Test

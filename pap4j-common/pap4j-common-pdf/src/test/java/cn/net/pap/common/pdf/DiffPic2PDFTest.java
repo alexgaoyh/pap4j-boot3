@@ -26,7 +26,6 @@ public class DiffPic2PDFTest {
             Rectangle pageSize = new Rectangle(jp2Image.getScaledWidth(), jp2Image.getScaledHeight());
             document = new Document(pageSize);
             tempPdf = java.io.File.createTempFile("pic2pdf", ".pdf");
-            tempPdf.deleteOnExit();
             pdfOutputStream = new FileOutputStream(tempPdf);
             PdfWriter.getInstance(document, pdfOutputStream);
             document.open();
@@ -46,6 +45,9 @@ public class DiffPic2PDFTest {
                 } catch (IOException e) {
                     System.err.println("关闭文件流时出错: " + e.getMessage());
                 }
+            }
+            if (tempPdf != null && tempPdf.exists()) {
+                tempPdf.delete();
             }
         }
     }

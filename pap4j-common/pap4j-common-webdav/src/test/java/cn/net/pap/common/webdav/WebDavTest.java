@@ -29,10 +29,12 @@ public class WebDavTest {
      * 3. 使用 PROPFIND 请求查询 WebDAV 服务器上的文件状态和属性。
      * 4. 遍历查询结果，并将服务器上的文件下载到本地指定目录。
      * 
-     * @throws Exception 抛出网络或 IO 等异常
+     * @throws Exception 抛出网络 or IO 等异常
      */
     @Test
     public void uploadAndDownloadTest() throws Exception {
+        File uploadFile = null;
+        Path tempDir = null;
         try {
             // 1. 定义连接信息（测试的基础 URL、用户名、密码）
             String url = "http://127.0.0.1:6065/test2.txt";
@@ -43,14 +45,17 @@ public class WebDavTest {
             WebDavUtil webDavUtil = new WebDavUtil(url, userName, password);
 
             // 3. 上传操作：读取本地的 test2.txt 文件，并将其上传到服务器的 /test2.txt 路径
-            webDavUtil.upload("http://127.0.0.1:6065/test2.txt", new FileInputStream(new File(TestResourceUtil.getFile("test2.txt").getAbsolutePath().toString())));
+            uploadFile = TestResourceUtil.getFile("test2.txt");
+            try (FileInputStream fis = new FileInputStream(uploadFile)) {
+                webDavUtil.upload("http://127.0.0.1:6065/test2.txt", fis);
+            }
 
             // 4. 查询操作：调用 propfind 方法获取服务器上给定 url (此处为 /test.txt) 对应的资源属性
             // MultiStatusResponse 数组中包含了资源的路径、创建时间、文件大小等元数据信息
             MultiStatusResponse[] propfind = webDavUtil.propfind(url);
 
             // 5. 下载操作：遍历服务器返回的资源元数据列表
-            Path tempDir = Files.createTempDirectory("uploadAndDownloadTest-");
+            tempDir = Files.createTempDirectory("uploadAndDownloadTest-");
             for (int i = 0; i < propfind.length; i++) {
                 // 获取资源在服务器上的相对 URI 路径 (href)，如 /test.txt
                 String href = propfind[i].getHref();
@@ -61,18 +66,22 @@ public class WebDavTest {
                 // 拼装出完整的下载 URL 链接，并将文件流读取并写入到本地桌面目录中
                 webDavUtil.download("http://127.0.0.1:6065/" + href, path, tempDir.toAbsolutePath().toString());
             }
+        } catch (IOException e) {
+            if(e instanceof org.apache.http.conn.HttpHostConnectException) {
+                log.info("{}", "请先启动 webdav");
+            } else {
+                log.error("{}", e);
+            }
+        } finally {
+            if (uploadFile != null && uploadFile.exists()) {
+                uploadFile.delete();
+            }
             if (tempDir != null && Files.exists(tempDir)) {
                 // 使用 Stream API 倒序遍历（先删子文件，再删父目录）
                 Files.walk(tempDir)
                         .sorted(Comparator.reverseOrder())
                         .map(Path::toFile)
                         .forEach(File::delete);
-            }
-        } catch (IOException e) {
-            if(e instanceof org.apache.http.conn.HttpHostConnectException) {
-                log.info("{}", "请先启动 webdav");
-            } else {
-                log.error("{}", e);
             }
         }
     }

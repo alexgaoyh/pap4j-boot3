@@ -36,9 +36,6 @@ public class OptimizedJsonParserTest {
 
     public String generateBigJsonFile() throws Exception {
         File file = Files.createTempFile("generateBigJsonFile", ".json").toFile();
-        if (file.exists()) {
-            file.delete();
-        }
         JsonFactory factory = new JsonFactory();
         long targetRecords = 10000;
         try (JsonGenerator generator = factory.createGenerator(new FileWriter(file))) {
@@ -77,55 +74,73 @@ public class OptimizedJsonParserTest {
     @Test
     public void optimizedTest1() throws Exception {
         File file = new File(generateBigJsonFile());
-        String json = JsonORMUtil.readFileToString(file);
-        // 这里就是初始化一下
-        JsonDTO jsonDTO2 = OptimizedJsonParser.parseWithOptimization(json, JsonDTO.class);
+        try {
+            String json = JsonORMUtil.readFileToString(file);
+            // 这里就是初始化一下
+            JsonDTO jsonDTO2 = OptimizedJsonParser.parseWithOptimization(json, JsonDTO.class);
 
-        long l = System.currentTimeMillis();
-        JsonDTO jsonDTO = OptimizedJsonParser.parseWithOptimization(json, JsonDTO.class);
-        log.info("{}", System.currentTimeMillis() - l);
+            long l = System.currentTimeMillis();
+            JsonDTO jsonDTO = OptimizedJsonParser.parseWithOptimization(json, JsonDTO.class);
+            log.info("{}", System.currentTimeMillis() - l);
 
-        // 打印对象内部结构（对象头、字段对齐等）
-        log.info("ClassLayout:");
-        log.info("{}", ClassLayout.parseInstance(jsonDTO).toPrintable());
+            // 打印对象内部结构（对象头、字段对齐等）
+            log.info("ClassLayout:");
+            log.info("{}", ClassLayout.parseInstance(jsonDTO).toPrintable());
 
-        // 打印对象图总大小（包括引用的对象）
-        log.info("GraphLayout:");
-        log.info("{}", GraphLayout.parseInstance(jsonDTO).toFootprint());
-        log.info("{}", "Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
-        file.deleteOnExit();
+            // 打印对象图总大小（包括引用的对象）
+            log.info("GraphLayout:");
+            log.info("{}", GraphLayout.parseInstance(jsonDTO).toFootprint());
+            log.info("{}", "Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
+        } finally {
+            if (file.exists()) {
+                file.delete();
+            }
+        }
     }
 
 
     @Test
     public void noOptimizedTest1() throws Exception {
         File file = new File(generateBigJsonFile());
-        String json = JsonORMUtil.readFileToString(file);
-        ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-        OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        JsonDTO jsonDTO2 = OBJECT_MAPPER.readValue(json, JsonDTO.class);
+        try {
+            String json = JsonORMUtil.readFileToString(file);
+            ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+            OBJECT_MAPPER.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            JsonDTO jsonDTO2 = OBJECT_MAPPER.readValue(json, JsonDTO.class);
 
-        long l = System.currentTimeMillis();
-        JsonDTO jsonDTO = OBJECT_MAPPER.readValue(json, JsonDTO.class);
-        log.info("{}", System.currentTimeMillis() - l);
+            long l = System.currentTimeMillis();
+            JsonDTO jsonDTO = OBJECT_MAPPER.readValue(json, JsonDTO.class);
+            log.info("{}", System.currentTimeMillis() - l);
 
-        // 打印对象内部结构（对象头、字段对齐等）
-        log.info("ClassLayout:");
-        log.info("{}", ClassLayout.parseInstance(jsonDTO).toPrintable());
+            // 打印对象内部结构（对象头、字段对齐等）
+            log.info("ClassLayout:");
+            log.info("{}", ClassLayout.parseInstance(jsonDTO).toPrintable());
 
-        // 打印对象图总大小（包括引用的对象）
-        log.info("GraphLayout:");
-        log.info("{}", GraphLayout.parseInstance(jsonDTO).toFootprint());
-        log.info("{}", "Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
-        file.deleteOnExit();
+            // 打印对象图总大小（包括引用的对象）
+            log.info("GraphLayout:");
+            log.info("{}", GraphLayout.parseInstance(jsonDTO).toFootprint());
+            log.info("{}", "Total size: " + GraphLayout.parseInstance(jsonDTO).totalSize() + " bytes");
+        } finally {
+            if (file.exists()) {
+                file.delete();
+            }
+        }
     }
 
     @Test
     public void jsonToListMapTest() throws Exception {
-        String json = JsonORMUtil.readFileToString(TestResourceUtil.getFile("input.json"));
-        ObjectMapper objectMapper = new ObjectMapper();
-        List<Map<String, Object>> result = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
-        log.info("{}", result.size());
+        File file = null;
+        try {
+            file = TestResourceUtil.getFile("input.json");
+            String json = JsonORMUtil.readFileToString(file);
+            ObjectMapper objectMapper = new ObjectMapper();
+            List<Map<String, Object>> result = objectMapper.readValue(json, new TypeReference<List<Map<String, Object>>>() {});
+            log.info("{}", result.size());
+        } finally {
+            if (file != null && file.exists()) {
+                file.delete();
+            }
+        }
     }
 
     @Test

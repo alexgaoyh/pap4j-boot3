@@ -82,10 +82,16 @@ public class PDFUtilTest {
 
     //@Test
     public void analyzePdfTest() {
+        File file = null;
         try {
-            PDFUtil.analyzePdf(TestResourceUtil.getFile("origin.pdf").getAbsolutePath());
+            file = TestResourceUtil.getFile("origin.pdf");
+            PDFUtil.analyzePdf(file.getAbsolutePath());
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            if (file != null && file.exists()) {
+                file.delete();
+            }
         }
     }
 
@@ -164,12 +170,12 @@ public class PDFUtilTest {
 
     //@Test
     public void drawRectangleBy4PointTest() {
+        File tempOut = null;
         try {
             List<Integer> coords = Arrays.asList(new Integer[]{100, 100, 160, 100, 160, 160, 100, 160});
             PointDTO[] pointDTOS = PointDTO.convert2RectangleBy4Point(coords);
             // drawRectangleBy4Point 方法的传参，同样可以使用 pointDTOS[0], pointDTOS[1], pointDTOS[2], pointDTOS[3]
-            File tempOut = File.createTempFile("output", ".pdf");
-            tempOut.deleteOnExit();
+            tempOut = File.createTempFile("output", ".pdf");
             PDFUtil.drawRectangleBy4Point(tempOut.getAbsolutePath(),
                     new PointDTO(100, 100),
                     new PointDTO(160, 100),
@@ -177,6 +183,10 @@ public class PDFUtilTest {
                     new PointDTO(100, 160));
         } catch (Exception e) {
             throw new RuntimeException(e);
+        } finally {
+            if (tempOut != null && tempOut.exists()) {
+                tempOut.delete();
+            }
         }
     }
 
@@ -223,6 +233,7 @@ public class PDFUtilTest {
 
     // @Test
     public void drawText2() throws Exception {
+        File tempOut = null;
         try (PDDocument document = new PDDocument()) {
             // 仿宋
             PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
@@ -242,16 +253,20 @@ public class PDFUtilTest {
             }
 
             // 保存新创建的文档
-            File tempOut = File.createTempFile("output", ".pdf");
-            tempOut.deleteOnExit();
+            tempOut = File.createTempFile("output", ".pdf");
             document.save(tempOut.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (tempOut != null && tempOut.exists()) {
+                tempOut.delete();
+            }
         }
     }
 
     //@Test
     public void drawRect() throws Exception {
+        File tempOut = null;
         try (PDDocument document = new PDDocument()) {
             // 仿宋
             PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")));
@@ -307,16 +322,21 @@ public class PDFUtilTest {
             }
 
             // 保存新创建的文档
-            File tempOut = File.createTempFile("output", ".pdf");
-            tempOut.deleteOnExit();
+            tempOut = File.createTempFile("output", ".pdf");
             document.save(tempOut.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (tempOut != null && tempOut.exists()) {
+                tempOut.delete();
+            }
         }
     }
 
     // @Test
     public void picRectTest() throws Exception {
+        File imgFileRaw = null;
+        File tempOut = null;
         try (PDDocument document = new PDDocument()) {
             Integer pageWidth = 2412;
             Integer pageHeight = 4741;
@@ -325,7 +345,8 @@ public class PDFUtilTest {
 
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
 
-                PDImageXObject imageXObject = PDImageXObject.createFromFile(TestResourceUtil.getFile("0073.jpg").getAbsolutePath(), document);
+                imgFileRaw = TestResourceUtil.getFile("0073.jpg");
+                PDImageXObject imageXObject = PDImageXObject.createFromFile(imgFileRaw.getAbsolutePath(), document);
                 float imageWidth = imageXObject.getWidth();
                 float imageHeight = imageXObject.getHeight();
                 contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
@@ -346,11 +367,17 @@ public class PDFUtilTest {
             }
 
             // 保存新创建的文档
-            File tempOut = File.createTempFile("picRectTest", ".pdf");
-            tempOut.deleteOnExit();
+            tempOut = File.createTempFile("picRectTest", ".pdf");
             document.save(tempOut.getAbsolutePath());
         } catch (IOException e) {
             e.printStackTrace();
+        } finally {
+            if (imgFileRaw != null && imgFileRaw.exists()) {
+                imgFileRaw.delete();
+            }
+            if (tempOut != null && tempOut.exists()) {
+                tempOut.delete();
+            }
         }
     }
 
@@ -505,26 +532,30 @@ public class PDFUtilTest {
 
     @Test
     public void drawTextFullyEmbeddedFontTest() throws Exception {
-        try (PDDocument document = new PDDocument()) {
-            // 使用仿宋字体，并将 embedSubset 参数设置为 false，实现全嵌入而不是字体子集
-            PDType0Font simfangFont = PDType0Font.load(document, PDFUtil.class.getClassLoader().getResourceAsStream(ChineseFont.getLocation("仿宋")), false);
+        File tempOut;
 
-            Integer pageWidth = 842;
-            Integer pageHeight = 595;
-            PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
+        try (PDDocument document = new PDDocument();
+             InputStream fontStream = PDFUtil.class.getClassLoader()
+                     .getResourceAsStream(ChineseFont.getLocation("仿宋"))) {
+
+            PDType0Font simfangFont = PDType0Font.load(document, fontStream, false);
+
+            PDPage page = new PDPage(new PDRectangle(842, 595));
             document.addPage(page);
 
             try (PDPageContentStream contentStream = new PDPageContentStream(document, page)) {
                 PDColor pdColor = hexToPDColor("#000000");
-                // 写入文字
-                drawFont(contentStream, pdColor, simfangFont, 24, pageHeight, 100f, 100f, "全嵌入字体测试");
+                drawFont(contentStream, pdColor, simfangFont, 24, 595, 100f, 100f, "全嵌入字体测试");
             }
 
-            // 保存新创建的文档
-            File tempOut = File.createTempFile("output_fully_embedded_", ".pdf");
-            tempOut.deleteOnExit();
-            document.save(tempOut.getAbsolutePath());
-            System.out.println("生成全嵌入字体的 PDF 成功: " + tempOut.getAbsolutePath());
+            tempOut = File.createTempFile("output_fully_embedded_", ".pdf");
+            document.save(tempOut);
+        }
+
+        // 注意：在 document close 之后
+        if (tempOut.exists()) {
+            boolean deleted = tempOut.delete();
+            System.out.println("删除结果: " + deleted);
         }
     }
 

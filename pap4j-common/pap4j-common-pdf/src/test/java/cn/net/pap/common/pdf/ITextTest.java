@@ -31,26 +31,45 @@ public class ITextTest {
 
     @Test
     public void dirConvertTest() throws Exception {
-        File[] files = new File[]{TestResourceUtil.getFile("jpg.pdf")};
+        File tempFile = TestResourceUtil.getFile("jpg.pdf");
+        try {
+            File[] files = new File[]{tempFile};
 
-        for (File file : files) {
-            if (file.isDirectory()) {
-            } else {
-                String fileName = file.getName().toLowerCase();
-                if (fileName.endsWith(".pdf")) {
-                    PdfReader reader = new PdfReader(file.getAbsolutePath());
-                    Integer pageNum = 1;
-                    Rectangle pageSize = reader.getPageSize(pageNum);
-                    String textWithPoints = SafePdfTextExtractor.extractTextFromPage(reader, pageNum, pageSize.getWidth(), pageSize.getHeight(), reader.getPageRotation(pageNum), file.getPath().replace(".pdf", ".jpg"));
-                    System.out.println(textWithPoints);
-                    System.out.println(fileName);
+            for (File file : files) {
+                if (!file.isDirectory()) {
+                    String fileName = file.getName().toLowerCase();
+                    if (fileName.endsWith(".pdf")) {
+                        PdfReader reader = null;
+                        try {
+                            reader = new PdfReader(file.getAbsolutePath());
+                            Integer pageNum = 1;
+                            Rectangle pageSize = reader.getPageSize(pageNum);
+                            String textWithPoints = SafePdfTextExtractor.extractTextFromPage(reader, pageNum, pageSize.getWidth(), pageSize.getHeight(), reader.getPageRotation(pageNum), file.getPath().replace(".pdf", ".jpg"));
+                            System.out.println(textWithPoints);
+                            System.out.println(fileName);
+                            String pdf2JPG = file.getPath().replace(".pdf", ".jpg");
+                            if(new File(pdf2JPG).exists()) {
+                                new File(pdf2JPG).deleteOnExit();
+                            }
+                        } finally {
+                            if (reader != null) {
+                                reader.close();
+                            }
+                        }
+                    }
                 }
+            }
+        } finally {
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
             }
         }
     }
 
     @Test
     public void pointTextTest() {
+        File file = null;
+        PdfReader reader = null;
         try {
             LinkedHashSet<PointTextDTO> pointTextDTOS = new LinkedHashSet<>();
 
@@ -59,8 +78,8 @@ public class ITextTest {
             BigDecimal minWidth = new BigDecimal(Integer.MAX_VALUE);
             BigDecimal maxWidth = new BigDecimal(Integer.MIN_VALUE);
 
-            File file = TestResourceUtil.getFile("jbig2.pdf");
-            PdfReader reader = new PdfReader(file.getAbsolutePath());
+            file = TestResourceUtil.getFile("jbig2.pdf");
+            reader = new PdfReader(file.getAbsolutePath());
             Integer pageNum = 1;
             Rectangle pageSize = reader.getPageSize(pageNum);
             String textWithPoints = SafePdfTextExtractor.extractTextFromPage(reader, pageNum, pageSize.getWidth(), pageSize.getHeight(), reader.getPageRotation(pageNum), null);
@@ -111,6 +130,13 @@ public class ITextTest {
 
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (reader != null) {
+                reader.close();
+            }
+            if (file != null && file.exists()) {
+                file.delete();
+            }
         }
     }
 

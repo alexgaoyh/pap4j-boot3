@@ -50,18 +50,19 @@ public class ExcelCRUDUtil {
     }
 
     public static void insert(PageData pd, String path, String sheets) throws IOException {
-        XSSFWorkbook workbook = getExcelByPath(path);
-        XSSFSheet sheet = workbook.getSheet(sheets);
-        XSSFRow row = sheet.getRow(0);
-        int cell_end = pd.size();
-        int row_end = getExcelRealRow(sheet);// 这是行数
-        row = sheet.createRow(row_end + 1);
-        for (int i = 0; i < cell_end; i++) {
-            row.createCell(i).setCellValue(pd.getStringByIdx(i));
+        try (XSSFWorkbook workbook = getExcelByPath(path);
+             FileOutputStream out = new FileOutputStream(path)) {
+
+            XSSFSheet sheet = workbook.getSheet(sheets);
+            int row_end = getExcelRealRow(sheet);
+            XSSFRow row = sheet.createRow(row_end + 1);
+
+            for (int i = 0; i < pd.size(); i++) {
+                row.createCell(i).setCellValue(pd.getStringByIdx(i));
+            }
+
+            workbook.write(out);
         }
-        FileOutputStream out = new FileOutputStream(path);
-        workbook.write(out);
-        out.close();
     }
 
     public static void delete(int rowIndex, String path, String sheets) throws IOException {
@@ -177,11 +178,8 @@ public class ExcelCRUDUtil {
      * @return
      */
     public static XSSFWorkbook getExcelByPath(String path) {
-        try {
-            byte[] buf = IOUtils.toByteArray(new FileInputStream(path));
-            ByteArrayInputStream byteArrayInputStream = new ByteArrayInputStream(buf);
-            XSSFWorkbook workbook = new XSSFWorkbook(byteArrayInputStream);
-            return workbook;
+        try (FileInputStream fis = new FileInputStream(path)) {
+            return new XSSFWorkbook(fis);
         } catch (IOException e) {
             log.error("getExcelByPath", e);
         }

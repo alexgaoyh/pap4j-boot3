@@ -12,6 +12,7 @@ import java.io.*;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
@@ -56,9 +57,16 @@ public class ReadFileToMapUtilTest {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
-        new File((FILE_PATH_1)).deleteOnExit();
-        new File((FILE_PATH_2)).deleteOnExit();
-        new File((FILE_PATH_3)).deleteOnExit();
+
+        if (FILE_PATH_1 != null) {
+            Files.deleteIfExists(Paths.get(FILE_PATH_1));
+        }
+        if (FILE_PATH_2 != null) {
+            Files.deleteIfExists(Paths.get(FILE_PATH_2));
+        }
+        if (FILE_PATH_3 != null) {
+            Files.deleteIfExists(Paths.get(FILE_PATH_3));
+        }
         log.info("====== [AfterAll] 测试文件清理完成 ======");
     }
 

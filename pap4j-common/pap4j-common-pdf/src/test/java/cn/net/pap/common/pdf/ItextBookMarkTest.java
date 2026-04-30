@@ -18,13 +18,16 @@ public class ItextBookMarkTest {
     @Test
     public void bookmarkTest() throws Exception {
         java.io.File tempFile = java.io.File.createTempFile("DocumentWithTOC", ".pdf");
-        tempFile.deleteOnExit();
         String dest = tempFile.getAbsolutePath();
         try {
             createPdf(dest);
             System.out.println("PDF created successfully: " + dest);
         } catch (Exception e) {
             e.printStackTrace();
+        } finally {
+            if (tempFile.exists()) {
+                tempFile.delete();
+            }
         }
     }
 
