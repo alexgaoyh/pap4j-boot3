@@ -69,7 +69,6 @@ public class GroovyTest {
         "            ImageReader spi = imageReadersByMIMEType.next();\n" +
         "            spiClass = spiClass + spi.getClass().getName() + \" ; \";\n" +
         "        }\n" +
-        "        log.info(mime + \" : \" + spiClass);\n" +
         "    }\n" +
         "}"
         );
