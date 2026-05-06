@@ -50,10 +50,18 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <version>3.1.5</version>
+                <configuration>
+                    <mainClass>none</mainClass>
+                    <classifier>execute</classifier>
+                </configuration>
                 <executions>
                     <execution>
-                        <id>repackage</id>
-                        <phase>none</phase>
+                        <goals>
+                            <goal>repackage</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>exec</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>
