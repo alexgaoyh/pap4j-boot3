@@ -68,6 +68,7 @@
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
+                            <classifier>exec</classifier>
                             <mainClass>cn.net.pap.statemachine.StateMachineApplication</mainClass>
                         </configuration>
                     </execution>

@@ -111,6 +111,9 @@
                     <execution>
                         <id>repackage</id>
                         <phase>none</phase>
+                        <configuration>
+                            <classifier>exec</classifier>
+                        </configuration>
                     </execution>
                 </executions>
             </plugin>

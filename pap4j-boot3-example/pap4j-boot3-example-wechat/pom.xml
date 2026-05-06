@@ -73,6 +73,7 @@
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
+                            <classifier>exec</classifier>
                             <mainClass>cn.net.pap.example.wechat.Pap4jBoot3ExampleWechatApplication</mainClass>
                         </configuration>
                     </execution>

@@ -59,6 +59,7 @@
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
+                            <classifier>exec</classifier>
                             <mainClass>cn.net.pap.example.async.Pap4jBoot3ExampleAsyncApplication</mainClass>
                         </configuration>
                     </execution>

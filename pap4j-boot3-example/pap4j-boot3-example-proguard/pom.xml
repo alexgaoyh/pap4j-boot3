@@ -166,6 +166,7 @@
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
+                            <classifier>exec</classifier>
                             <mainClass>cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication</mainClass>
                         </configuration>
                     </execution>

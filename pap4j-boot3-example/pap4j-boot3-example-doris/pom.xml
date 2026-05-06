@@ -70,6 +70,7 @@
                             <goal>repackage</goal>
                         </goals>
                         <configuration>
+                            <classifier>exec</classifier>
                             <mainClass>cn.net.pap.example.doris.Pap4jBoot3ExampleDorisApplication</mainClass>
                         </configuration>
                     </execution>
