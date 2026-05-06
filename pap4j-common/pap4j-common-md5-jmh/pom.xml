@@ -17,6 +17,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jmh.version>1.37</jmh.version>
+        <maven-javadoc-plugin.skip>true</maven-javadoc-plugin.skip>
     </properties>
 
     <dependencies>
