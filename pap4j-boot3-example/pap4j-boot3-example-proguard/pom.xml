@@ -88,7 +88,7 @@
             <plugin>
                 <groupId>com.github.wvengen</groupId>
                 <artifactId>proguard-maven-plugin</artifactId>
-                <version>2.6.1</version>
+                <version>2.7.0</version>
                 <executions>
                     <!-- 以下配置说明执行mvn的package命令时候，会执行proguard-->
                     <execution>
@@ -115,6 +115,16 @@
                     <outputDirectory>${project.basedir}/target</outputDirectory>
                 </configuration>
                 <dependencies>
+                    <dependency>
+                        <groupId>com.guardsquare</groupId>
+                        <artifactId>proguard-base</artifactId>
+                        <version>7.4.1</version> <!-- 7.1 以上原生支持 Java 17 -->
+                    </dependency>
+                    <dependency>
+                        <groupId>com.guardsquare</groupId>
+                        <artifactId>proguard-core</artifactId>
+                        <version>9.1.10</version> <!-- 配合 base 的底层核心库 -->
+                    </dependency>
                     <dependency>
                         <groupId>org.springframework.boot</groupId>
                         <artifactId>spring-boot-starter-web</artifactId>
