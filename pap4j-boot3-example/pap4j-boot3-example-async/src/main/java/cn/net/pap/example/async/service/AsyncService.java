@@ -1,6 +1,8 @@
 package cn.net.pap.example.async.service;
 
 import cn.net.pap.example.async.config.ContextHolder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
@@ -9,15 +11,18 @@ import java.util.concurrent.CompletableFuture;
 @Component
 public class AsyncService {
 
+    private static final Logger log = LoggerFactory.getLogger(AsyncService.class);
+
     @Async("asyncExecutor")
     public CompletableFuture<String> asyncMethod() {
         try {
             String param = ContextHolder.get();
-            System.out.println("执行异步方法，读取参数：" + param);
+            log.info("执行异步方法，读取参数：{}", param);
 
             Thread.sleep(5000);
             return CompletableFuture.completedFuture(param.toUpperCase());
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
 

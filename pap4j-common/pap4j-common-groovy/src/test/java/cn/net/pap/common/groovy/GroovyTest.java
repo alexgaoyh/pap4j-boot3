@@ -3,10 +3,14 @@ package cn.net.pap.common.groovy;
 import groovy.lang.GroovyShell;
 import groovy.lang.Script;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 
 public class GroovyTest {
+
+    private static final Logger log = LoggerFactory.getLogger(GroovyTest.class);
 
     /**
      *         <dependency>
@@ -42,7 +46,7 @@ public class GroovyTest {
      *             ImageReader spi = imageReadersByMIMEType.next();
      *             spiClass = spiClass + spi.getClass().getName() + " ; ";
      *         }
-     *         System.out.println(mime + " : " + spiClass);
+     *         log.info(mime + " : " + spiClass);
      *     }
      * }
      * @throws IOException
@@ -65,7 +69,7 @@ public class GroovyTest {
         "            ImageReader spi = imageReadersByMIMEType.next();\n" +
         "            spiClass = spiClass + spi.getClass().getName() + \" ; \";\n" +
         "        }\n" +
-        "        System.out.println(mime + \" : \" + spiClass);\n" +
+        "        log.info(mime + \" : \" + spiClass);\n" +
         "    }\n" +
         "}"
         );
@@ -85,7 +89,7 @@ public class GroovyTest {
         );
         //执行
         Object returnObj = script.invokeMethod("returnStr", null);
-        System.out.println(returnObj.toString());
+        log.info(returnObj.toString());
     }
 
 }

@@ -3,10 +3,14 @@ package cn.net.pap.common.worker.simple;
 import cn.net.pap.common.worker.executor.Task;
 import cn.net.pap.common.worker.executor.TaskExecutor;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.UUID;
 
 public class TaskExecutorTest {
+
+    private static final Logger log = LoggerFactory.getLogger(TaskExecutorTest.class);
 
     @Test
     public void test1() throws Exception {
@@ -22,13 +26,13 @@ public class TaskExecutorTest {
         int monitorSeconds = 8;
         long endTime = System.currentTimeMillis() + monitorSeconds * 1000L;
         while (System.currentTimeMillis() < endTime) {
-            System.out.println("队列: " + taskExecute.getQueueSize() + " 活跃线程: " + taskExecute.getActiveCount());
+            log.info("队列: {} 活跃线程: {}", taskExecute.getQueueSize(), taskExecute.getActiveCount());
             Thread.sleep(1000);
         }
 
-        System.out.println("监控结束，关闭任务执行器...");
+        log.info("监控结束，关闭任务执行器...");
         taskExecute.shutdown();
-        System.out.println("程序退出");
+        log.info("程序退出");
     }
 
 }

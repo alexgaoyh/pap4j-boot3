@@ -74,8 +74,9 @@ public class ProcessPoolUtilTest {
     // ==========================================
 
     public static class NormalTask {
+        private static final Logger log = LoggerFactory.getLogger(NormalTask.class);
         public static void main(String[] args) {
-            System.out.println("Hello from subprocess!");
+            log.info("Hello from subprocess!");
         }
     }
 
@@ -87,18 +88,20 @@ public class ProcessPoolUtilTest {
     }
 
     public static class HugeOutputTask {
+        private static final Logger log = LoggerFactory.getLogger(HugeOutputTask.class);
         public static void main(String[] args) {
             // 疯狂输出数据，尝试撑爆内存 (输出约 6MB 数据)
             String chunk = "A".repeat(1024); // 1KB
             for (int i = 0; i < 6000; i++) {
-                System.out.println(chunk);
+                log.info("{}", chunk);
             }
         }
     }
 
     public static class ErrorTask {
+        private static final Logger log = LoggerFactory.getLogger(ErrorTask.class);
         public static void main(String[] args) {
-            System.err.println("This is an error stream message.");
+            log.error("This is an error stream message.");
             System.exit(1);
         }
     }

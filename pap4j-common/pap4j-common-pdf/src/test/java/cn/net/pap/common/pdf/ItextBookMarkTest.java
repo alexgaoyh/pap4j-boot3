@@ -10,10 +10,15 @@ import com.itextpdf.text.pdf.PdfOutline;
 import com.itextpdf.text.pdf.PdfWriter;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 
 public class ItextBookMarkTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ItextBookMarkTest.class);
 
     @Test
     public void bookmarkTest() throws Exception {
@@ -21,9 +26,9 @@ public class ItextBookMarkTest {
         String dest = tempFile.getAbsolutePath();
         try {
             createPdf(dest);
-            System.out.println("PDF created successfully: " + dest);
+            log.info("PDF created successfully: {}", dest);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in bookmarkTest: ", e);
         } finally {
             if (tempFile.exists()) {
                 tempFile.delete();

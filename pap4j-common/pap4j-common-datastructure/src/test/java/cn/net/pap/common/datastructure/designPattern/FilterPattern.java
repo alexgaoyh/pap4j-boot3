@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class FilterPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(FilterPattern.class);
 
     class Person {
 
@@ -136,25 +140,23 @@ public class FilterPattern {
         Criteria singleMale = new AndCriteria(single, male);
         Criteria singleOrFemale = new OrCriteria(single, female);
 
-        System.out.println("Males: ");
+        log.info("Males: ");
         printPersons(male.meetCriteria(persons));
 
-        System.out.println("\nFemales: ");
+        log.info("Females: ");
         printPersons(female.meetCriteria(persons));
 
-        System.out.println("\nSingle Males: ");
+        log.info("Single Males: ");
         printPersons(singleMale.meetCriteria(persons));
 
-        System.out.println("\nSingle Or Females: ");
+        log.info("Single Or Females: ");
         printPersons(singleOrFemale.meetCriteria(persons));
     }
 
-    public static void printPersons(List<Person> persons) {
+    public void printPersons(List<Person> persons) {
         for (Person person : persons) {
-            System.out.println("Person : [ Name : " + person.getName()
-                    + ", Gender : " + person.getGender()
-                    + ", Marital Status : " + person.getMaritalStatus()
-                    + " ]");
+            log.info("Person : [ Name : {}, Gender : {}, Marital Status : {} ]",
+                    person.getName(), person.getGender(), person.getMaritalStatus());
         }
     }
 }

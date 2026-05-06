@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class TemplatePattern {
+
+    private static final Logger log = LoggerFactory.getLogger(TemplatePattern.class);
 
     abstract class Game {
         abstract void initialize();
@@ -29,17 +33,17 @@ public class TemplatePattern {
 
         @Override
         void endPlay() {
-            System.out.println("Cricket Game Finished!");
+            log.info("Cricket Game Finished!");
         }
 
         @Override
         void initialize() {
-            System.out.println("Cricket Game Initialized! Start playing.");
+            log.info("Cricket Game Initialized! Start playing.");
         }
 
         @Override
         void startPlay() {
-            System.out.println("Cricket Game Started. Enjoy the game!");
+            log.info("Cricket Game Started. Enjoy the game!");
         }
     }
 
@@ -47,17 +51,17 @@ public class TemplatePattern {
 
         @Override
         void endPlay() {
-            System.out.println("Football Game Finished!");
+            log.info("Football Game Finished!");
         }
 
         @Override
         void initialize() {
-            System.out.println("Football Game Initialized! Start playing.");
+            log.info("Football Game Initialized! Start playing.");
         }
 
         @Override
         void startPlay() {
-            System.out.println("Football Game Started. Enjoy the game!");
+            log.info("Football Game Started. Enjoy the game!");
         }
     }
 
@@ -66,7 +70,7 @@ public class TemplatePattern {
 
         Game game = new Cricket();
         game.play();
-        System.out.println();
+        log.info("");
         game = new Football();
         game.play();
     }

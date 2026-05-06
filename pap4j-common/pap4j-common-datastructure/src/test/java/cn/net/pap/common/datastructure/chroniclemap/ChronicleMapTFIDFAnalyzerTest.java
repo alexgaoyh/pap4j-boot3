@@ -3,6 +3,8 @@ package cn.net.pap.common.datastructure.chroniclemap;
 import cn.net.pap.common.datastructure.chroniclemap.util.ChronicleMapTFIDFAnalyzer;
 import cn.net.pap.common.datastructure.chroniclemap.util.RandomWordSelector;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.file.Path;
@@ -24,6 +26,8 @@ import java.util.List;
  * --add-opens java.base/sun.nio.ch=ALL-UNNAMED
  */
 public class ChronicleMapTFIDFAnalyzerTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ChronicleMapTFIDFAnalyzerTest.class);
 
     @TempDir
     Path tempDir;
@@ -65,7 +69,7 @@ public class ChronicleMapTFIDFAnalyzerTest {
                     List<String> randomWords = RandomWordSelector.getRandomWords(50);
                     analyzer.processDocument(randomWords);
                     if(i % 10000 == 0) {
-                        System.out.println(i);
+                        log.info("{}", i);
                     }
                 }
                 analyzer.printTopResults(100);

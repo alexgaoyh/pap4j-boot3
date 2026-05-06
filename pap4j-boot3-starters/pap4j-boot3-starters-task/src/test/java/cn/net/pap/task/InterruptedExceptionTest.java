@@ -27,7 +27,7 @@ public class InterruptedExceptionTest {
 
         try {
             Runnable task = () -> {
-                System.out.println("任务开始");
+                log.info("任务开始");
                 try {
                     // 模拟长时间运行（但没有处理中断）
                     while (true) {
@@ -36,13 +36,13 @@ public class InterruptedExceptionTest {
                             Thread.sleep(1000);
                         } catch (InterruptedException e) {
                             // 错误示范：捕获后没有处理，导致线程继续运行
-                            System.out.println("收到中断信号，但忽略...");
+                            log.info("收到中断信号，但忽略...");
                             // compare : need call Thread.currentThread().interrupt(); // 重新设置中断标志位
                             // compare : need call break; // 跳出循环
                         }
                     }
                 } finally {
-                    System.out.println("任务结束");
+                    log.info("任务结束");
                 }
             };
 
@@ -50,21 +50,19 @@ public class InterruptedExceptionTest {
 
             Thread.sleep(2000); // 等待任务开始执行
 
-            System.out.println("尝试关闭线程池...");
+            log.info("尝试关闭线程池...");
             executor.shutdownNow(); // 试图强制终止线程
 
             if (!executor.awaitTermination(5, TimeUnit.SECONDS)) {
-                System.out.println("线程池没有成功关闭，任务可能没有响应中断。");
-                System.out.println("主线程结束，是否还活着的线程: " + Thread.activeCount());
-                System.out.println("\n=== 当前线程列表 ===");
+                log.info("线程池没有成功关闭，任务可能没有响应中断。");
+                log.info("主线程结束，是否还活着的线程: {}", Thread.activeCount());
+                log.info("\n=== 当前线程列表 ===");
                 Map<Thread, StackTraceElement[]> allThreads = Thread.getAllStackTraces();
                 for (Thread t : allThreads.keySet()) {
-                    System.out.println("线程名: " + t.getName() +
-                            ", 守护线程: " + t.isDaemon() +
-                            ", 状态: " + t.getState());
+                    log.info("线程名: {}, 守护线程: {}, 状态: {}", t.getName(), t.isDaemon(), t.getState());
                 }
             } else {
-                System.out.println("线程池关闭成功");
+                log.info("线程池关闭成功");
             }
         } finally {
             if (!executor.isShutdown()) {

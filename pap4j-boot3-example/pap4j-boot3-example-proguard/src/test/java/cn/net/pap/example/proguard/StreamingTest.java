@@ -83,13 +83,13 @@ public class StreamingTest {
             try {
                 entityManager.unwrap(Session.class).getTransaction().rollback();
             } catch (Exception rollbackEx) {
-                rollbackEx.printStackTrace();
+                log.error("Rollback failed: ", rollbackEx);
             }
             throw new RuntimeException("Error during batch update", e);
         }
 
         List<Proguard> all = proguardService.findAll();
-        System.out.println(all);
+        log.info("{}", all);
     }
 
     private void init() {

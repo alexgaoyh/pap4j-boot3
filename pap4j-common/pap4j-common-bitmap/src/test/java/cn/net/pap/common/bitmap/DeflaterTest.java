@@ -7,10 +7,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.zip.Deflater;
 import java.util.zip.Inflater;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * 字符串压缩工具类
  */
 public class DeflaterTest {
+
+    private static final Logger log = LoggerFactory.getLogger(DeflaterTest.class);
 
     @Test
     public void deflater() throws Exception {
@@ -45,9 +50,9 @@ public class DeflaterTest {
         byte[] compressedData = baos.toByteArray();
 
         // 打印压缩前后的数据大小
-        System.out.println("Original size: " + input.length);
-        System.out.println("Compressed data: " + bytesToHex(compressedData));
-        System.out.println("Compressed size: " + compressedData.length);
+        log.info("Original size: {}", input.length);
+        log.info("Compressed data: {}", bytesToHex(compressedData));
+        log.info("Compressed size: {}", compressedData.length);
 
         // 解压缩数据
         Inflater inflater = new Inflater();
@@ -61,9 +66,9 @@ public class DeflaterTest {
             }
             // 转换回字符串
             String decompressedString = new String(out.toByteArray(), StandardCharsets.UTF_8);
-            System.out.println("Decompressed string: " + decompressedString);
+            log.info("Decompressed string: {}", decompressedString);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Decompression failed: ", e);
         }
     }
 

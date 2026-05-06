@@ -5,6 +5,8 @@ import cn.net.pap.example.proguard.publisher.es.ElasticSearchSyncEvent;
 import cn.net.pap.example.proguard.publisher.es.ElasticsearchDomainEventPublisher;
 import cn.net.pap.example.proguard.repository.AutoIncrePreKeyRepository;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -23,6 +25,8 @@ import java.util.Map;
 
 @Service
 public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
+
+    private static final Logger log = LoggerFactory.getLogger(AutoIncrePreKeyServiceImpl.class);
 
     private final AutoIncrePreKeyRepository autoIncrePreKeyRepository;
 
@@ -69,16 +73,16 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
                         new TransactionSynchronization() {
                             @Override
                             public void beforeCommit(boolean readOnly) {
-                                System.out.println("beforeCommit");
+                                log.info("beforeCommit");
                             }
                             @Override
                             public void afterCommit() {
-                                System.out.println("afterCommit");
+                                log.info("afterCommit");
                             }
                             @Override
                             public void afterCompletion(int status) {
                                 // value in org.springframework.transaction.support.TransactionSynchronization
-                                System.out.println("afterCompletion : " + status);
+                                log.info("afterCompletion : {}", status);
                             }
                         }
                 );
@@ -106,16 +110,16 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
                         new TransactionSynchronization() {
                             @Override
                             public void beforeCommit(boolean readOnly) {
-                                System.out.println("beforeCommit");
+                                log.info("beforeCommit");
                             }
                             @Override
                             public void afterCommit() {
-                                System.out.println("afterCommit");
+                                log.info("afterCommit");
                             }
                             @Override
                             public void afterCompletion(int status) {
                                 // value in org.springframework.transaction.support.TransactionSynchronization
-                                System.out.println("afterCompletion : " + status);
+                                log.info("afterCompletion : {}", status);
                             }
                         }
                 );

@@ -7,6 +7,8 @@ import org.apache.commons.io.IOUtils;
 import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -18,6 +20,8 @@ import java.io.InputStream;
 @RestController
 @RequestMapping("/ftp")
 public class FtpController {
+
+    private static final Logger log = LoggerFactory.getLogger(FtpController.class);
 
     private static final int BUFFER_SIZE = 1024 * 512;
 
@@ -125,7 +129,7 @@ public class FtpController {
 
         } catch (Exception e) {
             if (!isClientAbort(e)) {
-                e.printStackTrace(); // 可以捕获异常
+                log.error("FTP streaming failed: ", e);
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
             }
         } finally {
@@ -194,7 +198,7 @@ public class FtpController {
             IOUtils.copy(in, response.getOutputStream());
         } catch (Exception e) {
             if (!isClientAbort(e)) {
-                e.printStackTrace(); // 可以捕获异常
+                log.error("FTP streaming failed: ", e);
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
             }
         } finally {

@@ -65,7 +65,7 @@ public class TfIdfDataSketchesUtilTest {
                             log.info(String.format("  %s: %.4f%n", entry.getKey(), entry.getValue())));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in TfIdfDataSketchesUtil test: ", e);
         }
     }
 
@@ -157,7 +157,7 @@ public class TfIdfDataSketchesUtilTest {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in TfIdfDataSketchesUtil test: ", e);
         } finally {
             if (tempDir != null) {
                 try {

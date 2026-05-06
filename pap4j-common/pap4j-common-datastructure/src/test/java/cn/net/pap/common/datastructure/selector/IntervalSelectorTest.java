@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.selector;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class IntervalSelectorTest {
+
+    private static final Logger log = LoggerFactory.getLogger(IntervalSelectorTest.class);
 
     /**
      * 最早结束时间优先贪心算法 保留尽可能多的不冲突区间
@@ -21,9 +25,9 @@ public class IntervalSelectorTest {
         intervals.add(new IntervalSelector.Interval(8, 9));
 
         List<IntervalSelector.Interval> selected = IntervalSelector.selectNonConflictingIntervals(intervals);
-        System.out.println("Selected non-conflicting intervals:");
+        log.info("Selected non-conflicting intervals:");
         for (IntervalSelector.Interval i : selected) {
-            System.out.println(i);
+            log.info("{}", i);
         }
     }
 
@@ -42,10 +46,10 @@ public class IntervalSelectorTest {
         );
 
         List<IntervalSelector.Interval> result = IntervalSelector.selectContainedIntervals(outer, inner);
-        System.out.println(result);  // 输出 [[1,5], [25,27]]
+        log.info("{}", result);  // 输出 [[1,5], [25,27]]
 
         List<IntervalSelector.Interval> result2 = IntervalSelector.selectContainedIntervals2(outer, inner);
-        System.out.println(result2);
+        log.info("{}", result2);
 
     }
 }

@@ -6,6 +6,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.junit.platform.commons.util.StringUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -16,6 +18,8 @@ import java.util.List;
  * 聚类算法
  */
 public class MeanShiftUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MeanShiftUtilTest.class);
 
     // 这个结果可以从 pap4j-common-pdf.ITextTest.java 中的 centerXTextList 获得。
     private static final String rectJSON= "";
@@ -36,10 +40,11 @@ public class MeanShiftUtilTest {
             });
             List<List<PointX>> lists = MeanShiftUtil.meanShiftRemoveZero(pointXES, maxWidth.divide(new BigDecimal(2), 2, BigDecimal.ROUND_HALF_UP).doubleValue());
             for(List<PointX> groupList : lists) {
+                StringBuilder sb = new StringBuilder();
                 for(PointX pointX : groupList) {
-                    System.out.print(pointX.getInfo().get("text"));
+                    sb.append(pointX.getInfo().get("text"));
                 }
-                System.out.println();
+                log.info("{}", sb);
             }
         } else {
             List<PointX> pointXList = new ArrayList<>();
@@ -52,10 +57,11 @@ public class MeanShiftUtilTest {
             pointXList.add(new PointX(500, new HashMap<>(){{put("text", "500");}}));
             List<List<PointX>> lists = MeanShiftUtil.meanShiftRemoveZero(pointXList, new BigDecimal(100).divide(new BigDecimal(2), 2, BigDecimal.ROUND_HALF_UP).doubleValue());
             for(List<PointX> groupList : lists) {
+                StringBuilder sb = new StringBuilder();
                 for(PointX pointX : groupList) {
-                    System.out.print(pointX.getInfo().get("text"));
+                    sb.append(pointX.getInfo().get("text"));
                 }
-                System.out.println();
+                log.info("{}", sb);
             }
         }
     }

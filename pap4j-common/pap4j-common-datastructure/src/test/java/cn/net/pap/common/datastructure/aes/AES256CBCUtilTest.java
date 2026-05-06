@@ -2,6 +2,9 @@ package cn.net.pap.common.datastructure.aes;
 
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.crypto.Cipher;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
@@ -12,6 +15,8 @@ import java.util.Base64;
  * AES-256-CBC 加密/解密
  */
 public class AES256CBCUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(AES256CBCUtilTest.class);
 
     // AES 配置（和 Lua 保持一致）
     private static final String KEY = "1234567890abcdef1234567890abcdef"; // 32字节 = 256位
@@ -61,9 +66,9 @@ public class AES256CBCUtilTest {
         text = text.replace("\n", " ");
         String enc = encrypt(text);
         String dec = decrypt(enc);
-        System.out.println("原文: " + text);
-        System.out.println("加密: " + enc);
-        System.out.println("解密: " + dec);
+        log.info("原文: {}", text);
+        log.info("加密: {}", enc);
+        log.info("解密: {}", dec);
     }
 
 }

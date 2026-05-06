@@ -1,8 +1,13 @@
 package cn.net.pap.example.proguard;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.sql.*;
 
 public class MysqlStreamTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MysqlStreamTest.class);
 
     /**
      * 不建议生产使用，会长时间占用链接，可以换分页的方式来处理。
@@ -37,11 +42,11 @@ public class MysqlStreamTest {
                             printMemoryUsage(beforeMem, count);
                         }
 //                        String one = rs.getString(1);
-//                        System.out.println(one);
+//                        log.info("{}", one);
                     }
                 }
 
-                System.out.printf("Total time for fetchSize %d: %d ms%n",
+                log.info("Total time for fetchSize {}: {} ms",
                         statement.getFetchSize(), System.currentTimeMillis() - startTime);
             } finally {
                 connection.setReadOnly(false);
@@ -53,7 +58,7 @@ public class MysqlStreamTest {
     private void printMemoryUsage(long baselineMem, int rowCount) {
         Runtime runtime = Runtime.getRuntime();
         long usedMem = runtime.totalMemory() - runtime.freeMemory() - baselineMem;
-        System.out.printf("Row %6d - Used memory: %6d KB%n",
+        log.info("Row {} - Used memory: {} KB",
                 rowCount, usedMem / 1024);
     }
 

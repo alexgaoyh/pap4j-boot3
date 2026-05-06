@@ -2,6 +2,8 @@ package cn.net.pap.example.admin.util;
 
 import jakarta.annotation.PreDestroy;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -19,26 +21,28 @@ import org.springframework.context.annotation.DependsOn;
  */
 public class DependsOnTest {
 
+    private static final Logger log = LoggerFactory.getLogger(DependsOnTest.class);
+
     // 1. 定义测试用的 Bean
     static class DatabaseConnection {
         public DatabaseConnection() {
-            System.out.println("【1】DatabaseConnection 初始化");
+            log.info("【1】DatabaseConnection 初始化");
         }
 
         @PreDestroy
         public void destroy() {
-            System.out.println("【4】DatabaseConnection 销毁 (应该最后销毁)");
+            log.info("【4】DatabaseConnection 销毁 (应该最后销毁)");
         }
     }
 
     static class UserService {
         public UserService() {
-            System.out.println("【2】UserService 初始化");
+            log.info("【2】UserService 初始化");
         }
 
         @PreDestroy
         public void destroy() {
-            System.out.println("【3】UserService 销毁 (应该先销毁)");
+            log.info("【3】UserService 销毁 (应该先销毁)");
         }
     }
 
@@ -59,13 +63,13 @@ public class DependsOnTest {
 
     @Test
     public void testDependsOnOrder() {
-        System.out.println("--- 容器启动中 ---");
+        log.info("--- 容器启动中 ---");
         // 使用 try-with-resources 确保容器正常关闭，触发 @PreDestroy
         try (AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(TestConfig.class)) {
-            System.out.println("--- 容器已就绪 ---");
+            log.info("--- 容器已就绪 ---");
             context.getBean(UserService.class);
         }
-        System.out.println("--- 容器已关闭 ---");
+        log.info("--- 容器已关闭 ---");
     }
 
 }

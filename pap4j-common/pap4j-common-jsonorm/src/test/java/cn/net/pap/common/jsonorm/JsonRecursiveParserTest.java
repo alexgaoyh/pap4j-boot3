@@ -147,7 +147,7 @@ public class JsonRecursiveParserTest {
             }
             ImageIO.write(image, "jpg", outputFile);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("生成空白 JPEG 异常: {}", e.getMessage(), e);
         }
     }
 

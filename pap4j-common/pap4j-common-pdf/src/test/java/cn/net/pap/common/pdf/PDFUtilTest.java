@@ -33,7 +33,12 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PDFUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(PDFUtilTest.class);
 
     //@Test
     public void addStampTest() {
@@ -161,10 +166,10 @@ public class PDFUtilTest {
             PDDocument document = Loader.loadPDF(new File("output.pdf"));
             PDFTextStripper pdfStripper = new PDFTextStripper();
             String text = pdfStripper.getText(document);
-            System.out.println(text);
+            log.info("{}", text);
             document.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("IO error in readTextTest: ", e);
         }
     }
 
@@ -203,10 +208,10 @@ public class PDFUtilTest {
             String line;
             while ((line = reader.readLine()) != null) {
                 PDType0Font font = PDFUtil.findFont(line.split("\t")[1]);
-                System.out.println(line.split("\t")[1] + " : " + font.getName());
+                log.info("{} : {}", line.split("\t")[1], font.getName());
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("IO error in getFontTest: ", e);
         }
     }
 
@@ -221,11 +226,10 @@ public class PDFUtilTest {
             String line;
             while ((line = reader.readLine()) != null) {
                 // 处理每一行内容
-                // System.out.println(line);
                 paragraphs.add(line);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("IO error: ", e);
         }
 
         PDFUtil.drawParagraphs("utf16.pdf", paragraphs);
@@ -256,7 +260,7 @@ public class PDFUtilTest {
             tempOut = File.createTempFile("output", ".pdf");
             document.save(tempOut.getAbsolutePath());
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("IO error: ", e);
         } finally {
             if (tempOut != null && tempOut.exists()) {
                 tempOut.delete();
@@ -325,7 +329,7 @@ public class PDFUtilTest {
             tempOut = File.createTempFile("output", ".pdf");
             document.save(tempOut.getAbsolutePath());
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("IO error: ", e);
         } finally {
             if (tempOut != null && tempOut.exists()) {
                 tempOut.delete();
@@ -370,7 +374,7 @@ public class PDFUtilTest {
             tempOut = File.createTempFile("picRectTest", ".pdf");
             document.save(tempOut.getAbsolutePath());
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("IO error: ", e);
         } finally {
             if (imgFileRaw != null && imgFileRaw.exists()) {
                 imgFileRaw.delete();
@@ -387,8 +391,7 @@ public class PDFUtilTest {
             String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
             PDFUtil.splitPDF(desktop + "input.pdf", desktop + "input_%03d.pdf", 1);
         } catch (IOException e) {
-            System.err.println("处理PDF时发生错误: " + e.getMessage());
-            e.printStackTrace();
+            log.error("处理PDF时发生错误: ", e);
         }
     }
 
@@ -398,8 +401,7 @@ public class PDFUtilTest {
             String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
             PDFUtil.extractImagesToJPG(desktop + "input.pdf", desktop + "temp/input_%03d.jpg", 300, 1);
         } catch (IOException e) {
-            System.err.println("处理PDF时发生错误: " + e.getMessage());
-            e.printStackTrace();
+            log.error("处理PDF时发生错误: ", e);
         }
     }
 
@@ -409,8 +411,7 @@ public class PDFUtilTest {
             String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
             PDFUtil.convertImagesToPDF(desktop + "temp", desktop + "output.pdf");
         } catch (IOException e) {
-            System.err.println("处理PDF时发生错误: " + e.getMessage());
-            e.printStackTrace();
+            log.error("处理PDF时发生错误: ", e);
         }
     }
 
@@ -555,7 +556,7 @@ public class PDFUtilTest {
         // 注意：在 document close 之后
         if (tempOut.exists()) {
             boolean deleted = tempOut.delete();
-            System.out.println("删除结果: " + deleted);
+            log.info("删除结果: {}", deleted);
         }
     }
 

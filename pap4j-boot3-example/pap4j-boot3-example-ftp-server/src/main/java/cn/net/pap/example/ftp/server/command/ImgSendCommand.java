@@ -76,11 +76,11 @@ import java.util.Iterator;
  *                 }
  *
  *                 byte[] imageData = baos.toByteArray();
- *                 System.out.println("Received image size: " + imageData.length + " bytes");
+ *                 log.info("Received image size: " + imageData.length + " bytes");
  *
  *                 try (ByteArrayInputStream bais = new ByteArrayInputStream( Base64.getDecoder().decode(imageData))) {
  *                     BufferedImage image = ImageIO.read(bais);
- *                     System.out.println(image);
+ *                     log.info(image);
  *                 }
  *             }
  *

@@ -20,11 +20,15 @@ import java.io.IOException;
 import java.util.*;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.springframework.test.util.AssertionErrors.assertTrue;
 
 public class CountMinSketchTest {
+
+    private static final Logger log = LoggerFactory.getLogger(CountMinSketchTest.class);
 
     // @Test
     public void readTxtTest() throws IOException {
@@ -42,7 +46,7 @@ public class CountMinSketchTest {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("读取文件失败", e);
         }
 
         // ====== 分析部分 ======
@@ -52,16 +56,16 @@ public class CountMinSketchTest {
         for (char c = 'A'; c <= 'Z'; c++) charsToCheck.add(String.valueOf(c));
         charsToCheck.addAll(Arrays.asList("你", "我", "他", "的", "，", "。")); // 也可以加入中文常见字符
 
-        System.out.println("=== 字符频率估计 (Count-Min Sketch) ===");
+        log.info("=== 字符频率估计 (Count-Min Sketch) ===");
         for (String c : charsToCheck) {
             long est = cms.estimateCount(c);
             if (est > 0) {
-                System.out.println("'" + c + "' ≈ " + est);
+                log.info("'{}' ≈ {}", c, est);
             }
         }
-        System.out.println("总字符数 ≈ " + cms.size());
-        System.out.println("误差上限 = " + cms.getRelativeError());
-        System.out.println("置信度 = " + cms.getConfidence());
+        log.info("总字符数 ≈ {}", cms.size());
+        log.info("误差上限 = {}", cms.getRelativeError());
+        log.info("置信度 = {}", cms.getConfidence());
     }
 
     @Test

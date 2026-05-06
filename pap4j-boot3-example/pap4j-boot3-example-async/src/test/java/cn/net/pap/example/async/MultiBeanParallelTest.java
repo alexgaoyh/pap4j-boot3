@@ -2,6 +2,8 @@ package cn.net.pap.example.async;
 
 import cn.net.pap.example.async.service.AsyncService;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestConstructor;
 
@@ -13,6 +15,8 @@ import java.util.stream.Collectors;
 @SpringBootTest(classes = {cn.net.pap.example.async.Pap4jBoot3ExampleAsyncApplication.class})
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class MultiBeanParallelTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MultiBeanParallelTest.class);
 
     private final AsyncService asyncService;
 
@@ -31,8 +35,8 @@ public class MultiBeanParallelTest {
         long start = System.currentTimeMillis();
         List<String> collect = tasks.parallelStream().map(Supplier::get).collect(Collectors.toList());
         long end = System.currentTimeMillis();
-        System.out.println(end - start);
-        System.out.println(collect);
+        log.info("{}", end - start);
+        log.info("{}", collect);
 
     }
 

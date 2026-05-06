@@ -39,10 +39,13 @@ public class CpuInfoUtilTest {
 
                         int newCpuCore = CpuInfoUtil.getCurrentCpuCore();
                         if (cpuCore >= 0 && newCpuCore >= 0) {
-                            System.out.printf("线程 %s 初始在CPU %d, 后来在CPU %d%n", Thread.currentThread().getName(), cpuCore, newCpuCore);
+                            log.info(String.format("线程 %s 初始在CPU %d, 后来在CPU %d", Thread.currentThread().getName(), cpuCore, newCpuCore));
                         }
+                    } catch (InterruptedException e) {
+                        log.error("Thread sleep interrupted", e);
+                        Thread.currentThread().interrupt();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        log.error("Error getting CPU info", e);
                     } finally {
                         latch.countDown();
                     }
@@ -51,9 +54,9 @@ public class CpuInfoUtilTest {
 
             latch.await(2, TimeUnit.SECONDS);
 
-            System.out.println("\nCPU核心分配情况:");
+            log.info("\nCPU核心分配情况:");
             cpuCoreMap.forEach((threadHash, cpuCore) -> {
-                System.out.printf("线程 %d 运行在CPU核心: %d%n", threadHash, cpuCore);
+                log.info(String.format("线程 %d 运行在CPU核心: %d", threadHash, cpuCore));
             });
 
             assertTrue(cpuCoreMap.size() > 0, "应该有线程获取到CPU核心信息");

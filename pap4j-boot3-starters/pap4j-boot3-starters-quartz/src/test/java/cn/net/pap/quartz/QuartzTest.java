@@ -5,6 +5,8 @@ import org.junit.jupiter.api.Test;
 import org.quartz.JobKey;
 import org.quartz.Scheduler;
 import org.quartz.Trigger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -19,6 +21,8 @@ import java.util.Set;
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class QuartzTest {
+
+    private static final Logger log = LoggerFactory.getLogger(QuartzTest.class);
 
     private final Scheduler scheduler;
     private final DataSource dataSource;
@@ -38,14 +42,13 @@ public class QuartzTest {
         QuartzUtils.createScheduleJob(scheduler, "pap", "pap", "* * * * * ?", "bean.method(1,2,3)", true);
 
         Thread.sleep(5000);
-        System.out.println();
 
         org.quartz.impl.matchers.GroupMatcher<JobKey> matcher = org.quartz.impl.matchers.GroupMatcher.anyJobGroup();
         Set<JobKey> jobKeys = scheduler.getJobKeys(matcher);
         for (JobKey jobKey : jobKeys) {
             List<? extends Trigger> triggers = scheduler.getTriggersOfJob(jobKey);
             for (Trigger trigger : triggers) {
-                System.out.println(trigger.toString());
+                log.info("{}", trigger.toString());
             }
         }
 
@@ -59,7 +62,7 @@ public class QuartzTest {
 
         ResultSet resultSet = dataSource.getConnection().prepareStatement("SELECT TABLE_NAME FROM INFORMATION_SCHEMA.TABLES where TABLE_SCHEMA = 'PUBLIC'").executeQuery();
         while (resultSet.next()) {
-            System.out.println(resultSet.getString("TABLE_NAME"));
+            log.info("{}", resultSet.getString("TABLE_NAME"));
         }
     }
 

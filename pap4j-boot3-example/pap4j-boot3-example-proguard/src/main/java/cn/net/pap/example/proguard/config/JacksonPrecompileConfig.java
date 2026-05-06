@@ -10,6 +10,8 @@ import com.fasterxml.jackson.databind.SerializationConfig;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,6 +38,8 @@ import org.springframework.http.ResponseEntity;
  */
 @Configuration
 public class JacksonPrecompileConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(JacksonPrecompileConfig.class);
 
     @Bean
     CommandLineRunner precompileWriters(ObjectMapper mapper) {
@@ -77,7 +81,7 @@ public class JacksonPrecompileConfig {
             delegate.serialize(value, gen, serializers);
             long duration = System.nanoTime() - start;
 
-            System.out.printf("[JacksonMonitor] Serialized %s in %.3f ms%n", value != null ? value.getClass().getSimpleName() : "null", duration / 1_000_000.0);
+            log.info(String.format("[JacksonMonitor] Serialized %s in %.3f ms", value != null ? value.getClass().getSimpleName() : "null", duration / 1_000_000.0));
         }
 
         @Override

@@ -18,6 +18,8 @@ import boofcv.struct.image.ImageGray;
 import georegression.struct.line.LineParametric2D_F32;
 import georegression.struct.line.LineSegment2D_F32;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -34,6 +36,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  */
 public class ExampleLineDetection {
 
+    private static final Logger log = LoggerFactory.getLogger(ExampleLineDetection.class);
+
     private String getTestImagePath() throws Exception {
         URL resourceUrl = getClass().getClassLoader().getResource("input.jpg");
         assertNotNull(resourceUrl, "Test image 'input.jpg' not found in resources!");
@@ -49,7 +53,7 @@ public class ExampleLineDetection {
         String imagePath = getTestImagePath();
         BufferedImage bufferedImage = UtilImageIO.loadImageNotNull(imagePath);
         Double angle = DetectLineUtilss.getAngleByHoughLines(bufferedImage, 10, 1);
-        System.out.println(angle);
+        log.info("{}", angle);
     }
 
     /**
@@ -61,7 +65,7 @@ public class ExampleLineDetection {
         String imagePath = getTestImagePath();
         BufferedImage bufferedImage = UtilImageIO.loadImageNotNull(imagePath);
         Double angle = DetectLineUtilss.getAngleByHoughLines(bufferedImage, 10, 2);
-        System.out.println(angle);
+        log.info("{}", angle);
     }
 
 

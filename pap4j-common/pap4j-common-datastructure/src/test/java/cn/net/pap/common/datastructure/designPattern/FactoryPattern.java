@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FactoryPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(FactoryPattern.class);
 
     interface Shape {
         void draw();
@@ -12,7 +16,7 @@ public class FactoryPattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Rectangle::draw() method.");
+            log.info("Inside Rectangle::draw() method.");
         }
     }
 
@@ -20,7 +24,7 @@ public class FactoryPattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Square::draw() method.");
+            log.info("Inside Square::draw() method.");
         }
     }
 
@@ -28,7 +32,7 @@ public class FactoryPattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Circle::draw() method.");
+            log.info("Inside Circle::draw() method.");
         }
     }
 
@@ -58,18 +62,24 @@ public class FactoryPattern {
         Shape shape1 = shapeFactory.getShape("CIRCLE");
 
         //调用 Circle 的 draw 方法
-        shape1.draw();
+        if (shape1 != null) {
+            shape1.draw();
+        }
 
         //获取 Rectangle 的对象，并调用它的 draw 方法
         Shape shape2 = shapeFactory.getShape("RECTANGLE");
 
         //调用 Rectangle 的 draw 方法
-        shape2.draw();
+        if (shape2 != null) {
+            shape2.draw();
+        }
 
         //获取 Square 的对象，并调用它的 draw 方法
         Shape shape3 = shapeFactory.getShape("SQUARE");
 
         //调用 Square 的 draw 方法
-        shape3.draw();
+        if (shape3 != null) {
+            shape3.draw();
+        }
     }
 }

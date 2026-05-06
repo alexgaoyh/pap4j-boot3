@@ -1,6 +1,8 @@
 package cn.net.pap.common.datastructure.trace;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -8,42 +10,44 @@ import java.util.List;
 
 public class DataTraceIdUtilTest {
 
+    private static final Logger log = LoggerFactory.getLogger(DataTraceIdUtilTest.class);
+
     @Test
     public void test1() {
         String root = DataTraceIdUtil.generateRoot("ORD1", "S001");
-        System.out.println("Root traceId: " + root + " -> " + DataTraceIdUtil.parse(root));
+        log.info("Root traceId: {} -> {}", root, DataTraceIdUtil.parse(root));
 
         List<String> children = DataTraceIdUtil.deriveBranches(root, 3);
         for (String t : children) {
-            System.out.println("Derived: " + t + " -> " + DataTraceIdUtil.parse(t));
+            log.info("Derived: {} -> {}", t, DataTraceIdUtil.parse(t));
         }
 
         // 再派生第二层
         List<String> nextLevel = DataTraceIdUtil.deriveBranches(children.get(0), 2);
         for (String t : nextLevel) {
-            System.out.println("Next Level Derived: " + t + " -> " + DataTraceIdUtil.parse(t));
+            log.info("Next Level Derived: {} -> {}", t, DataTraceIdUtil.parse(t));
         }
     }
 
     @Test
     public void test2() {
         String root = DataTraceIdUtil.generateRoot("ORD1", "S001");
-        System.out.println("Root: " + root + " -> " + DataTraceIdUtil.parse(root));
+        log.info("Root: {} -> {}", root, DataTraceIdUtil.parse(root));
 
         // 新增一步
         String step1 = DataTraceIdUtil.nextStep(root);
-        System.out.println("Next Step 1: " + step1 + " -> " + DataTraceIdUtil.parse(step1));
+        log.info("Next Step 1: {} -> {}", step1, DataTraceIdUtil.parse(step1));
 
         // 再新增一步
         String step2 = DataTraceIdUtil.nextStep(step1);
-        System.out.println("Next Step 2: " + step2 + " -> " + DataTraceIdUtil.parse(step2));
+        log.info("Next Step 2: {} -> {}", step2, DataTraceIdUtil.parse(step2));
     }
 
     @Test
     public void test3() {
         // 根节点
         String root = DataTraceIdUtil.generateRoot("ORD1", "S001");
-        System.out.println("Root traceId: " + root + " -> " + DataTraceIdUtil.parse(root));
+        log.info("Root traceId: {} -> {}", root, DataTraceIdUtil.parse(root));
 
         // 保存当前层级节点
         List<String> currentLevel = new ArrayList<>();
@@ -60,7 +64,7 @@ public class DataTraceIdUtilTest {
 
                 for (String child : children) {
                     DataTraceIdUtil.TraceMeta meta = DataTraceIdUtil.parse(child);
-                    System.out.println("Parent: " + parent + " -> Child: " + child + " -> " + meta);
+                    log.info("Parent: {} -> Child: {} -> {}", parent, child, meta);
                     nextLevel.add(child);
                 }
             }
@@ -88,9 +92,9 @@ public class DataTraceIdUtilTest {
             // 找出第一个不同的位置
             for (int i = 0; i < Math.min(base62List.size(), sortedList.size()); i++) {
                 if (!base62List.get(i).equals(sortedList.get(i))) {
-                    System.out.println("第一个不同的位置索引: " + i);
-                    System.out.println("原始集合元素: " + base62List.get(i));
-                    System.out.println("排序集合元素: " + sortedList.get(i));
+                    log.info("第一个不同的位置索引: {}", i);
+                    log.info("原始集合元素: {}", base62List.get(i));
+                    log.info("排序集合元素: {}", sortedList.get(i));
                     break;
                 }
             }

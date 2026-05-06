@@ -17,6 +17,8 @@ import java.util.List;
 
 public class ItextExtractPathsTest {
 
+    private static final Logger log = LoggerFactory.getLogger(ItextExtractPathsTest.class);
+
     /**
      * PDF 线条信息、矩形信息 提取
      * 创建 pdf 的过程：
@@ -34,7 +36,7 @@ public class ItextExtractPathsTest {
             pdfReader = new PdfReader(tempFile.getAbsolutePath());
 
             for (int page = 1; page <= pdfReader.getNumberOfPages(); page++) {
-                System.out.printf("Page %s\n", page);
+                log.info("Page {}", page);
 
                 List<PDFPathDTO> pathData = new ArrayList<>();
                 ExtRenderListener extRenderListener = new PapExtRenderListener(pathData);
@@ -43,7 +45,7 @@ public class ItextExtractPathsTest {
                 parser.processContent(page, extRenderListener);
 
                 for (PDFPathDTO path : pathData) {
-                    System.out.println(path);
+                    log.info("{}", path);
                 }
             }
         } finally {

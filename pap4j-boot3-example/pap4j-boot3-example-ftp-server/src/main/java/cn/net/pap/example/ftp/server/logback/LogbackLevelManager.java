@@ -12,6 +12,8 @@ import java.util.Map;
  */
 public class LogbackLevelManager {
 
+    private static final org.slf4j.Logger log = LoggerFactory.getLogger(LogbackLevelManager.class);
+
     /**
      * <p>动态修改指定Logger的日志级别（适配Logback 1.5.x）</p>
      *
@@ -47,8 +49,7 @@ public class LogbackLevelManager {
             // Logback 1.5.x 会自动传播级别变化，无需调用 updateLoggers()
             return true;
         } catch (Exception e) {
-            System.err.println("Failed to set logger level: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Failed to set logger level: {}", e.getMessage(), e);
             return false;
         }
     }
@@ -94,7 +95,7 @@ public class LogbackLevelManager {
 
             return level != null ? level.levelStr : null;
         } catch (Exception e) {
-            System.err.println("Failed to get logger level: " + e.getMessage());
+            log.error("Failed to get logger level: {}", e.getMessage());
             return null;
         }
     }
@@ -119,7 +120,7 @@ public class LogbackLevelManager {
             Level effectiveLevel = logger.getEffectiveLevel();
             return effectiveLevel != null ? effectiveLevel.levelStr : null;
         } catch (Exception e) {
-            System.err.println("Failed to get effective logger level: " + e.getMessage());
+            log.error("Failed to get effective logger level: {}", e.getMessage());
             return null;
         }
     }
@@ -137,8 +138,7 @@ public class LogbackLevelManager {
             ch.qos.logback.classic.util.ContextInitializer ci = new ch.qos.logback.classic.util.ContextInitializer(loggerContext);
             ci.autoConfig();
         } catch (Exception e) {
-            System.err.println("Failed to reset logger: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Failed to reset logger: {}", e.getMessage(), e);
         }
     }
 
@@ -155,11 +155,11 @@ public class LogbackLevelManager {
                 Level effectiveLevel = logger.getEffectiveLevel();
 
                 if (level != null || !name.equals(Logger.ROOT_LOGGER_NAME)) {
-                    System.out.printf("Logger: %-50s | Level: %-10s | Effective Level: %-10s%n", name, level != null ? level.levelStr : "null", effectiveLevel.levelStr);
+                    log.info(String.format("Logger: %-50s | Level: %-10s | Effective Level: %-10s", name, level != null ? level.levelStr : "null", effectiveLevel.levelStr));
                 }
             }
         } catch (Exception e) {
-            System.err.println("Failed to list loggers: " + e.getMessage());
+            log.error("Failed to list loggers: {}", e.getMessage());
         }
     }
 

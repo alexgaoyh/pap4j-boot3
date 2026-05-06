@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.polygon;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ConvexPolygonTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ConvexPolygonTest.class);
 
     //六边形
     static int N = 7;
@@ -37,7 +41,7 @@ public class ConvexPolygonTest {
                 }
             }
         }
-        System.out.println("最优解：" + t[1][N - 2]);
+        log.info("最优解：{}", t[1][N - 2]);
         Traceback(1, N - 2, s);
     }
 
@@ -46,7 +50,7 @@ public class ConvexPolygonTest {
         //子问题的k值
         Traceback(i, s[i][j], s);
         Traceback(s[i][j] + 1, j, s);
-        System.out.println("剖分点：" + (i - 1) + "  " + j + "  " + s[i][j]);
+        log.info("剖分点：{}  {}  {}", (i - 1), j, s[i][j]);
     }
 
     public static int Weight(int a, int b, int c) {//求三角形的权值

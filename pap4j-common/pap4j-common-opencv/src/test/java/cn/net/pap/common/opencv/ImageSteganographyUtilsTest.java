@@ -30,7 +30,7 @@ public class ImageSteganographyUtilsTest {
             File output = TestResourceUtil.createTempFile("pap-out", ".jpg");
             ImageIO.write(stegoImage, "jpg", output);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in hiddenAndReveal: ", e);
         }
     }
 
@@ -49,7 +49,7 @@ public class ImageSteganographyUtilsTest {
             // 输出提取的信息
             log.info("{}", "Extracted Message: " + extractedMessage);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in hiddenAndRevealOpenCV: ", e);
         }
     }
 

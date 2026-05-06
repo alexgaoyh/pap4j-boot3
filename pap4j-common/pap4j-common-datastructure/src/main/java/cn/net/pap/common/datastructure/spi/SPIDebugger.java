@@ -58,13 +58,13 @@ public class SPIDebugger {
     public static void printAllSPIs() {
 
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        log.info("ClassLoader : " + classLoader);
+        log.info("ClassLoader : {}", classLoader);
 
         try {
             var resources = classLoader.getResources("META-INF/services");
             while (resources.hasMoreElements()) {
                 var url = resources.nextElement();
-                log.info("Scan SPI Define Menu : " + url);
+                log.info("Scan SPI Define Menu : {}", url);
 
                 if (url.getProtocol().equals("file")) {
                     try {
@@ -74,20 +74,20 @@ public class SPIDebugger {
                                 String spiInterface = file.getFileName().toString();
                                 try {
                                     Class<?> service = Class.forName(spiInterface, false, classLoader);
-                                    log.info("SPI Interface : " + service.getName());
+                                    log.info("SPI Interface : {}", service.getName());
                                     printServiceLoaderImplementations(service);
                                 } catch (Exception e) {
-                                    System.err.println("Can't Load SPI Interface : " + spiInterface);
+                                    log.error("Can't Load SPI Interface : {}", spiInterface, e);
                                 }
                             });
                         }
                     } catch (Exception e) {
-                        System.err.println("Can't Load SPI Dir : " + url);
+                        log.error("Can't Load SPI Dir : {}", url, e);
                     }
                 }
             }
         } catch (Exception e) {
-            System.err.println("Scan META-INF/services Failed : " + e.getMessage());
+            log.error("Scan META-INF/services Failed : {}", e.getMessage(), e);
         }
     }
 
@@ -98,8 +98,8 @@ public class SPIDebugger {
      */
     private static <S> void printServiceLoaderImplementations(Class<S> service) {
         ServiceLoader.load(service).stream().map(ServiceLoader.Provider::type).forEach(implClass -> {
-            log.info("Implement Class : " + implClass.getName());
-            log.info("ClassLoader : " + implClass.getClassLoader());
+            log.info("Implement Class : {}", implClass.getName());
+            log.info("ClassLoader : {}", implClass.getClassLoader());
         });
     }
 }

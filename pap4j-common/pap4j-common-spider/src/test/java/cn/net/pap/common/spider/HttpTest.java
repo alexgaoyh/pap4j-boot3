@@ -64,8 +64,9 @@ public class HttpTest {
         try {
             Response response = httpClient.newCall(request).execute();
             boolean successful = response.isSuccessful();
-            System.out.println(successful + " : " + response.body().string());
+            log.info("{} : {}", successful, response.body().string());
         } catch (IOException e) {
+            log.error("Error in request: ", e);
         }
     }
 
@@ -132,9 +133,8 @@ public class HttpTest {
             for (Element span : spans) {
                 String className = span.className();
                 String text = span.text();
-                System.out.println("Class: " + className + " - Text: " + text);
+                log.info("Class: {} - Text: {}", className, text);
             }
-            System.out.println();
         }
     }
 
@@ -145,17 +145,13 @@ public class HttpTest {
         HttpRequest request = HttpRequest.newBuilder().uri(URI.create(url)).header("Origin", "http://127.0.0.1:6060").GET().build();
         try {
             HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            System.out.println("Status Code: " + response.statusCode());
-            System.out.println("\nResponse Headers:");
+            log.info("Status Code: {}", response.statusCode());
+            log.info("Response Headers:");
             response.headers().map().forEach((key, values) -> {
-                System.out.print(key + ": ");
-                for (String value : values) {
-                    System.out.print(value + " ");
-                }
-                System.out.println();
+                log.info("{}: {}", key, values);
             });
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in httpResponseTest: ", e);
         }
     }
 
@@ -180,7 +176,7 @@ public class HttpTest {
                 span.removeAttr(attr);
             }
         }
-        System.out.println(doc.body().html());
+        log.info("{}", doc.body().html());
     }
 
     // @Test
@@ -213,13 +209,13 @@ public class HttpTest {
                 }
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error in downloadFileURLTest: ", e);
         } finally {
             if (tempFile != null) {
                 try {
                     java.nio.file.Files.deleteIfExists(tempFile);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error("Error deleting temp file: ", e);
                 }
             }
         }
@@ -281,7 +277,7 @@ public class HttpTest {
         long s = System.nanoTime();
         boolean b = sendPostBlindly("http://127.0.0.1:30000/echo/jsonSleep", "{\"a\":\"a\",\"b\":1}");
         Thread.sleep(1000);  // 等待1秒
-        System.out.println(b + " 秒: " + (System.nanoTime() - s) / 1_000_000_000.0);
+        log.info(b + " 秒: " + (System.nanoTime() - s) / 1_000_000_000.0);
     }
 
 

@@ -3,10 +3,15 @@ package cn.net.pap.common.pdf;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.file.Path;
 
 public class FontSubsetUtilsTest {
+
+    private static final Logger log = LoggerFactory.getLogger(FontSubsetUtilsTest.class);
 
     @DisplayName("生成字体子集")
     @Test
@@ -21,16 +26,15 @@ public class FontSubsetUtilsTest {
                 try {
                     targetFont = java.nio.file.Files.createTempFile("simfang2", ".ttf");
                     FontSubsetUtils.createSubset(sourceFont, targetFont, textToExtract);
-                    System.out.println("字体子集化成功，已保存至: " + targetFont);
+                    log.info("字体子集化成功，已保存至: {}", targetFont);
                 } catch (IOException e) {
-                    System.err.println("字体处理失败: " + e.getMessage());
-                    e.printStackTrace();
+                    log.error("字体处理失败: ", e);
                 } finally {
                     if (targetFont != null) {
                         try {
                             java.nio.file.Files.deleteIfExists(targetFont);
                         } catch (IOException e) {
-                            e.printStackTrace();
+                            log.error("删除临时文件失败: ", e);
                         }
                     }
                 }

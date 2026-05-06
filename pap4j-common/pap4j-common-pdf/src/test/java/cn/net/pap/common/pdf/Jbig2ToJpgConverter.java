@@ -9,7 +9,12 @@ import java.awt.image.BufferedImage;
 import java.io.*;
 import java.util.Iterator;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class Jbig2ToJpgConverter {
+
+    private static final Logger log = LoggerFactory.getLogger(Jbig2ToJpgConverter.class);
 
     @Test
     public void convertTest() throws IOException {
@@ -24,7 +29,7 @@ public class Jbig2ToJpgConverter {
 
             Jbig2ToJpgConverter.convert(jb2eFile.getAbsolutePath(), jb2gFile.getAbsolutePath(), outputJpg);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Conversion error: ", e);
         } finally {
             if (jb2eFile != null && jb2eFile.exists()) jb2eFile.delete();
             if (jb2gFile != null && jb2gFile.exists()) jb2gFile.delete();
@@ -61,7 +66,7 @@ public class Jbig2ToJpgConverter {
         File output = new File(outputJpgPath);
         ImageIO.write(bufferedImage, "jpg", output);
 
-        System.out.println("Converted JBIG2 to: " + output.getAbsolutePath());
+        log.info("Converted JBIG2 to: {}", output.getAbsolutePath());
     }
 
     private static byte[] readFile(String path) throws IOException {

@@ -1,6 +1,8 @@
 package cn.net.pap.common.worker.simple;
 
 import cn.net.pap.common.worker.simple.dto.SimpleTaskDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
@@ -9,6 +11,8 @@ import java.util.concurrent.TimeUnit;
  * 工作进程：从队列取任务并执行
  */
 public class SimpleWorker implements Runnable {
+
+    private static final Logger log = LoggerFactory.getLogger(SimpleWorker.class);
 
     private final int id;
 
@@ -31,7 +35,7 @@ public class SimpleWorker implements Runnable {
         // 保存当前线程
         workerThread = Thread.currentThread();
 
-        System.out.println("Worker-" + id + ": 启动");
+        log.info("Worker-{}: 启动", id);
 
         while (running) {
             try {
@@ -48,11 +52,11 @@ public class SimpleWorker implements Runnable {
             }
         }
 
-        System.out.println("Worker-" + id + ": 停止，共处理 " + processedCount + " 个任务");
+        log.info("Worker-{}: 停止，共处理 {} 个任务", id, processedCount);
     }
 
     private void processTask(SimpleTaskDTO task) {
-        System.out.println("Worker-" + id + ": 开始处理任务 " + task.getId());
+        log.info("Worker-{}: 开始处理任务 {}", id, task.getId());
 
         // 模拟任务处理时间
         try {
@@ -61,7 +65,7 @@ public class SimpleWorker implements Runnable {
             Thread.currentThread().interrupt();
         }
 
-        System.out.println("Worker-" + id + ": 完成任务 " + task.getId());
+        log.info("Worker-{}: 完成任务 {}", id, task.getId());
     }
 
     public void stop() {

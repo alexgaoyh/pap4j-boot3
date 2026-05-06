@@ -22,13 +22,13 @@ public class SimpleCronParserTest {
         // 计算并打印下一次执行时间
         LocalDateTime nextTime = parser.getNextExecutionTime();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        System.out.println("\n下一次执行时间: " + nextTime.format(formatter));
+        log.info("\n下一次执行时间: {}", nextTime.format(formatter));
 
         // 打印接下来5次执行时间
-        System.out.println("\n接下来5次执行时间:");
+        log.info("\n接下来5次执行时间:");
         for (int i = 0; i < 5; i++) {
             nextTime = parser.getNextExecutionTime();
-            System.out.println(nextTime.format(formatter));
+            log.info("{}", nextTime.format(formatter));
             parser.setCurrentTime(nextTime);
         }
     }
@@ -44,13 +44,13 @@ public class SimpleCronParserTest {
         // 计算并打印下一次执行时间
         LocalDateTime nextTime = parser.getNextExecutionTime();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-        System.out.println("\n下一次执行时间: " + nextTime.format(formatter));
+        log.info("\n下一次执行时间: {}", nextTime.format(formatter));
 
         // 打印接下来5次执行时间
-        System.out.println("\n接下来5次执行时间:");
+        log.info("\n接下来5次执行时间:");
         for (int i = 0; i < 5; i++) {
             nextTime = parser.getNextExecutionTime();
-            System.out.println(nextTime.format(formatter));
+            log.info("{}", nextTime.format(formatter));
             parser.setCurrentTime(nextTime);
         }
     }
@@ -67,13 +67,13 @@ public class SimpleCronParserTest {
             // 计算并打印下一次执行时间
             LocalDateTime nextTime = parser.getNextExecutionTime();
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-            System.out.println("\n下一次执行时间: " + nextTime.format(formatter));
+            log.info("\n下一次执行时间: {}", nextTime.format(formatter));
 
             // 打印接下来5次执行时间
-            System.out.println("\n接下来5次执行时间:");
+            log.info("\n接下来5次执行时间:");
             for (int i = 0; i < 5; i++) {
                 nextTime = parser.getNextExecutionTime();
-                System.out.println(nextTime.format(formatter));
+                log.info("{}", nextTime.format(formatter));
                 parser.setCurrentTime(nextTime);
             }
         } catch (Exception e) {

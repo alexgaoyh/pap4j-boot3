@@ -1,6 +1,8 @@
 package cn.net.pap.cache;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.redis.connection.RedisConnection;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -16,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class CacheableFieldTest extends CacheBaseTest {
 
+    private static final Logger log = LoggerFactory.getLogger(CacheableFieldTest.class);
+
     private final RedisTemplate<String, Object> redisTemplate;
 
     public CacheableFieldTest(RedisTemplate<String, Object> redisTemplate) {
@@ -30,9 +34,9 @@ public class CacheableFieldTest extends CacheBaseTest {
         if(response.equals("PONG")) {
             redisTemplate.opsForValue().set("test", "test");
             Boolean delete = redisTemplate.delete("test");
-            System.out.println(delete);
+            log.info("{}", delete);
         } else {
-            System.out.println("redisTemplate.isExposeConnection() == false");
+            log.info("redisTemplate.isExposeConnection() == false");
         }
     }
 
@@ -44,9 +48,9 @@ public class CacheableFieldTest extends CacheBaseTest {
         assertTrue(threadId instanceof String);
         assertTrue(timeswap instanceof Long);
         assertTrue(extList instanceof ArrayList);
-        System.out.println(threadId);
-        System.out.println(timeswap);
-        System.out.println(extList);
+        log.info("{}", threadId);
+        log.info("{}", timeswap);
+        log.info("{}", extList);
     }
 
 }

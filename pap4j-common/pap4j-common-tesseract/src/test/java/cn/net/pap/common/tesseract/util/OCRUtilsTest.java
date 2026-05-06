@@ -19,7 +19,7 @@ public class OCRUtilsTest {
         try {
             tempFile = saveImageToFile(createTestImage("测试Tesseract OCR功能"), "ocr_test_1_");
             List<OCRUtils.OCRResult> chi = OCRUtils.recognizeWithCoordinates("d:\\tessdata", tempFile.getAbsolutePath(), "chi_sim");
-            System.out.println(chi);
+            log.info("{}", chi);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (OCRUtils.OCRException e) {
@@ -37,7 +37,7 @@ public class OCRUtilsTest {
         try {
             tempFile = saveImageToFile(createTestImage("测试Tesseract OCR功能"), "ocr_test_2_");
             List<OCRUtils.OCRResult> chi = OCRUtils.recognizeWithWordCoordinates("d:\\tessdata", tempFile.getAbsolutePath(), "chi_sim");
-            System.out.println(chi);
+            log.info("{}", chi);
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (OCRUtils.OCRException e) {
@@ -166,9 +166,9 @@ public class OCRUtilsTest {
         if (pageResult.isPresent()) {
             OCRUtils.OCRResult res = pageResult.get();
             String text = res.getText() != null ? res.getText().replace("\n", "").replace("\r", "") : "null";
-            System.out.println(angle + " -> 置信度: " + res.getConfidence() + ", 识别文本: [" + text + "]");
+            log.info("{} -> 置信度: {}, 识别文本: [{}]", angle, res.getConfidence(), text);
         } else {
-            System.out.println(angle + " -> 未识别到PAGE");
+            log.info("{} -> 未识别到PAGE", angle);
         }
     }
 

@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class IteratorPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(IteratorPattern.class);
 
     interface Iterator {
         public boolean hasNext();
@@ -50,7 +54,7 @@ public class IteratorPattern {
 
         for (Iterator iter = namesRepository.getIterator(); iter.hasNext(); ) {
             String name = (String) iter.next();
-            System.out.println("Name : " + name);
+            log.info("Name : {}", name);
         }
     }
 }

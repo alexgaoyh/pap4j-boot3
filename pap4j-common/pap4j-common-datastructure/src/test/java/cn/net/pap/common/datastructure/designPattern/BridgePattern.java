@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BridgePattern {
+
+    private static final Logger log = LoggerFactory.getLogger(BridgePattern.class);
 
     interface DrawAPI {
         public void drawCircle(int radius, int x, int y);
@@ -11,16 +15,14 @@ public class BridgePattern {
     class RedCircle implements DrawAPI {
         @Override
         public void drawCircle(int radius, int x, int y) {
-            System.out.println("Drawing Circle[ color: red, radius: "
-                    + radius + ", x: " + x + ", " + y + "]");
+            log.info("Drawing Circle[ color: red, radius: {}, x: {}, {}]", radius, x, y);
         }
     }
 
     class GreenCircle implements DrawAPI {
         @Override
         public void drawCircle(int radius, int x, int y) {
-            System.out.println("Drawing Circle[ color: green, radius: "
-                    + radius + ", x: " + x + ", " + y + "]");
+            log.info("Drawing Circle[ color: green, radius: {}, x: {}, {}]", radius, x, y);
         }
     }
 

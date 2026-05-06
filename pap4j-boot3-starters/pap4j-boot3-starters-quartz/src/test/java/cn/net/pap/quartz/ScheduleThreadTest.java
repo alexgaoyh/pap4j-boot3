@@ -1,6 +1,8 @@
 package cn.net.pap.quartz;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
@@ -15,9 +17,11 @@ import java.util.Date;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class ScheduleThreadTest {
 
+    private static final Logger log = LoggerFactory.getLogger(ScheduleThreadTest.class);
+
     @Test
     void testScheduledThreadInfo() throws Exception {
-        System.out.println("main thread: " + Thread.currentThread().getName());
+        log.info("main thread: {}", Thread.currentThread().getName());
         Thread.sleep(20000);
     }
 
@@ -25,6 +29,7 @@ public class ScheduleThreadTest {
     @EnableScheduling
     static class ScheduleConfig {
 
+        private static final Logger logger = LoggerFactory.getLogger(ScheduleConfig.class);
         private static final SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         /**
@@ -32,11 +37,12 @@ public class ScheduleThreadTest {
          */
         @Scheduled(fixedDelay = 1000)
         public void scheduledTask() {
-            System.out.println("Scheduled thread: " + Thread.currentThread().getName() + ", time:" + sdf.format(new Date()));
+            logger.info("Scheduled thread: {}, time:{}", Thread.currentThread().getName(), sdf.format(new Date()));
             try {
                 Thread.sleep(3000);
-            } catch (InterruptedException ignored) {
-
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                logger.error("Scheduled task interrupted", e);
             }
         }
 

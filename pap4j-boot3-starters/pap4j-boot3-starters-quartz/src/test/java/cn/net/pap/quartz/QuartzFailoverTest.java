@@ -3,6 +3,8 @@ package cn.net.pap.quartz;
 import cn.net.pap.quartz.bean.QuartzService;
 import org.junit.jupiter.api.Test;
 import org.quartz.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.TestPropertySource;
@@ -24,6 +26,8 @@ import static org.junit.jupiter.api.Assertions.*;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class QuartzFailoverTest {
 
+    private static final Logger log = LoggerFactory.getLogger(QuartzFailoverTest.class);
+
     private final Scheduler scheduler;
 
     public QuartzFailoverTest(Scheduler scheduler) {
@@ -40,11 +44,11 @@ public class QuartzFailoverTest {
         public void execute(JobExecutionContext context) throws JobExecutionException {
             if (!jobFailed) {
                 jobFailed = true;
-                System.out.println("Job will fail now at: " + new Date());
+                log.info("Job will fail now at: {}", new Date());
                 throw new JobExecutionException("Simulated job failure", true);
             } else {
                 jobRecovered = true;
-                System.out.println("Job recovered and executed successfully at: " + new Date());
+                log.info("Job recovered and executed successfully at: {}", new Date());
                 failoverLatch.countDown();
             }
         }

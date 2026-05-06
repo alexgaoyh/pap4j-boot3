@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class DecoratorPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(DecoratorPattern.class);
 
     interface Shape {
         void draw();
@@ -12,7 +16,7 @@ public class DecoratorPattern {
 
         @Override
         public void draw() {
-            System.out.println("Shape: Rectangle");
+            log.info("Shape: Rectangle");
         }
     }
 
@@ -20,7 +24,7 @@ public class DecoratorPattern {
 
         @Override
         public void draw() {
-            System.out.println("Shape: Circle");
+            log.info("Shape: Circle");
         }
     }
 
@@ -49,7 +53,7 @@ public class DecoratorPattern {
         }
 
         private void setRedBorder(Shape decoratedShape) {
-            System.out.println("Border Color: Red");
+            log.info("Border Color: Red");
         }
     }
 
@@ -61,13 +65,13 @@ public class DecoratorPattern {
         ShapeDecorator redRectangle = new RedShapeDecorator(new Rectangle());
         //Shape redCircle = new RedShapeDecorator(new Circle());
         //Shape redRectangle = new RedShapeDecorator(new Rectangle());
-        System.out.println("Circle with normal border");
+        log.info("Circle with normal border");
         circle.draw();
 
-        System.out.println("\nCircle of red border");
+        log.info("Circle of red border");
         redCircle.draw();
 
-        System.out.println("\nRectangle of red border");
+        log.info("Rectangle of red border");
         redRectangle.draw();
     }
 

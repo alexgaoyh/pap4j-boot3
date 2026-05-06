@@ -8,10 +8,10 @@ import net.openhft.chronicle.queue.ExcerptAppender;
 import net.openhft.chronicle.queue.ExcerptTailer;
 import net.openhft.chronicle.queue.impl.single.SingleChronicleQueueBuilder;
 import net.openhft.chronicle.wire.WireType;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -40,6 +40,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * --add-opens java.base/sun.nio.ch=ALL-UNNAMED
  */
 public class ChronicleMapTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ChronicleMapTest.class);
 
     private ChronicleMap<Long, long[]> graphMap;
     private File persistenceFile;
@@ -85,7 +87,7 @@ public class ChronicleMapTest {
 
             assertNotNull(reopenedMap.get(1L));
             assertArrayEquals(new long[]{2L, 3L}, reopenedMap.get(1L));
-            System.out.println("持久化验证成功：即使关闭后，节点 1 的邻居依然存在。");
+            log.info("持久化验证成功：即使关闭后，节点 1 的邻居依然存在。");
         }
     }
 
@@ -120,16 +122,16 @@ public class ChronicleMapTest {
             file.delete();
         }
 
-        System.out.println("正在初始化海量存储容器...");
+        log.info("正在初始化海量存储容器...");
         long startTime = System.currentTimeMillis();
 
         try (ChronicleMap<Long, long[]> graph = ChronicleMap.of(Long.class, long[].class).name("ultra-graph").entries(entries).averageValueSize(avgNeighbors * 8) // 预估 Value 大小
                 .createPersistedTo(file)) {
 
-            System.out.println("初始化完成，耗时: " + (System.currentTimeMillis() - startTime) + "ms");
+            log.info("初始化完成，耗时: {}ms", (System.currentTimeMillis() - startTime));
 
             // 2. 压力测试：高速写入千万条数据
-            System.out.println("开始批量写入 10,000,000 条边...");
+            log.info("开始批量写入 10,000,000 条边...");
             long writeStart = System.currentTimeMillis();
 
             for (long i = 0; i < entries; i++) {
@@ -140,20 +142,20 @@ public class ChronicleMapTest {
                 graph.put(i, neighbors);
 
                 if (i % 1_000_000 == 0 && i > 0) {
-                    System.out.println("已处理: " + i + " 个节点...");
+                    log.info("已处理: {} 个节点...", i);
                 }
             }
 
-            System.out.println("写入千万条记录完成，耗时: " + (System.currentTimeMillis() - writeStart) + "ms");
+            log.info("写入千万条记录完成，耗时: {}ms", (System.currentTimeMillis() - writeStart));
 
             // 3. 读取验证：随机抽样
-            System.out.println("随机抽样读取验证...");
+            log.info("随机抽样读取验证...");
             long testId = 5_555_555L;
             long[] result = graph.get(testId);
-            System.out.println("节点 " + testId + " 的邻居: " + Arrays.toString(result));
+            log.info("节点 {} 的邻居: {}", testId, Arrays.toString(result));
 
             // 4. 验证磁盘占用
-            System.out.println("磁盘映射文件大小: " + (file.length() / 1024 / 1024) + " MB");
+            log.info("磁盘映射文件大小: {} MB", (file.length() / 1024 / 1024));
         } finally {
             java.nio.file.Files.deleteIfExists(tempFile);
         }
@@ -183,7 +185,7 @@ public class ChronicleMapTest {
                 try (ChronicleQueue queue = SingleChronicleQueueBuilder.builder(queueTempDir.toFile(), WireType.BINARY).blockSize(1024*64).build()) {
     
                     // --- 3. 批量写入数据到 Queue 和 Map ---
-                    System.out.println("--- 3. 开始批量写入数据 ---");
+                    log.info("--- 3. 开始批量写入数据 ---");
     
                     for (long i = 1; i <= ENTRY_COUNT; i++) {
                         // 3.1 准备邻居数据 (Neighbors Data)
@@ -212,11 +214,11 @@ public class ChronicleMapTest {
                     // 3.4 写入主数据到 Map
                     map.put(primaryKey, mainData);
 
-                    System.out.printf("写入数据: Key=%d, Label=%d, QueueIndex=%d%n", primaryKey, mainData.label, neighborsIndex);
+                    log.info("写入数据: Key={}, Label={}, QueueIndex={}", primaryKey, mainData.label, neighborsIndex);
                 }
 
                 // --- 4. 批量读取数据并验证 ---
-                System.out.println("\n--- 4. 开始批量读取和验证数据 ---");
+                log.info("--- 4. 开始批量读取和验证数据 ---");
 
                 ExcerptTailer tailer = queue.createTailer();
 
@@ -250,12 +252,12 @@ public class ChronicleMapTest {
                     long[] expectedNeighbors = new long[]{1000L + i, 2000L + i, 3000L + i};
                     assertArrayEquals(expectedNeighbors, retrievedNeighborsData.neighbors, "Neighbors 数组内容应匹配");
 
-                    System.out.printf("成功验证 Key=%d, Label=%d, Neighbors=%s%n",
+                    log.info("成功验证 Key={}, Label={}, Neighbors={}",
                             primaryKey,
                             retrievedMainData.label,
                             java.util.Arrays.toString(retrievedNeighborsData.neighbors));
                 }
-                System.out.println("--- 所有数据验证成功！ ---");
+                log.info("--- 所有数据验证成功！ ---");
                 }
             }
         } finally {

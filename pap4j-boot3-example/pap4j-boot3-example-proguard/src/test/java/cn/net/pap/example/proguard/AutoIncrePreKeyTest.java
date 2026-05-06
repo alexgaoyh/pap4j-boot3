@@ -4,6 +4,8 @@ import cn.net.pap.example.proguard.entity.AutoIncrePreKey;
 import cn.net.pap.example.proguard.repository.AutoIncrePreKeyRepository;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestConstructor;
 
@@ -12,6 +14,8 @@ import java.util.List;
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class AutoIncrePreKeyTest {
+
+    private static final Logger log = LoggerFactory.getLogger(AutoIncrePreKeyTest.class);
 
     private final IAutoIncrePreKeyService autoIncrePreKeyService;
     private final AutoIncrePreKeyRepository autoIncrePreKeyRepository;
@@ -36,13 +40,13 @@ public class AutoIncrePreKeyTest {
         try {
             autoIncrePreKeyService.saveAndFlush(autoIncrePreKey2);
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            log.info("{}", e.getMessage());
         }
         autoIncrePreKeyService.saveAndFlush(autoIncrePreKey3);
 
         List<AutoIncrePreKey> all = autoIncrePreKeyService.findAll();
         for(AutoIncrePreKey autoIncrePreKey : all){
-            System.out.println(autoIncrePreKey.toString());
+            log.info("{}", autoIncrePreKey.toString());
         }
 
     }

@@ -4,6 +4,8 @@ import org.apache.ftpserver.ftplet.DefaultFtplet;
 import org.apache.ftpserver.ftplet.FtpException;
 import org.apache.ftpserver.ftplet.FtpSession;
 import org.apache.ftpserver.ftplet.FtpletResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
@@ -17,6 +19,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * 限制 FTP 服务器的连接数
  */
 public class RateLimitFtplet extends DefaultFtplet {
+
+    private static final Logger log = LoggerFactory.getLogger(RateLimitFtplet.class);
 
     private final BlockingQueue<ConnectRequest> queue;
     private final ScheduledExecutorService scheduler;
@@ -57,7 +61,7 @@ public class RateLimitFtplet extends DefaultFtplet {
                         req.allow();
                     }
                 } catch (Throwable t) {
-                    t.printStackTrace();
+                    log.error("Error in leaky bucket worker: ", t);
                 }
             }, intervalMs, intervalMs, TimeUnit.MILLISECONDS);
         }

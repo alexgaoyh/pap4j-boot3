@@ -318,9 +318,9 @@ public class WebClientUtil {
             Mono<String> body = clientResponse.bodyToMono(String.class);
 
             // 打印响应信息
-//            System.out.println("Status code: " + clientResponse.statusCode());
+//            log.info("Status code: " + clientResponse.statusCode());
 //            clientResponse.headers().asHttpHeaders().forEach((name, values) -> {
-//                System.out.println(name + ": " + values);
+//                log.info(name + ": " + values);
 //            });
 
             // 修改响应体 转大写

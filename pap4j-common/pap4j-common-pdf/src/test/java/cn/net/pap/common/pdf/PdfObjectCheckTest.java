@@ -9,7 +9,12 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class PdfObjectCheckTest {
+
+    private static final Logger log = LoggerFactory.getLogger(PdfObjectCheckTest.class);
 
     // @Test
     public void refTest() throws Exception {
@@ -20,7 +25,7 @@ public class PdfObjectCheckTest {
     }
 
     private void deepScan(PdfReader reader) {
-        System.out.println("\n=== 对象扫描 ===");
+        log.info("\n=== 对象扫描 ===");
 
         Map<Integer, String> objectTypes = new HashMap<>();
 
@@ -39,18 +44,18 @@ public class PdfObjectCheckTest {
                 PdfObject obj = reader.getPdfObject(num);
                 if (obj == null) {
                     String refType = findReferenceType(reader, num);
-                    System.err.printf("对象 #%d [%s] 缺失 | 被引用方式: %s%n", num, objectTypes.getOrDefault(num, "未知类型"), refType);
+                    log.error("对象 #{} [{}] 缺失 | 被引用方式: {}", num, objectTypes.getOrDefault(num, "未知类型"), refType);
                     continue;
                 }
 
                 if (obj.isIndirect()) {
                     PRIndirectReference ref = (PRIndirectReference) obj;
                     if (ref.getNumber() < 0) {
-                        System.err.printf("异常引用: 对象 #%d [%s] 有无效的引用编号%n", num, objectTypes.getOrDefault(num, "未知类型"));
+                        log.error("异常引用: 对象 #{} [{}] 有无效的引用编号", num, objectTypes.getOrDefault(num, "未知类型"));
                     }
                 }
             } catch (Exception e) {
-                System.err.printf("解析对象 #%d 时崩溃: %s%n", num, e.getClass().getSimpleName());
+                log.error("解析对象 #{} 时崩溃: {}", num, e.getClass().getSimpleName());
             }
         }
     }
@@ -128,7 +133,7 @@ public class PdfObjectCheckTest {
         Pattern tfPattern = Pattern.compile("/(\\S+)\\s+\\d*\\.?\\d*\\s+Tf");
 
         for (int i = 1; i <= numPages; i++) {
-            System.out.println("\n=== 检查 Page " + i + " ===");
+            log.info("\n=== 检查 Page {} ===", i);
 
             PdfDictionary pageDict = reader.getPageN(i);
             PdfDictionary resources = pageDict.getAsDict(PdfName.RESOURCES);
@@ -139,9 +144,9 @@ public class PdfObjectCheckTest {
                 for (PdfName key : fontDict.getKeys()) {
                     declaredFonts.add(key.toString());
                 }
-                System.out.println("声明的字体名: " + declaredFonts);
+                log.info("声明的字体名: {}", declaredFonts);
             } else {
-                System.out.println("此页缺少 Font 字典");
+                log.info("此页缺少 Font 字典");
             }
 
             byte[] contentBytes = reader.getPageContent(i);
@@ -154,11 +159,11 @@ public class PdfObjectCheckTest {
                 usedFonts.add(fontName);
             }
 
-            System.out.println("内容流中用到的字体名: " + usedFonts);
+            log.info("内容流中用到的字体名: {}", usedFonts);
 
             for (String used : usedFonts) {
                 if (!declaredFonts.contains(used)) {
-                    System.out.println("警告: 内容流用到了未声明的字体: " + used);
+                    log.info("警告: 内容流用到了未声明的字体: {}", used);
                 }
             }
         }
@@ -174,17 +179,17 @@ public class PdfObjectCheckTest {
         Set<Integer> checkedObjects = new HashSet<>();
 
         for (int i = 1; i <= numPages; i++) {
-            System.out.println("\n=== 页面 " + i + " 字体资源检查 ===");
+            log.info("\n=== 页面 {} 字体资源检查 ===", i);
             checkPageFontResources(reader, i, checkedObjects);
 
-            System.out.println("\n=== 页面 " + i + " 尝试提取文本 ===");
+            log.info("\n=== 页面 {} 尝试提取文本 ===", i);
             try {
                 String text = PdfTextExtractor.getTextFromPage(reader, i);
-                System.out.println("提取文本成功，前100字符: " + (text.length() > 100 ? text.substring(0, 100) + "..." : text));
+                log.info("提取文本成功，前100字符: {}", (text.length() > 100 ? text.substring(0, 100) + "..." : text));
             } catch (Exception e) {
-                System.out.println("提取文本时报错: " + e.getMessage());
-                e.printStackTrace(System.out);
-                System.out.println("再次打印页面字体资源详细信息，协助定位问题：");
+                log.info("提取文本时报错: {}", e.getMessage());
+                log.error("Error extracting text: ", e);
+                log.info("再次打印页面字体资源详细信息，协助定位问题：");
                 checkPageFontResourcesDetailed(reader, i);
             }
         }
@@ -195,31 +200,31 @@ public class PdfObjectCheckTest {
     private void checkPageFontResources(PdfReader reader, int pageNum, Set<Integer> checkedObjects) {
         PdfDictionary pageDict = reader.getPageN(pageNum);
         if (pageDict == null) {
-            System.out.println("页面字典缺失");
+            log.info("页面字典缺失");
             return;
         }
         PdfDictionary resources = pageDict.getAsDict(PdfName.RESOURCES);
         if (resources == null) {
-            System.out.println("页面缺少 Resources 字典");
+            log.info("页面缺少 Resources 字典");
             return;
         }
         PdfDictionary fontDict = resources.getAsDict(PdfName.FONT);
         if (fontDict == null) {
-            System.out.println("页面缺少 Font 字典");
+            log.info("页面缺少 Font 字典");
             return;
         }
         for (PdfName fontName : fontDict.getKeys()) {
             PdfObject fontObj = fontDict.get(fontName);
             if (fontObj == null) {
-                System.out.println("字体 " + fontName + " 是 null");
+                log.info("字体 {} 是 null", fontName);
                 continue;
             }
             if (fontObj.isNull()) {
-                System.out.println("字体 " + fontName + " 是 PdfNull");
+                log.info("字体 {} 是 PdfNull", fontName);
                 continue;
             }
             if (!(fontObj instanceof PRIndirectReference)) {
-                System.out.println("字体 " + fontName + " 不是间接引用，而是 " + fontObj.getClass().getSimpleName());
+                log.info("字体 {} 不是间接引用，而是 {}", fontName, fontObj.getClass().getSimpleName());
                 continue;
             }
             PRIndirectReference ref = (PRIndirectReference) fontObj;
@@ -228,14 +233,14 @@ public class PdfObjectCheckTest {
             checkedObjects.add(objNum);
             PdfObject resolved = reader.getPdfObject(objNum);
             if (resolved == null) {
-                System.out.println("字体 " + fontName + " 引用对象缺失: objNum=" + objNum);
+                log.info("字体 {} 引用对象缺失: objNum={}", fontName, objNum);
             } else if (!(resolved instanceof PdfDictionary)) {
-                System.out.println("字体 " + fontName + " 对象不是字典: objNum=" + objNum + ", 类型=" + resolved.getClass().getSimpleName());
+                log.info("字体 {} 对象不是字典: objNum={}, 类型={}", fontName, objNum, resolved.getClass().getSimpleName());
             } else {
                 PdfDictionary fontRes = (PdfDictionary) resolved;
                 PdfName subtype = fontRes.getAsName(PdfName.SUBTYPE);
                 PdfName baseFont = fontRes.getAsName(PdfName.BASEFONT);
-                System.out.println("字体 " + fontName + " objNum=" + objNum + ", /Subtype=" + (subtype != null ? subtype : "缺失") + ", /BaseFont=" + (baseFont != null ? baseFont : "缺失"));
+                log.info("字体 {} objNum={}, /Subtype={}, /BaseFont={}", fontName, objNum, (subtype != null ? subtype : "缺失"), (baseFont != null ? baseFont : "缺失"));
             }
         }
     }
@@ -243,23 +248,23 @@ public class PdfObjectCheckTest {
     private void checkPageFontResourcesDetailed(PdfReader reader, int pageNum) {
         PdfDictionary pageDict = reader.getPageN(pageNum);
         if (pageDict == null) {
-            System.out.println("页面字典缺失");
+            log.info("页面字典缺失");
             return;
         }
         PdfDictionary resources = pageDict.getAsDict(PdfName.RESOURCES);
         if (resources == null) {
-            System.out.println("页面缺少 Resources 字典");
+            log.info("页面缺少 Resources 字典");
             return;
         }
         PdfDictionary fontDict = resources.getAsDict(PdfName.FONT);
         if (fontDict == null) {
-            System.out.println("页面缺少 Font 字典");
+            log.info("页面缺少 Font 字典");
             return;
         }
-        System.out.println("页面 " + pageNum + " /Font 字典详细内容:");
+        log.info("页面 {} /Font 字典详细内容:", pageNum);
         for (PdfName key : fontDict.getKeys()) {
             PdfObject value = fontDict.get(key);
-            System.out.println("字体名：" + key + ", 类型：" + (value == null ? "null" : value.getClass().getSimpleName()) + ", 是否为 PdfNull：" + (value != null && value.isNull()));
+            log.info("字体名：{}, 类型：{}, 是否为 PdfNull：{}", key, (value == null ? "null" : value.getClass().getSimpleName()), (value != null && value.isNull()));
         }
     }
 
@@ -275,35 +280,35 @@ public class PdfObjectCheckTest {
         Set<Integer> checkedObjects = new HashSet<>();
 
         int numPages = reader.getNumberOfPages();
-        System.out.println("总页数: " + numPages);
+        log.info("总页数: {}", numPages);
 
         for (int i = 1; i <= numPages; i++) {
             PdfDictionary pageDict = reader.getPageN(i);
             if (pageDict == null) {
-                System.out.println("页面 " + i + " 字典缺失");
+                log.info("页面 {} 字典缺失", i);
                 continue;
             }
             PdfDictionary resources = pageDict.getAsDict(PdfName.RESOURCES);
             if (resources == null) {
-                System.out.println("页面 " + i + " 缺少 Resources 字典");
+                log.info("页面 {} 缺少 Resources 字典", i);
                 continue;
             }
 
             PdfDictionary fontDict = resources.getAsDict(PdfName.FONT);
             if (fontDict == null) {
-                System.out.println("页面 " + i + " 缺少 Font 字典");
+                log.info("页面 {} 缺少 Font 字典", i);
                 continue;
             }
 
             for (PdfName fontName : fontDict.getKeys()) {
                 PdfObject fontObj = fontDict.get(fontName);
                 if (fontObj == null || fontObj.isNull()) {
-                    System.out.println("页面 " + i + " 的字体 " + fontName + " 引用为 null");
+                    log.info("页面 {} 的字体 {} 引用为 null", i, fontName);
                     continue;
                 }
 
                 if (!(fontObj instanceof PRIndirectReference)) {
-                    System.out.println("页面 " + i + " 的字体 " + fontName + " 不是间接引用，而是: " + fontObj.getClass().getSimpleName());
+                    log.info("页面 {} 的字体 {} 不是间接引用，而是: {}", i, fontName, fontObj.getClass().getSimpleName());
                     continue;
                 }
 
@@ -316,20 +321,20 @@ public class PdfObjectCheckTest {
                 PdfObject resolved = reader.getPdfObject(objNum);
 
                 if (resolved == null) {
-                    System.out.println("页面 " + i + " 的字体 " + fontName + " 引用对象缺失: objNum=" + objNum);
+                    log.info("页面 {} 的字体 {} 引用对象缺失: objNum={}", i, fontName, objNum);
                 } else if (!(resolved instanceof PdfDictionary)) {
-                    System.out.println("页面 " + i + " 的字体 " + fontName + " 对象不是字典: objNum=" + objNum + ", type=" + resolved.getClass().getSimpleName());
+                    log.info("页面 {} 的字体 {} 对象不是字典: objNum={}, type={}", i, fontName, objNum, resolved.getClass().getSimpleName());
                 } else {
                     PdfDictionary fontRes = (PdfDictionary) resolved;
                     PdfName subtype = fontRes.getAsName(PdfName.SUBTYPE);
                     PdfName baseFont = fontRes.getAsName(PdfName.BASEFONT);
-                    System.out.println("页面 " + i + " 字体 " + fontName + " objNum=" + objNum + ", /Subtype=" + (subtype != null ? subtype : "缺失") + ", /BaseFont=" + (baseFont != null ? baseFont : "缺失"));
+                    log.info("页面 {} 字体 {} objNum={}, /Subtype={}, /BaseFont={}", i, fontName, objNum, (subtype != null ? subtype : "缺失"), (baseFont != null ? baseFont : "缺失"));
 
                     if (subtype == null) {
-                        System.out.println("页面 " + i + " 的字体 " + fontName + " 缺少 /Subtype");
+                        log.info("页面 {} 的字体 {} 缺少 /Subtype", i, fontName);
                     }
                     if (baseFont == null) {
-                        System.out.println("页面 " + i + " 的字体 " + fontName + " 缺少 /BaseFont");
+                        log.info("页面 {} 的字体 {} 缺少 /BaseFont", i, fontName);
                     }
                 }
             }
@@ -352,20 +357,20 @@ public class PdfObjectCheckTest {
             Set<Integer> checkedObjects = new HashSet<>();
 
             int numPages = reader.getNumberOfPages();
-            System.out.println("总页数: " + numPages);
+            log.info("总页数: {}", numPages);
 
             for (int i = 1; i <= numPages; i++) {
                 PdfDictionary pageDict = reader.getPageN(i);
                 if (pageDict == null) {
-                    System.out.println("页面 " + i + " 字典缺失");
+                    log.info("页面 {} 字典缺失", i);
                     continue;
                 }
                 checkDictionaryRaw(pageDict, checkedObjects, reader, "Page " + i);
             }
 
         } catch (Exception e) {
-            System.out.println("加载 PDF 时异常: " + e.getMessage());
-            e.printStackTrace();
+            log.info("加载 PDF 时异常: {}", e.getMessage());
+            log.error("Exception: ", e);
         } finally {
             if (reader != null) {
                 reader.close();
@@ -379,23 +384,23 @@ public class PdfObjectCheckTest {
         for (PdfName key : dict.getKeys()) {
             PdfObject obj = dict.get(key);
             if (obj == null || obj.isNull()) {
-                System.out.println("在 [" + context + "] key=" + key + " 的对象是 null");
+                log.info("在 [{}] key={} 的对象是 null", context, key);
                 continue;
             }
 
             if (obj instanceof PRIndirectReference) {
                 PRIndirectReference ref = (PRIndirectReference) obj;
                 if (ref == null) {
-                    System.out.println("在 [" + context + "] key=" + key + " 的 PRIndirectReference 是 null");
+                    log.info("在 [{}] key={} 的 PRIndirectReference 是 null", context, key);
                 } else {
                     int objNum = ref.getNumber();
                     if (!checkedObjects.contains(objNum)) {
                         checkedObjects.add(objNum);
                         PdfObject resolved = reader.getPdfObject(objNum);
                         if (resolved == null) {
-                            System.out.println("缺失对象: objNum=" + objNum + " 在 [" + context + "] key=" + key);
+                            log.info("缺失对象: objNum={} 在 [{}] key={}", objNum, context, key);
                         } else {
-                            System.out.println("找到对象: objNum=" + objNum + " type=" + resolved.getClass().getSimpleName() + " [" + context + "] key=" + key);
+                            log.info("找到对象: objNum={} type={} [{}] key={}", objNum, resolved.getClass().getSimpleName(), context, key);
                             if (resolved instanceof PdfDictionary) {
                                 checkDictionaryRaw((PdfDictionary) resolved, checkedObjects, reader, context + " -> obj " + objNum);
                             }
@@ -420,9 +425,9 @@ public class PdfObjectCheckTest {
                     checkedObjects.add(objNum);
                     PdfObject resolved = reader.getPdfObject(objNum);
                     if (resolved == null) {
-                        System.out.println("缺失对象: objNum=" + objNum + " 在 [" + context + "] array idx=" + i);
+                        log.info("缺失对象: objNum={} 在 [{}] array idx={}", objNum, context, i);
                     } else {
-                        System.out.println("找到对象: objNum=" + objNum + " type=" + resolved.getClass().getSimpleName() + " [" + context + "] array idx=" + i);
+                        log.info("找到对象: objNum={} type={} [{}] array idx={}", objNum, resolved.getClass().getSimpleName(), context, i);
                         if (resolved instanceof PdfDictionary) {
                             checkDictionaryRaw((PdfDictionary) resolved, checkedObjects, reader, context + " -> obj " + objNum);
                         } else if (resolved instanceof PdfArray) {
@@ -457,9 +462,7 @@ public class PdfObjectCheckTest {
                 PdfDictionary fontDescriptor = font.getAsDict(PdfName.FONTDESCRIPTOR);
                 boolean isEmbedded = (fontDescriptor != null);
 
-                System.out.println("字体键: " + fontKey +
-                        " | 名称: " + baseFont +
-                        " | 是否嵌入: " + isEmbedded);
+                log.info("字体键: {} | 名称: {} | 是否嵌入: {}", fontKey, baseFont, isEmbedded);
             }
         }
         reader.close();

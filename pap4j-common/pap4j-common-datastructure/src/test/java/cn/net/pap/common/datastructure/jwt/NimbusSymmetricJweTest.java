@@ -10,6 +10,8 @@ import com.nimbusds.jose.crypto.DirectEncrypter;
 import com.nimbusds.jwt.JWTClaimsSet;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 
@@ -41,6 +43,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * </ul>
  */
 class NimbusSymmetricJweTest {
+
+    private static final Logger log = LoggerFactory.getLogger(NimbusSymmetricJweTest.class);
 
     /**
      * 在线解析： https://dinochiesa.github.io/jwt/
@@ -74,8 +78,8 @@ class NimbusSymmetricJweTest {
         // 6. 序列化为最终的 Token 字符串
         String token = jweObject.serialize();
 
-        System.out.println("====== 生成的 JWE Token ======");
-        System.out.println(token + "\n");
+        log.info("====== 生成的 JWE Token ======");
+        log.info("{}\n", token);
 
         // --- 核心原理解密验证 ---
         // 验证 Token 格式是否为 5 段式 (Header.EncryptedKey.IV.Ciphertext.AuthTag)
@@ -99,9 +103,9 @@ class NimbusSymmetricJweTest {
         assertEquals("alexgaoyh", parsedClaimsSet.getSubject());
         assertEquals("alexgaoyh@sina.com", parsedClaimsSet.getStringClaim("email"));
 
-        System.out.println("====== 解密成功 ======");
-        System.out.println("提取的 Subject: " + parsedClaimsSet.getSubject());
-        System.out.println("提取的 Email: " + parsedClaimsSet.getStringClaim("email"));
+        log.info("====== 解密成功 ======");
+        log.info("提取的 Subject: {}", parsedClaimsSet.getSubject());
+        log.info("提取的 Email: {}", parsedClaimsSet.getStringClaim("email"));
     }
 
 }

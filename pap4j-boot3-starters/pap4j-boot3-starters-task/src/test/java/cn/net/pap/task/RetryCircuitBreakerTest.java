@@ -5,11 +5,15 @@ import cn.net.pap.task.retry.RetryCircuitBreaker;
 import cn.net.pap.task.retry.exception.RetryCircuitBreakerException;
 import cn.net.pap.task.retry.exception.enums.PapRetryErrorEnum;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * 重试滑动窗口断路器
  */
 public class RetryCircuitBreakerTest {
+
+    private static final Logger log = LoggerFactory.getLogger(RetryCircuitBreakerTest.class);
 
     /**
      * 外部定义 重试滑动窗口断路器
@@ -29,9 +33,9 @@ public class RetryCircuitBreakerTest {
                 }
             });
 
-            System.out.println(result);
+            log.info("{}", result);
         } catch (Exception e) {
-            System.out.println("Failed: " + e.getMessage());
+            log.error("Failed: {}", e.getMessage());
         }
     }
 

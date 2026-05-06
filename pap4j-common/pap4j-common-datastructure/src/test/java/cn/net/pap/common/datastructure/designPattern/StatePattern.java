@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StatePattern {
+
+    private static final Logger log = LoggerFactory.getLogger(StatePattern.class);
 
     interface State {
         public void doAction(Context context);
@@ -11,7 +15,7 @@ public class StatePattern {
     class StartState implements State {
 
         public void doAction(Context context) {
-            System.out.println("Player is in start state");
+            log.info("Player is in start state");
             context.setState(this);
         }
 
@@ -23,7 +27,7 @@ public class StatePattern {
     class StopState implements State {
 
         public void doAction(Context context) {
-            System.out.println("Player is in stop state");
+            log.info("Player is in stop state");
             context.setState(this);
         }
 
@@ -55,11 +59,11 @@ public class StatePattern {
         StartState startState = new StartState();
         startState.doAction(context);
 
-        System.out.println(context.getState().toString());
+        log.info("{}", context.getState().toString());
 
         StopState stopState = new StopState();
         stopState.doAction(context);
 
-        System.out.println(context.getState().toString());
+        log.info("{}", context.getState().toString());
     }
 }

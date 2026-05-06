@@ -6,6 +6,8 @@ import cn.net.pap.task.retry.exception.RetryCircuitBreakerException;
 import cn.net.pap.task.retry.exception.enums.PapRetryErrorEnum;
 import cn.net.pap.task.webclient.WebClientUtil;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.web.reactive.function.client.ClientResponse;
@@ -14,6 +16,8 @@ import reactor.core.publisher.Mono;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class RetryWebClientTest {
+
+    private static final Logger log = LoggerFactory.getLogger(RetryWebClientTest.class);
 
     /**
      * 外部定义 重试滑动窗口断路器
@@ -52,9 +56,9 @@ public class RetryWebClientTest {
                 }
             });
 
-            System.out.println(result);
+            log.info("{}", result);
         } catch (Exception e) {
-            System.out.println("Failed: " + e.getMessage());
+            log.error("Failed: {}", e.getMessage());
         }
     }
 

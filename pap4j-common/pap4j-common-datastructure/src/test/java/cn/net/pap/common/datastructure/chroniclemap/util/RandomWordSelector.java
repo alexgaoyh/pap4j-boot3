@@ -1,5 +1,8 @@
 package cn.net.pap.common.datastructure.chroniclemap.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -14,6 +17,8 @@ import java.util.concurrent.ThreadLocalRandom;
  * 从文本文件中读取词语，支持随机返回指定数量的词语
  */
 public class RandomWordSelector {
+
+    private static final Logger log = LoggerFactory.getLogger(RandomWordSelector.class);
 
     // 存储所有词语的列表
     private static final List<String> WORD_LIST = new ArrayList<>();
@@ -38,16 +43,10 @@ public class RandomWordSelector {
         // 读取文件所有行
         List<String> lines = Files.readAllLines(Paths.get(filePath));
 
-        // 过滤空行和去除首尾空格
-        for (String line : lines) {
-            String trimmed = line.trim();
-            if (!trimmed.isEmpty()) {
-                WORD_LIST.add(trimmed);
-            }
-        }
+        WORD_LIST.addAll(lines.stream().map(String::trim).filter(s -> !s.isEmpty()).toList());
 
         initialized = true;
-        System.out.println("成功加载 " + WORD_LIST.size() + " 个词语");
+        log.info("成功加载 {} 个词语", WORD_LIST.size());
     }
 
     /**

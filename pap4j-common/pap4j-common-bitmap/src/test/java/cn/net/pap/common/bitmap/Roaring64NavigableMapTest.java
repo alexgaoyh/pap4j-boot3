@@ -6,12 +6,17 @@ import org.junit.jupiter.api.Test;
 import org.roaringbitmap.longlong.LongIterator;
 import org.roaringbitmap.longlong.Roaring64NavigableMap;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.Base64;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Roaring64NavigableMapTest {
+
+    private static final Logger log = LoggerFactory.getLogger(Roaring64NavigableMapTest.class);
     @Test
     public void simpleTest() {
         long currentTimeMillis = System.currentTimeMillis();
@@ -51,14 +56,14 @@ public class Roaring64NavigableMapTest {
         r64nMap.add(currentTimeMillis, currentTimeMillis + rangeLong);
         for(int pageIdx = 1; pageIdx <= 10; pageIdx++) {
             List<Long> valueList = Roaring64NavigableMapUtil.getPageOrderByAdded(r64nMap, pageIdx, 10);
-            System.out.println(valueList);
+            log.info("{}", valueList);
         }
 
-        System.out.println("----------------------------------------------");
+        log.info("----------------------------------------------");
 
         for(int pageIdx = 1; pageIdx <= 10; pageIdx++) {
             List<Long> valueList = Roaring64NavigableMapUtil.getPageOrderByAddedReverse(r64nMap, pageIdx, 10);
-            System.out.println(valueList);
+            log.info("{}", valueList);
         }
 
     }

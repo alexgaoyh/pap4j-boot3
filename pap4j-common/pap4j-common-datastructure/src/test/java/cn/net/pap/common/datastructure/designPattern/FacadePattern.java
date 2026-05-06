@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FacadePattern {
+
+    private static final Logger log = LoggerFactory.getLogger(FacadePattern.class);
 
     interface Shape {
         void draw();
@@ -12,7 +16,7 @@ public class FacadePattern {
 
         @Override
         public void draw() {
-            System.out.println("Rectangle::draw()");
+            log.info("Rectangle::draw()");
         }
     }
 
@@ -20,7 +24,7 @@ public class FacadePattern {
 
         @Override
         public void draw() {
-            System.out.println("Square::draw()");
+            log.info("Square::draw()");
         }
     }
 
@@ -28,7 +32,7 @@ public class FacadePattern {
 
         @Override
         public void draw() {
-            System.out.println("Circle::draw()");
+            log.info("Circle::draw()");
         }
     }
 

@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -32,6 +35,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * 蓄水池采样算法测试类
  */
 class ReservoirSamplingUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ReservoirSamplingUtilTest.class);
 
     private List<Integer> smallList;
     private List<Integer> mediumList;
@@ -151,7 +156,7 @@ class ReservoirSamplingUtilTest {
         assertEquals(k, result.size());
 
         double elapsedMillis = (endTime - startTime) / 1_000_000.0;
-        System.out.printf("采样 %d 个元素从 %d 个元素中耗时: %.2f ms%n", k, n, elapsedMillis);
+        log.info("采样 {} 个元素从 {} 个元素中耗时: {} ms", k, n, String.format("%.2f", elapsedMillis));
 
         // 性能要求：处理一百万个元素应在1秒内完成
         assertTrue(elapsedMillis < 1000,
@@ -250,7 +255,7 @@ class ReservoirSamplingUtilTest {
         assertEquals(k, result.size());
 
         double elapsedMillis = (endTime - startTime) / 1_000_000.0;
-        System.out.printf("批量采样 %d 个元素从 %d 个元素中耗时: %.2f ms%n", k, n, elapsedMillis);
+        log.info("批量采样 {} 个元素从 {} 个元素中耗时: {} ms", k, n, String.format("%.2f", elapsedMillis));
 
         // 验证所有元素都在范围内
         assertTrue(result.stream().allMatch(i -> i >= 1 && i <= n));
@@ -307,6 +312,7 @@ class ReservoirSamplingUtilTest {
                             errorCount.incrementAndGet();
                         }
                     } catch (Exception e) {
+                        log.error("采样过程发生异常", e);
                         errorCount.incrementAndGet();
                     }
                 }
@@ -359,8 +365,8 @@ class ReservoirSamplingUtilTest {
         long finalMemory = runtime.totalMemory() - runtime.freeMemory();
         long memoryUsed = finalMemory - initialMemory;
 
-        System.out.printf("处理一千万个元素，采样 %d 个，内存使用: %.2f MB%n",
-                k, memoryUsed / (1024.0 * 1024.0));
+        log.info("处理一千万个元素，采样 {} 个，内存使用: {} MB",
+                k, String.format("%.2f", memoryUsed / (1024.0 * 1024.0)));
 
         assertEquals(k, result.size());
 

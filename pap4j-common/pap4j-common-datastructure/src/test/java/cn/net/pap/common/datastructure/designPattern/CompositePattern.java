@@ -1,12 +1,16 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 
 public class CompositePattern {
+
+    private static final Logger log = LoggerFactory.getLogger(CompositePattern.class);
 
     class Employee {
         private String name;
@@ -34,6 +38,7 @@ public class CompositePattern {
             return subordinates;
         }
 
+        @Override
         public String toString() {
             return ("Employee :[ Name : " + name
                     + ", dept : " + dept + ", salary :"
@@ -65,11 +70,11 @@ public class CompositePattern {
         headMarketing.add(clerk2);
 
         //打印该组织的所有员工
-        System.out.println(CEO);
+        log.info("{}", CEO);
         for (Employee headEmployee : CEO.getSubordinates()) {
-            System.out.println(headEmployee);
+            log.info("{}", headEmployee);
             for (Employee employee : headEmployee.getSubordinates()) {
-                System.out.println(employee);
+                log.info("{}", employee);
             }
         }
     }

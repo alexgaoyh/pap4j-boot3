@@ -2,11 +2,15 @@ package cn.net.pap.example.doris.service.impl;
 
 import cn.net.pap.example.doris.service.DorisService;
 import cn.net.pap.example.doris.service.IDorisTransServiceInMysqlDB;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service("dorisTransServiceInMysqlDB")
 public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysqlDB {
+
+    private static final Logger log = LoggerFactory.getLogger(DorisTransServiceInMysqlDBImpl.class);
 
     private final DorisService dorisService;
 
@@ -22,7 +26,7 @@ public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysql
     @Transactional
     public int updateTestThrowExceptionInMysqlDB() {
         for(int i = 0; i < 1000; i++) {
-            System.out.println(i);
+            log.debug("{}", i);
             dorisService.updateTestThrowExceptionInMysqlDB();
         }
         return 1;
@@ -36,7 +40,7 @@ public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysql
     @Transactional
     public int updateTestNoExceptionInMysqlDB() {
         for(int i = 0; i < 1000; i++) {
-            System.out.println(i);
+            log.debug("{}", i);
             dorisService.updateTestNoExceptionInMysqlDB();
         }
         return 1;

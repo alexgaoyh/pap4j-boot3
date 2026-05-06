@@ -6,6 +6,8 @@ import cn.net.pap.common.datastructure.fst.FSTUtil;
 import cn.net.pap.common.datastructure.fst.ValueLocationDTO;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -18,6 +20,8 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class FSTUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(FSTUtilTest.class);
 
     @Test
     public void extbTest() throws IOException {
@@ -33,8 +37,6 @@ public class FSTUtilTest {
         dict.removeWord("\uD840\uDC00\uD840\uDC01");
 
         List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation(text, dict);
-
-        System.out.println();
     }
 
 
@@ -62,7 +64,7 @@ public class FSTUtilTest {
             }
         }
         long end = System.currentTimeMillis();
-        System.out.println("word count : " + count + " ; timeMillis " + (end - start));
+        log.info("word count : {} ; timeMillis {}", count, (end - start));
 
         dict.addWord("分词");
         dict.addWord("彭胜");
@@ -70,13 +72,13 @@ public class FSTUtilTest {
         dict.addWord("18");
         String text = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
         List<ValueLocationDTO> result = FSTUtil.maxMatchLocation(text, dict);
-        System.out.println(result);
+        log.info("{}", result);
 
         dict.removeWord("18");
         dict.removeWord("彭胜文");
         String text2 = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
         List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation(text2, dict);
-        System.out.println(result2);
+        log.info("{}", result2);
     }
 
     @Test
@@ -92,16 +94,16 @@ public class FSTUtilTest {
 
         String text = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
         List<ValueLocationDTO> result = FSTUtil.maxMatchLocation(text, dict);
-        System.out.println(result);
+        log.info("{}", result);
 
         dict.removeWord("18");
         dict.removeWord("彭胜文");
         String text2 = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
         List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation(text2, dict);
-        System.out.println(result2);
+        log.info("{}", result2);
 
         List<String> maxMatchList = FSTUtil.maxMatch(text2, dict);
-        System.out.println(maxMatchList);
+        log.info("{}", maxMatchList);
     }
 
     /**
@@ -143,15 +145,14 @@ public class FSTUtilTest {
     
             long endTime = System.currentTimeMillis();
     
-            System.out.println("Optimized implementation took: " + (endTime - startTime) + " ms");
-            System.out.println("atomicInteger size: " + (atomicInteger));
-            System.out.println();
+            log.info("Optimized implementation took: {} ms", (endTime - startTime));
+            log.info("atomicInteger size: {}", atomicInteger);
     
             long startTimeSeg = System.currentTimeMillis();
             List<ValueLocationDTO> result2 = FSTUtil.maxMatchLocation("气象站Kano;27.2是某温度", dict);
-            System.out.println(result2);
+            log.info("{}", result2);
             long endTimeSeg = System.currentTimeMillis();
-            System.out.println("segment took: " + (endTimeSeg - startTimeSeg) + " ms");
+            log.info("segment took: {} ms", (endTimeSeg - startTimeSeg));
         } finally {
             java.nio.file.Files.deleteIfExists(tempFile);
         }

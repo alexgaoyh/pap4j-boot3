@@ -14,8 +14,12 @@ import org.junit.jupiter.api.Test;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SimpleDL4JExample {
+
+    private static final Logger log = LoggerFactory.getLogger(SimpleDL4JExample.class);
 
     // 训练一个简单的多层感知机（MLP）来识别 MNIST 数据集中的手写数字
     @Test
@@ -62,9 +66,9 @@ public class SimpleDL4JExample {
         // 训练模型
         for (int i = 0; i < numEpochs; i++) {
             model.fit(mnistTrain);
-            System.out.println("Epoch " + i + " complete. Evaluating model...");
+            log.info("Epoch " + i + " complete. Evaluating model...");
             Evaluation eval = model.evaluate(mnistTest);
-            System.out.println(eval.stats());
+            log.info(eval.stats());
         }
 
         // 关闭 UI 服务器

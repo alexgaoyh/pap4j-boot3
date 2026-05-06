@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.lock;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ReentrantLockConditionUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ReentrantLockConditionUtilTest.class);
 
     @Test
     public void test1() throws InterruptedException {
@@ -13,7 +17,8 @@ public class ReentrantLockConditionUtilTest {
             try {
                 example.waiter();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                log.error("Waiter interrupted", e);
+                Thread.currentThread().interrupt();
             }
         }).start();
 

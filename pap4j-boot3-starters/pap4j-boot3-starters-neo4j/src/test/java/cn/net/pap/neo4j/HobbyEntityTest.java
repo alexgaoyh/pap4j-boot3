@@ -4,6 +4,8 @@ import cn.net.pap.neo4j.entity.HobbyEntity;
 import cn.net.pap.neo4j.repository.HobbyRepository;
 import org.junit.jupiter.api.Test;
 import org.neo4j.driver.internal.value.NodeValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
@@ -12,6 +14,8 @@ import java.util.*;
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class HobbyEntityTest extends Neo4jBaseTest {
+
+    private static final Logger log = LoggerFactory.getLogger(HobbyEntityTest.class);
 
     private final HobbyRepository hobbyRepository;
     private final Neo4jClient neo4jClient;
@@ -54,7 +58,7 @@ public class HobbyEntityTest extends Neo4jBaseTest {
     // @Test
     public void findAllTest() {
         List<HobbyEntity> findAll = hobbyRepository.findAll();
-        System.out.println(findAll);
+        log.info("{}", findAll);
     }
 
     // @Test
@@ -103,7 +107,7 @@ public class HobbyEntityTest extends Neo4jBaseTest {
                 })
                 .all();
 
-        System.out.println(all);
+        log.info("{}", all);
 
     }
 

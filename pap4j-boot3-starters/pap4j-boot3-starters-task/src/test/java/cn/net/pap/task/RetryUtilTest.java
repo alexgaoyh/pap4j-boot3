@@ -2,6 +2,8 @@ package cn.net.pap.task;
 
 import cn.net.pap.task.retry.RetryUtil;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -10,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class RetryUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(RetryUtilTest.class);
 
     @Test
     void testTaskSucceedsFirstTry() throws Exception {
@@ -104,7 +108,7 @@ public class RetryUtilTest {
     public void testTTaskFailsOnceThenSucceeds() throws Exception {
         AtomicInteger count = new AtomicInteger(0);
         String result = RetryUtil.retryTWithBackoff(3, 1000, () -> {
-            System.out.println(System.currentTimeMillis());
+            log.info("{}", System.currentTimeMillis());
             if (count.getAndIncrement() < 1) {
                 throw new RuntimeException("fail once");
             }
@@ -120,7 +124,7 @@ public class RetryUtilTest {
         AtomicInteger count = new AtomicInteger(0);
         Exception exception = assertThrows(RuntimeException.class, () ->
                 RetryUtil.retryTWithBackoff(5, 1000, () -> {
-                    System.out.println(System.currentTimeMillis());
+                    log.info("{}", System.currentTimeMillis());
                     count.incrementAndGet();
                     throw new RuntimeException("always fail");
                 }, r -> true, 2.0, RuntimeException.class)

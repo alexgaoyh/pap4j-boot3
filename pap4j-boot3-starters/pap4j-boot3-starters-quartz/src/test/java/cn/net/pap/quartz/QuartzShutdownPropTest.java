@@ -18,6 +18,8 @@ import java.util.Random;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class QuartzShutdownPropTest {
 
+    private static final Logger log = LoggerFactory.getLogger(QuartzShutdownPropTest.class);
+
     private final Scheduler scheduler;
     private final QuartzService quartzService;
     private final ThreadPoolTaskExecutor schedulerThreadPool;
@@ -46,13 +48,13 @@ public class QuartzShutdownPropTest {
                         calculatePiUsingMonteCarlo(10_000_000_00L);
                         quartzService.print();
                     } catch (Exception e) {
-                        e.printStackTrace();
+                        logger.error("Error in scheduler thread pool task", e);
                     } finally {
                     }
                     return true;
                 });
 
-                System.out.println(quartzService.print());
+                logger.info("{}", quartzService.print());
             } catch (SchedulerException e) {
                 throw new RuntimeException(e);
             }
@@ -76,7 +78,7 @@ public class QuartzShutdownPropTest {
         }
 
         double pi = 4.0 * insideCircle / iterations;
-        System.out.println("Estimated value of Pi: " + pi);
+        log.info("Estimated value of Pi: {}", pi);
     }
 
     /**

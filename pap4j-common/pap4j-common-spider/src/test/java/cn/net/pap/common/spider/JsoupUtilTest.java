@@ -3,12 +3,16 @@ package cn.net.pap.common.spider;
 import cn.net.pap.common.spider.jsoup.JsoupUtil;
 import cn.net.pap.common.spider.jsoup.dto.SpiderDTO;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class JsoupUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(JsoupUtilTest.class);
 
     @Test
     public void parseTest() {
@@ -27,7 +31,7 @@ public class JsoupUtilTest {
         indexList.add("4-6");
 
         String parse = JsoupUtil.parse(spiderDTOList, indexList, "<span class=\"outerClassName\">", "</span>");
-        System.out.println(parse);
+        log.info("{}", parse);
     }
 
     @Test
@@ -52,9 +56,9 @@ public class JsoupUtilTest {
 
         // 打印每个页码对应的HTML
         for (Map.Entry<Integer, String> entry : pageHtmlMap.entrySet()) {
-            System.out.println("Page " + entry.getKey() + ":");
-            System.out.println(entry.getValue());
-            System.out.println("-------------------");
+            log.info("Page {}:", entry.getKey());
+            log.info("{}", entry.getValue());
+            log.info("-------------------");
         }
     }
 
@@ -83,7 +87,7 @@ public class JsoupUtilTest {
                 </p>
                 """;
         String s = JsoupUtil.highlightSequential(html, "屈👨‍👩‍👦‍👦長沙", "background:yellow;color:red;");
-        System.out.println(s);
+        log.info("{}", s);
     }
 
 

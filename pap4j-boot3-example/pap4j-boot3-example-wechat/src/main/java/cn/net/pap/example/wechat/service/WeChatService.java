@@ -167,7 +167,7 @@ public class WeChatService {
             paramMap.put("remark", remark);
             ObjectMapper objectMapper = new ObjectMapper();
             String resultStr = sendPostByHttpClient("https://api.weixin.qq.com/cgi-bin/user/info/updateremark?" + urlParam, objectMapper.writeValueAsString(paramMap));
-            System.out.println(resultStr);
+            log.info("{}", resultStr);
             JsonNode jsonNode = objectMapper.readTree(resultStr);
             if(jsonNode.get("errcode") != null && jsonNode.get("errcode").asText().equals("0")){
                 return Result.success("设置成功!");
@@ -186,12 +186,13 @@ public class WeChatService {
      */
     public Result<String> sleep() {
         try {
-            System.out.println("enter" + System.currentTimeMillis());
+            log.info("enter {}", System.currentTimeMillis());
 
             Thread.sleep(10000);
 
             return Result.success("finish");
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             return Result.error(e.getMessage());
         }
     }

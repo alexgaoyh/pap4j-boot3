@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestConstructor;
@@ -22,6 +24,8 @@ import java.util.List;
 @TestMethodOrder(org.junit.jupiter.api.MethodOrderer.OrderAnnotation.class)
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class DorisMapperTest {
+
+    private static final Logger log = LoggerFactory.getLogger(DorisMapperTest.class);
 
     private final DorisMapper dorisMapper;
     private final DorisService dorisService;
@@ -64,7 +68,7 @@ public class DorisMapperTest {
         wrapper.orderByAsc(Doris::getId);
         List<Doris> dorisList = dorisMapper.selectList(wrapper);
         if(dorisList != null && dorisList.size() > 0) {
-            dorisList.forEach(System.out::println);
+            dorisList.forEach(doris -> log.info("{}", doris));
         }
     }
 

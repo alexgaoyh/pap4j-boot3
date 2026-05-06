@@ -2,10 +2,14 @@ package cn.net.pap.common.datastructure.charset;
 
 import cn.net.pap.common.datastructure.chatset.MessyCodeRecoveryUtil;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class MessyCodeRecoveryUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MessyCodeRecoveryUtilTest.class);
 
     @Test
     public void recovery() {
@@ -21,7 +25,7 @@ public class MessyCodeRecoveryUtilTest {
         // 排序并输出结果
         List<MessyCodeRecoveryUtil.RecoveryDTO> sortedResults = MessyCodeRecoveryUtil.sortByChineseCount(decodedResults);
         for (MessyCodeRecoveryUtil.RecoveryDTO result : sortedResults) {
-            System.out.println(result.getText() + " (" + result.toString() + ")");
+            log.info("{} ({})", result.getText(), result);
         }
 
     }

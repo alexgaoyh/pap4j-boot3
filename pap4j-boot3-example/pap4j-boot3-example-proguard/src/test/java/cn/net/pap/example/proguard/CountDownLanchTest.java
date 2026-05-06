@@ -35,9 +35,9 @@ public class CountDownLanchTest {
                 executor.execute(() -> {
                     try {
                         String result = restTemplate.getForObject(url, String.class);
-                        System.out.println("result = " + result);
+                        log.info("result = {}", result);
                     } catch (Exception e) {
-                        System.err.println("HTTP 请求异常: " + e.getMessage());
+                        log.error("HTTP 请求异常: ", e);
                     } finally {
                         latch.countDown();
                     }

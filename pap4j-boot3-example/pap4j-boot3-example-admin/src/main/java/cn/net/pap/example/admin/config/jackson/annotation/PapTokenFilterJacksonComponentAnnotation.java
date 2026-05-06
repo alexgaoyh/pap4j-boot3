@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jdk.jfr.Description;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
@@ -18,6 +20,8 @@ import java.lang.reflect.Field;
  * 判断 request 的 header{field} 是否有当前属性，如果有则正常序列化，如果没有则忽略当前值
  */
 public class PapTokenFilterJacksonComponentAnnotation {
+
+    private static final Logger log = LoggerFactory.getLogger(PapTokenFilterJacksonComponentAnnotation.class);
 
     /**
      * 序列化器
@@ -46,7 +50,7 @@ public class PapTokenFilterJacksonComponentAnnotation {
                 Description descriptionAnno = currentFieldNameField.getAnnotation(Description.class);
                 if(descriptionAnno != null) {
                     String descriptionValue = descriptionAnno.value();
-                    System.out.println(descriptionValue);
+                    log.info("{}", descriptionValue);
                     // 新增字段
 //                jsonGenerator.writeFieldName(currentFieldName + "_Description");
 //                jsonGenerator.writeString(descriptionValue);

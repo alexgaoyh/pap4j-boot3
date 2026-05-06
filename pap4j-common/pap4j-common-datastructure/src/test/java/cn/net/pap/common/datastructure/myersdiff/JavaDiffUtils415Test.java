@@ -3,10 +3,14 @@ package cn.net.pap.common.datastructure.myersdiff;
 import com.github.difflib.text.DiffRow;
 import com.github.difflib.text.DiffRowGenerator;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class JavaDiffUtils415Test {
+
+    private static final Logger log = LoggerFactory.getLogger(JavaDiffUtils415Test.class);
 
     @Test
     public void test1() {
@@ -30,7 +34,7 @@ public class JavaDiffUtils415Test {
             htmlOutput.append(row.getNewLine()).append("\n");
         }
 
-        System.out.println(htmlOutput.toString());
+        log.info("{}", htmlOutput);
     }
 
 }

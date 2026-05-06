@@ -73,7 +73,7 @@ public class CommonFileController {
 
                 startByte = 0;
                 endByte = file.length() - 1;
-                System.out.println("Range Occur Error,Message:{}" + e.getLocalizedMessage());
+                log.info("Range Occur Error,Message:{}" + e.getLocalizedMessage());
             }
         }
 
@@ -133,12 +133,12 @@ public class CommonFileController {
             randomAccessFile.close();
         } catch (ClientAbortException e) {
 
-            System.out.println("用户停止下载：" + startByte + "-" + endByte + "：" + transmitted);
+            log.info("用户停止下载：" + startByte + "-" + endByte + "：" + transmitted);
             //捕获此异常表示拥护停止下载
         } catch (IOException e) {
 
             e.printStackTrace();
-            System.out.println("用户下载IO异常，Message：{}" + e.getLocalizedMessage());
+            log.info("用户下载IO异常，Message：{}" + e.getLocalizedMessage());
         } finally {
 
             try {

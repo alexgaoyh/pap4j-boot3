@@ -192,7 +192,7 @@ public class ProguardServiceImpl implements IProguardService {
                     query.setParameter(paramIdx + 1, params.get(paramIdx));
                 }
                 int i = query.executeUpdate();
-                System.out.println(i);
+                logger.info("{}", i);
             }
             return true;
         } else {
@@ -228,7 +228,7 @@ public class ProguardServiceImpl implements IProguardService {
                     try {
                         connection.rollback();
                     } catch (SQLException rollbackEx) {
-                        rollbackEx.printStackTrace();
+                        logger.error("Rollback failed", rollbackEx);
                     }
                     throw new RuntimeException("Batch insert failed", e);
                 }
@@ -261,7 +261,7 @@ public class ProguardServiceImpl implements IProguardService {
                     try {
                         connection.rollback();
                     } catch (SQLException rollbackEx) {
-                        rollbackEx.printStackTrace();
+                        logger.error("Rollback failed", rollbackEx);
                     }
                     throw new RuntimeException("Batch execution failed", e);
                 }

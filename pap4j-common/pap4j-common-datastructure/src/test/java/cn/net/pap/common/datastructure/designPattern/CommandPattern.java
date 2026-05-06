@@ -1,9 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
 public class CommandPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(CommandPattern.class);
 
     interface Order {
         void execute();
@@ -16,11 +22,11 @@ public class CommandPattern {
         private int quantity = 10;
 
         public void buy() {
-            System.out.println("Stock [ Name: " + name + ", Quantity: " + quantity + " ] bought");
+            log.info("Stock [ Name: {}, Quantity: {} ] bought", name, quantity);
         }
 
         public void sell() {
-            System.out.println("Stock [ Name: " + name + ", Quantity: " + quantity + " ] sold");
+            log.info("Stock [ Name: {}, Quantity: {} ] sold", name, quantity);
         }
     }
 
@@ -63,6 +69,7 @@ public class CommandPattern {
         }
     }
 
+    @Test
     public void test() {
         Stock abcStock = new Stock();
 

@@ -1,6 +1,8 @@
 package cn.net.pap.task;
 
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
@@ -8,6 +10,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadPoolExecutor;
 
 public class ThreadPoolTaskExecutorTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ThreadPoolTaskExecutorTest.class);
 
     private final int corePoolSize = Runtime.getRuntime().availableProcessors();
     private final int maxPoolSize = corePoolSize * 2;
@@ -57,7 +61,7 @@ public class ThreadPoolTaskExecutorTest {
             // 再打印一次
             printThreadPoolStatsAndLatchStats(executor, latch);
             long duration = System.currentTimeMillis() - startTime;
-            System.out.printf("所有任务完成，总耗时: %dms%n", duration);
+            log.info("所有任务完成，总耗时: {}ms", duration);
         } finally {
             isMonitoring = false;
             if (monitorThread != null) {
@@ -88,7 +92,7 @@ public class ThreadPoolTaskExecutorTest {
 
     private void printThreadPoolStatsAndLatchStats(ThreadPoolTaskExecutor executor, CountDownLatch latch) {
         ThreadPoolExecutor threadPoolExecutor = executor.getThreadPoolExecutor();
-        System.out.printf("[线程池状态] 核心线程: %d, 活动线程: %d, 最大线程: %d, 队列大小: %d/%d, 完成任务: %d. [CountDownLatch状态] 当前剩余任务: %d%n", threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount(), threadPoolExecutor.getMaximumPoolSize(), threadPoolExecutor.getQueue().size(), queueCapacity, threadPoolExecutor.getCompletedTaskCount(), latch.getCount());
+        log.info("[线程池状态] 核心线程: {}, 活动线程: {}, 最大线程: {}, 队列大小: {}/{}, 完成任务: {}. [CountDownLatch状态] 当前剩余任务: {}", threadPoolExecutor.getCorePoolSize(), threadPoolExecutor.getActiveCount(), threadPoolExecutor.getMaximumPoolSize(), threadPoolExecutor.getQueue().size(), queueCapacity, threadPoolExecutor.getCompletedTaskCount(), latch.getCount());
     }
 
 }

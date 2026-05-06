@@ -4,6 +4,8 @@ import cn.net.pap.quartz.provider.QuartzSpringConnectionProvider;
 import org.junit.jupiter.api.Test;
 import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.annotation.DirtiesContext;
@@ -21,6 +23,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class QuartzClusterDoubleNodeTest {
+
+    private static final Logger log = LoggerFactory.getLogger(QuartzClusterDoubleNodeTest.class);
 
     private static final String CRON = "0/1 * * * * ?"; // 每5秒执行一次
 
@@ -63,20 +67,20 @@ public class QuartzClusterDoubleNodeTest {
         // 验证两个节点注册
         List<Map<String, Object>> schedulers = jdbcTemplate.queryForList("SELECT * FROM QRTZ_SCHEDULER_STATE");
         assertThat(schedulers.size()).isEqualTo(2);
-        System.out.println("集群节点状态：");
-        schedulers.forEach(System.out::println);
+        log.info("集群节点状态：");
+        schedulers.forEach(m -> log.info("{}", m));
 
         // 验证锁
         List<Map<String, Object>> locks = jdbcTemplate.queryForList("SELECT * FROM QRTZ_LOCKS");
         assertThat(locks.size()).isGreaterThan(0);
-        System.out.println("锁记录：");
-        locks.forEach(System.out::println);
+        log.info("锁记录：");
+        locks.forEach(m -> log.info("{}", m));
 
         // 验证任务存在
         List<Map<String, Object>> jobs = jdbcTemplate.queryForList("SELECT * FROM QRTZ_JOB_DETAILS WHERE JOB_NAME = 'clusterJob'");
         assertThat(jobs.size()).isEqualTo(1);
-        System.out.println("Job 数据：");
-        jobs.forEach(System.out::println);
+        log.info("Job 数据：");
+        jobs.forEach(m -> log.info("{}", m));
 
         // 停止两个 scheduler
         scheduler1.shutdown(true);
@@ -111,7 +115,7 @@ public class QuartzClusterDoubleNodeTest {
         @Override
         public void execute(JobExecutionContext context) {
             try {
-                System.out.println("Job 执行于节点: " + context.getScheduler().getSchedulerInstanceId());
+                log.info("Job 执行于节点: {}", context.getScheduler().getSchedulerInstanceId());
             } catch (Exception e) {
                 throw new RuntimeException(e);
             }

@@ -5,6 +5,8 @@ import boofcv.struct.image.GrayF32;
 import boofcv.struct.image.GrayU8;
 import boofcv.struct.image.Planar;
 import org.apache.commons.io.output.ByteArrayOutputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
@@ -13,6 +15,8 @@ import java.util.Base64;
 import java.util.stream.IntStream;
 
 public class BoofcvUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(BoofcvUtil.class);
 
     /**
      * 亮度
@@ -215,7 +219,7 @@ public class BoofcvUtil {
 
             bos.close();
         } catch (IOException e) {
-            System.out.println("Error: " + e.getMessage());
+            log.error("Error: {}", e.getMessage());
         }
         return imageString;
     }

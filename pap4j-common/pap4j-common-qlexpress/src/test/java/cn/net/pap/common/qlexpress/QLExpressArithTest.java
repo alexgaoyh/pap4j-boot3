@@ -7,6 +7,8 @@ import com.alibaba.qlexpress4.QLResult;
 import com.alibaba.qlexpress4.exception.QLSyntaxException;
 import com.alibaba.qlexpress4.runtime.trace.ExpressionTrace;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigDecimal;
 import java.util.HashMap;
@@ -19,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class QLExpressArithTest {
+
+    private static final Logger log = LoggerFactory.getLogger(QLExpressArithTest.class);
 
     @Test
     public void test1() {
@@ -151,7 +155,7 @@ public class QLExpressArithTest {
         Express4Runner runner = new Express4Runner(InitOptions.builder().traceExpression(true).build());
         QLResult result = runner.execute("(a + b * c) / (a - b)", context, QLOptions.builder().traceExpression(true).build());
         List<ExpressionTrace> expressionTraces = result.getExpressionTraces();
-        System.out.println(expressionTraces.get(0).toPrettyString(0));
+        log.info(expressionTraces.get(0).toPrettyString(0));
     }
 
     @Test
@@ -183,7 +187,7 @@ public class QLExpressArithTest {
         context.put("district", "浦东新区");
 
         Object result = Express4RunnerUtil.runner.execute(express, context, QLOptions.builder().traceExpression(true).build());
-        System.out.println(((QLResult)result).getResult());
+        log.info(((QLResult)result).getResult().toString());
     }
 
     @Test
@@ -225,12 +229,12 @@ public class QLExpressArithTest {
     public void test8() {
         Express4Runner express4Runner = new Express4Runner(InitOptions.DEFAULT_OPTIONS);
         Set<String> outVarNames = express4Runner.getOutVarNames("TERNARY(ISBLANK(${input}),UPPER(''),UPPER('K'))");
-        System.out.println(outVarNames);
+        log.info(outVarNames.toString());
 
         Map<String, Object> context = new HashMap<>();
         context.put("input", "pap");
         Object result = Express4RunnerUtil.runner.execute("TERNARY(ISBLANK(${input}),UPPER(''),UPPER('K'))", context, QLOptions.builder().precise(true).build()).getResult();
-        System.out.println(result);
+        log.info(result.toString());
     }
 
 }

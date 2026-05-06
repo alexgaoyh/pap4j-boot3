@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class DataAccessObjectPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(DataAccessObjectPattern.class);
 
     class Student {
         private String name;
@@ -59,8 +63,7 @@ public class DataAccessObjectPattern {
         @Override
         public void deleteStudent(Student student) {
             students.remove(student.getRollNo());
-            System.out.println("Student: Roll No " + student.getRollNo()
-                    + ", deleted from database");
+            log.info("Student: Roll No {}, deleted from database", student.getRollNo());
         }
 
         //从数据库中检索学生名单
@@ -77,8 +80,7 @@ public class DataAccessObjectPattern {
         @Override
         public void updateStudent(Student student) {
             students.get(student.getRollNo()).setName(student.getName());
-            System.out.println("Student: Roll No " + student.getRollNo()
-                    + ", updated in the database");
+            log.info("Student: Roll No {}, updated in the database", student.getRollNo());
         }
     }
 
@@ -88,8 +90,7 @@ public class DataAccessObjectPattern {
 
         //输出所有的学生
         for (Student student : studentDao.getAllStudents()) {
-            System.out.println("Student: [RollNo : "
-                    + student.getRollNo() + ", Name : " + student.getName() + " ]");
+            log.info("Student: [RollNo : {}, Name : {} ]", student.getRollNo(), student.getName());
         }
 
 
@@ -100,7 +101,6 @@ public class DataAccessObjectPattern {
 
         //获取学生
         studentDao.getStudent(0);
-        System.out.println("Student: [RollNo : "
-                + student.getRollNo() + ", Name : " + student.getName() + " ]");
+        log.info("Student: [RollNo : {}, Name : {} ]", student.getRollNo(), student.getName());
     }
 }

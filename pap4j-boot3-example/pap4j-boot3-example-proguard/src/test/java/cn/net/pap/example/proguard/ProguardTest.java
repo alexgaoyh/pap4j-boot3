@@ -98,11 +98,12 @@ public class ProguardTest {
         });
         // 是否调用 status.setRollbackOnly(); 的区别
         Proguard proguardDB = proguardService.getProguardByProguardId(proguardId);
-        if(proguardDB != null) {
-            System.out.println(proguardDB.getProguardId() + " : " + proguardDB.getProguardName());
+        if (proguardDB != null) {
+            log.info("{} : {}", proguardDB.getProguardId(), proguardDB.getProguardName());
         } else {
-            System.out.println("-------------rollback-----------------");
+            log.info("-------------rollback-----------------");
         }
+
     }
 
     @Test
@@ -139,7 +140,7 @@ public class ProguardTest {
 
         Optional<ProguardDTO> optional = proguardRepository.getProguardByProguardId(proguardId, ProguardDTO.class);
         if(optional.isPresent()) {
-            System.out.println(optional.get().getProguardId() + " : " + optional.get().getProguardName());
+            log.info("{} : {}", optional.get().getProguardId(), optional.get().getProguardName());
         }
 
         List<Proguard> proguards = proguardService.searchAllByProguardNameRange(proguardId + "-" + (proguardId + 10l) + "," + proguardId);
@@ -164,15 +165,15 @@ public class ProguardTest {
 
         Pageable pageable = PageRequest.of(0, 3);
         Page<Proguard> proguardsPageable = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable);
-        System.out.println(proguardsPageable);
+        log.info("{}", proguardsPageable);
 
         Pageable pageable2 = PageRequest.of(1, 3);
         Page<Proguard> proguardsPageable2 = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable2);
-        System.out.println(proguardsPageable2);
+        log.info("{}", proguardsPageable2);
 
         Pageable pageable3 = PageRequest.of(1, 3);
         Page<Map> proguardsPageable3 = proguardService.searchAllByNaiveSQLMap("select proguard_id, proguard_name from proguard order by proguard_id desc", pageable3);
-        System.out.println(proguardsPageable3);
+        log.info("{}", proguardsPageable3);
 
         String updateSQL = "update proguard set proguard_name = ? where proguard_id = ?";
         List<Object> params1 = Arrays.asList("alexgaoyh", proguardId);
@@ -183,7 +184,7 @@ public class ProguardTest {
         paramsList.add(params2);
         List<String> naiveSQLList = Arrays.asList(updateSQL, updateSQL);
         Boolean b = proguardService.executeNaiveSQLBatch(naiveSQLList, paramsList);
-        System.out.println(b);
+        log.info("{}", b);
     }
 
     /**
@@ -260,26 +261,26 @@ public class ProguardTest {
         conditions.add(idEqual);
 
         List<Proguard> proguards1 = SearchUtil.filterEntities(conditions, entityManager, Proguard.class);
-        System.out.println(proguards1);
+        log.info("{}", proguards1);
 
         conditions.clear();
         conditions.add(nameLike);
 
         List<Proguard> proguards2 = SearchUtil.filterEntities(conditions, entityManager, Proguard.class);
-        System.out.println(proguards2);
+        log.info("{}", proguards2);
 
         conditions.clear();
         conditions.add(idEqual);
         conditions.add(nameLike);
 
         List<Proguard> proguards3 = SearchUtil.filterEntities(conditions, entityManager, Proguard.class);
-        System.out.println(proguards3);
+        log.info("{}", proguards3);
 
         conditions.clear();
         conditions.add(greaterEqual);
 
         List<Proguard> proguards4 = SearchUtil.filterEntities(conditions, entityManager, Proguard.class);
-        System.out.println(proguards4);
+        log.info("{}", proguards4);
     }
 
     @Test
@@ -311,11 +312,11 @@ public class ProguardTest {
 
         Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
 
-        System.out.println(proguardByProguardId);
+        log.info("{}", proguardByProguardId);
 
         proguardService.deleteAllById(1l);
 
-        System.out.println("deleteAllById");
+        log.info("deleteAllById");
     }
 
     @Test
@@ -348,11 +349,11 @@ public class ProguardTest {
 
         Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
 
-        System.out.println(proguardByProguardId);
+        log.info("{}", proguardByProguardId);
 
         proguardService.deleteAllById(1l);
 
-        System.out.println("deleteAllById");
+        log.info("deleteAllById");
 
     }
 
@@ -390,7 +391,7 @@ public class ProguardTest {
         Boolean b = proguardService.executeNaiveSQLBatchUsingJDBC(executeSQLList);
 
         Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
-        System.out.println(proguardByProguardId);
+        log.info("{}", proguardByProguardId);
 
     }
 
@@ -590,14 +591,14 @@ public class ProguardTest {
                 // 每处理10条记录输出一次内存状态
                 if (batchCount % 10 == 0) {
                     // 这里可以观察到内存的一个增加 释放 增加 的趋势.
-                    System.out.printf("Processed %d records | Current Memory: %d MB | Max Memory Used: %d MB%n",
+                    log.info("Processed {} records | Current Memory: {} MB | Max Memory Used: {} MB",
                             batchCount,
                             bytesToMB(currentMemory),
                             bytesToMB(maxMemoryUsed));
                 }
 
                 Proguard entity = (Proguard) scroll.get();
-                // System.out.println(entity);
+                // log.info("{}", entity);
 
                 batchCount++;
             }
@@ -608,7 +609,7 @@ public class ProguardTest {
 
         // 最终内存报告
         long finalMemory = runtime.totalMemory() - runtime.freeMemory();
-        System.out.printf("Final Memory Usage: %d MB | Peak Memory Usage: %d MB%n",
+        log.info("Final Memory Usage: {} MB | Peak Memory Usage: {} MB",
                 bytesToMB(finalMemory),
                 bytesToMB(maxMemoryUsed));
 
@@ -646,8 +647,8 @@ public class ProguardTest {
 
         long end = System.currentTimeMillis();
 
-        System.out.println(middle - start + " : " + eachResultList.size());
-        System.out.println(end - middle + " : " + batchResultList.size());
+        log.info("{} : {}", middle - start, eachResultList.size());
+        log.info("{} : {}", end - middle, batchResultList.size());
     }
 
     /**

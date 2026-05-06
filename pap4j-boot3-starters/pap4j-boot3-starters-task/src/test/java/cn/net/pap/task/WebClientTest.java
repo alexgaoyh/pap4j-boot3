@@ -5,6 +5,8 @@ import cn.net.pap.task.util.RateLimitedUtil;
 import cn.net.pap.task.webclient.WebClientUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -38,12 +40,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 public class WebClientTest {
 
+    private static final Logger log = LoggerFactory.getLogger(WebClientTest.class);
+
     // @Test
     public void WebClientGetTest() throws Exception {
         Mono<String> mono = WebClient.builder().build().get()
                 .uri("")
                 .retrieve().bodyToMono(String.class);
-        System.out.println(mono.block());
+        log.info("{}", mono.block());
     }
 
     // @Test
@@ -56,7 +60,7 @@ public class WebClientTest {
                 .uri("")
                 .bodyValue(objectMapper.writeValueAsString(reqMap))
                 .retrieve().bodyToMono(String.class);
-        System.out.println(mono.block());
+        log.info("{}", mono.block());
     }
 
     // @Test
@@ -70,9 +74,9 @@ public class WebClientTest {
         Mono<String> resultMono = response.bodyToMono(String.class);
         String body = resultMono.block();
 
-        System.out.println("statusCode：" + statusCode);
-        System.out.println("headers：" + headers.asHttpHeaders());
-        System.out.println("body：" + body);
+        log.info("statusCode：{}", statusCode);
+        log.info("headers：{}", headers.asHttpHeaders());
+        log.info("body：{}", body);
 
     }
 
@@ -94,25 +98,25 @@ public class WebClientTest {
                             .map(b -> "Status: " + response.statusCode() + ", Body: " + b);
                 })
                 .doOnError(e -> {
-                    System.err.println("异常: " + e.getMessage());
+                    log.error("异常: {}", e.getMessage());
                 })
                 .doFinally(s -> {
-                    System.out.println("异步流程全部结束: " + s);
+                    log.info("异步流程全部结束: {}", s);
                     latch.countDown();
                 })
                 .subscribe(
                         result -> {
-                            System.out.println("成功: " + result);
+                            log.info("成功: {}", result);
                         },
                         error -> {
                             // 显式错误处理
-                            System.err.println("订阅时发生错误: " + error.getMessage());
+                            log.error("订阅时发生错误: {}", error.getMessage());
                         }
                 );
-        System.out.println("主线程执行中!");
+        log.info("主线程执行中!");
         boolean await = latch.await(10, TimeUnit.SECONDS);
         if (!await) {
-            System.err.println("等待超时，异步请求可能未完成!");
+            log.error("等待超时，异步请求可能未完成!");
         }
     }
 
@@ -145,7 +149,7 @@ public class WebClientTest {
                                     errorCount.incrementAndGet();
                                 }
                                 if ((finalI + 1) % 100 == 0) {
-                                    System.out.println(finalI + "次已执行");
+                                    log.info("{}次已执行", finalI);
                                 }
                             })
                             .exceptionally(e -> {
@@ -162,17 +166,17 @@ public class WebClientTest {
 
         long end = System.currentTimeMillis();
 
-        System.out.println("===================================");
-        System.out.println("总请求数: " + requestCount);
-        System.out.println("成功: " + successCount.get());
-        System.out.println("失败: " + errorCount.get());
-        System.out.println("耗时(ms): " + (end - start));
-        System.out.println("===================================");
+        log.info("===================================");
+        log.info("总请求数: {}", requestCount);
+        log.info("成功: {}", successCount.get());
+        log.info("失败: {}", errorCount.get());
+        log.info("耗时(ms): {}", (end - start));
+        log.info("===================================");
     }
 
     @Test
     public void postMonoTest3() throws Exception {
-        System.out.println(RateLimitedUtil.getRateLimitStatus());
+        log.info("{}", RateLimitedUtil.getRateLimitStatus());
 
         String url = "http://127.0.0.1:30000/longtime";
         String requestBody = "{}";
@@ -193,7 +197,7 @@ public class WebClientTest {
                 }
                 return Mono.just(response.toString());
             }).subscribe(result -> {
-                System.out.println("请求返回值: " + result);
+                log.info("请求返回值: {}", result);
                 latch.countDown();
             }, error -> {
                 latch.countDown();
@@ -205,11 +209,11 @@ public class WebClientTest {
 
         long end = System.currentTimeMillis();
 
-        System.out.println("===================================");
-        System.out.println("总请求数: " + requestCount);
-        System.out.println("耗时(ms): " + (end - start));
-        System.out.println("当前限流状态: " + RateLimitedUtil.getRateLimitStatus());
-        System.out.println("===================================");
+        log.info("===================================");
+        log.info("总请求数: {}", requestCount);
+        log.info("耗时(ms): {}", (end - start));
+        log.info("当前限流状态: {}", RateLimitedUtil.getRateLimitStatus());
+        log.info("===================================");
     }
 
     @Test
@@ -220,7 +224,7 @@ public class WebClientTest {
         boolean b = WebClientUtil.postBodyObjectSimpleBlindly("http://127.0.0.1:30000/echo/jsonSleep", "{\"a\":\"a\",\"b\":1}", null);
         // 等待1秒，防止主线程立刻结束导致后台 Reactor 线程还没来得及发出请求就被杀掉
         Thread.sleep(1000);
-        System.out.println("同步返回结果: " + b + "，主线程耗时 (秒): " + (System.nanoTime() - s) / 1_000_000_000.0);
+        log.info("同步返回结果: {}，主线程耗时 (秒): {}", b, (System.nanoTime() - s) / 1_000_000_000.0);
     }
 
 
@@ -239,7 +243,7 @@ public class WebClientTest {
         //    }
 
 
-        System.out.println("postBodyObjectSimpleTest");
+        log.info("postBodyObjectSimpleTest");
     }
 
     /**
@@ -298,12 +302,12 @@ public class WebClientTest {
         // 第一次请求：写入 cookie
         HttpRequest request1 = HttpRequest.newBuilder().uri(URI.create("http://localhost:30000/first")).GET().build();
         HttpResponse<String> response1 = client.send(request1, HttpResponse.BodyHandlers.ofString());
-        System.out.println("Response 1: " + response1.body());
+        log.info("Response 1: {}", response1.body());
 
         // 第二次请求：自动带上 cookie
         HttpRequest request2 = HttpRequest.newBuilder().uri(URI.create("http://localhost:30000/second")).GET().build();
         HttpResponse<String> response2 = client.send(request2, HttpResponse.BodyHandlers.ofString());
-        System.out.println("Response 2: " + response2.body());
+        log.info("Response 2: {}", response2.body());
     }
 
     /**
@@ -316,13 +320,13 @@ public class WebClientTest {
                 .onErrorResume(e -> {
                     return Mono.empty();
                 });
-        System.out.println("Response 1: " + webClientBodyDTOMono1.block());
+        log.info("Response 1: {}", webClientBodyDTOMono1.block());
         Mono<WebClientBodyDTO> webClientBodyDTOMono2 = WebClientUtil.postMono("http://localhost:30000/second", "{}", null).flatMap(response -> handleResponse(response))
                 .onErrorResume(e -> {
-                    e.printStackTrace();
+                    log.error("Error in cookie test 2", e);
                     return Mono.empty();
                 });
-        System.out.println("Response 2: " + webClientBodyDTOMono2.block());
+        log.info("Response 2: {}", webClientBodyDTOMono2.block());
     }
 
     /**
@@ -379,16 +383,16 @@ public class WebClientTest {
 
         long endTime = System.currentTimeMillis();
 
-        System.out.println("===================================");
-        System.out.println("总请求数: " + requestCount);
-        System.out.println("成功: " + successCount.get());
-        System.out.println("失败: " + errorCount.get());
-        System.out.println("耗时(ms): " + (endTime - startTime));
-        System.out.println("===================================");
+        log.info("===================================");
+        log.info("总请求数: {}", requestCount);
+        log.info("成功: {}", successCount.get());
+        log.info("失败: {}", errorCount.get());
+        log.info("耗时(ms): {}", (endTime - startTime));
+        log.info("===================================");
 
         for (int i = 0; i < responseList.size(); i++) {
             WebClientBodyDTO dto = responseList.get(i);
-            System.out.println("请求 #" + (i + 1) + " -> Code: " + dto.getCode() + ", Msg: " + dto.getMsg());
+            log.info("请求 #{} -> Code: {}, Msg: {}", (i + 1), dto.getCode(), dto.getMsg());
         }
     }
 
@@ -426,17 +430,17 @@ public class WebClientTest {
 
         long endTime = System.currentTimeMillis();
 
-        System.out.println("===================================");
-        System.out.println("总请求数: " + requestCount);
-        System.out.println("成功: " + successCount.get());
-        System.out.println("失败: " + errorCount.get());
-        System.out.println("耗时(ms): " + (endTime - startTime));
-        System.out.println("===================================");
+        log.info("===================================");
+        log.info("总请求数: {}", requestCount);
+        log.info("成功: {}", successCount.get());
+        log.info("失败: {}", errorCount.get());
+        log.info("耗时(ms): {}", (endTime - startTime));
+        log.info("===================================");
 
         // 输出请求结果
         for (int i = 0; i < responseList.size(); i++) {
             WebClientBodyDTO dto = responseList.get(i);
-            System.out.println("请求 #" + (i + 1) + " -> Code: " + dto.getCode() + ", Msg: " + dto.getMsg());
+            log.info("请求 #{} -> Code: {}, Msg: {}", (i + 1), dto.getCode(), dto.getMsg());
         }
     }
 

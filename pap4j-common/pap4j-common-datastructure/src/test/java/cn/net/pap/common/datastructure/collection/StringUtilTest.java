@@ -1,6 +1,8 @@
 package cn.net.pap.common.datastructure.collection;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -12,6 +14,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StringUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(StringUtilTest.class);
 
     @Test
     public void indexOf2Test() {
@@ -29,9 +33,9 @@ public class StringUtilTest {
     public void indexOf3Test() {
         String str = "扫地僧\uD85D\uDC64一个扫地僧";
         StringUtil.print(str);
-        System.out.println();
-        str.chars().mapToObj(c -> (char) c).forEach(System.out::println);
-        System.out.println();
+        log.info("");
+        str.chars().mapToObj(c -> (char) c).forEach(item -> log.info("{}", item));
+        log.info("");
 
     }
 
@@ -46,20 +50,20 @@ public class StringUtilTest {
         List<String> matchedStrings = StringUtil.groupSpecialStrings(input, specialStrings);
 
         for (String match : matchedStrings) {
-            System.out.println(match);
+            log.info(match);
         }
     }
 
     @Test
     public void replaceFirstTest() {
         String s = StringUtil.replaceFirst("一二三(四五六)七八九十", ")", "");
-        System.out.println(s);
+        log.info(s);
 
         s = StringUtil.replaceFirst("一二三(四五六)七八九十", ".*", "");
-        System.out.println(s);
+        log.info(s);
 
         s = "一二三(四五六)七八九十".replaceFirst(".*", "");
-        System.out.println(s);
+        log.info(s);
     }
 
     @Test
@@ -67,14 +71,14 @@ public class StringUtilTest {
         String input = "苹果、香蕉#西瓜 葡萄,橙子";
         String delimiters = "、# ,";
 
-        System.out.println("原始字符串: " + input);
-        System.out.println("分隔符: " + delimiters);
+        log.info("原始字符串: {}", input);
+        log.info("分隔符: {}", delimiters);
 
         String[] result = StringUtil.split(input, delimiters);
-        System.out.println("拆分结果: " + Arrays.toString(result));
+        log.info("拆分结果: {}", Arrays.toString(result));
 
         List<String> filteredResult = StringUtil.splitAndFilter(input, delimiters);
-        System.out.println("拆分并过滤空字符串结果: " + filteredResult);
+        log.info("拆分并过滤空字符串结果: {}", filteredResult);
     }
 
     @Test
@@ -128,7 +132,7 @@ public class StringUtilTest {
         }
 
         for (Segment seg : segments) {
-            System.out.println(seg);
+            log.info("{}", seg);
         }
     }
 
@@ -138,7 +142,7 @@ public class StringUtilTest {
     @Test
     public void chineseErrorTest() {
         String replacementChar = "\uFFFD";
-        System.out.println("直接打印: " + replacementChar);
+        log.info("直接打印: {}", replacementChar);
     }
 
     /**
@@ -147,23 +151,23 @@ public class StringUtilTest {
     @Test
     public void chineseCharTest() {
         String text = "𠮷";
-        System.out.println("原始字符串: " + text);
-        System.out.println("字符串长度 (char count): " + text.length());
+        log.info("原始字符串: {}", text);
+        log.info("字符串长度 (char count): {}", text.length());
         char high = text.charAt(0);
-        System.out.println("仅打印高位: [" + high + "]");
+        log.info("仅打印高位: [{}]", high);
         char low = text.charAt(1);
-        System.out.println("仅打印低位: [" + low + "]");
+        log.info("仅打印低位: [{}]", low);
         try {
             byte[] bytes = "中".getBytes("UTF-8");
             String broken = new String(bytes, 0, 2, "UTF-8");
-            System.out.println("UTF-8截断导致的乱码: " + broken);
+            log.info("UTF-8截断导致的乱码: {}", broken);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("处理中文字符异常", e);
         }
     }
 
     /**
-     * 验证对中文字符串在字节层面进行不正常切分，
+     * 验证对中文字串在字节层面进行不正常切分，
      * 破坏 UTF-8 编码字节边界时，导致产生黑色菱形问号（U+FFFD ）的特殊输出。
      */
     @Test
@@ -178,8 +182,8 @@ public class StringUtilTest {
         // 使用UTF-8重新构造字符串时，遇到不完整的字节序列，会用替换字符(Replacement Character, U+FFFD, 即黑色菱形问号 )代替
         String brokenStr = new String(brokenBytes, java.nio.charset.StandardCharsets.UTF_8);
 
-        System.out.println("原始中文字符串: " + originalStr);
-        System.out.println("由于不正常切分导致的特殊输出(包含黑色菱形问号): " + brokenStr);
+        log.info("原始中文字符串: {}", originalStr);
+        log.info("由于不正常切分导致的特殊输出(包含黑色菱形问号): {}", brokenStr);
 
         // 验证确实生成了带有 U+FFFD 的特殊输出
         assertTrue(brokenStr.contains("\uFFFD"));
@@ -204,7 +208,7 @@ public class StringUtilTest {
 
         int validEnd = findValidUtf8End(bytesFromNetwork);
 
-        System.out.println("--- 模拟本地按 \\n\\n 拆分并验证字符 ---");
+        log.info("--- 模拟本地按 \\n\\n 拆分并验证字符 ---");
         int start = 0;
         int fffdCount = 0; // 记录发现了多少个脏数据块
 
@@ -215,9 +219,9 @@ public class StringUtilTest {
 
                 if (event.contains("\uFFFD")) {
                     fffdCount++;
-                    System.out.print("【抓到脏数据】发现 U+FFFD！完整内容: " + event);
+                    log.info("【抓到脏数据】发现 U+FFFD！完整内容: {}", event);
                 } else {
-                    System.out.print("【正常数据】: " + event);
+                    log.info("【正常数据】: {}", event);
                 }
                 // ===============================================
 
@@ -225,8 +229,8 @@ public class StringUtilTest {
             }
         }
 
-        System.out.println("----------------------------------------");
-        System.out.println("验证结束，共拦截到 " + fffdCount + " 个包含 U+FFFD 的损坏事件。");
+        log.info("----------------------------------------");
+        log.info("验证结束，共拦截到 {} 个包含 U+FFFD 的损坏事件。", fffdCount);
 
     }
 

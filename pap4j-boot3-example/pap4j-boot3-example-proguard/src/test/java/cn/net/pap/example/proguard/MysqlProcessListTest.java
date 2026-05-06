@@ -1,10 +1,14 @@
 package cn.net.pap.example.proguard;
 
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 
 public class MysqlProcessListTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MysqlProcessListTest.class);
 
     // @Test
     public void processListTest() throws SQLException {
@@ -20,7 +24,7 @@ public class MysqlProcessListTest {
                 try (ResultSet rs = statement.executeQuery()) {
                     while (rs.next()) {
                         String info = rs.getString("INFO");
-                        System.out.println(info);
+                        log.info("{}", info);
                     }
                 }
             } finally {

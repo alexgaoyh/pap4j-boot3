@@ -2,6 +2,8 @@ package cn.net.pap.common.datastructure.chroniclemap.util;
 
 import cn.net.pap.common.datastructure.chroniclemap.dto.TermStatDTO;
 import net.openhft.chronicle.map.ChronicleMap;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,6 +14,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 public class ChronicleMapTFIDFAnalyzer implements AutoCloseable {
+
+    private static final Logger log = LoggerFactory.getLogger(ChronicleMapTFIDFAnalyzer.class);
 
     private final ChronicleMap<String, TermStatDTO> termMap;
 
@@ -87,14 +91,14 @@ public class ChronicleMapTFIDFAnalyzer implements AutoCloseable {
         long totalTerms = metaMap.getOrDefault(TOTAL_TERMS_KEY, 0L);
 
         if (totalDocs == 0) {
-            System.out.println("没有可处理的数据。");
+            log.info("没有可处理的数据。");
             return;
         }
 
-        System.out.println("=== 统计报告 ===");
-        System.out.println("总文档数: " + totalDocs);
-        System.out.println("总词数: " + totalTerms);
-        System.out.println("---------------------------------");
+        log.info("=== 统计报告 ===");
+        log.info("总文档数: {}", totalDocs);
+        log.info("总词数: {}", totalTerms);
+        log.info("---------------------------------");
 
         // 计算并排序
         List<Map.Entry<String, Double>> tfIdfList = new ArrayList<>();
@@ -112,14 +116,14 @@ public class ChronicleMapTFIDFAnalyzer implements AutoCloseable {
         // 按 TF-IDF 降序排列
         tfIdfList.sort((e1, e2) -> Double.compare(e2.getValue(), e1.getValue()));
 
-        System.out.printf("%-15s | %-10s | %-10s | %-10s%n", "词项", "TF(全局)", "IDF", "TF-IDF");
+        log.info(String.format("%-15s | %-10s | %-10s | %-10s", "词项", "TF(全局)", "IDF", "TF-IDF"));
         tfIdfList.stream().limit(n).forEach(e -> {
             String term = e.getKey();
             TermStatDTO stat = termMap.get(term);
             double tf = (double) stat.globalTotalCount / totalTerms;
             double idf = Math.log((double) totalDocs / (stat.docCount));
-            System.out.printf("%-15s | %-10.6f | %-10.6f | %-10.6f%n",
-                    term, tf, idf, e.getValue());
+            log.info(String.format("%-15s | %-10.6f | %-10.6f | %-10.6f",
+                    term, tf, idf, e.getValue()));
         });
     }
 

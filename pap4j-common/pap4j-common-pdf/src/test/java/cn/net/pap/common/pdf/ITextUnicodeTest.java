@@ -4,6 +4,8 @@ import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfWriter;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.File;
@@ -15,6 +17,8 @@ import java.util.List;
 
 public class ITextUnicodeTest {
 
+    private static final Logger log = LoggerFactory.getLogger(ITextUnicodeTest.class);
+
     @Test
     public void resourceTest() {
         try {
@@ -22,12 +26,12 @@ public class ITextUnicodeTest {
             ClassPathResource simfangResource = new ClassPathResource("simfang.ttf");
             if(simfangResource.exists()){
                 File file = simfangResource.getFile();
-                System.out.println(file.exists());
+                log.info("File exists: {}", file.exists());
             } else {
-                System.out.println(false);
+                log.info("File exists: false");
             }
         } catch (IOException e) {
-            throw new RuntimeException(e);
+            log.error("Resource error: ", e);
         }
     }
 
@@ -50,12 +54,12 @@ public class ITextUnicodeTest {
                     fontBytes,
                     null
             );
-            System.out.println(chineseFont.charExists(0x1F600));// 😊 的码点 0x1F600
-            System.out.println(chineseFont.charExists(0x9AD8 ));// 高 的码点 0x9AD8
+            log.info("😊 exists: {}", chineseFont.charExists(0x1F600));// 😊 的码点 0x1F600
+            log.info("高 exists: {}", chineseFont.charExists(0x9AD8 ));// 高 的码点 0x9AD8
 
 
         } catch (Exception e) {
-
+            log.error("Unicode support test error: ", e);
         } finally {
             if (simfangFile != null && simfangFile.exists()) {
                 simfangFile.delete();
@@ -98,7 +102,7 @@ public class ITextUnicodeTest {
                             rangeStart = codePoint;  // 新区间的起始位置
                         }
                         lastCodePoint = codePoint;
-                        System.out.println(codePoint + "   " + new String(Character.toChars(codePoint)));
+                        log.info("{}   {}", codePoint, new String(Character.toChars(codePoint)));
                     }
                 }
                 // 结束当前区间
@@ -107,10 +111,10 @@ public class ITextUnicodeTest {
                 }
             }
             for (String range : unicodeRanges) {
-                System.out.println(range);
+                log.info("{}", range);
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Unicode range test error: ", e);
         } finally {
             if (simfangFile != null && simfangFile.exists()) {
                 simfangFile.delete();
@@ -177,10 +181,10 @@ public class ITextUnicodeTest {
 
             document.add(paragraph);
             document.close();
-            System.out.println("PDF 生成成功！");
+            log.info("PDF 生成成功！");
 
         } catch (Exception e) {
-            throw new RuntimeException(e);
+            log.error("Emoji Chinese test error: ", e);
         } finally {
             if (tempOut != null && tempOut.exists()) tempOut.delete();
             if (simfangFile1 != null && simfangFile1.exists()) simfangFile1.delete();
@@ -240,9 +244,9 @@ public class ITextUnicodeTest {
             }
 
             document.close();
-            System.out.println("PDF 生成成功！");
+            log.info("PDF 生成成功！");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Emoji2Pdf test error: ", e);
         } finally {
             if (tempOut != null && tempOut.exists()) tempOut.delete();
             if (simfangFile1 != null && simfangFile1.exists()) simfangFile1.delete();

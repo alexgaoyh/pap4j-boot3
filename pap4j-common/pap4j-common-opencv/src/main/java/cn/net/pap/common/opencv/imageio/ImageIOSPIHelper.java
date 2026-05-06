@@ -1,5 +1,8 @@
 package cn.net.pap.common.opencv.imageio;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.imageio.ImageIO;
 import javax.imageio.spi.IIORegistry;
 import javax.imageio.spi.ImageReaderSpi;
@@ -23,16 +26,18 @@ import java.util.Map;
  */
 public class ImageIOSPIHelper {
 
+    private static final Logger log = LoggerFactory.getLogger(ImageIOSPIHelper.class);
+
     /**
      * 刷新 ImageIO SPI
      * 逻辑：以当前 ClassLoader 能扫描到的 SPI 为准，清理掉过期的/不可用的，注册新的。
      */
     public static void refreshImageIOSPI() {
         try {
-            System.out.println("=== IIORegistry Cache ===");
+            log.info("=== IIORegistry Cache ===");
             dumpRegistryInfo();
 
-            System.out.println("=== 开始刷新 ImageIO SPI (Sync Mode) ===");
+            log.info("=== 开始刷新 ImageIO SPI (Sync Mode) ===");
 
             IIORegistry registry = IIORegistry.getDefaultInstance();
             ClassLoader currentClassLoader = Thread.currentThread().getContextClassLoader();
@@ -51,8 +56,7 @@ public class ImageIOSPIHelper {
             verifyAndPrintStatus();
 
         } catch (Exception e) {
-            System.err.println("刷新 ImageIO SPI 异常: " + e.getMessage());
-            e.printStackTrace();
+            log.error("刷新 ImageIO SPI 异常: {}", e.getMessage(), e);
         }
     }
 
@@ -61,7 +65,7 @@ public class ImageIOSPIHelper {
      */
     private static <T> void refreshCategory(IIORegistry registry, Class<T> category, ClassLoader currentCL) {
         String categoryName = category.getSimpleName();
-        System.out.println("--- 正在处理: " + categoryName + " ---");
+        log.info("--- 正在处理: {} ---", categoryName);
 
         // 步骤 A: 扫描当前环境最新的 SPI (这是我们的"白名单")
         Map<String, T> validNewProviders = new HashMap<>();
@@ -70,7 +74,7 @@ public class ImageIOSPIHelper {
             T provider = scanIter.next();
             validNewProviders.put(provider.getClass().getName(), provider);
         }
-        System.out.println("当前环境扫描到可用 SPI 数量: " + validNewProviders.size());
+        log.info("当前环境扫描到可用 SPI 数量: {}", validNewProviders.size());
 
         // 步骤 B: 清理注册表中"过期"或"不存在"的 SPI
         // 注意：必须先收集要删除的对象，不能在迭代器遍历时直接 deregister，否则会报 ConcurrentModificationException
@@ -98,7 +102,7 @@ public class ImageIOSPIHelper {
                     // 这里比较激进，如果 ClassLoader 不匹配也认为过期
                     // 注意：根据你的容器层级，可能需要调整这个判断，但在热部署场景下通常是必要的
                     toDeregister.add(provider);
-                    System.out.println("发现同名但在不同ClassLoader的SPI (视为过期): " + className);
+                    log.info("发现同名但在不同ClassLoader的SPI (视为过期): {}", className);
                     // 同时确保我们要把新的那个注册进去，所以从 validNewProviders 移除它，让后续步骤 C 重新注册
                     // (不需要从map移除，因为只要 registry.deregister 之后，步骤 C 的 contains 检查就会失败，从而重新注册)
                 }
@@ -107,7 +111,7 @@ public class ImageIOSPIHelper {
 
         // 执行清理
         for (T p : toDeregister) {
-            System.out.println("清理过期/失效 SPI: " + p.getClass().getName());
+            log.info("清理过期/失效 SPI: {}", p.getClass().getName());
             registry.deregisterServiceProvider(p, category);
         }
 
@@ -121,18 +125,18 @@ public class ImageIOSPIHelper {
             if (!alreadyRegistered) {
                 registry.registerServiceProvider(provider);
                 addedCount++;
-                System.out.println("注册新 SPI: " + entry.getKey());
+                log.info("注册新 SPI: {}", entry.getKey());
             }
         }
 
-        System.out.println(categoryName + " 刷新完毕: 清理了 " + toDeregister.size() + " 个, 新增了 " + addedCount + " 个");
+        log.info("{} 刷新完毕: 清理了 {} 个, 新增了 {} 个", categoryName, toDeregister.size(), addedCount);
     }
 
     /**
      * 验证并打印状态
      */
     private static void verifyAndPrintStatus() {
-        System.out.println("\n=== 最终状态验证 ===");
+        log.info("=== 最终状态验证 ===");
 
         // 强制触发一次 ImageIO 的缓存重新计算
         ImageIO.scanForPlugins();
@@ -140,11 +144,11 @@ public class ImageIOSPIHelper {
         String[] readers = ImageIO.getReaderFormatNames();
         String[] writers = ImageIO.getWriterFormatNames();
 
-        System.out.println("可用 Reader 格式 (" + readers.length + "): " + Arrays.toString(readers));
-        System.out.println("可用 Writer 格式 (" + writers.length + "): " + Arrays.toString(writers));
+        log.info("可用 Reader 格式 ({}): {}", readers.length, Arrays.toString(readers));
+        log.info("可用 Writer 格式 ({}): {}", writers.length, Arrays.toString(writers));
 
-        if (readers.length == 0) System.err.println("警告: 没有检测到任何图片读取器！");
-        if (writers.length == 0) System.err.println("警告: 没有检测到任何图片写入器！");
+        if (readers.length == 0) log.warn("警告: 没有检测到任何图片读取器！");
+        if (writers.length == 0) log.warn("警告: 没有检测到任何图片写入器！");
 
         // 简单的功能性验证 (可选)
         // 验证是否包含常见的 WebP 或 TIFF (如果你的项目依赖这些)
@@ -154,7 +158,7 @@ public class ImageIOSPIHelper {
     public static void dumpRegistryInfo() {
         IIORegistry registry = IIORegistry.getDefaultInstance();
 
-        System.out.println("=== IIORegistry Diagnostic ===");
+        log.info("=== IIORegistry Diagnostic ===");
 
         // 统计ImageReaderSpi数量
         int readerCount = 0;
@@ -167,20 +171,20 @@ public class ImageIOSPIHelper {
             readerCount++;
         }
 
-        System.out.println("Total ImageReaderSpi: " + readerCount);
+        log.info("Total ImageReaderSpi: {}", readerCount);
 
         // 打印详细信息
         for (ImageReaderSpi spi : readerSpis) {
-            System.out.printf("  - %s (Loader: %s)%n", spi.getClass().getName(), getClassLoaderInfo(spi.getClass().getClassLoader()));
+            log.info("  - {} (Loader: {})", spi.getClass().getName(), getClassLoaderInfo(spi.getClass().getClassLoader()));
         }
 
         // 同样处理ImageWriterSpi
-        System.out.println("\nImageWriterSpi Providers:");
+        log.info("ImageWriterSpi Providers:");
         Iterator<ImageWriterSpi> writerIterator = registry.getServiceProviders(ImageWriterSpi.class, true);
 
         while (writerIterator.hasNext()) {
             ImageWriterSpi spi = writerIterator.next();
-            System.out.printf("  - %s (Loader: %s)%n", spi.getClass().getName(), getClassLoaderInfo(spi.getClass().getClassLoader()));
+            log.info("  - {} (Loader: {})", spi.getClass().getName(), getClassLoaderInfo(spi.getClass().getClassLoader()));
         }
     }
 

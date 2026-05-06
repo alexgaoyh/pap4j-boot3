@@ -47,6 +47,7 @@ public class CompletableFutureTest {
         try {
             return doWorkInner(input).get();
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (ExecutionException e) {
             throw new RuntimeException(e);
@@ -63,6 +64,9 @@ public class CompletableFutureTest {
             int randomNumber = (int) (1000 + Math.random() * 1001);
             Thread.sleep(randomNumber);
             return input.toUpperCase() + " : " + randomNumber + " : " + CpuInfoUtil.getCurrentCpuCore();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -72,11 +76,11 @@ public class CompletableFutureTest {
     public void test() {
         long start = System.currentTimeMillis();
         IntStream.rangeClosed(1, 10).parallel().forEach(value -> {
-            System.out.println(doWork(String.valueOf(value)));
+            log.info(doWork(String.valueOf(value)));
         });
         long end = System.currentTimeMillis();
-        System.out.println("-----------------------------------");
-        System.out.println(end - start);
+        log.info("-----------------------------------");
+        log.info("{}", (end - start));
     }
 
     public static <T> void executeTask(Callable<T> task, TaskCallback<T> callback, CountDownLatch latch) {
@@ -85,6 +89,9 @@ public class CompletableFutureTest {
             try {
                 return task.call();
             } catch (Exception e) {
+                if (e instanceof InterruptedException) {
+                    Thread.currentThread().interrupt();
+                }
                 throw new CompletionException(e);
             }
         }, executor).thenAccept(result -> {
@@ -100,18 +107,23 @@ public class CompletableFutureTest {
         for (int i = 0; i < 10; i++) {
             int finalI = i;
             executeTask(() -> {
-                int randomNumber = (int) (1000 + Math.random() * 1001);
-                Thread.sleep(randomNumber);
-                return (finalI + "").toUpperCase() + " : " + randomNumber + " : " + CpuInfoUtil.getCurrentCpuCore();
+                try {
+                    int randomNumber = (int) (1000 + Math.random() * 1001);
+                    Thread.sleep(randomNumber);
+                    return (finalI + "").toUpperCase() + " : " + randomNumber + " : " + CpuInfoUtil.getCurrentCpuCore();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
             }, result -> {
-                System.out.println(result);
+                log.info(result);
             }, latch);
         }
         latch.await();
 
         long end = System.currentTimeMillis();
-        System.out.println("-----------------------------------");
-        System.out.println(end - start);
+        log.info("-----------------------------------");
+        log.info("{}", (end - start));
     }
 
 }

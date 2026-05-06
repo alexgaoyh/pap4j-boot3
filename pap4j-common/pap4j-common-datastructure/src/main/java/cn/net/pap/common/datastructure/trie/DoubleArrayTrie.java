@@ -15,11 +15,17 @@
  */
 package cn.net.pap.common.datastructure.trie;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DoubleArrayTrie {
+
+    private static final Logger log = LoggerFactory.getLogger(DoubleArrayTrie.class);
+
     private final static int BUF_SIZE = 16384;
     private final static int UNIT_SIZE = 8; // size of int + int
 
@@ -475,8 +481,7 @@ public class DoubleArrayTrie {
      */
     public void dump() {
         for (int i = 0; i < size; i++) {
-            System.err.println("i: " + i + " [" + base[i] + ", " + check[i]
-                    + "]");
+            log.error("i: {} [{}, {}]", i, base[i], check[i]);
         }
     }
 }

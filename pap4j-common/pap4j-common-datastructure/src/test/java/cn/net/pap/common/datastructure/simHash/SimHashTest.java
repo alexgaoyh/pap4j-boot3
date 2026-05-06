@@ -1,10 +1,14 @@
 package cn.net.pap.common.datastructure.simHash;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.math.BigInteger;
 
 public class SimHashTest {
+
+    private static final Logger log = LoggerFactory.getLogger(SimHashTest.class);
 
     @Test
     public void testSimHash() {
@@ -17,12 +21,12 @@ public class SimHashTest {
         BigInteger simHash2 = SimHash.computeSimHash(text2);
 
         // 输出结果
-        System.out.println("SimHash 1: " + simHash1.toString(16));
-        System.out.println("SimHash 2: " + simHash2.toString(16));
+        log.info("SimHash 1: {}", simHash1.toString(16));
+        log.info("SimHash 2: {}", simHash2.toString(16));
 
         // 计算汉明距离
         int distance = SimHash.hammingDistance(simHash1, simHash2);
-        System.out.println("汉明距离: " + distance);
+        log.info("汉明距离: {}", distance);
     }
 
 }

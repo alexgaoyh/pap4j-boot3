@@ -35,7 +35,7 @@ public class LinuxTreeToJsonUtilTest {
                 try (FileWriter writer = new FileWriter(filenameJson)) {
                     writer.write(jsonString);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error("Error writing file: ", e);
                 }
 
                 // 读取 json 到 List<Map>。 为了后续做数据处理
@@ -48,7 +48,7 @@ public class LinuxTreeToJsonUtilTest {
                 log.info("Failed to parse tree file.");
             }
         } catch (IOException e) {
-            System.err.println("Error reading file: " + e.getMessage());
+            log.error("Error reading file: ", e);
         }
     }
 

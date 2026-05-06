@@ -53,7 +53,7 @@ class DeadlockTest {
         try {
             while (!deadlockOccurred && attempt < MAX_ATTEMPTS) {
                 attempt++;
-                System.out.println("Attempt " + attempt + " to trigger deadlock...");
+                log.info("Attempt {} to trigger deadlock...", attempt);
 
                 CountDownLatch finalLatch = latch;
                 Callable<Void> task1 = () -> {
@@ -83,7 +83,7 @@ class DeadlockTest {
                     latch = new CountDownLatch(2); // 重置 CountDownLatch
                 } catch (ExecutionException e) {
                     if (e.getCause() instanceof RuntimeException) {
-                        System.err.println("Deadlock detected: " + e.getCause().getMessage());
+                        log.error("Deadlock detected: ", e.getCause());
                         deadlockOccurred = true; // 假设死锁发生
                     }
                 }

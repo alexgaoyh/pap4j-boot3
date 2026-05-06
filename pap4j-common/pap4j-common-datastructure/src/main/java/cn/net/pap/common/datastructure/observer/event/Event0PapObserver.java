@@ -1,6 +1,8 @@
 package cn.net.pap.common.datastructure.observer.event;
 
 import cn.net.pap.common.datastructure.observer.PapObserver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * <p><strong>Event0PapObserver</strong> 处理 <code>event0</code> 通知。</p>
@@ -8,6 +10,8 @@ import cn.net.pap.common.datastructure.observer.PapObserver;
  * <p>这是 {@link PapObserver} 的一个具体实现。</p>
  */
 public class Event0PapObserver implements PapObserver {
+
+    private static final Logger log = LoggerFactory.getLogger(Event0PapObserver.class);
 
     /**
      * <p>返回事件名称。</p>
@@ -26,7 +30,7 @@ public class Event0PapObserver implements PapObserver {
      */
     @Override
     public void callNotify(Object obj) {
-        System.out.println(this.getClass().getSimpleName() + " 接受到信息" + _eventName() + "，并进行处理 : " + obj);
+        log.info("{} 接受到信息{}，并进行处理 : {}", this.getClass().getSimpleName(), _eventName(), obj);
     }
 
 }

@@ -15,6 +15,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import com.fasterxml.jackson.databind.ser.BeanPropertyWriter;
 import com.fasterxml.jackson.databind.ser.BeanSerializerModifier;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -29,6 +31,8 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 public class JacksonUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(JacksonUtil.class);
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -156,7 +160,7 @@ public class JacksonUtil {
     /**
      * 批量处理大JSON数组，避免内存溢出
      * JacksonUtil.parseLargeJsonInBatches(filename, batch -> {
-     * System.out.println("Processing batch with " + batch.size() + " items");
+     * log.info("Processing batch with {} items", batch.size());
      * });
      */
     public static void parseLargeJsonInBatches(String filePath, Consumer<List<Map<String, Object>>> batchProcessor) throws IOException {
@@ -182,7 +186,7 @@ public class JacksonUtil {
                     if (currentBatch.size() >= BATCH_SIZE) {
                         batchProcessor.accept(currentBatch);
                         currentBatch = new ArrayList<>(BATCH_SIZE);
-                        System.out.println("Processed " + totalCount + " records");
+                        log.info("Processed {} records", totalCount);
                     }
                 }
             }
@@ -190,7 +194,7 @@ public class JacksonUtil {
             // 处理最后一批
             if (!currentBatch.isEmpty()) {
                 batchProcessor.accept(currentBatch);
-                System.out.println("Total processed: " + totalCount + " records");
+                log.info("Total processed: {} records", totalCount);
             }
         }
     }

@@ -3,6 +3,8 @@ package cn.net.pap.common.file.xml;
 import cn.net.pap.common.file.xml.record.Segment;
 import cn.net.pap.common.file.xml.record.Tag;
 import org.apache.commons.io.input.BOMInputStream;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.*;
 import org.xml.sax.InputSource;
 
@@ -30,6 +32,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public final class XmlParseUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(XmlParseUtil.class);
 
     private static final String DEFAULT_DELIMITER = ";";
 
@@ -495,7 +499,7 @@ public final class XmlParseUtil {
      * 打印带父子关系和缩进的结果
      */
     public static void printWithParent(List<Map<String, Object>> list) {
-        System.out.println("===== 带父子关系的目录结构（缩进表示层级） =====");
+        log.info("===== 带父子关系的目录结构（缩进表示层级） =====");
         // 记录各级别的缩进字符串
         Map<Integer, String> levelIndentMap = new HashMap<>();
         levelIndentMap.put(1, "");
@@ -520,7 +524,7 @@ public final class XmlParseUtil {
             });
 
             // 格式化输出
-            System.out.printf("%s├─ Seq: %-3s | Level: %s | Parent: %-3s | Title: %s%n", indent, sequence, levelStr, parentId != null ? parentId : "N/A", title);
+            log.info("%s├─ Seq: %-3s | Level: %s | Parent: %-3s | Title: %s%n", indent, sequence, levelStr, parentId != null ? parentId : "N/A", title);
 
             // 更新缩进映射
             if (!levelIndentMap.containsKey(level + 1)) {

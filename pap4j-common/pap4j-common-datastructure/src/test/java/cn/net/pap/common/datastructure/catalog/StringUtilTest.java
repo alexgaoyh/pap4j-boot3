@@ -1,6 +1,8 @@
 package cn.net.pap.common.datastructure.catalog;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -9,6 +11,8 @@ import java.util.Map;
  * 一些字符串验证的单元测试
  */
 public class StringUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(StringUtilTest.class);
 
     /**
      * CSS 转换
@@ -19,7 +23,7 @@ public class StringUtilTest {
         cssMap.put("className1", "font-size: 14px;");
         cssMap.put("className2", "font-size: 14px;font-weight: bold;");
         String s = convertToCSSString(cssMap);
-        System.out.println(s);
+        log.info("{}", s);
     }
 
     /**

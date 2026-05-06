@@ -5,6 +5,8 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 import java.util.Map;
@@ -29,6 +31,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class StreamPerformanceTest {
 
+    private static final Logger log = LoggerFactory.getLogger(StreamPerformanceTest.class);
+
     // 使用 JDK 14+ 的 record 定义轻量级数据载体
     record Order(int id, String category) {
     }
@@ -42,10 +46,10 @@ public class StreamPerformanceTest {
 
     @BeforeAll
     static void setUp() {
-        System.out.println("正在生成测试数据...");
+        log.info("正在生成测试数据...");
         smallData = generateData(SMALL_DATA_SIZE);
         largeData = generateData(LARGE_DATA_SIZE);
-        System.out.println("数据生成完毕！\n");
+        log.info("数据生成完毕！\n");
 
         // JVM 预热，防止 JIT 编译影响首次测试结果
         warmUp();
@@ -67,7 +71,7 @@ public class StreamPerformanceTest {
     @org.junit.jupiter.api.Order(1)
     @DisplayName("1. 小数据量对比 (几千条): stream() 通常比 parallelStream() 更快")
     void testSmallDataPerformance() {
-        System.out.println("=== 测试一：小数据量 (" + SMALL_DATA_SIZE + " 条) ===");
+        log.info("=== 测试一：小数据量 ({} 条) ===", SMALL_DATA_SIZE);
 
         long start1 = System.nanoTime();
         Map<String, List<Order>> map1 = smallData.stream().collect(Collectors.groupingBy(Order::category));
@@ -77,12 +81,12 @@ public class StreamPerformanceTest {
         Map<String, List<Order>> map2 = smallData.parallelStream().collect(Collectors.groupingBy(Order::category));
         long time2 = System.nanoTime() - start2;
 
-        System.out.printf("普通 Stream 耗时:   %,d 纳秒 (%.3f 毫秒)%n", time1, time1 / 1_000_000.0);
-        System.out.printf("并行 Parallel 耗时: %,d 纳秒 (%.3f 毫秒)%n", time2, time2 / 1_000_000.0);
+        log.info(String.format("普通 Stream 耗时:   %,d 纳秒 (%.3f 毫秒)", time1, time1 / 1_000_000.0));
+        log.info(String.format("并行 Parallel 耗时: %,d 纳秒 (%.3f 毫秒)", time2, time2 / 1_000_000.0));
         if (time1 < time2) {
-            System.out.println("实际结论：在当前数据量下，普通 Stream 更快。并行流的线程调度开销超过了计算收益。\n");
+            log.info("实际结论：在当前数据量下，普通 Stream 更快。并行流的线程调度开销超过了计算收益。\n");
         } else {
-            System.out.println("实际结论：在当前数据量和机器环境下，并行 Parallel 已经展现出速度优势。\n");
+            log.info("实际结论：在当前数据量和机器环境下，并行 Parallel 已经展现出速度优势。\n");
         }
     }
 
@@ -90,7 +94,7 @@ public class StreamPerformanceTest {
     @org.junit.jupiter.api.Order(2)
     @DisplayName("2. 大数据量对比 (数百万条): parallelStream() 开始展现出优势")
     void testLargeDataPerformance() {
-        System.out.println("=== 测试二：大数据量 (" + LARGE_DATA_SIZE + " 条) ===");
+        log.info("=== 测试二：大数据量 ({} 条) ===", LARGE_DATA_SIZE);
 
         long start1 = System.currentTimeMillis();
         Map<String, List<Order>> map1 = largeData.stream().collect(Collectors.groupingBy(Order::category));
@@ -100,12 +104,12 @@ public class StreamPerformanceTest {
         Map<String, List<Order>> map2 = largeData.parallelStream().collect(Collectors.groupingBy(Order::category));
         long time2 = System.currentTimeMillis() - start2;
 
-        System.out.printf("普通 Stream 耗时:   %d 毫秒%n", time1);
-        System.out.printf("并行 Parallel 耗时: %d 毫秒%n", time2);
+        log.info(String.format("普通 Stream 耗时:   %d 毫秒", time1));
+        log.info(String.format("并行 Parallel 耗时: %d 毫秒", time2));
         if (time1 > time2) {
-            System.out.println("实际结论：在大数据量下，并行 Parallel 展现出了碾压性的优势。由于数据处理量足够大，多核并行加速的收益远远盖过了底层的线程调度开销。\n");
+            log.info("实际结论：在大数据量下，并行 Parallel 展现出了碾压性的优势。由于数据处理量足够大，多核并行加速的收益远远盖过了底层的线程调度开销。\n");
         } else {
-            System.out.println("实际结论：在当前机器环境下，即使是大数据量，普通 Stream 依然更快。这通常是因为测试机的 CPU 核心数较少，或者系统当前负载极高，导致无法发挥并行优势。\n");
+            log.info("实际结论：在当前机器环境下，即使是大数据量，普通 Stream 依然更快。这通常是因为测试机的 CPU 核心数较少，或者系统当前负载极高，导致无法发挥并行优势。\n");
         }
     }
 
@@ -113,7 +117,7 @@ public class StreamPerformanceTest {
     @org.junit.jupiter.api.Order(3)
     @DisplayName("3. 高并发场景争抢点测试: Web请求并发下的 ParallelStream 性能衰减")
     void testHighConcurrencyContention() throws InterruptedException {
-        System.out.println("=== 测试三：高并发场景下处理小数据量 ===");
+        log.info("=== 测试三：高并发场景下处理小数据量 ===");
 
         int concurrentRequests = 200; // 模拟 200 个并发 HTTP 请求
         ExecutorService tomcatThreadPool = Executors.newFixedThreadPool(50); // 模拟 Tomcat 线程池（50个工作线程）
@@ -145,12 +149,12 @@ public class StreamPerformanceTest {
 
         tomcatThreadPool.shutdown();
 
-        System.out.printf("200个并发请求 全部用 Stream 处理总耗时:   %d 毫秒%n", time1);
-        System.out.printf("200个并发请求 全部用 Parallel 处理总耗时: %d 毫秒%n", time2);
+        log.info(String.format("200个并发请求 全部用 Stream 处理总耗时:   %d 毫秒", time1));
+        log.info(String.format("200个并发请求 全部用 Parallel 处理总耗时: %d 毫秒", time2));
         if (time1 < time2) {
-            System.out.println("实际结论：高并发下普通 Stream 完胜！这证明了：在外部已经有线程池（如 Tomcat）并发调度的场景下，内部再滥用 parallelStream 会导致全局 ForkJoinPool.commonPool() 发生严重的锁竞争和上下文切换，反而大幅拉低吞吐量。\n");
+            log.info("实际结论：高并发下普通 Stream 完胜！这证明了：在外部已经有线程池（如 Tomcat）并发调度的场景下，内部再滥用 parallelStream 会导致全局 ForkJoinPool.commonPool() 发生严重的锁竞争和上下文切换，反而大幅拉低吞吐量。\n");
         } else {
-            System.out.println("实际结论：在当前高并发测试中，Parallel 依然没有落后。这极其罕见，通常是因为你的机器 CPU 极其强悍。但在真实的 Web 高并发生产环境中，依然强烈建议避免这种嵌套并发造成的资源争抢风险。\n");
+            log.info("实际结论：在当前高并发测试中，Parallel 依然没有落后。这极其罕见，通常是因为你的机器 CPU 极其强悍。但在真实的 Web 高并发生产环境中，依然强烈建议避免这种嵌套并发造成的资源争抢风险。\n");
         }
     }
 
@@ -172,7 +176,7 @@ public class StreamPerformanceTest {
         };
         ForkJoinPool customThreadPool = new ForkJoinPool(4, customFactory, null, false);
 
-        System.out.println("开始执行被隔离的并行任务...");
+        log.info("开始执行被隔离的并行任务...");
         long startTime = System.currentTimeMillis();
 
         try {
@@ -181,12 +185,12 @@ public class StreamPerformanceTest {
                     .toList()).get(); // 阻塞等待执行结果
 
             long costTime = System.currentTimeMillis() - startTime;
-            System.out.printf("任务执行完毕，总耗时: %d 毫秒%n", costTime);
-            System.out.printf("共处理了 %d 条数据%n", result.size());
+            log.info(String.format("任务执行完毕，总耗时: %d 毫秒", costTime));
+            log.info(String.format("共处理了 %d 条数据", result.size()));
 
             // 5. 打印并验证参与计算的线程
-            System.out.println("\n=== 实际参与计算的线程列表 ===");
-            threadNames.forEach(System.out::println);
+            log.info("\n=== 实际参与计算的线程列表 ===");
+            threadNames.forEach(item -> log.info("{}", item));
 
             // 6. 断言 (Assertions) 验证隔离是否成功
             // 验证1：必须有我们自定义前缀的线程参与了工作
@@ -200,10 +204,13 @@ public class StreamPerformanceTest {
             // 验证3：主线程 (main) 也不应该参与计算（因为我们通过 submit 交出去了）
             assertFalse(threadNames.contains("main"), "主线程不应参与具体计算！");
 
-            System.out.println("\n测试通过：成功实现了 ParallelStream 的线程池物理隔离！");
+            log.info("\n测试通过：成功实现了 ParallelStream 的线程池物理隔离！");
 
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+        } catch (InterruptedException e) {
+            log.error("任务执行中断", e);
+            Thread.currentThread().interrupt();
+        } catch (ExecutionException e) {
+            log.error("任务执行异常", e);
         } finally {
             // 7. 优雅关闭线程池
             customThreadPool.shutdown();

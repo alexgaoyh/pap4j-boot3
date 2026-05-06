@@ -6,6 +6,8 @@ import cn.net.pap.example.service.IWebhookSenderService;
 import cn.net.pap.example.service.IWebhookSubscriptionService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -24,6 +26,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/webhook")
 public class WebhookManagementController {
+
+    private static final Logger log = LoggerFactory.getLogger(WebhookManagementController.class);
 
     private final IWebhookSubscriptionService subscriptionService;
 
@@ -66,10 +70,10 @@ public class WebhookManagementController {
                 String headerName = headerNames.nextElement();
                 headers.put(headerName, request.getHeader(headerName));
             }
-            System.out.println("Headers: " + headers);
+            log.info("Headers: {}", headers);
 
             String body = request.getReader().lines().collect(Collectors.joining(System.lineSeparator()));
-            System.out.println("Body: " + body);
+            log.info("Body: {}", body);
 
             return ResponseEntity.ok("");
         } catch (IOException e) {

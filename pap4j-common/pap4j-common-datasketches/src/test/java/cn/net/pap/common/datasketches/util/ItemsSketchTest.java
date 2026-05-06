@@ -62,7 +62,7 @@ public class ItemsSketchTest {
                 );
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in ItemsSketch test: ", e);
         }
     }
 

@@ -4,9 +4,14 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import net.sf.jsqlparser.parser.CCJSqlParserManager;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.StringReader;
 
 public class CRUDGeneratorUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(CRUDGeneratorUtilTest.class);
 
     /**
      * CRUD sql
@@ -19,24 +24,24 @@ public class CRUDGeneratorUtilTest {
 
             Doris doris1 = new Doris(1l, "alex1", "alexgaoyh1");
             String insertSQL1 = CRUDGeneratorUtil.generateInsertSQL(doris1);
-            System.out.println(parserManager.parse(new StringReader(insertSQL1)));
+            log.info("Insert SQL 1: {}", parserManager.parse(new StringReader(insertSQL1)));
 
             Doris doris2 = new Doris(2l, "alex2", "alexgaoyh2");
             String insertSQL2 = CRUDGeneratorUtil.generateInsertSQL(doris2);
-            System.out.println(parserManager.parse(new StringReader(insertSQL2)));
+            log.info("Insert SQL 2: {}", parserManager.parse(new StringReader(insertSQL2)));
 
             doris2 = new Doris(2l, "alex22", "alexgaoyh22");
             String updateSQL2 = CRUDGeneratorUtil.generateUpdateSQL(doris2);
-            System.out.println(parserManager.parse(new StringReader(updateSQL2)));
+            log.info("Update SQL 2: {}", parserManager.parse(new StringReader(updateSQL2)));
 
             String deleteSQL1 = CRUDGeneratorUtil.generateDeleteSQL(doris1);
-            System.out.println(parserManager.parse(new StringReader(deleteSQL1)));
+            log.info("Delete SQL 1: {}", parserManager.parse(new StringReader(deleteSQL1)));
 
             String selectSql = CRUDGeneratorUtil.generateSelectSQL(Doris.class);
-            System.out.println(parserManager.parse(new StringReader(selectSql)));
+            log.info("Select SQL: {}", parserManager.parse(new StringReader(selectSql)));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error occurred in test1: ", e);
         }
     }
 

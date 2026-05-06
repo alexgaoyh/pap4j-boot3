@@ -5,11 +5,16 @@ import cn.net.pap.common.datastructure.catalog.dto.CatalogTreeDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
 public class CatalogUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(CatalogUtilTest.class);
 
     @Test
     public void convert() throws Exception {
@@ -34,9 +39,9 @@ public class CatalogUtilTest {
         ObjectMapper objectMapper = new ObjectMapper();
 
         List<CatalogTreeDTO> tree = CatalogUtil.buildCatalogTree(catalogDTOList);
-        System.out.println(objectMapper.writeValueAsString(tree));
+        log.info(objectMapper.writeValueAsString(tree));
 
         List<CatalogTreeDTO> tree2 = CatalogUtil.buildCatalogTree2(catalogDTOList);
-        System.out.println(objectMapper.writeValueAsString(tree2));
+        log.info(objectMapper.writeValueAsString(tree2));
     }
 }

@@ -1,10 +1,14 @@
 package cn.net.pap.common.datastructure.myersdiff;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class MyersDiffUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MyersDiffUtilTest.class);
 
     @Test
     public void diffTest01() {
@@ -13,7 +17,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -24,7 +28,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -35,7 +39,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -46,7 +50,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -57,7 +61,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -68,7 +72,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -79,7 +83,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -90,7 +94,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -101,7 +105,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 
@@ -112,7 +116,7 @@ public class MyersDiffUtilTest {
 
         List<MyersDiffUtil.Edit> edits = MyersDiffUtil.diff(original, modified);
         for (MyersDiffUtil.Edit e : edits) {
-            System.out.println(e);
+            log.info("{}", e);
         }
     }
 

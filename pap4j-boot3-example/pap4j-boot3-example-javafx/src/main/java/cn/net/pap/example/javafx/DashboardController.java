@@ -490,10 +490,10 @@ public class DashboardController implements Initializable {
 
         URL fxmlUrl;
         if (devFile.exists()) {
-            System.out.println("从文件系统加载: " + devFile.getAbsolutePath());
+            log.info("从文件系统加载: {}", devFile.getAbsolutePath());
             fxmlUrl = devFile.toURI().toURL();
         } else {
-            System.out.println("从 Classpath 加载");
+            log.info("从 Classpath 加载");
             fxmlUrl = getClass().getResource("dashboard-view.fxml");
         }
 

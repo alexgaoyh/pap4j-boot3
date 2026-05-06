@@ -41,7 +41,7 @@ public class FilesTest {
 
             @Override
             public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                //System.err.println("访问文件失败: " + file.toAbsolutePath() + " - " + exc.getMessage());
+                log.error("访问文件失败: {} - {}", file.toAbsolutePath(), exc.getMessage());
                 return FileVisitResult.CONTINUE;
             }
         });
@@ -124,11 +124,10 @@ public class FilesTest {
             paths.filter(path -> path.toString().endsWith(".java") && path.toString().contains("PageDTO"))
                     .forEach(path -> {
                         convertLineEndings(path.toAbsolutePath().toString());
-                        log.info("{}", "已处理: " + path);
+                        log.info("已处理: {}", path);
                     });
         } catch (IOException e) {
-            System.err.println("遍历目录时出错: " + e.getMessage());
-            e.printStackTrace();
+            log.error("遍历目录时出错: ", e);
         }
     }
 
@@ -142,7 +141,7 @@ public class FilesTest {
             }
             return true;
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error converting line endings: ", e);
             return false;
         }
     }

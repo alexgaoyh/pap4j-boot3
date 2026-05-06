@@ -1,5 +1,7 @@
 package cn.net.pap.example.proguard;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.beans.factory.support.BeanDefinitionRegistry;
 import org.springframework.beans.factory.support.BeanNameGenerator;
@@ -17,6 +19,8 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @EnableAsync
 public class Pap4jBoot3ExampleProguardApplication {
 
+    private static final Logger log = LoggerFactory.getLogger(Pap4jBoot3ExampleProguardApplication.class);
+
     public static class Pap4jCustomGenerator implements BeanNameGenerator {
         @Override
         public String generateBeanName(BeanDefinition definition, BeanDefinitionRegistry registry) {
@@ -32,7 +36,7 @@ public class Pap4jBoot3ExampleProguardApplication {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             if (context != null && context.isActive()) {
                 int code = SpringApplication.exit(context);
-                System.out.println(String.format("Web应用优雅关闭，退出码: %d", code));
+                log.info("Web应用优雅关闭，退出码: {}", code);
             }
         }));
     }

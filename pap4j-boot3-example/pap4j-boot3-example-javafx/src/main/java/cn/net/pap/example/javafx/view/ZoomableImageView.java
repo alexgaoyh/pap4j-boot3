@@ -705,7 +705,6 @@ public class ZoomableImageView extends StackPane {
         // 选择框
         Rectangle2D selectionInImageCoordinates = getSelectionInImageCoordinates();
         if (selectionInImageCoordinates != null) {
-            // System.out.println(selectionInImageCoordinates.toString());
         }
 
         selectionRect.setVisible(false);

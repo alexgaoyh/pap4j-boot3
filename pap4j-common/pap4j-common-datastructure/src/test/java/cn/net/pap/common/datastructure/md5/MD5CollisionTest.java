@@ -3,6 +3,8 @@ package cn.net.pap.common.datastructure.md5;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.ByteBuffer;
 import java.security.MessageDigest;
@@ -45,6 +47,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  */
 public class MD5CollisionTest {
 
+    private static final Logger log = LoggerFactory.getLogger(MD5CollisionTest.class);
+
     @Test
     public void testHigh64BitCollisions() throws Exception {
         // 使用 MD5 算法
@@ -57,7 +61,7 @@ public class MD5CollisionTest {
         // 设置测试数据量：100万。
         // （你可以尝试加大到 500 万或 1000 万，但要注意 JVM 堆内存限制。即使是千万级，冲突概率依然极低）
         int testSize = 10_000_000;
-        System.out.println("开始生成并计算 " + testSize + " 个 MD5 哈希...");
+        log.info("开始生成并计算 {} 个 MD5 哈希...", testSize);
 
         long startTime = System.currentTimeMillis();
 
@@ -78,7 +82,7 @@ public class MD5CollisionTest {
         }
 
         long endTime = System.currentTimeMillis();
-        System.out.println("数据处理完成，耗时: " + (endTime - startTime) + " ms");
+        log.info("数据处理完成，耗时: {} ms", (endTime - startTime));
 
         // 验证阶段：统计冲突情况
         int maxElementsInBucket = 0;
@@ -92,12 +96,12 @@ public class MD5CollisionTest {
             maxElementsInBucket = Math.max(maxElementsInBucket, size);
         }
 
-        System.out.println("========== 测试结果 ==========");
-        System.out.println("总测试数据量: " + testSize);
-        System.out.println("去重后的高 64 位数量 (Map Size): " + map.size());
-        System.out.println("发生冲突的 Bucket 数量: " + bucketsWithCollisions);
-        System.out.println("单个 Bucket 中的最大元素数量 (预期为 1): " + maxElementsInBucket);
-        System.out.println("=============================");
+        log.info("========== 测试结果 ==========");
+        log.info("总测试数据量: {}", testSize);
+        log.info("去重后的高 64 位数量 (Map Size): {}", map.size());
+        log.info("发生冲突的 Bucket 数量: {}", bucketsWithCollisions);
+        log.info("单个 Bucket 中的最大元素数量 (预期为 1): {}", maxElementsInBucket);
+        log.info("=============================");
 
         // 断言：证明在 100 万量级下，任何高 64 位对应的列表里永远只有 1 个低 64 位元素
         assertEquals(1, maxElementsInBucket, "在当前业务量级下，高 64 位应当不发生碰撞！");

@@ -3,6 +3,8 @@ package cn.net.pap.example.async.controller;
 import cn.net.pap.example.async.config.ContextHolder;
 import cn.net.pap.example.async.constant.AsyncConstant;
 import cn.net.pap.example.async.service.AsyncService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
@@ -23,6 +25,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @RestController
 public class AsyncController {
 
+    private static final Logger log = LoggerFactory.getLogger(AsyncController.class);
+
     private final ApplicationContext applicationContext;
 
     private final ThreadPoolTaskExecutor taskExecutor;
@@ -34,7 +38,7 @@ public class AsyncController {
 
     @GetMapping(value = "/direct", produces = "application/json;charset=UTF-8")
     public String direct(@RequestParam(value = "index", required = false) String index) throws Exception {
-        System.out.println(Thread.currentThread().getId() + " : " + System.currentTimeMillis());
+        log.info("{} : {}", Thread.currentThread().getId(), System.currentTimeMillis());
         if(StringUtils.isEmpty(index)) {
             Thread.sleep((long)(Math.random() * 10000));
         } else {
@@ -71,9 +75,9 @@ public class AsyncController {
             if(obj instanceof CompletableFuture) {
                 CompletableFuture<String> future = (CompletableFuture<String>) obj;
                 future.thenAccept(result -> {
-                    System.out.println("执行异步方法，返回参数：" + result + " ; 传递的参数：" + requestParam);
+                    log.info("执行异步方法，返回参数：{} ; 传递的参数：{}", result, requestParam);
                 }).exceptionally(ex -> {
-                    ex.printStackTrace();
+                    log.error("异步执行失败: ", ex);
                     return null;
                 });
             }
@@ -102,10 +106,11 @@ public class AsyncController {
         Callable<String> callable = () -> {
             try {
                 Thread.sleep(4000);
-                System.out.println("Should not reach here");
+                log.info("Should not reach here");
                 return "Should not reach here";
             } catch (InterruptedException e) {
-                System.out.println("task interrupted!");
+                log.info("task interrupted!");
+                Thread.currentThread().interrupt();
                 throw e;
             }
         };
@@ -113,7 +118,7 @@ public class AsyncController {
         WebAsyncTask<String> task = new WebAsyncTask<>(2000l, callable);
         task.onTimeout(() -> "Timeout occurred");
         task.onError(() -> {
-            System.out.println("task onError");
+            log.info("task onError");
             return "Task onError";
         });
 
@@ -142,7 +147,7 @@ public class AsyncController {
         WebAsyncTask<String> task = new WebAsyncTask<>(3000, compositeCallable);
 
         // 回调
-        task.onCompletion(() -> System.out.println("Composite task completed"));
+        task.onCompletion(() -> log.info("Composite task completed"));
 
         return task;
     }
@@ -175,7 +180,7 @@ public class AsyncController {
                     // 更新进度
                     int newProgress = (i + 1) * 10;
                     progress.set(newProgress);
-                    System.out.println(taskId + " - Progress: " + newProgress + "%");
+                    log.info("{} - Progress: {}%", taskId, newProgress);
                 }
                 return "Task " + taskId + " completed successfully";
             } finally {

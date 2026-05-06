@@ -1,6 +1,8 @@
 package cn.net.pap.common.worker.simple;
 
 import cn.net.pap.common.worker.simple.dto.SimpleTaskDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,6 +13,8 @@ import java.util.concurrent.LinkedBlockingQueue;
  * 主进程：负责管理任务队列和工作进程
  */
 public class SimpleMaster {
+
+    private static final Logger log = LoggerFactory.getLogger(SimpleMaster.class);
 
     private BlockingQueue<SimpleTaskDTO> taskQueue = new LinkedBlockingQueue<>();
 
@@ -35,7 +39,7 @@ public class SimpleMaster {
     public void submitTask(SimpleTaskDTO task) {
         try {
             taskQueue.put(task);
-            System.out.println("Master: 提交任务 " + task.getId());
+            log.info("Master: 提交任务 {}", task.getId());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -49,17 +53,17 @@ public class SimpleMaster {
         for (SimpleWorker worker : workers) {
             worker.stop();
         }
-        System.out.println("Master: 已停止所有工作进程");
+        log.info("Master: 已停止所有工作进程");
     }
 
     /**
      * 查看任务队列状态
      */
     public void showStatus() {
-        System.out.println("=== 系统状态 ===");
-        System.out.println("待处理任务数: " + taskQueue.size());
-        System.out.println("工作进程数: " + workers.size());
-        System.out.println("==============");
+        log.info("=== 系统状态 ===");
+        log.info("待处理任务数: {}", taskQueue.size());
+        log.info("工作进程数: {}", workers.size());
+        log.info("==============");
     }
 
 }

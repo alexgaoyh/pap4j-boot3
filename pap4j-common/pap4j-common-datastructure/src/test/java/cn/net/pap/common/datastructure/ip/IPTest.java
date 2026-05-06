@@ -2,6 +2,8 @@ package cn.net.pap.common.datastructure.ip;
 
 import cn.net.pap.common.datastructure.resource.TestResourceUtil;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.InetAddress;
@@ -10,6 +12,8 @@ import java.nio.file.Path;
 
 public class IPTest {
 
+    private static final Logger log = LoggerFactory.getLogger(IPTest.class);
+
     // @Test
     public void ipRangeExpander() {
         Path outPath = null;
@@ -17,7 +21,7 @@ public class IPTest {
             outPath = Files.createTempFile("ip-test-", ".txt");
             expandIPRanges(TestResourceUtil.getFile("chnroute.txt").toPath().toAbsolutePath().toString(), outPath.toAbsolutePath().toString());
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("展开IP段失败", e);
         } finally {
             if(outPath != null) {
                 outPath.toFile().delete();

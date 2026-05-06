@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class InterceptingFilterPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(InterceptingFilterPattern.class);
 
     interface Filter {
         public void execute(String request);
@@ -13,19 +17,19 @@ public class InterceptingFilterPattern {
 
     class AuthenticationFilter implements Filter {
         public void execute(String request) {
-            System.out.println("Authenticating request: " + request);
+            log.info("Authenticating request: {}", request);
         }
     }
 
     class DebugFilter implements Filter {
         public void execute(String request) {
-            System.out.println("request log: " + request);
+            log.info("request log: {}", request);
         }
     }
 
     class Target {
         public void execute(String request) {
-            System.out.println("Executing request: " + request);
+            log.info("Executing request: {}", request);
         }
     }
 

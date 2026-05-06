@@ -79,8 +79,7 @@ public class GstoreConnector {
                 result.append(line + "\n");
             }
         } catch (Exception e) {
-            System.out.println("error in get request: " + e);
-            log.error("sendGet", e);
+            log.error("error in get request: {}", e.getMessage(), e);
         }
 
         // use finally to close the input stream
@@ -90,7 +89,6 @@ public class GstoreConnector {
                     in.close();
                 }
             } catch (Exception e2) {
-                e2.printStackTrace();
                 log.error("sendGet", e2);
             }
         }
@@ -137,8 +135,7 @@ public class GstoreConnector {
                 result.append(line + "\n");
             }
         } catch (Exception e) {
-            System.out.println("error in post request: " + e);
-            log.error("sendPost", e);
+            log.error("error in post request: {}", e.getMessage(), e);
         }
 
         // use finally to close the input stream
@@ -166,7 +163,7 @@ public class GstoreConnector {
         try {
             fw = new FileWriter(filename);
         } catch (IOException e) {
-            System.out.println("can not open " + filename + "!");
+            log.error("can not open {}!", filename, e);
         }
 
         try {
@@ -203,8 +200,7 @@ public class GstoreConnector {
                 chars = new char[2048];
             }
         } catch (Exception e) {
-            System.out.println("error in get request: " + e);
-            log.error("sendGet", e);
+            log.error("error in get request: {}", e.getMessage(), e);
         }
 
         // use finally to close the input stream
@@ -235,7 +231,7 @@ public class GstoreConnector {
         try {
             fw = new FileWriter(filename);
         } catch (IOException e) {
-            System.out.println("can not open " + filename + "!");
+            log.error("can not open {}!", filename, e);
         }
 
         try {
@@ -275,8 +271,7 @@ public class GstoreConnector {
                 chars = new char[2048];
             }
         } catch (Exception e) {
-            System.out.println("error in post request: " + e);
-            log.error("sendPost", e);
+            log.error("error in post request: {}", e.getMessage(), e);
         }
 
         // use finally to close the input stream
@@ -692,8 +687,7 @@ public class GstoreConnector {
             data_context = _msg.getBytes("utf-8");
         } catch (UnsupportedEncodingException e) {
             // TODO Auto-generated catch block
-            log.error("packageMsgData", e);
-            System.err.println("utf-8 charset is unsupported.");
+            log.error("utf-8 charset is unsupported.", e);
             data_context = _msg.getBytes();
         }
         int context_len = data_context.length + 1; // 1 byte for '\0' at the end of the context.

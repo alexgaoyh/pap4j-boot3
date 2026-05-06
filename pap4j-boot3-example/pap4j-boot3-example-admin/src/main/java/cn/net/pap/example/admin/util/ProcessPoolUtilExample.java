@@ -1,6 +1,11 @@
 package cn.net.pap.example.admin.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ProcessPoolUtilExample {
+
+    private static final Logger log = LoggerFactory.getLogger(ProcessPoolUtilExample.class);
 
     /**
      * main 方法，可以通过 args 接收参数
@@ -9,12 +14,14 @@ public class ProcessPoolUtilExample {
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
         int result = run(args);
-        System.out.println("TaskExample result: " + result);
+        log.info("TaskExample result: {}", result);
         // main 方法默认没有返回值，只能通过输出或异常返回
     }
+
 
     /**
      * 真正逻辑方法，返回 int

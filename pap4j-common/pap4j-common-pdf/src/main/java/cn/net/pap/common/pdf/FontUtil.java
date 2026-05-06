@@ -2,6 +2,8 @@ package cn.net.pap.common.pdf;
 
 import cn.net.pap.common.pdf.dto.CoordsDTO;
 import cn.net.pap.common.pdf.dto.TextPointDTO;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.*;
 import java.awt.image.BufferedImage;
@@ -19,6 +21,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * 汉字工具类
  */
 public class FontUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(FontUtil.class);
 
     // 缓存 FontMetrics 以避免重复计算
     private static final Map<Font, FontMetrics> fontMetricsCache = new ConcurrentHashMap<>();
@@ -157,7 +161,7 @@ public class FontUtil {
                             .filter(path -> isFontFile(path.toString()))
                             .forEach(path -> fontFiles.add(path.toFile()));
                 } catch (Exception e) {
-                    System.out.println("扫描目录失败: " + directory + ", 错误: " + e.getMessage());
+                    log.error("扫描目录失败: {}, 错误: {}", directory, e.getMessage(), e);
                 }
             }
         }

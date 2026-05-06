@@ -1,6 +1,8 @@
 package cn.net.pap.common.datastructure.trace;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -10,6 +12,8 @@ import java.util.Base64;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class VarIntUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(VarIntUtilTest.class);
 
     @Test
     void test1() throws IOException {
@@ -29,7 +33,7 @@ public class VarIntUtilTest {
             if (i <= 20 || i % 10000 == 0) {
 //                String encoded = Base64.getUrlEncoder().encodeToString(compressed);
 //                byte[] original = Base64.getUrlDecoder().decode(encoded);
-                System.out.println("Value: " + i + ", compressed bytes: " + compressed.length);
+                log.info("Value: {}, compressed bytes: {}", i, compressed.length);
             }
         }
     }

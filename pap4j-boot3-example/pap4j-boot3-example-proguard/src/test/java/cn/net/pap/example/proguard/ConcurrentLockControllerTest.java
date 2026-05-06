@@ -73,7 +73,7 @@ public class ConcurrentLockControllerTest {
                                 successCount.incrementAndGet();
                             }
                         } catch (Exception e) {
-                            e.printStackTrace();
+                            log.error("Request failed: ", e);
                         }
                     }
                 }));
@@ -91,8 +91,8 @@ public class ConcurrentLockControllerTest {
                     String.class
             );
 
-            System.out.println("最终结果: " + result.getBody());
-            System.out.println("成功请求次数: " + successCount.get());
+            log.info("最终结果: {}", result.getBody());
+            log.info("成功请求次数: {}", successCount.get());
         } finally {
             executor.shutdown();
             try {

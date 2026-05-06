@@ -4,6 +4,8 @@ import cn.net.pap.common.datastructure.lamba.StudentDTO;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -15,23 +17,25 @@ import java.util.stream.IntStream;
 
 public class CollectionUtilTest {
 
+    private static final Logger log = LoggerFactory.getLogger(CollectionUtilTest.class);
+
     @Test
     public void geneLevelTest() {
         String numbering = "1"; // 初始编号
 
-        System.out.println(numbering); // 输出: 1
+        log.info("{}", numbering); // 输出: 1
         numbering = CollectionUtil.getNextChild(numbering);
-        System.out.println(numbering); // 输出: 1.1
+        log.info("{}", numbering); // 输出: 1.1
         numbering = CollectionUtil.getNextChild(numbering);
-        System.out.println(numbering); // 输出: 1.1.1
+        log.info("{}", numbering); // 输出: 1.1.1
         numbering = CollectionUtil.getNextSibling(numbering);
-        System.out.println(numbering); // 输出: 1.1.2
+        log.info("{}", numbering); // 输出: 1.1.2
         numbering = CollectionUtil.getNextSibling(numbering);
-        System.out.println(numbering); // 输出: 1.1.3
+        log.info("{}", numbering); // 输出: 1.1.3
         numbering = CollectionUtil.exitThenGetNextSibling(numbering);
-        System.out.println(numbering); // 输出: 1.2
+        log.info("{}", numbering); // 输出: 1.2
         numbering = CollectionUtil.exitThenGetNextSibling(numbering);
-        System.out.println(numbering); // 输出: 2
+        log.info("{}", numbering); // 输出: 2
 
     }
 
@@ -44,10 +48,10 @@ public class CollectionUtilTest {
         }
         List<List<Integer>> ageGroupList = CollectionUtil.batchByProperty(batchEntityList, 50, StudentDTO::getAge);
         List<List<String>> firstNameGroupList = CollectionUtil.batchByProperty(batchEntityList, 50, StudentDTO::getFirstName);
-        System.out.println(ageGroupList);
-        System.out.println(firstNameGroupList);
+        log.info("{}", ageGroupList);
+        log.info("{}", firstNameGroupList);
 
-        System.out.println("------------------------------------------");
+        log.info("------------------------------------------");
 
         List<Map<String, Object>> batchMapList = new ArrayList<>();
         for (int i = 0; i < 9876; i++) {
@@ -58,8 +62,8 @@ public class CollectionUtilTest {
         }
         List<List<Integer>> ageGroupList2 = CollectionUtil.batchByProperty(batchMapList, 50, map -> (Integer) map.get("age"));
         List<List<String>> firstNameGroupList2 = CollectionUtil.batchByProperty(batchMapList, 50, map -> (String) map.get("firstName"));
-        System.out.println(ageGroupList2);
-        System.out.println(firstNameGroupList2);
+        log.info("{}", ageGroupList2);
+        log.info("{}", firstNameGroupList2);
 
 
     }
@@ -70,7 +74,7 @@ public class CollectionUtilTest {
         List<Integer> mockData = IntStream.rangeClosed(1, 10500).boxed().toList();
         List<Integer> processedData = new ArrayList<>();
         CollectionUtil.batchNoResult(mockData, 2000, batch -> {
-            System.out.println("当前批次处理数据量: " + batch.size());
+            log.info("当前批次处理数据量: {}", batch.size());
             processedData.addAll(batch);
         });
         Assertions.assertEquals(10500, processedData.size());
@@ -81,7 +85,7 @@ public class CollectionUtilTest {
     void testQuery() {
         List<Long> extremeIds = IntStream.rangeClosed(1, 65000).mapToObj(Long::valueOf).toList();
         List<String> aggregatedResults = CollectionUtil.batchWithResult(extremeIds, 5000, batchIds -> {
-            System.out.println("当前批次查询参数量: " + batchIds.size());
+            log.info("当前批次查询参数量: {}", batchIds.size());
             return batchIds.stream().map(id -> "User_" + id).toList();
         });
         Assertions.assertEquals(65000, aggregatedResults.size());
@@ -102,7 +106,7 @@ public class CollectionUtilTest {
 
         CollectionUtil.sortByOrderList(list, orderList, "id");
 
-        System.out.println(list);
+        log.info("{}", list);
     }
 
     @Test
@@ -131,7 +135,7 @@ public class CollectionUtilTest {
             return name instanceof String && ((String) name).toLowerCase().contains("c");
         }).filter(i -> i < rightList.size()).mapToObj(rightList::get).collect(Collectors.toList());
 
-        System.out.println(rightFilteredList);
+        log.info("{}", rightFilteredList);
 
     }
 
@@ -176,7 +180,7 @@ public class CollectionUtilTest {
         Assertions.assertEquals("B", dataList.get(1).get(12));
         Assertions.assertFalse(dataList.get(0).containsKey(null));
         Assertions.assertEquals("D", dataList.get(3).get(14));
-        dataList.forEach(System.out::println);
+        dataList.forEach(item -> log.info("{}", item));
     }
 
 }

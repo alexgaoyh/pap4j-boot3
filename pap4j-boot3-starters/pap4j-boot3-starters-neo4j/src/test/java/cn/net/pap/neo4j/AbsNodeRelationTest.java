@@ -8,6 +8,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 import org.neo4j.driver.internal.value.PathValue;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.HashSet;
@@ -17,6 +19,8 @@ import java.util.Set;
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class AbsNodeRelationTest extends Neo4jBaseTest {
+
+    private static final Logger log = LoggerFactory.getLogger(AbsNodeRelationTest.class);
 
     private final AbsNodeRepository absNodeRepository;
 
@@ -57,27 +61,28 @@ public class AbsNodeRelationTest extends Neo4jBaseTest {
     @Test
     public void findByAbsNodeLabelTest() {
         List<AbsNodeEntity> child1 = absNodeRepository.findByAbsNodeLabel("child1");
-        System.out.println(child1);
+        log.info("{}", child1);
 
         List<AbsNodeEntity> child1RelationList = absNodeRepository.getRelationByAbsNodeLabel("child1");
-        System.out.println(child1RelationList);
+        log.info("{}", child1RelationList);
 
         try {
             List<AbsNodeWithTypeDTO> child1AbsNodeWithTypeDTOList = absNodeRepository.getAbsNodeWithTypeDTOsByAbsNodeLabel("child1");
             ObjectMapper objectMapperJsonIdentityInfo = new ObjectMapper();
             String absNodeWithTypeDTOStr = objectMapperJsonIdentityInfo.writeValueAsString(child1AbsNodeWithTypeDTOList);
-            System.out.println(absNodeWithTypeDTOStr);
+            log.info("{}", absNodeWithTypeDTOStr);
         } catch (JsonProcessingException e) {
+            log.error("Json processing error", e);
         }
 
         List<List<PathValue>> pathBetweenNodesByAbsNodeLabelList = absNodeRepository.getPathBetweenNodesByAbsNodeLabel("parent1", "parent2");
-        System.out.println(pathBetweenNodesByAbsNodeLabelList);
+        log.info("{}", pathBetweenNodesByAbsNodeLabelList);
 
         List<List<PathValue>> shortestPathBetweenNodesByAbsNodeLabelList = absNodeRepository.getShortestPathBetweenNodesByAbsNodeLabel("parent1", "parent2");
-        System.out.println(shortestPathBetweenNodesByAbsNodeLabelList);
+        log.info("{}", shortestPathBetweenNodesByAbsNodeLabelList);
 
         List<AbsNodeWithChildrensDTO> parentWithChildrensList = AbsNodeWithChildrensDTO.convert(absNodeRepository.getParentWithChildrens("parent1"));
-        System.out.println(parentWithChildrensList);
+        log.info("{}", parentWithChildrensList);
     }
 
 }

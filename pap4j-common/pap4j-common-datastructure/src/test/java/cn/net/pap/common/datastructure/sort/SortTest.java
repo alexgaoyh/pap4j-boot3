@@ -1,8 +1,15 @@
 package cn.net.pap.common.datastructure.sort;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class SortTest {
+
+    private static final Logger log = LoggerFactory.getLogger(SortTest.class);
 
     @Test
     public void selectionSortTest() {
@@ -25,8 +32,7 @@ public class SortTest {
             arr[minIndex] = arr[i];
             arr[i] = temp;
 
-            System.out.print("第 " + (i + 1) + " 次变化后：");
-            printArray(arr);
+            log.info("第 {} 次变化后：{}", (i + 1), arrayToString(arr));
         }
     }
 
@@ -40,7 +46,7 @@ public class SortTest {
         if (low < high) {
             int partitionIndex = partition(arr, low, high);
 
-            printArray(arr);
+            log.info("{}", arrayToString(arr));
 
             quickSort(arr, low, partitionIndex - 1);
             quickSort(arr, partitionIndex + 1, high);
@@ -68,11 +74,10 @@ public class SortTest {
         return i + 1;
     }
 
-    private static void printArray(int[] arr) {
-        for (int num : arr) {
-            System.out.print(num + " ");
-        }
-        System.out.println();
+    private static String arrayToString(int[] arr) {
+        return Arrays.stream(arr)
+                .mapToObj(String::valueOf)
+                .collect(Collectors.joining(" "));
     }
 
 }

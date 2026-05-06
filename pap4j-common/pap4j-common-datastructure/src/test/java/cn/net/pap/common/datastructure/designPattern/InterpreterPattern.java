@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class InterpreterPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(InterpreterPattern.class);
 
     interface Expression {
         public boolean interpret(String context);
@@ -76,9 +80,8 @@ public class InterpreterPattern {
         Expression isMale = getMaleExpression();
         Expression isMarriedWoman = getMarriedWomanExpression();
 
-        System.out.println("John is male? " + isMale.interpret("John"));
-        System.out.println("Julie is a married women? "
-                + isMarriedWoman.interpret("Married Julie"));
+        log.info("John is male? {}", isMale.interpret("John"));
+        log.info("Julie is a married women? {}", isMarriedWoman.interpret("Married Julie"));
     }
 
 }

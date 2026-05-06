@@ -4,6 +4,9 @@ import cn.net.pap.common.datastructure.resource.TestResourceUtil;
 import cn.net.pap.common.datastructure.trie.DoubleArrayTrie;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
@@ -11,6 +14,8 @@ import java.io.FileReader;
 import java.util.*;
 
 public class DoubleArrayTrieTest {
+
+    private static final Logger log = LoggerFactory.getLogger(DoubleArrayTrieTest.class);
 
     @Test
     public void simpleTest() throws Exception {
@@ -23,7 +28,7 @@ public class DoubleArrayTrieTest {
 
         Set<Character> charset = new HashSet<Character>();
 
-        System.out.println("字典词条：" + words.size());
+        log.info("字典词条：{}", words.size());
 
         {
             String infoCharsetValue = "";
@@ -35,19 +40,19 @@ public class DoubleArrayTrieTest {
             }
             infoCharsetValue += '\n';
             infoCharsetCode += '\n';
-            System.out.print(infoCharsetValue);
-            System.out.print(infoCharsetCode);
+            log.info(infoCharsetValue);
+            log.info(infoCharsetCode);
         }
 
         DoubleArrayTrie dat = new DoubleArrayTrie();
-        System.out.println("是否错误: " + dat.build(words));
+        log.info("是否错误: {}", dat.build(words));
         List<Integer> integerList = dat.commonPrefixSearch("一举成名天下知");
         for (int index : integerList) {
-            System.out.println(words.get(index));
+            log.info(words.get(index));
         }
 
         int idx = dat.exactMatchSearch("一举成名天下知");
-        System.out.println(words.get(idx));
+        log.info(words.get(idx));
     }
 
     @Test
@@ -78,7 +83,7 @@ public class DoubleArrayTrieTest {
         // 显示调用，需与使用字典序.
         Collections.sort(words);
 
-        System.out.println("字典词条：" + words.size());
+        log.info("字典词条：{}", words.size());
 
         {
             String infoCharsetValue = "";
@@ -90,17 +95,17 @@ public class DoubleArrayTrieTest {
             }
             infoCharsetValue += '\n';
             infoCharsetCode += '\n';
-            System.out.print(infoCharsetValue);
-            System.out.print(infoCharsetCode);
+            log.info(infoCharsetValue);
+            log.info(infoCharsetCode);
         }
 
         DoubleArrayTrie dat = new DoubleArrayTrie();
-        System.out.println("是否错误: " + dat.build(words));
-        System.out.println(dat);
+        log.info("是否错误: {}", dat.build(words));
+        log.info("{}", dat);
         List<Integer> integerList = dat.commonPrefixSearch("一举成名天下知");
         for (int index : integerList)
         {
-            System.out.println(words.get(index));
+            log.info(words.get(index));
         }
     }
 }

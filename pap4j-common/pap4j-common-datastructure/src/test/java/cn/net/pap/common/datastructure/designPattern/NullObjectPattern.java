@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class NullObjectPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(NullObjectPattern.class);
 
     static abstract class AbstractCustomer {
         protected String name;
@@ -64,11 +68,11 @@ public class NullObjectPattern {
         AbstractCustomer customer3 = CustomerFactory.getCustomer("Julie");
         AbstractCustomer customer4 = CustomerFactory.getCustomer("Laura");
 
-        System.out.println("Customers");
-        System.out.println(customer1.getName());
-        System.out.println(customer2.getName());
-        System.out.println(customer3.getName());
-        System.out.println(customer4.getName());
+        log.info("Customers");
+        log.info(customer1.getName());
+        log.info(customer2.getName());
+        log.info(customer3.getName());
+        log.info(customer4.getName());
     }
 
 }

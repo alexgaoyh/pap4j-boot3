@@ -14,6 +14,8 @@ import org.neo4j.driver.internal.InternalNode;
 import org.neo4j.driver.internal.InternalRelationship;
 import org.neo4j.driver.internal.value.PathValue;
 import org.neo4j.driver.summary.ResultSummary;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
@@ -23,6 +25,8 @@ import java.util.stream.Collectors;
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class HLMEntityTest extends Neo4jBaseTest {
+
+    private static final Logger log = LoggerFactory.getLogger(HLMEntityTest.class);
 
     private final HLMRepository hlmRepository;
     private final HLMRelationshipRepository hlmRelationshipRepository;
@@ -37,29 +41,29 @@ public class HLMEntityTest extends Neo4jBaseTest {
     @Test
     public void findByName() {
         List<HLMEntity> jm = hlmRepository.findByName("贾母");
-        System.out.println(jm);
+        log.info("{}", jm);
         Map<String, Object> kgGraph = HLMEntity2KGConvert.convertToKnowledgeGraph(jm.get(0));
-        System.out.println(kgGraph);
+        log.info("{}", kgGraph);
     }
 
     @Test
     public void findByStartNodeName() {
         List<HLMNodeWithTypeDTO> jby = hlmRelationshipRepository.findByStartNodeName("贾宝玉");
-        System.out.println(jby);
+        log.info("{}", jby);
     }
 
     @Test
     public void getShortestPathBetweenNodesByName() {
         List<List<PathValue>> shortestPath = hlmRelationshipRepository.getShortestPathBetweenNodesByName("贾宝玉", "林黛玉");
-        System.out.println(shortestPath);
+        log.info("{}", shortestPath);
         Map<String, Object> kgGraph = PathValue2KGConvert.convertToKnowledgeGraph(shortestPath);
-        System.out.println(kgGraph);
+        log.info("{}", kgGraph);
     }
 
     @Test
     public void getById() {
         HLMEntity byId = hlmRepository.getById(157L);
-        System.out.println(byId);
+        log.info("{}", byId);
     }
 
     @Test
@@ -91,31 +95,31 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     dto.setRelationships(relationshipEntityList);
                     return dto;
                 }).all().stream().collect(Collectors.toList());
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     @Test
     public void getRoot() {
         List<HLMEntity> rootList = hlmRepository.getRoot();
-        System.out.println(rootList);
+        log.info("{}", rootList);
     }
 
     @Test
     public void getLeaf() {
         List<HLMEntity> leafList = hlmRepository.getLeaf();
-        System.out.println(leafList);
+        log.info("{}", leafList);
     }
 
     @Test
     public void getDistinctRelationshipType() {
         List<String> relationshipTypeList = hlmRelationshipRepository.getDistinctRelationshipType();
-        System.out.println(relationshipTypeList);
+        log.info("{}", relationshipTypeList);
     }
 
     @Test
     public void getCycle() {
         List<HLMEntity> leafList = hlmRepository.getCycle();
-        System.out.println(leafList);
+        log.info("{}", leafList);
     }
 
     @Test
@@ -165,11 +169,11 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     hlmListDTO.setRelations(relationshipList);
                     return hlmListDTO;
                 }).all().stream().collect(Collectors.toList());
-        System.out.println(results);
+        log.info("{}", results);
         List<HLMListDTO> distinctResults = HLMListDTO.distinct(results);
-        System.out.println(distinctResults);
+        log.info("{}", distinctResults);
         Map<String, Object> kgGraph = HLMListDTO2KGConvert.convertToKnowledgeGraph(distinctResults);
-        System.out.println(kgGraph);
+        log.info("{}", kgGraph);
     }
 
     /**
@@ -193,7 +197,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     jaccardMap.put("similarity", record.get("similarity"));
                     return jaccardMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -217,7 +221,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     jaccardMap.put("similarity", record.get("similarity"));
                     return jaccardMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -240,7 +244,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     jaccardMap.put("similarity", record.get("similarity"));
                     return jaccardMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -262,7 +266,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     centerMap.put("centrality", record.get("centrality"));
                     return centerMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -283,7 +287,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     centerMap.put("degree", record.get("degree"));
                     return centerMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -300,7 +304,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                 "ON CREATE SET n._degree = degreeRecord.degree " +
                 "ON MATCH SET n._degree = degreeRecord.degree ";
         ResultSummary run = neo4jClient.query(cypherQuery).run();
-        System.out.println(run.counters().propertiesSet());
+        log.info("{}", run.counters().propertiesSet());
     }
 
     /**
@@ -323,7 +327,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     centerMap.put("centrality", record.get("centrality"));
                     return centerMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -343,7 +347,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     centerMap.put("score", record.get("score"));
                     return centerMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -363,7 +367,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     centerMap.put("names", record.get("names"));
                     return centerMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -384,7 +388,7 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     centerMap.put("names", record.get("names"));
                     return centerMap;
                 }).all().stream().toList();
-        System.out.println(results);
+        log.info("{}", results);
     }
 
     /**
@@ -404,6 +408,6 @@ public class HLMEntityTest extends Neo4jBaseTest {
                     return (PathValue) record.get("paths");
                 }).all().stream().toList();
         Map<String, Object> kgGraph = PathValue2KGConvert.convertToKnowledgeGraph2(results, "type");
-        System.out.println(kgGraph);
+        log.info("{}", kgGraph);
     }
 }

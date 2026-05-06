@@ -1,6 +1,8 @@
 package cn.net.pap.example.actuator.admin;
 
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import oshi.SystemInfo;
 import oshi.hardware.HardwareAbstractionLayer;
 import oshi.hardware.NetworkIF;
@@ -11,20 +13,22 @@ import java.util.Optional;
 
 public class OshiJunit {
 
+    private static final Logger log = LoggerFactory.getLogger(OshiJunit.class);
+
     @Test
     public void test1() {
         SystemInfo systemInfo = new SystemInfo();
         HardwareAbstractionLayer hardware = systemInfo.getHardware();
 
-        System.out.println("=== 简单IO监控 ===");
+        log.info("=== 简单IO监控 ===");
 
         hardware.getDiskStores().forEach(disk -> {
-            System.out.println("磁盘: " + disk.getName());
-            System.out.println("  读取: " + FormatUtil.formatBytes(disk.getReadBytes()));
-            System.out.println("  写入: " + FormatUtil.formatBytes(disk.getWriteBytes()));
-            System.out.println("  读取操作: " + disk.getReads());
-            System.out.println("  写入操作: " + disk.getWrites());
-            System.out.println("  当前队列长度: " + disk.getCurrentQueueLength());
+            log.info("磁盘: {}", disk.getName());
+            log.info("  读取: {}", FormatUtil.formatBytes(disk.getReadBytes()));
+            log.info("  写入: {}", FormatUtil.formatBytes(disk.getWriteBytes()));
+            log.info("  读取操作: {}", disk.getReads());
+            log.info("  写入操作: {}", disk.getWrites());
+            log.info("  当前队列长度: {}", disk.getCurrentQueueLength());
         });
 
     }
@@ -56,7 +60,7 @@ public class OshiJunit {
             mac = networkIFOptional.get().getMacaddr();
         }
 
-        System.out.println(mac);
+        log.info("{}", mac);
 
     }
 

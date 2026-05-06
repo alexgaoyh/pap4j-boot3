@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AdapterPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(AdapterPattern.class);
 
     interface MediaPlayer {
         public void play(String audioType, String fileName);
@@ -17,7 +21,7 @@ public class AdapterPattern {
     static class VlcPlayer implements AdvancedMediaPlayer {
         @Override
         public void playVlc(String fileName) {
-            System.out.println("Playing vlc file. Name: " + fileName);
+            log.info("Playing vlc file. Name: {}", fileName);
         }
 
         @Override
@@ -35,7 +39,7 @@ public class AdapterPattern {
 
         @Override
         public void playMp4(String fileName) {
-            System.out.println("Playing mp4 file. Name: " + fileName);
+            log.info("Playing mp4 file. Name: {}", fileName);
         }
     }
 
@@ -69,7 +73,7 @@ public class AdapterPattern {
 
             //播放 mp3 音乐文件的内置支持
             if (audioType.equalsIgnoreCase("mp3")) {
-                System.out.println("Playing mp3 file. Name: " + fileName);
+                log.info("Playing mp3 file. Name: {}", fileName);
             }
             //mediaAdapter 提供了播放其他文件格式的支持
             else if (audioType.equalsIgnoreCase("vlc")
@@ -77,8 +81,7 @@ public class AdapterPattern {
                 mediaAdapter = new MediaAdapter(audioType);
                 mediaAdapter.play(audioType, fileName);
             } else {
-                System.out.println("Invalid media. " +
-                        audioType + " format not supported");
+                log.info("Invalid media. {} format not supported", audioType);
             }
         }
     }

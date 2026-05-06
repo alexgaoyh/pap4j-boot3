@@ -83,7 +83,7 @@ public class MainApp extends Application {
             }
             // 先执行必要的清理工作
             Platform.runLater(() -> {
-                System.out.println("关闭舞台...");
+                log.info("关闭舞台...");
                 // 关闭所有窗口
                 stage.close();
                 // 强制退出所有 JavaFX 线程

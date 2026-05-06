@@ -1,10 +1,14 @@
 package cn.net.pap.example.javafx.h2;
 
 import org.h2.tools.Server;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.SQLException;
 
 public class H2ServerManager {
+
+    private static final Logger log = LoggerFactory.getLogger(H2ServerManager.class);
 
     private static Server tcpServer;
 
@@ -33,9 +37,9 @@ public class H2ServerManager {
         // 测试数据库连接，确保数据库文件被创建
         testDatabaseConnection();
 
-        System.out.println("H2 TCP Server started on port: " + tcpServer.getPort());
-        System.out.println("H2 Web Console started on port: " + webServer.getPort());
-        System.out.println("管理界面URL: http://localhost:" + webServer.getPort());
+        log.info("H2 TCP Server started on port: {}", tcpServer.getPort());
+        log.info("H2 Web Console started on port: {}", webServer.getPort());
+        log.info("管理界面URL: http://localhost:{}", webServer.getPort());
     }
 
     private static void testDatabaseConnection() {
@@ -44,9 +48,9 @@ public class H2ServerManager {
              java.sql.Statement stmt = conn.createStatement()) {
             // 执行一个简单的查询来初始化数据库
             stmt.execute("SELECT 1 FROM DUAL");
-            System.out.println("数据库连接测试成功，数据库文件已创建");
+            log.info("数据库连接测试成功，数据库文件已创建");
         } catch (SQLException e) {
-            System.err.println("数据库连接测试失败: " + e.getMessage());
+            log.error("数据库连接测试失败: {}", e.getMessage());
         }
     }
 
@@ -55,11 +59,11 @@ public class H2ServerManager {
 
         for (int i = 0; i < MAX_PORT_ATTEMPTS; i++) {
             try {
-                System.out.println("尝试启动 TCP 服务器，端口: " + tcpPort);
+                log.info("尝试启动 TCP 服务器，端口: {}", tcpPort);
                 return Server.createTcpServer("-tcpPort", String.valueOf(tcpPort), "-tcpAllowOthers", "-ifNotExists").start();
             } catch (SQLException e) {
                 if (e.getMessage().contains("Port is already in use") || e.getMessage().contains("port may be in use")) {
-                    System.out.println("端口 " + tcpPort + " 被占用，尝试下一个端口...");
+                    log.info("端口 {} 被占用，尝试下一个端口...", tcpPort);
                     lastException = e;
                     tcpPort++; // 端口递增
                 } else {
@@ -78,11 +82,11 @@ public class H2ServerManager {
 
         for (int i = 0; i < MAX_PORT_ATTEMPTS; i++) {
             try {
-                System.out.println("尝试启动 Web 控制台，端口: " + webPort);
+                log.info("尝试启动 Web 控制台，端口: {}", webPort);
                 return Server.createWebServer("-web", "-webPort", String.valueOf(webPort), "-webAllowOthers", "-ifNotExists").start();
             } catch (SQLException e) {
                 if (e.getMessage().contains("Port is already in use") || e.getMessage().contains("port may be in use")) {
-                    System.out.println("端口 " + webPort + " 被占用，尝试下一个端口...");
+                    log.info("端口 {} 被占用，尝试下一个端口...", webPort);
                     lastException = e;
                     webPort++; // 端口递增
                 } else {
@@ -120,11 +124,11 @@ public class H2ServerManager {
     public static void stopServers() {
         if (tcpServer != null) {
             tcpServer.stop();
-            System.out.println("TCP 服务器已停止");
+            log.info("TCP 服务器已停止");
         }
         if (webServer != null) {
             webServer.stop();
-            System.out.println("Web 控制台已停止");
+            log.info("Web 控制台已停止");
         }
     }
 

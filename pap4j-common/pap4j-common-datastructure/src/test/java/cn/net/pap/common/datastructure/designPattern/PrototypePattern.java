@@ -1,10 +1,14 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Hashtable;
 
 public class PrototypePattern {
+
+    private static final Logger log = LoggerFactory.getLogger(PrototypePattern.class);
 
     static abstract class Shape implements Cloneable {
 
@@ -30,7 +34,7 @@ public class PrototypePattern {
             try {
                 clone = super.clone();
             } catch (CloneNotSupportedException e) {
-                e.printStackTrace();
+                log.error("Clone not supported", e);
             }
             return clone;
         }
@@ -44,7 +48,7 @@ public class PrototypePattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Rectangle::draw() method.");
+            log.info("Inside Rectangle::draw() method.");
         }
     }
 
@@ -56,7 +60,7 @@ public class PrototypePattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Square::draw() method.");
+            log.info("Inside Square::draw() method.");
         }
     }
 
@@ -68,7 +72,7 @@ public class PrototypePattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Circle::draw() method.");
+            log.info("Inside Circle::draw() method.");
         }
     }
 
@@ -105,13 +109,13 @@ public class PrototypePattern {
         ShapeCache.loadCache();
 
         Shape clonedShape = (Shape) ShapeCache.getShape("1");
-        System.out.println("Shape : " + clonedShape.getType());
+        log.info("Shape : {}", clonedShape.getType());
 
         Shape clonedShape2 = (Shape) ShapeCache.getShape("2");
-        System.out.println("Shape : " + clonedShape2.getType());
+        log.info("Shape : {}", clonedShape2.getType());
 
         Shape clonedShape3 = (Shape) ShapeCache.getShape("3");
-        System.out.println("Shape : " + clonedShape3.getType());
+        log.info("Shape : {}", clonedShape3.getType());
     }
 
 }

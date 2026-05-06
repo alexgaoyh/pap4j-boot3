@@ -23,6 +23,8 @@ import georegression.struct.point.Point2D_F64;
 import org.ddogleg.struct.DogArray;
 import org.ddogleg.struct.DogArray_I32;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URL;
 import java.nio.file.Path;
@@ -42,6 +44,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * back at the same location.
  */
 public class ExampleAssociateThreeView {
+
+    private static final Logger log = LoggerFactory.getLogger(ExampleAssociateThreeView.class);
 
     private String getTestImagePath() throws Exception {
         URL resourceUrl = ExampleAssociateThreeView.class.getClassLoader().getResource("input.jpg");
@@ -152,9 +156,9 @@ public class ExampleAssociateThreeView {
         example.detectFeatures(gray02, 1);
         example.detectFeatures(gray03, 2);
 
-        System.out.println("features01.size = " + example.features01.size);
-        System.out.println("features02.size = " + example.features02.size);
-        System.out.println("features03.size = " + example.features03.size);
+        log.info("features01.size = {}", example.features01.size);
+        log.info("features02.size = {}", example.features02.size);
+        log.info("features03.size = {}", example.features03.size);
 
         // Find features for an association ring across all the views. This removes most false positives.
         DogArray<AssociatedTripleIndex> associatedIdx = example.threeViewPairwiseAssociate();
@@ -164,7 +168,7 @@ public class ExampleAssociateThreeView {
         associatedIdx.forEach(p -> associated.grow().setTo(
                 example.locations01.get(p.a), example.locations02.get(p.b), example.locations03.get(p.c)));
 
-        System.out.println("Total Matched Triples = " + associated.size);
+        log.info("Total Matched Triples = {}", associated.size);
 
         // Show remaining associations from RANSAC
         if (!java.awt.GraphicsEnvironment.isHeadless()) {

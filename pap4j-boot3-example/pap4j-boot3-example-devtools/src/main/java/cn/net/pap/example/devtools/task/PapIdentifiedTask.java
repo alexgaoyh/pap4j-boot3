@@ -1,9 +1,14 @@
 package cn.net.pap.example.devtools.task;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * 给任务一个标识
  */
 public class PapIdentifiedTask implements Runnable {
+
+    private static final Logger log = LoggerFactory.getLogger(PapIdentifiedTask.class);
 
     private final String taskId;
 
@@ -16,7 +21,7 @@ public class PapIdentifiedTask implements Runnable {
 
     @Override
     public void run() {
-        System.out.println("Executing Task ID: " + taskId);
+        log.info("Executing Task ID: {}", taskId);
         actualTask.run();
     }
 

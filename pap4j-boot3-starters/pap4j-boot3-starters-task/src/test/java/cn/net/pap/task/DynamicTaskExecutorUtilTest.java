@@ -41,14 +41,14 @@ public class DynamicTaskExecutorUtilTest {
 
             // 执行任务
             List<DynamicTaskExecutorUtil.TaskResult<String>> results = DynamicTaskExecutorUtil.executeCallableTasks(executor, tasks, 4, // 最大并发4
-                    progress -> System.out.printf("进度: %.1f%%%n", progress.getProgressPercent()));
+                    progress -> log.info("进度: {}%", progress.getProgressPercent()));
 
             // 处理结果
             results.forEach(result -> {
                 if (result.isSuccess()) {
-                    System.out.println("成功: " + result.getResult());
+                    log.info("成功: {}", result.getResult());
                 } else {
-                    System.out.println("失败: " + result.getException().getMessage());
+                    log.info("失败: {}", result.getException().getMessage());
                 }
             });
         } finally {

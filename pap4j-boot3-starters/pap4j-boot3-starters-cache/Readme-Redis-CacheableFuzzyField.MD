@@ -57,12 +57,12 @@
         proguardService.saveAndFlush(proguard1);
     
         Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
-    
-        System.out.println(proguardByProguardId);
+
+        log.info(proguardByProguardId);
     
         proguardService.deleteAllById(1l);
-    
-        System.out.println("deleteAllById");
+
+        log.info("deleteAllById");
     }
 
 ```

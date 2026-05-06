@@ -7,6 +7,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
 
@@ -20,6 +22,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class DepartmentEntityTest extends Neo4jBaseTest {
+
+    private static final Logger log = LoggerFactory.getLogger(DepartmentEntityTest.class);
 
     private final DepartmentRepository departmentRepository;
     private final Neo4jClient neo4jClient;
@@ -64,7 +68,7 @@ public class DepartmentEntityTest extends Neo4jBaseTest {
                     departmentEntity.setRemark(record.values().get(0).get("remark").asString());
                     return departmentEntity;
                 }).all().stream().collect(Collectors.toList());
-        System.out.println(results);
+        log.info("{}", results);
     }
 
 
@@ -84,6 +88,6 @@ public class DepartmentEntityTest extends Neo4jBaseTest {
                     map.put("c", record.values().get(2).get("remark").toString());
                     return map;
                 }).all().stream().collect(Collectors.toList());
-        System.out.println(results);
+        log.info("{}", results);
     }
 }

@@ -4,11 +4,15 @@ import cn.net.pap.common.datastructure.observer.*;
 import cn.net.pap.common.datastructure.observer.event.Event1PapObserver;
 import cn.net.pap.common.datastructure.observer.event.constant.EventSubjectConstants;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
 
 public class PapObserverTest {
+
+    private static final Logger log = LoggerFactory.getLogger(PapObserverTest.class);
 
     @Test
     public void test1() {
@@ -17,7 +21,7 @@ public class PapObserverTest {
             if(eventSubjectMap.containsKey("event" + i)) {
                 eventSubjectMap.get("event" + i).callNotify("event " + i + " finish, call next");
             }
-            System.out.println("-------------------------------------------------");
+            log.info("-------------------------------------------------");
         }
 
     }

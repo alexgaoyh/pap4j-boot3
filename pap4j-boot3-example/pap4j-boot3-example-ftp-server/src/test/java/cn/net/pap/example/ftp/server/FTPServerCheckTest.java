@@ -41,9 +41,9 @@
 //
 //            // 验证服务器是否支持UTF-8
 //            if (FTPReply.isPositiveCompletion(ftpClient.sendCommand("OPTS UTF8", "ON"))) {
-//                System.out.println("FTP服务器支持UTF-8编码");
+//                log.info("FTP服务器支持UTF-8编码");
 //            } else {
-//                System.out.println("FTP服务器不支持UTF-8编码，可能遇到中文问题");
+//                log.info("FTP服务器不支持UTF-8编码，可能遇到中文问题");
 //            }
 //        } catch (IOException e) {
 //            throw new RuntimeException(e);

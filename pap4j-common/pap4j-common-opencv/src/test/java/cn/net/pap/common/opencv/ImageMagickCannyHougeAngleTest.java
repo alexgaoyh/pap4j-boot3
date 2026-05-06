@@ -523,7 +523,7 @@ public class ImageMagickCannyHougeAngleTest {
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error running ImageMagick command: ", e);
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {

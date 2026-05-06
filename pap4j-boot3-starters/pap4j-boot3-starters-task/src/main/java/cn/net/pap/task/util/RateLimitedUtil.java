@@ -34,15 +34,15 @@ public class RateLimitedUtil {
                 }).subscribeOn(Schedulers.boundedElastic())
                 .flatMap(
                         ignored -> task.get().doOnSuccess(result -> {
-                            System.out.println("任务执行成功");
+                            log.info("任务执行成功");
                             semaphore.release();
                         }).doOnError(error -> {
-                            System.out.println("任务执行失败: " + error.getMessage());
+                            log.error("任务执行失败: {}", error.getMessage());
                             semaphore.release();
                         })
                 )
                 .onErrorResume(e -> {
-                    System.out.println("限流任务执行失败: " + e.getMessage());
+                    log.error("限流任务执行失败: {}", e.getMessage());
                     // 只有在成功获取许可但后续出错时才释放
                     if (!e.getMessage().equals("系统繁忙，请稍后重试")) {
                         semaphore.release();

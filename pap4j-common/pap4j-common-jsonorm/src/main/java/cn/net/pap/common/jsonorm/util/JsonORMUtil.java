@@ -6,6 +6,8 @@ import cn.net.pap.common.jsonorm.dto.TableFieldValueDTO;
 import cn.net.pap.common.jsonorm.dto.DelDetailTableValueDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 
 import java.io.*;
@@ -17,6 +19,8 @@ import static java.util.stream.Collectors.toList;
  * JSON ORM 工具类
  */
 public class JsonORMUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(JsonORMUtil.class);
 
     /**
      * 文档读取 - 读取文本内容
@@ -34,7 +38,7 @@ public class JsonORMUtil {
             while ((nextString = reader.readLine()) != null)
                 JSON = new StringBuilder().append(JSON).append(nextString).toString();
         } catch (Exception ex) {
-            System.err.println(ex.getMessage());
+            log.error("读取文件异常: {}", ex.getMessage(), ex);
         }
         return JSON;
     }

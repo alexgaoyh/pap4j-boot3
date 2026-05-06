@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ObserverPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(ObserverPattern.class);
 
     class Subject {
 
@@ -48,8 +52,7 @@ public class ObserverPattern {
 
         @Override
         public void update() {
-            System.out.println("Binary String: "
-                    + Integer.toBinaryString(subject.getState()));
+            log.info("Binary String: {}", Integer.toBinaryString(subject.getState()));
         }
     }
 
@@ -62,8 +65,7 @@ public class ObserverPattern {
 
         @Override
         public void update() {
-            System.out.println("Octal String: "
-                    + Integer.toOctalString(subject.getState()));
+            log.info("Octal String: {}", Integer.toOctalString(subject.getState()));
         }
     }
 
@@ -76,8 +78,7 @@ public class ObserverPattern {
 
         @Override
         public void update() {
-            System.out.println("Hex String: "
-                    + Integer.toHexString(subject.getState()).toUpperCase());
+            log.info("Hex String: {}", Integer.toHexString(subject.getState()).toUpperCase());
         }
     }
 
@@ -89,9 +90,9 @@ public class ObserverPattern {
         new OctalObserver(subject);
         new BinaryObserver(subject);
 
-        System.out.println("First state change: 15");
+        log.info("First state change: 15");
         subject.setState(15);
-        System.out.println("Second state change: 10");
+        log.info("Second state change: 10");
         subject.setState(10);
     }
 

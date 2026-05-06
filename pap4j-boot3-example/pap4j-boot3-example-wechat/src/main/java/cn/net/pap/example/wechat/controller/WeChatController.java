@@ -51,7 +51,7 @@ public class WeChatController {
         try {
             Object wechat = SpringUtils.getBean("wechat");
             SpringUtils.invokeMethod(wechat, "sleep");
-            System.out.println(wechat);
+            logger.info("{}", wechat);
             return Result.success("finish");
         } catch (Exception e) {
             return Result.error(e.getMessage());

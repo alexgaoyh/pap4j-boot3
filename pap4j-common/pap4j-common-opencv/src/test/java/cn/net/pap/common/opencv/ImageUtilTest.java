@@ -173,7 +173,7 @@ public class ImageUtilTest {
             ImageIO.write(result, "jpg", TestResourceUtil.createTempFile("result", ".jpg"));
             log.info("{}", "拼接完成！");
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in pointTest: ", e);
         }
     }
 

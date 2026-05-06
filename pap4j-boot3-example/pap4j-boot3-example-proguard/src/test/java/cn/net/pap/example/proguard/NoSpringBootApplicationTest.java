@@ -1,6 +1,8 @@
 package cn.net.pap.example.proguard;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -23,6 +25,8 @@ import org.springframework.test.context.TestConstructor;
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class NoSpringBootApplicationTest {
 
+    private static final Logger log = LoggerFactory.getLogger(NoSpringBootApplicationTest.class);
+
     @Configuration
     static class TestConfig {
 
@@ -43,7 +47,7 @@ public class NoSpringBootApplicationTest {
 
     @Test
     public void test1() throws Exception {
-        System.out.println(port);
+        log.info("{}", port);
     }
 
 }

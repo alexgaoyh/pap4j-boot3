@@ -4,12 +4,16 @@ import cn.net.pap.liteflow.component.demo.dto.DemoContextDTO;
 import com.yomahub.liteflow.core.FlowExecutor;
 import com.yomahub.liteflow.flow.LiteflowResponse;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestConstructor;
 
 @SpringBootTest(classes = {LiteflowApplication.class})
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class LiteflowDemoTest {
+
+    private static final Logger log = LoggerFactory.getLogger(LiteflowDemoTest.class);
 
     private final FlowExecutor flowExecutor;
 
@@ -23,6 +27,6 @@ public class LiteflowDemoTest {
         demoContextDTO.getContextMap().put("BUSS_ID", System.currentTimeMillis() + "");
         LiteflowResponse response = flowExecutor.execute2Resp("demo", null, demoContextDTO);
         DemoContextDTO context = response.getFirstContextBean();
-        System.out.println(context);
+        log.info("{}", context);
     }
 }

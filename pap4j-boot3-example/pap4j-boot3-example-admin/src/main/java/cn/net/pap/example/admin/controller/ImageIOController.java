@@ -1,5 +1,7 @@
 package cn.net.pap.example.admin.controller;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -13,6 +15,8 @@ import java.util.Map;
 
 @RestController
 public class ImageIOController {
+
+    private static final Logger log = LoggerFactory.getLogger(ImageIOController.class);
 
     @GetMapping("imageio")
     public Object imageio() {
@@ -29,7 +33,7 @@ public class ImageIOController {
                 if(imageReadersByMIMEType != null) {
                     while (imageReadersByMIMEType.hasNext()) {
                         ImageReader spi = imageReadersByMIMEType.next();
-                        System.out.println("ImageReader SPI Class: " + spi.getClass().getName());
+                        log.info("ImageReader SPI Class: {}", spi.getClass().getName());
                         spiClass = spiClass + spi.getClass().getName() + " ; ";
                     }
                     mimeList.add(mime + " : " + spiClass);
@@ -46,7 +50,7 @@ public class ImageIOController {
             map.put("nptList", nptList);
             return map;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("ImageIO processing error: ", e);
             return e.getMessage();
         }
     }

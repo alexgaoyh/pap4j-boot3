@@ -15,6 +15,8 @@ import boofcv.struct.image.GrayS16;
 import boofcv.struct.image.GrayU8;
 import cn.net.pap.common.boofcv.dto.MarginDTO;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.image.BufferedImage;
 import java.net.URL;
@@ -24,6 +26,8 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class ExampleCannyEdge {
+
+    private static final Logger log = LoggerFactory.getLogger(ExampleCannyEdge.class);
 
     private String getTestImagePath() throws Exception {
         URL resourceUrl = getClass().getClassLoader().getResource("input.jpg");
@@ -35,7 +39,7 @@ public class ExampleCannyEdge {
     public void blackMarginTest() throws Exception {
         String imagePath = getTestImagePath();
         MarginDTO blackMargin = CannyEdgeUtilss.getBlackMargin(imagePath);
-        System.out.println(blackMargin);
+        log.info("{}", blackMargin);
     }
 
     public static void main(String[] args) throws Exception {

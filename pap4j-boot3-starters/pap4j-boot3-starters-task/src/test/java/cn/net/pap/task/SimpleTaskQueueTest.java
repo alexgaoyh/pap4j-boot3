@@ -29,7 +29,7 @@ public class SimpleTaskQueueTest {
         consumerThread.join(500);
 
         List<SimpleTaskQueueDTO> simpleTaskQueueDTOS = queue.stopConsumerAndReturnUnProcessed();
-        System.out.println(simpleTaskQueueDTOS);
+        log.info("{}", simpleTaskQueueDTOS);
     }
 
     @Test

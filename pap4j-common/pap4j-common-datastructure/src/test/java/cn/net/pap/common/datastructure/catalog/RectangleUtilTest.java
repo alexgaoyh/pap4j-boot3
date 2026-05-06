@@ -2,12 +2,16 @@ package cn.net.pap.common.datastructure.catalog;
 
 import cn.net.pap.common.datastructure.rectangle.RectangleUtil;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 public class RectangleUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(RectangleUtilTest.class);
 
     @Test
     public void isOverlapTest() {
@@ -27,14 +31,14 @@ public class RectangleUtilTest {
         box2.add(box22);
 
         boolean overlap = RectangleUtil.isOverlap(box1, box2);
-        System.out.println(overlap);
+        log.info("{}", overlap);
     }
 
     @Test
     public void verticalPartTest() {
         Double[] rect = new Double[]{1702.08, 1125.63, 1806.04, 1565.68};
         List<Double[]> partRects = RectangleUtil.verticalPart(rect, 4);
-        System.out.println(partRects);
+        log.info("{}", partRects);
     }
 
     @Test
@@ -50,7 +54,7 @@ public class RectangleUtilTest {
         rectList.add(rect4);
 
         RectangleUtil.reSort(rectList);
-        System.out.println(rectList);
+        log.info("{}", rectList);
     }
 
     @Test
@@ -62,7 +66,7 @@ public class RectangleUtilTest {
 
         List<Double> merged = RectangleUtil.mergeRectangles(box1, box2, box3, box4);
 
-        System.out.println(merged);
+        log.info("{}", merged);
     }
 
     @Test
@@ -75,15 +79,15 @@ public class RectangleUtilTest {
         boxes.add(List.of(10.0, 50.0, 50.0, 70.0));
 
         List<List<Double>> lines = RectangleUtil.mergeBoxesToLines(boxes, 1.5, 0.6);
-        System.out.println("Merged lines:");
+        log.info("Merged lines:");
         for (List<Double> l : lines) {
-            System.out.println(l);
+            log.info("{}", l);
         }
 
         List<List<Double>> columns = RectangleUtil.mergeBoxesToColumns(boxes, 1.5, 0.6);
-        System.out.println("Merged columns:");
+        log.info("Merged columns:");
         for (List<Double> c : columns) {
-            System.out.println(c);
+            log.info("{}", c);
         }
     }
 
@@ -91,7 +95,7 @@ public class RectangleUtilTest {
     public void getSkylineTest() {
         int[][] buildings = {{2, 9, 10}, {3, 7, 15}, {5, 12, 12}, {15, 20, 10}, {19, 24, 8}};
         List<List<Integer>> skyline = RectangleUtil.getSkyline(buildings);
-        System.out.println(skyline);
+        log.info("{}", skyline);
 
     }
 
@@ -103,7 +107,7 @@ public class RectangleUtilTest {
                 {5, 8, 9, 0}
         };
         List<List<Integer>> skyline = RectangleUtil.getSkylineFromRectangles(buildings);
-        System.out.println(skyline);
+        log.info("{}", skyline);
 
     }
 
@@ -118,9 +122,9 @@ public class RectangleUtilTest {
         boxes.add(List.of(60.0, 80.0, 25.0, 45.0));
 
         List<List<Double>> lines = RectangleUtil.mergeLineBoxesToPolygons(boxes, 1.5, 0.6);
-        System.out.println("Merged Polygons:");
+        log.info("Merged Polygons:");
         for (List<Double> l : lines) {
-            System.out.println(l);
+            log.info("{}", l);
         }
 
     }

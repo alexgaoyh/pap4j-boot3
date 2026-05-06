@@ -14,7 +14,7 @@ public class PapStatementInspector implements StatementInspector {
     @Override
     public String inspect(String sql) {
         if(log.isDebugEnabled()) {
-            System.out.println("PapStatementInspector.inspect = " + sql);
+            log.debug("PapStatementInspector.inspect = {}", sql);
         }
         return sql;
     }

@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class BuilderPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(BuilderPattern.class);
 
     interface Item {
         public String name();
@@ -126,9 +130,7 @@ public class BuilderPattern {
 
         public void showItems() {
             for (Item item : items) {
-                System.out.print("Item : " + item.name());
-                System.out.print(", Packing : " + item.packing().pack());
-                System.out.println(", Price : " + item.price());
+                log.info("Item : {}, Packing : {}, Price : {}", item.name(), item.packing().pack(), item.price());
             }
         }
     }
@@ -155,14 +157,14 @@ public class BuilderPattern {
         MealBuilder mealBuilder = new MealBuilder();
 
         Meal vegMeal = mealBuilder.prepareVegMeal();
-        System.out.println("Veg Meal");
+        log.info("Veg Meal");
         vegMeal.showItems();
-        System.out.println("Total Cost: " + vegMeal.getCost());
+        log.info("Total Cost: {}", vegMeal.getCost());
 
         Meal nonVegMeal = mealBuilder.prepareNonVegMeal();
-        System.out.println("\n\nNon-Veg Meal");
+        log.info("\n\nNon-Veg Meal");
         nonVegMeal.showItems();
-        System.out.println("Total Cost: " + nonVegMeal.getCost());
+        log.info("Total Cost: {}", nonVegMeal.getCost());
     }
 
 

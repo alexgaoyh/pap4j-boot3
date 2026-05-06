@@ -149,8 +149,7 @@ public class JdbcAccessTemplateTest {
                 }
 
             } catch (Exception e) {
-                System.err.println("操作失败: " + e.getMessage());
-                e.printStackTrace();
+                log.error("操作失败: ", e);
             }
         } finally {
             if (newDbFile != null && newDbFile.exists()) {

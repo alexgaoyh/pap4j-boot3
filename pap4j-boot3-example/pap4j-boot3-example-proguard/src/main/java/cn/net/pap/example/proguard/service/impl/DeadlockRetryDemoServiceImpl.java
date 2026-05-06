@@ -1,6 +1,8 @@
 package cn.net.pap.example.proguard.service.impl;
 
 import cn.net.pap.example.proguard.service.IDeadlockRetryDemoService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DeadlockLoserDataAccessException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,6 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class DeadlockRetryDemoServiceImpl implements IDeadlockRetryDemoService {
+
+    private static final Logger log = LoggerFactory.getLogger(DeadlockRetryDemoServiceImpl.class);
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -41,6 +45,7 @@ public class DeadlockRetryDemoServiceImpl implements IDeadlockRetryDemoService {
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
 
@@ -60,7 +65,7 @@ public class DeadlockRetryDemoServiceImpl implements IDeadlockRetryDemoService {
 
     @Recover
     public void recover(Exception e, Long id1, Long id2) {
-        System.out.println(String.format("!!! 重试耗尽，恢复逻辑触发，参数：%s -> %s，异常： %s", id1, id2, e));
+        log.error("!!! 重试耗尽，恢复逻辑触发，参数：{} -> {}，异常：", id1, id2, e);
         // todo maybe throw exception
     }
 

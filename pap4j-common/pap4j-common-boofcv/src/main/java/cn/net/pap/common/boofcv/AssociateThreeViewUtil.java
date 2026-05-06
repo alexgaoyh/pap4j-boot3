@@ -102,7 +102,7 @@ public class AssociateThreeViewUtil {
 
             // 保存合并后的图像
             boolean jpg = ImageIO.write(mergedImage, "jpg", new File(outputPath));
-            System.out.println(jpg);
+            log.info("Image save success: {}", jpg);
         } catch (IOException e) {
             log.error("mergeImages", e);
         }

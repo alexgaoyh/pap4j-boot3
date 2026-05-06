@@ -1,6 +1,8 @@
 package cn.net.pap.example.proguard;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -18,6 +20,9 @@ import java.util.stream.IntStream;
 @TestPropertySource("classpath:application.properties")
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class VariableDefinedInServiceTest {
+
+    private static final Logger log = LoggerFactory.getLogger(VariableDefinedInServiceTest.class);
+
     static class ErrorServiceConfig {
         private int count = 0;
         public void increment() {
@@ -46,7 +51,7 @@ public class VariableDefinedInServiceTest {
     public void testIncrement() {
         IntStream.range(10000, 11000).parallel().forEach(i -> {
             errorServiceConfig.increment();
-            System.out.println(errorServiceConfig.getCount());
+            log.info("{}", errorServiceConfig.getCount());
         });
 
     }

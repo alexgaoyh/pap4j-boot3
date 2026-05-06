@@ -4,10 +4,15 @@ import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.vocabulary.VCARD;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import java.io.ByteArrayOutputStream;
 import java.nio.file.Files;
 
 public class JenaTest {
+
+    private static final Logger log = LoggerFactory.getLogger(JenaTest.class);
 
     @Test
     public void test1() {
@@ -39,30 +44,36 @@ public class JenaTest {
             Resource subject = statement.getSubject();
             Property predicate = statement.getPredicate();
             RDFNode object = statement.getObject();
-            System.out.print(subject.toString());
-            System.out.print(" " + predicate.toString() + " ");
+            StringBuilder sb = new StringBuilder();
+            sb.append(subject.toString());
+            sb.append(" ").append(predicate.toString()).append(" ");
             if (object instanceof Resource) {
-                System.out.print(object.toString());
+                sb.append(object.toString());
             } else {
-                System.out.print("\"" + object.toString() + "\"");
+                sb.append("\"").append(object.toString()).append("\"");
             }
-            System.out.println(" .");
+            sb.append(" .");
+            log.info("{}", sb.toString());
         }
 
-        System.out.println("-------------WRITE-------------------------------------------------------------");
-        model.write(System.out, "N-TRIPLES");
+        log.info("-------------WRITE-------------------------------------------------------------");
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        model.write(out, "N-TRIPLES");
+        log.info("{}", out.toString());
 
-        System.out.println("-------------WRITE-------------------------------------------------------------");
-        model.write(System.out);
+        log.info("-------------WRITE-------------------------------------------------------------");
+        out.reset();
+        model.write(out);
+        log.info("{}", out.toString());
 
-        System.out.println("------------listSubjectsWithProperty-------------------------------------------");
+        log.info("------------listSubjectsWithProperty-------------------------------------------");
         ResIterator iter = model.listSubjectsWithProperty(VCARD.FN);
         while (iter.hasNext()) {
             Resource r = iter.nextResource();
-            System.out.println(r.getProperty(VCARD.FN).getString());
+            log.info("{}", r.getProperty(VCARD.FN).getString());
         }
 
-        System.out.println("----------------------QUERY----------------------------------------------------");
+        log.info("----------------------QUERY----------------------------------------------------");
         String sparqlQueryString = "SELECT ?x ?p ?o WHERE { ?x ?p ?o . FILTER (?p = <http://www.w3.org/2001/vcard-rdf/3.0#FN>) }";
         Query query = QueryFactory.create(sparqlQueryString);
         QueryExecution qexec = QueryExecutionFactory.create(query, model);
@@ -70,7 +81,7 @@ public class JenaTest {
             ResultSet results = qexec.execSelect();
             for (; results.hasNext(); ) {
                 QuerySolution soln = results.nextSolution();
-                System.out.println(soln.get("x") + "   " + soln.get("p") + "   " + soln.get("o"));
+                log.info("{}   {}   {}", soln.get("x"), soln.get("p"), soln.get("o"));
             }
 
         } finally {
@@ -85,7 +96,7 @@ public class JenaTest {
         String fileAbsolutePath = TestResourceUtil.getFile("kuangbiao_240410145535.nt").getAbsolutePath().toString();
         model = model.read(fileAbsolutePath);
 
-        System.out.println("----------------------QUERY--FILTER--STR(?o) != ------------------------------");
+        log.info("----------------------QUERY--FILTER--STR(?o) != ------------------------------");
         String sparqlQueryString = "SELECT ?x ?p ?o \n" +
                 "WHERE { \n" +
                 "  ?x ?p ?o .\n" +
@@ -97,7 +108,7 @@ public class JenaTest {
             ResultSet results = qexec.execSelect();
             for (; results.hasNext(); ) {
                 QuerySolution soln = results.nextSolution();
-                System.out.println(soln.get("x") + "   " + soln.get("p") + "   " + soln.get("o"));
+                log.info("{}   {}   {}", soln.get("x"), soln.get("p"), soln.get("o"));
             }
 
         } finally {

@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SingletonPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(SingletonPattern.class);
 
     static class SingleObject {
 
@@ -19,7 +23,7 @@ public class SingletonPattern {
         }
 
         public void showMessage() {
-            System.out.println("Hello World!");
+            log.info("Hello World!");
         }
     }
 

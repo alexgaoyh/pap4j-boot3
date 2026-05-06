@@ -6,6 +6,8 @@ import cn.net.pap.example.proguard.repository.AutoIncrePreKeyRepository;
 import cn.net.pap.example.proguard.service.ITempQueryService;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestConstructor;
 
@@ -18,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class TempQueryTest {
+
+    private static final Logger log = LoggerFactory.getLogger(TempQueryTest.class);
 
     private final ITempQueryService tempQueryService;
     private final AutoIncrePreKeyRepository autoIncrePreKeyRepository;
@@ -139,8 +143,8 @@ public class TempQueryTest {
             assertThat(tempResult).hasSize(targetIds.size());
         }
 
-        System.out.println("IN avg(ms): " + inTotal / 5 / 1_000_000);
-        System.out.println("TEMP avg(ms): " + tempTotal / 5 / 1_000_000);
+        log.info("IN avg(ms): {}", inTotal / 5 / 1_000_000);
+        log.info("TEMP avg(ms): {}", tempTotal / 5 / 1_000_000);
 
     }
 

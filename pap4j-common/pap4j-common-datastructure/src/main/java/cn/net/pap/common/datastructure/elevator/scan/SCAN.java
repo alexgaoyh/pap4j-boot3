@@ -1,5 +1,8 @@
 package cn.net.pap.common.datastructure.elevator.scan;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -11,6 +14,8 @@ import java.util.List;
  * @author alexgaoyh
  */
 public class SCAN {
+
+    private static final Logger log = LoggerFactory.getLogger(SCAN.class);
 
     /**
      * <p>电梯当前运行的初始方向。</p>
@@ -70,11 +75,13 @@ public class SCAN {
      * <p>统计信息包含所有任务的总移动距离以及平均每次服务的移动距离。</p>
      */
     public void exec() {
-        System.out.format("电梯当前位于第%s层, 对如下乘客进行服务:\n", initPos);
+        log.info(String.format("电梯当前位于第%s层, 对如下乘客进行服务:", initPos));
+        StringBuilder sb = new StringBuilder();
         for (Task task : taskList) {
-            System.out.format("%d->%d ", task.from, task.to);
+            sb.append(String.format("%d->%d ", task.from, task.to));
         }
-        System.out.println("\n请求次序     服务乘客    电梯移动楼层数");
+        log.info("{}", sb.toString());
+        log.info("\n请求次序     服务乘客    电梯移动楼层数");
 
         this.dispatching();
 
@@ -83,11 +90,11 @@ public class SCAN {
             Task task = taskList.get(i);
             int d = Math.abs(task.from - task.to);
             totalTime += d;
-            System.out.format("   %d     %s:%2d->%2d       -\n", i, task.name, task.from, task.to);
+            log.info(String.format("   %d     %s:%2d->%2d       -", i, task.name, task.from, task.to));
         }
-        System.out.println("总移动距离: " + totalTime);
+        log.info("总移动距离: {}", totalTime);
         double ave = totalTime / 1.0 / taskList.size();
-        System.out.format("平均每次服务的距离: %.1f\n", ave);
+        log.info(String.format("平均每次服务的距离: %.1f", ave));
     }
 
 }

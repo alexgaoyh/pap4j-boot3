@@ -1,5 +1,7 @@
 package cn.net.pap.example.proguard.repository;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Repository;
 
 import javax.sql.DataSource;
@@ -14,6 +16,8 @@ import java.sql.SQLException;
 @Repository
 public class ProguardJDBCRepository {
 
+    private static final Logger log = LoggerFactory.getLogger(ProguardJDBCRepository.class);
+
     private final DataSource dataSource;
 
     public ProguardJDBCRepository(DataSource dataSource) {
@@ -25,7 +29,7 @@ public class ProguardJDBCRepository {
              PreparedStatement ps = conn.prepareStatement("SELECT * FROM proguard")) {
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    System.out.println(rs.getString("proguard_id"));
+                    log.info("{}", rs.getString("proguard_id"));
                 }
             }
         } catch (SQLException e) {

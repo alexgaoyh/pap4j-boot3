@@ -3,6 +3,9 @@ package cn.net.pap.common.pdf;
 import com.itextpdf.text.pdf.*;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.util.HashMap;
@@ -11,6 +14,8 @@ import java.util.Map;
 import java.util.Set;
 
 public class ITextResourceExplorerTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ITextResourceExplorerTest.class);
 
     private static Set<PRIndirectReference> visited = new HashSet<>();
 
@@ -22,14 +27,14 @@ public class ITextResourceExplorerTest {
             reader = new PdfReader(fis);
             for (int i = 1; i <= reader.getNumberOfPages(); i++) {
                 PdfDictionary pageDict = reader.getPageN(i);
-                System.out.println(">>> Page " + i);
+                log.info(">>> Page {}", i);
                 exploreObject(pageDict, reader, 0);
             }
 
-            System.out.println("----------------------------------------------------------------------------");
+            log.info("----------------------------------------------------------------------------");
 
             for (int i = 1; i <= reader.getNumberOfPages(); i++) {
-                System.out.println("Page " + i);
+                log.info("Page {}", i);
                 PdfDictionary pageDict = reader.getPageN(i);
                 PdfDictionary resources = pageDict.getAsDict(PdfName.RESOURCES);
                 if (resources == null) continue;
@@ -55,12 +60,12 @@ public class ITextResourceExplorerTest {
 
                     allImageObjects.put(obj, name); // 记录，用于反查遮罩引用
 
-                    System.out.println(" Image: " + name);
+                    log.info(" Image: {}", name);
 
                     PdfObject filter = imgDict.get(PdfName.FILTER);
                     PdfObject decodeParms = imgDict.get(PdfName.DECODEPARMS);
-                    System.out.println("  Filter: " + filter);
-                    System.out.println("  DecodeParms: " + decodeParms);
+                    log.info("  Filter: {}", filter);
+                    log.info("  DecodeParms: {}", decodeParms);
 
                     // 检查是否包含 JBIG2GLOBALS
                     if (decodeParms != null) {
@@ -68,7 +73,7 @@ public class ITextResourceExplorerTest {
                             PdfDictionary dpDict = (PdfDictionary) decodeParms;
                             PdfObject jbig2Globals = dpDict.get(PdfName.JBIG2GLOBALS);
                             if (jbig2Globals != null) {
-                                System.out.println("  >>> Found JBIG2GLOBALS: " + jbig2Globals);
+                                log.info("  >>> Found JBIG2GLOBALS: {}", jbig2Globals);
                             }
                         } else if (decodeParms.isArray()) {
                             PdfArray dpArray = (PdfArray) decodeParms;
@@ -77,7 +82,7 @@ public class ITextResourceExplorerTest {
                                     PdfDictionary dpDict = (PdfDictionary) dpObj;
                                     PdfObject jbig2Globals = dpDict.get(PdfName.JBIG2GLOBALS);
                                     if (jbig2Globals != null) {
-                                        System.out.println("  >>> Found JBIG2GLOBALS in array: " + jbig2Globals);
+                                        log.info("  >>> Found JBIG2GLOBALS in array: {}", jbig2Globals);
                                     }
                                 }
                             }
@@ -90,34 +95,34 @@ public class ITextResourceExplorerTest {
                     PdfBoolean imageMask = imgDict.getAsBoolean(PdfName.IMAGEMASK);
                     if (imageMask != null && imageMask.booleanValue()) {
                         isMask = true;
-                        System.out.println("  >>> ImageMask: true (this image is a stencil mask)");
+                        log.info("  >>> ImageMask: true (this image is a stencil mask)");
                     }
 
                     PdfObject mask = imgDict.get(PdfName.MASK);
                     if (mask != null) {
                         isMask = true;
                         if (mask.isArray()) {
-                            System.out.println("  >>> Color Mask detected: " + mask);
+                            log.info("  >>> Color Mask detected: {}", mask);
                         } else {
-                            System.out.println("  >>> Explicit Mask image: " + mask);
+                            log.info("  >>> Explicit Mask image: {}", mask);
                         }
                     }
 
                     PdfArray decode = imgDict.getAsArray(PdfName.DECODE);
                     if (decode != null) {
-                        System.out.println("  >>> Decode array: " + decode);
+                        log.info("  >>> Decode array: {}", decode);
                     }
 
                     PdfDictionary group = imgDict.getAsDict(PdfName.GROUP);
                     if (group != null && PdfName.TRANSPARENCY.equals(group.getAsName(PdfName.S))) {
-                        System.out.println("  >>> Transparency group detected");
+                        log.info("  >>> Transparency group detected");
                     }
 
                     if (!isMask) {
-                        System.out.println("  >>> No direct mask detected for this image.");
+                        log.info("  >>> No direct mask detected for this image.");
                     }
 
-                    System.out.println();
+                    log.info("");
                 }
 
                 // 检查是否被作为其他图像的 SMask
@@ -128,7 +133,7 @@ public class ITextResourceExplorerTest {
                     PdfObject smask = dict.get(PdfName.SMASK);
                     if (smask != null && allImageObjects.containsKey(smask)) {
                         PdfName maskedImgName = allImageObjects.get(smask);
-                        System.out.println("  >>> Image " + maskedImgName + " is used as SMask for image " + name);
+                        log.info("  >>> Image {} is used as SMask for image {}", maskedImgName, name);
                     }
                 }
             }
@@ -154,15 +159,15 @@ public class ITextResourceExplorerTest {
             visited.add(ref);
 
             obj = PdfReader.getPdfObject(obj);
-            System.out.println(indent + "Indirect Reference: " + ref.getNumber() + " ->");
+            log.info("{}Indirect Reference: {} ->", indent, ref.getNumber());
             exploreObject(obj, reader, level + 1);
         } else if (obj.isDictionary()) {
             PdfDictionary dict = (PdfDictionary) obj;
             for (PdfName key : dict.getKeys()) {
                 PdfObject value = dict.get(key);
-                System.out.println(indent + key + " => " + value);
+                log.info("{}{} => {}", indent, key, value);
                 if (key.equals(PdfName.JBIG2GLOBALS)) {
-                    System.out.println(indent + ">>> Found JBIG2GLOBALS: " + value);
+                    log.info("{}>>> Found JBIG2GLOBALS: {}", indent, value);
                 }
                 exploreObject(value, reader, level + 1);
             }
@@ -173,7 +178,7 @@ public class ITextResourceExplorerTest {
             }
         } else if (obj.isStream()) {
             PdfStream stream = (PdfStream) obj;
-            System.out.println(indent + "Stream with length: " + stream.length());
+            log.info("{}Stream with length: {}", indent, stream.length());
             exploreObject(stream.getAsDict(PdfName.RESOURCES), reader, level + 1);
         }
     }

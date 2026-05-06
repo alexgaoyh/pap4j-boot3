@@ -3,10 +3,14 @@ package cn.net.pap.gstore;
 import jgsc.GstoreConnector;
 import org.json.JSONObject;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class GStoreTest {
+
+    private static final Logger log = LoggerFactory.getLogger(GStoreTest.class);
 
     public static final String ip = "192.168.1.115";
 
@@ -54,9 +58,9 @@ public class GStoreTest {
 
         // 先删除DB，再创建DB
         String dropDB = gc.drop(curdDBName, false);
-        System.out.println(dropDB);
+        log.info("{}", dropDB);
         String buildDB = gc.build(curdDBName, dbPathInServer);
-        System.out.println(buildDB);
+        log.info("{}", buildDB);
 
         // 使用当前 DB
         gc.load(curdDBName, null, request_type_get);
@@ -69,17 +73,17 @@ public class GStoreTest {
                 "<人物/#张三> <性别> \"男\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
                 "<人物/#张三> <年龄> \"28\"^^<http://www.w3.org/2001/XMLSchema#Int>.\n" +
                 "}", request_type_get);
-        System.out.println(insertRes);
+        log.info("{}", insertRes);
 
         String updateRes = gc.query(curdDBName, format_json, "DELETE data {\n" +
                 "  <人物/#张三> <性别> \"男\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
                 "}", request_type_get);
-        System.out.println(updateRes);
+        log.info("{}", updateRes);
 
         String insert2Res = gc.query(curdDBName, format_json, "insert data {\n" +
                 "  <人物/#张三> <性别> \"女\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
                 "}", request_type_get);
-        System.out.println(insert2Res);
+        log.info("{}", insert2Res);
     }
 
     // 事务测试
@@ -96,9 +100,9 @@ public class GStoreTest {
 
             // 先删除DB，再创建DB
             String dropDB = gc.drop(transactionDBName, false);
-            System.out.println(dropDB);
+            log.info("{}", dropDB);
             String buildDB = gc.build(transactionDBName, dbPathInServer);
-            System.out.println(buildDB);
+            log.info("{}", buildDB);
 
             // 使用当前 DB
             gc.load(transactionDBName, null, request_type_get);
@@ -106,7 +110,7 @@ public class GStoreTest {
             // 开启事务
             String begin = gc.begin(transactionDBName, isoLevel, request_type_get);
             JSONObject beginJson = new JSONObject(begin);
-            System.out.println(begin);
+            log.info("{}", begin);
             if(beginJson.get("StatusCode").toString().equals("0")) {
                 String tId = beginJson.get("TID").toString();
 
@@ -119,32 +123,32 @@ public class GStoreTest {
                             "<人物/#张三> <性别> \"男\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
                             "<人物/#张三> <年龄> \"28\"^^<http://www.w3.org/2001/XMLSchema#Int>.\n" +
                             "}", request_type_get);
-                    System.out.println(insertRes);
+                    log.info("{}", insertRes);
 
                     String insert2Res = gc.tquery(transactionDBName, tId, "insert data {\n" +
                             "  <人物/#张三> <性别> \"女\"^^<http://www.w3.org/2001/XMLSchema#String>.\n" +
                             "}", request_type_get);
-                    System.out.println(insert2Res);
+                    log.info("{}", insert2Res);
 
                     String updateRes = gc.tquery(transactionDBName, tId, "delete data {\n" +
                             "<人物/#张三> <性别> \"男\"^^<http://www.w3.org/2001/XMLSchema#String>." +
                             "}", request_type_get);
-                    System.out.println(updateRes);
+                    log.info("{}", updateRes);
 
                     String commit = gc.commit(transactionDBName, tId);
-                    System.out.println(commit);
+                    log.info("{}", commit);
 
                 } catch (Exception e) {
                     String rollback = gc.rollback(transactionDBName, tId);
-                    System.out.println(rollback);
+                    log.info("{}", rollback);
                 }
             }
 
             String checkpoint = gc.checkpoint(transactionDBName);
-            System.out.println(checkpoint);
+            log.info("{}", checkpoint);
 
             String res = gc.query(transactionDBName, format_json, SPARQL_SELECT_ALL, request_type_get);
-            System.out.println(res);
+            log.info("{}", res);
         } finally {
             java.nio.file.Files.deleteIfExists(tempFile);
         }

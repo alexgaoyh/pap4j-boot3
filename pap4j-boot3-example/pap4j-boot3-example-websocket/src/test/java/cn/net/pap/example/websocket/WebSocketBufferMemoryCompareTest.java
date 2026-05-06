@@ -9,6 +9,8 @@ import jakarta.websocket.WebSocketContainer;
 import jakarta.websocket.server.ServerEndpoint;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -25,6 +27,8 @@ import java.util.List;
  * WebSocket 缓冲区配置内存占用对比测试
  */
 public class WebSocketBufferMemoryCompareTest {
+
+    private static final Logger log = LoggerFactory.getLogger(WebSocketBufferMemoryCompareTest.class);
 
     // ==========================================
     // 1. 模拟的 Spring Boot 应用和端点配置
@@ -97,7 +101,7 @@ public class WebSocketBufferMemoryCompareTest {
         List<Session> sessions = new ArrayList<>();
         WebSocketContainer container = ContainerProvider.getWebSocketContainer();
 
-        System.out.println("正在为场景 [" + scenarioName + "] 建立 " + connectionCount + " 个连接...");
+        log.info("正在为场景 [{}] 建立 {} 个连接...", scenarioName, connectionCount);
         for (int i = 0; i < connectionCount; i++) {
             URI uri = URI.create("ws://localhost:" + port + "/ws/memory-test");
             // 这是真正建立连接的地方：
@@ -113,12 +117,12 @@ public class WebSocketBufferMemoryCompareTest {
 
         long usedMegabytes = Math.max(0, (memoryAfter - memoryBefore) / (1024 * 1024));
 
-        System.out.println("\n==================================================");
-        System.out.printf("测试场景: %s\n", scenarioName);
-        System.out.printf("连接数量: %d\n", connectionCount);
-        System.out.printf("堆内存净增长: ~ %d MB\n", usedMegabytes);
-        System.out.printf("单连接平均预占: ~ %.2f MB\n", (double) usedMegabytes / connectionCount);
-        System.out.println("==================================================\n");
+        log.info("\n==================================================");
+        log.info("测试场景: {}", scenarioName);
+        log.info("连接数量: {}", connectionCount);
+        log.info("堆内存净增长: ~ {} MB", usedMegabytes);
+        log.info("单连接平均预占: ~ {} MB", String.format("%.2f", (double) usedMegabytes / connectionCount));
+        log.info("==================================================\n");
 
         // 清理现场
         for (Session session : sessions) {

@@ -22,7 +22,7 @@ public class TestDataSource {
             Statement statement = conn.createStatement();
             ResultSet resultSet = statement.executeQuery("select * from sys_config");
             if (resultSet.next()) {
-                System.out.println(resultSet.getString(1));
+                log.info("{}", resultSet.getString(1));
             }
         } catch (Exception e) {
             if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
@@ -62,7 +62,7 @@ public class TestDataSource {
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
                     String columnValue = resultSet.getString(i);
-                    System.out.println(columnName + " : " + columnValue);
+                    log.info("{} : {}", columnName, columnValue);
                 }
             }
         } catch (Exception e) {

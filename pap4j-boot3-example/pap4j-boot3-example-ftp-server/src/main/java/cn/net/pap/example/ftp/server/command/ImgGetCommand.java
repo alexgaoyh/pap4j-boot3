@@ -29,7 +29,7 @@ import java.util.Base64;
  *             byte[] imageBytes = Base64.getDecoder().decode(base64Data);
  *             try (ByteArrayInputStream bais = new ByteArrayInputStream(imageBytes)) {
  *                 BufferedImage image = ImageIO.read(bais);
- *                 System.out.println(image);
+ *                 log.info(image);
  *             }
  *         }
  *     }

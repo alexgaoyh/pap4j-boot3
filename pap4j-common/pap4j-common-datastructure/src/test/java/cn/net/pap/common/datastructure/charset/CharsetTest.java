@@ -1,14 +1,16 @@
 package cn.net.pap.common.datastructure.charset;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.SortedMap;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 public class CharsetTest {
+
+    private static final Logger log = LoggerFactory.getLogger(CharsetTest.class);
 
     @Test
     public void utf8Test() {
@@ -18,8 +20,8 @@ public class CharsetTest {
 
         // show all charset
         SortedMap<String, Charset> stringCharsetSortedMap = Charset.availableCharsets();
-        for(Map.Entry<String, Charset> entry : stringCharsetSortedMap.entrySet()) {
-            System.out.println(entry.getKey() + ": " + entry.getValue());
+        for (Map.Entry<String, Charset> entry : stringCharsetSortedMap.entrySet()) {
+            log.info("{}: {}", entry.getKey(), entry.getValue());
         }
 
     }

@@ -26,7 +26,7 @@ public class TestDataSourceDameng {
             Statement statement = conn.createStatement();
             ResultSet resultSet = statement.executeQuery("select * from TEST_TABLE");
             if (resultSet.next()) {
-                System.out.println(resultSet.getString(1));
+                log.info("{}", resultSet.getString(1));
             }
         } catch (Exception e) {
             if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
@@ -45,7 +45,7 @@ public class TestDataSourceDameng {
 
             List<PreparedStatement> pstmtList = new ArrayList<>();
             for(int i = 10000; i < 20010; i++) {
-                System.out.println(i);
+                log.info("{}", i);
                 // 默认 dm.ini 里面，MAX_SESSION_STATEMENT = 10000, 所以这里当出现10000条数据之后，就抛出来了异常。
                 String insert = "INSERT INTO SYS_CONFIG(CONFIG_ID) VALUES("+i+")";
                 PreparedStatement pstmt = conn.prepareStatement(insert);
@@ -85,7 +85,7 @@ public class TestDataSourceDameng {
                 for (int i = 1; i <= columnCount; i++) {
                     String columnName = metaData.getColumnName(i);
                     String columnValue = resultSet.getString(i);
-                    System.out.println(columnName + " : " + columnValue);
+                    log.info("{} : {}", columnName, columnValue);
                 }
             }
         } catch (Exception e) {

@@ -1,18 +1,22 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class FrontControllerPattern {
 
+    private static final Logger log = LoggerFactory.getLogger(FrontControllerPattern.class);
+
     class HomeView {
         public void show() {
-            System.out.println("Displaying Home Page");
+            log.info("Displaying Home Page");
         }
     }
 
     class StudentView {
         public void show() {
-            System.out.println("Displaying Student Page");
+            log.info("Displaying Student Page");
         }
     }
 
@@ -43,12 +47,12 @@ public class FrontControllerPattern {
         }
 
         private boolean isAuthenticUser() {
-            System.out.println("User is authenticated successfully.");
+            log.info("User is authenticated successfully.");
             return true;
         }
 
         private void trackRequest(String request) {
-            System.out.println("Page requested: " + request);
+            log.info("Page requested: {}", request);
         }
 
         public void dispatchRequest(String request) {

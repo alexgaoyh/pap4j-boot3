@@ -4,6 +4,8 @@ import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
@@ -19,6 +21,8 @@ import java.util.Map;
 @Component
 @Profile("demo")
 public class DemoEnvAspect {
+
+    private static final Logger log = LoggerFactory.getLogger(DemoEnvAspect.class);
 
     // 从配置读取需要排除的读操作前缀（默认值）
     @Value("${demo.intercept.read-prefixes:get,find,query,list,count,select,read,fetch,load}")
@@ -49,7 +53,7 @@ public class DemoEnvAspect {
         // 1. 检查是否是读操作前缀
         if (startsWithAny(methodName, readMethodPrefixes)) {
             if (enableDetailLog) {
-                System.out.println("[Demo] 放行读操作: " + methodName);
+                log.info("[Demo] 放行读操作: {}", methodName);
             }
             return joinPoint.proceed();
         }
@@ -59,7 +63,7 @@ public class DemoEnvAspect {
 
         if (shouldIntercept) {
             if (enableDetailLog) {
-                System.out.println("[Demo] 拦截写操作: " + methodName);
+                log.info("[Demo] 拦截写操作: {}", methodName);
             }
             return generateDemoResponse(joinPoint, signature);
         }
@@ -110,7 +114,7 @@ public class DemoEnvAspect {
             return buildSuccessResponse(joinPoint);
 
         } catch (Exception e) {
-            System.err.println("生成演示响应失败: " + e.getMessage());
+            log.error("生成演示响应失败: {}", e.getMessage());
             return null;
         }
     }
@@ -156,7 +160,7 @@ public class DemoEnvAspect {
         } catch (NoSuchMethodException ignored) {
             // 没有该方法则忽略
         } catch (Exception e) {
-            System.err.println("标记演示数据失败: " + e.getMessage());
+            log.error("标记演示数据失败: {}", e.getMessage());
         }
     }
 

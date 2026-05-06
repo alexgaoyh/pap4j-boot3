@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class MementoPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(MementoPattern.class);
 
     class Memento {
         private String state;
@@ -62,11 +66,11 @@ public class MementoPattern {
         careTaker.add(originator.saveStateToMemento());
         originator.setState("State #4");
 
-        System.out.println("Current State: " + originator.getState());
+        log.info("Current State: {}", originator.getState());
         originator.getStateFromMemento(careTaker.get(0));
-        System.out.println("First saved State: " + originator.getState());
+        log.info("First saved State: {}", originator.getState());
         originator.getStateFromMemento(careTaker.get(1));
-        System.out.println("Second saved State: " + originator.getState());
+        log.info("Second saved State: {}", originator.getState());
     }
 
 }

@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class TransferObjectPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(TransferObjectPattern.class);
 
     class StudentVO {
         private String name;
@@ -48,8 +52,7 @@ public class TransferObjectPattern {
 
         public void deleteStudent(StudentVO student) {
             students.remove(student.getRollNo());
-            System.out.println("Student: Roll No "
-                    + student.getRollNo() + ", deleted from database");
+            log.info("Student: Roll No {}, deleted from database", student.getRollNo());
         }
 
         //从数据库中检索学生名单
@@ -63,8 +66,7 @@ public class TransferObjectPattern {
 
         public void updateStudent(StudentVO student) {
             students.get(student.getRollNo()).setName(student.getName());
-            System.out.println("Student: Roll No "
-                    + student.getRollNo() + ", updated in the database");
+            log.info("Student: Roll No {}, updated in the database", student.getRollNo());
         }
     }
 
@@ -74,8 +76,7 @@ public class TransferObjectPattern {
 
         //输出所有的学生
         for (StudentVO student : studentBusinessObject.getAllStudents()) {
-            System.out.println("Student: [RollNo : "
-                    + student.getRollNo() + ", Name : " + student.getName() + " ]");
+            log.info("Student: [RollNo : {}, Name : {} ]", student.getRollNo(), student.getName());
         }
 
         //更新学生
@@ -85,8 +86,7 @@ public class TransferObjectPattern {
 
         //获取学生
         studentBusinessObject.getStudent(0);
-        System.out.println("Student: [RollNo : "
-                + student.getRollNo() + ", Name : " + student.getName() + " ]");
+        log.info("Student: [RollNo : {}, Name : {} ]", student.getRollNo(), student.getName());
     }
 
 }

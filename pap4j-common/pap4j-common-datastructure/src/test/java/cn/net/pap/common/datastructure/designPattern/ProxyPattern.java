@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ProxyPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(ProxyPattern.class);
 
     interface Image {
         void display();
@@ -19,11 +23,11 @@ public class ProxyPattern {
 
         @Override
         public void display() {
-            System.out.println("Displaying " + fileName);
+            log.info("Displaying {}", fileName);
         }
 
         private void loadFromDisk(String fileName) {
-            System.out.println("Loading " + fileName);
+            log.info("Loading {}", fileName);
         }
     }
 
@@ -52,7 +56,7 @@ public class ProxyPattern {
 
         // 图像将从磁盘加载
         image.display();
-        System.out.println("");
+        log.info("");
         // 图像不需要从磁盘加载
         image.display();
     }

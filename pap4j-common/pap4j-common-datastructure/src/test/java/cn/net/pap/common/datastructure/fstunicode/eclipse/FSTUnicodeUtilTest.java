@@ -2,11 +2,14 @@ package cn.net.pap.common.datastructure.fstunicode.eclipse;
 
 import cn.net.pap.common.datastructure.fst.ValueLocationDTO;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class FSTUnicodeUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(FSTUnicodeUtilTest.class);
 
     @Test
     public void lengthTest() {
@@ -14,7 +17,7 @@ public class FSTUnicodeUtilTest {
         for (char b1 = '\u4E00'; b1 <= '\u9FA5'; b1++) {
             idx++;
         }
-        System.out.println(idx);
+        log.info("{}", idx);
     }
 
     @Test
@@ -34,7 +37,7 @@ public class FSTUnicodeUtilTest {
                     dict.addWord(buffer, 2); // 直接传 char[] + 长度
                     count++;
                     if (count % 1000000 == 0) {
-                        System.out.println(count);
+                        log.info("{}", count);
                     }
                 }
             }
@@ -44,7 +47,7 @@ public class FSTUnicodeUtilTest {
             }
         }
         long end = System.currentTimeMillis();
-        System.out.println("word count : " + count + " ; timeMillis " + (end - start));
+        log.info("word count : {} ; timeMillis {}", count, (end - start));
 
         dict.addWord("分词");
         dict.addWord("彭胜");
@@ -52,13 +55,13 @@ public class FSTUnicodeUtilTest {
         dict.addWord("18");
         String text = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
         List<ValueLocationDTO> result = FSTUnicodeUtil.maxMatchLocation(text, dict);
-        System.out.println(result);
+        log.info("{}", result);
 
         dict.removeWord("18");
         dict.removeWord("彭胜文");
         String text2 = "试一试分词效果，我得名字叫彭胜文，曾用名是彭胜,我18岁";
         List<ValueLocationDTO> result2 = FSTUnicodeUtil.maxMatchLocation(text2, dict);
-        System.out.println(result2);
+        log.info("{}", result2);
     }
 
 }

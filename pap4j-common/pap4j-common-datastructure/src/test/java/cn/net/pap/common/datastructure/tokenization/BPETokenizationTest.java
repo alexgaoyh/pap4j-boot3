@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.tokenization;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
 import java.util.List;
 
 public class BPETokenizationTest {
+
+    private static final Logger log = LoggerFactory.getLogger(BPETokenizationTest.class);
 
     @Test
     public void firstTest() {
@@ -16,13 +20,13 @@ public class BPETokenizationTest {
         bpe.train(trainingData);
 
         // 输出更新后的词表
-        System.out.println("更新后的词表：");
-        System.out.println(bpe.getVocab());
+        log.info("更新后的词表：");
+        log.info("{}", bpe.getVocab());
 
         // 测试分词
         String testText = "深度学习模型";
-        System.out.println("\n分词结果：");
-        System.out.println(bpe.tokenize(testText));
+        log.info("\n分词结果：");
+        log.info("{}", bpe.tokenize(testText));
     }
 
 }

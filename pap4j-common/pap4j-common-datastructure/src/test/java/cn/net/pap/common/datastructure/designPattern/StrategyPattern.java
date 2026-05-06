@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class StrategyPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(StrategyPattern.class);
 
     interface Strategy {
         public int doOperation(int num1, int num2);
@@ -44,12 +48,12 @@ public class StrategyPattern {
     @Test
     public void test() {
         Context context = new Context(new OperationAdd());
-        System.out.println("10 + 5 = " + context.executeStrategy(10, 5));
+        log.info("10 + 5 = {}", context.executeStrategy(10, 5));
 
         context = new Context(new OperationSubtract());
-        System.out.println("10 - 5 = " + context.executeStrategy(10, 5));
+        log.info("10 - 5 = {}", context.executeStrategy(10, 5));
 
         context = new Context(new OperationMultiply());
-        System.out.println("10 * 5 = " + context.executeStrategy(10, 5));
+        log.info("10 * 5 = {}", context.executeStrategy(10, 5));
     }
 }

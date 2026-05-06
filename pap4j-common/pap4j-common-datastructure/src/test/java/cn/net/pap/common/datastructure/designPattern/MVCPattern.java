@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MVCPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(MVCPattern.class);
 
     class Student {
         private String rollNo;
@@ -27,9 +31,9 @@ public class MVCPattern {
 
     class StudentView {
         public void printStudentDetails(String studentName, String studentRollNo) {
-            System.out.println("Student: ");
-            System.out.println("Name: " + studentName);
-            System.out.println("Roll No: " + studentRollNo);
+            log.info("Student: ");
+            log.info("Name: {}", studentName);
+            log.info("Roll No: {}", studentRollNo);
         }
     }
 

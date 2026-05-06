@@ -37,7 +37,7 @@ public class TempDirUtilsTest {
             try {
                 Files.writeString(tempFile, "Hello, World!");
                 String content = Files.readString(tempFile);
-                log.info("{}", "文件内容: " + content);
+                log.info("文件内容: {}", content);
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -138,7 +138,7 @@ public class TempDirUtilsTest {
                 }
             });
         } catch (Exception e) {
-            System.err.println("操作失败: " + e.getMessage());
+            log.error("操作失败: ", e);
         }
     }
 
@@ -150,13 +150,13 @@ public class TempDirUtilsTest {
                 try {
                     Files.writeString(tempFile, "Hello, World!");
                     String content = Files.readString(tempFile);
-                    log.info("{}", "文件内容: " + content);
+                    log.info("文件内容: {}", content);
                 } catch (IOException e) {
                     throw new RuntimeException(e);
                 }
             });
         } catch (Exception e) {
-            System.err.println("操作失败: " + e.getMessage());
+            log.error("操作失败: ", e);
         }
     }
 

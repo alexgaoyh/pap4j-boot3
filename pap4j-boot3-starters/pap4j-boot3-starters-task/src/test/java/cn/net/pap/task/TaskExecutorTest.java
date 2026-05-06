@@ -8,6 +8,8 @@ import cn.net.pap.task.enums.TaskEnums;
 import cn.net.pap.task.executor.TaskExecutorUtil;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
@@ -22,6 +24,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @TestPropertySource("classpath:application.properties")
 public class TaskExecutorTest {
 
+    private static final Logger log = LoggerFactory.getLogger(TaskExecutorTest.class);
+
     @Test
     public void test1() throws Exception {
         List<PapCallable<TaskDTO>> tasks = new ArrayList<>();
@@ -32,7 +36,7 @@ public class TaskExecutorTest {
         }
 
         List<TaskExecutorUtil.TaskResult<TaskDTO>> taskEnums = TaskExecutorUtil.executeTasks("PAP-THREAD-BEAN_NAME", tasks);
-        System.out.println(taskEnums);
+        log.info("{}", taskEnums);
     }
 
     @Test
@@ -46,7 +50,7 @@ public class TaskExecutorTest {
             tasks.add(new SlowPapCallableImpl(taskDTO));
         }
 
-        // 声明一个数组用于在内部线程中接收返回值
+        // 声明一个数组用于ใน内部线程中接收返回值
         final List<TaskExecutorUtil.TaskResult<TaskDTO>>[] resultHolder = new List[1];
 
         // 2. 另起一个线程（模拟正在处理业务逻辑的 Web 线程），去执行批量任务
@@ -59,7 +63,7 @@ public class TaskExecutorTest {
         Thread.sleep(500);
 
         // 4. 关键动作：打断正在阻塞等待的 executeThread
-        System.out.println("===== 外部系统发出中断信号 =====");
+        log.info("===== 外部系统发出中断信号 =====");
         executeThread.interrupt();
 
         // 5. 等待 executeThread 优雅退出
@@ -67,9 +71,9 @@ public class TaskExecutorTest {
 
         // 6. 获取结果并验证
         List<TaskExecutorUtil.TaskResult<TaskDTO>> results = resultHolder[0];
-        System.out.println("最终的任务状态列表: ");
+        log.info("最终的任务状态列表: ");
         for (int i = 0; i < results.size(); i++) {
-            System.out.println("任务[" + i + "]: " + results.get(i).getStatus().getException());
+            log.info("任务[{}]: {}", i, results.get(i).getStatus().getException());
         }
 
         // ===== 核心断言：验证 break 的作用 =====
@@ -81,7 +85,7 @@ public class TaskExecutorTest {
             }
         }
 
-        System.out.println("\n未被执行的剩余初始状态任务数: " + notExecutedCount);
+        log.info("\n未被执行的剩余初始状态任务数: {}", notExecutedCount);
 
         // 如果没有 break，后续的 future.get() 会瞬间连续抛出 InterruptedException 或 CancellationException
         // 那么 notExecutedCount 将会是 0。

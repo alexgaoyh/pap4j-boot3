@@ -137,7 +137,7 @@ public class ImageMagickEnvCheckerUtilTest {
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in magickTest: ", e);
         }
     }
 
@@ -154,7 +154,7 @@ public class ImageMagickEnvCheckerUtilTest {
         try {
             ProcessResult result = ProcessPoolUtil.runCommand(Arrays.stream(commandSplit).toList(), 10, tempExecutor);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error executing magick command: ", e);
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {

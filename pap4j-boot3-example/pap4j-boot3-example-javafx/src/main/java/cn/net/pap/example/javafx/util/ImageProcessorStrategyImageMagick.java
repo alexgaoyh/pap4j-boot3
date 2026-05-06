@@ -104,7 +104,7 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
             // 复制文件到临时目录
             Files.copy(inputStream, targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-            System.out.println("Extracted ImageMagick to: " + targetPath.toAbsolutePath());
+            log.info("Extracted ImageMagick to: {}", targetPath.toAbsolutePath());
             return targetPath.toAbsolutePath().toString();
         }
     }
@@ -126,12 +126,11 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
 
                 // 根据 ExecResult 判断执行情况 (假设 ExecResult 有类似 getExitCode 和 getErrStream 的 getter)
                 if (result.getExitCode() != 0) {
-                    System.err.println("Warning: Failed to set executable permission for: " + filePath
-                            + " . Exit code: " + result.getExitCode()
-                            + " . Error: " + result.getStdout()); // 请根据你 ExecResult 类的实际 getter 方法名进行调整
+                    log.warn("Warning: Failed to set executable permission for: {} . Exit code: {} . Error: {}",
+                            filePath, result.getExitCode(), result.getStdout()); // 请根据你 ExecResult 类的实际 getter 方法名进行调整
                 }
             } catch (Exception e) {
-                System.err.println("Warning: Failed to set executable permission: " + e.getMessage());
+                log.warn("Warning: Failed to set executable permission: {}", e.getMessage());
             }
         }
 

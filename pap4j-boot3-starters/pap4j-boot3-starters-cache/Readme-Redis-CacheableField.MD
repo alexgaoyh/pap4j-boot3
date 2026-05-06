@@ -47,9 +47,9 @@
         assertTrue(threadId instanceof String);
         assertTrue(timeswap instanceof Long);
         assertTrue(extList instanceof ArrayList);
-        System.out.println(threadId);
-        System.out.println(timeswap);
-        System.out.println(extList);
+        log.info(threadId);
+        log.info(timeswap);
+        log.info(extList);
     }
 ```
 

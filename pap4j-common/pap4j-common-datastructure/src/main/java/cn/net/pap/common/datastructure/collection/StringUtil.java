@@ -1,5 +1,8 @@
 package cn.net.pap.common.datastructure.collection;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -18,6 +21,8 @@ import java.util.regex.Pattern;
  * @author alexgaoyh
  */
 public class StringUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(StringUtil.class);
 
     /**
      * <p>替换字符串中第一个匹配指定字面量子字符串的部分。</p>
@@ -39,12 +44,14 @@ public class StringUtil {
      * @param str 需要打印的字符串
      */
     public static void print(String str) {
+        StringBuilder sb = new StringBuilder();
         for (int strIdx = 0; strIdx < str.length(); ) {
             int codePoint = str.codePointAt(strIdx);
             String c = new String(Character.toChars(codePoint));
-            System.out.print(c);
+            sb.append(c);
             strIdx += Character.charCount(codePoint);
         }
+        log.info("{}", sb.toString());
     }
 
     /**

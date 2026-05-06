@@ -3,6 +3,8 @@ package cn.net.pap.example.proguard;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -15,6 +17,8 @@ import java.sql.SQLException;
 import java.sql.Statement;
 
 public class MysqlBatchTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MysqlBatchTest.class);
 
     @BeforeAll
     public static void checkMysqlAvailable() {
@@ -36,7 +40,7 @@ public class MysqlBatchTest {
             connection.setAutoCommit(false);
             try (Statement clearStmt = connection.createStatement()) {
                 clearStmt.executeUpdate("TRUNCATE TABLE t_ad");
-                System.out.println("History data cleared!");
+                log.info("History data cleared!");
             }
             String insertSql = "INSERT INTO t_ad (AD_ID, AD_CODE) VALUES (?, ?)";
             //  diff batchSize setting
@@ -49,13 +53,13 @@ public class MysqlBatchTest {
                     if (i % batchSize == 0) {
                         statement.executeBatch();
                         connection.commit();
-                        System.out.println("Committed batch up to: " + i);
+                        log.info("Committed batch up to: {}", i);
                     }
                 }
                 // 提交剩余未满 batchSize 的部分
                 statement.executeBatch();
                 connection.commit();
-                System.out.println("Final batch committed!");
+                log.info("Final batch committed!");
             } catch (Exception e) {
                 connection.rollback();
                 throw e;
@@ -92,11 +96,11 @@ public class MysqlBatchTest {
                         try {
                             int[] batchResults = statement.executeBatch();
                             // 只在批次全部成功时才会提交
-                            System.out.println("批次提交成功: " + i);
+                            log.info("批次提交成功: {}", i);
                         } catch (BatchUpdateException e) {
                             batchFailed = true;
                             connection.rollback();
-                            System.out.println("批量更新失败，回滚事务。失败位置：" + i);
+                            log.info("批量更新失败，回滚事务。失败位置：{}", i);
                             break;
                         }
                     }
@@ -107,10 +111,10 @@ public class MysqlBatchTest {
                     try {
                         statement.executeBatch();
                         connection.commit();  // 提交所有数据
-                        System.out.println("最后批次提交成功！");
+                        log.info("最后批次提交成功！");
                     } catch (BatchUpdateException e) {
                         connection.rollback();  // 回滚最后的批次
-                        System.out.println("最后批次提交失败，事务回滚。");
+                        log.info("最后批次提交失败，事务回滚。");
                     }
                 }
             } catch (Exception e) {
@@ -180,13 +184,13 @@ public class MysqlBatchTest {
             pstmt.setInt(3, pageSize);
 
             try (ResultSet rs = pstmt.executeQuery()) {
-                System.out.println("subject\tobject\tdepth\tfull_path");
+                log.info("subject\tobject\tdepth\tfull_path");
                 while (rs.next()) {
                     String subject = rs.getString("subject");
                     String object = rs.getString("object");
                     int depth = rs.getInt("depth");
                     String full_path = rs.getString("full_path");
-                    System.out.println(subject + "\t" + object + "\t" + depth + "\t" + full_path);
+                    log.info("{}\t{}\t{}\t{}", subject, object, depth, full_path);
                 }
             }
 

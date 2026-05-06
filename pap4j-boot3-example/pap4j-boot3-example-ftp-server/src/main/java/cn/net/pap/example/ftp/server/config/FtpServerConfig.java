@@ -17,6 +17,8 @@ import org.apache.ftpserver.listener.ListenerFactory;
 import org.apache.ftpserver.usermanager.PropertiesUserManagerFactory;
 import org.apache.ftpserver.usermanager.impl.BaseUser;
 import org.apache.ftpserver.usermanager.impl.WritePermission;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -29,6 +31,8 @@ import java.util.List;
 @Configuration
 @ConfigurationProperties(prefix = "ftp")
 public class FtpServerConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(FtpServerConfig.class);
 
     private int port = 21;  // 默认端口
 
@@ -115,22 +119,22 @@ public class FtpServerConfig {
         FtpServer server = serverFactory.createServer();
         server.start();
         int boxWidth = 60; // 统一设置框的宽度
-        System.out.println("┌" + "─".repeat(boxWidth - 2) + "┐");
-        System.out.printf ("│ %-56s │%n", "FTP Server Configuration");
-        System.out.printf ("│ Port: %-49s │%n", port);
-        System.out.printf ("│ Connection Rate Limit: %-38s │%n", connectRateLimit);
-        System.out.printf ("│ Character Encoding: %-42s │%n", Charset.defaultCharset().displayName());
-        System.out.println("│" + "─".repeat(boxWidth - 2) + "│");
-        System.out.printf ("│ %-56s │%n", "User Information");
+        log.info("┌" + "─".repeat(boxWidth - 2) + "┐");
+        log.info(String.format("│ %-56s │", "FTP Server Configuration"));
+        log.info(String.format("│ Port: %-49s │", port));
+        log.info(String.format("│ Connection Rate Limit: %-38s │", connectRateLimit));
+        log.info(String.format("│ Character Encoding: %-42s │", Charset.defaultCharset().displayName()));
+        log.info("│" + "─".repeat(boxWidth - 2) + "│");
+        log.info(String.format("│ %-56s │", "User Information"));
 
         for (int i = 0; i < users.size(); i++) {
             FtpUserProperties userProp = users.get(i);
-            System.out.println("│" + "─".repeat(boxWidth - 2) + "│");
-            System.out.printf("│ Username: %-46s │%n", userProp.getUsername());
-            System.out.printf("│ Home Directory: %-41s │%n", userProp.getHomeDirectory());
+            log.info("│" + "─".repeat(boxWidth - 2) + "│");
+            log.info(String.format("│ Username: %-46s │", userProp.getUsername()));
+            log.info(String.format("│ Home Directory: %-41s │", userProp.getHomeDirectory()));
         }
 
-        System.out.println("└" + "─".repeat(boxWidth - 2) + "┘");
+        log.info("└" + "─".repeat(boxWidth - 2) + "┘");
         return server;
     }
 

@@ -1,6 +1,8 @@
 package cn.net.pap.example.proguard;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -9,6 +11,8 @@ import java.util.List;
 import java.util.Map;
 
 public class MysqlLargeQueryTest {
+
+    private static final Logger log = LoggerFactory.getLogger(MysqlLargeQueryTest.class);
 
     // @Test
     public void largeQueryTest() throws SQLException {
@@ -42,7 +46,7 @@ public class MysqlLargeQueryTest {
                 }
                 long endTime = System.currentTimeMillis();
                 // 可以看这个最后的时间，时间越来越长，越来越长，然后 OutOfMemoryError: Java heap space
-                System.out.println(endTime - start);
+                log.info("{}", endTime - start);
             }
         }
     }
@@ -59,7 +63,7 @@ public class MysqlLargeQueryTest {
     }
 
     private void testQuery(Connection connection, String sql, String testName) throws SQLException {
-        System.out.println("\n========== Starting test: " + testName + " ==========");
+        log.info("\n========== Starting test: {} ==========", testName);
         long totalQueryTime = 0;
         long totalNetworkTime = 0;
         long totalProcessingTime = 0;
@@ -117,19 +121,19 @@ public class MysqlLargeQueryTest {
             long queryEnd = System.currentTimeMillis();
             totalQueryTime += (queryEnd - queryStart);
 
-            System.out.printf("Iteration %d - Total: %dms | Network/DB: %dms | Processing: %dms | Rows: %d%n",
+            log.info("Iteration {} - Total: {}ms | Network/DB: {}ms | Processing: {}ms | Rows: {}",
                     idx, (queryEnd - queryStart), totalNetworkTime, totalProcessingTime, rowCount);
         }
 
         // 打印统计信息
-        System.out.println("\n========== Test Results: " + testName + " ==========");
-        System.out.println("Average total time: " + (totalQueryTime / 100) + "ms");
-        System.out.println("Average network/DB time: " + (totalNetworkTime / 100) + "ms");
-        System.out.println("Average processing time: " + (totalProcessingTime / 100) + "ms");
-        System.out.println("Average row processing time: " + (rowCount > 0 ? (totalRowProcessingTime / rowCount) + "ms/row" : "N/A"));
-        System.out.println("Total rows processed: " + rowCount);
-        System.out.println("Estimated total data transferred: " + formatBytes(totalBytesTransferred));
-        System.out.println("Average data per query: " + formatBytes(totalBytesTransferred / 100));
+        log.info("\n========== Test Results: {} ==========", testName);
+        log.info("Average total time: {}ms", (totalQueryTime / 100));
+        log.info("Average network/DB time: {}ms", (totalNetworkTime / 100));
+        log.info("Average processing time: {}ms", (totalProcessingTime / 100));
+        log.info("Average row processing time: {}", (rowCount > 0 ? (totalRowProcessingTime / rowCount) + "ms/row" : "N/A"));
+        log.info("Total rows processed: {}", rowCount);
+        log.info("Estimated total data transferred: {}", formatBytes(totalBytesTransferred));
+        log.info("Average data per query: {}", formatBytes(totalBytesTransferred / 100));
     }
 
     private String formatBytes(long bytes) {

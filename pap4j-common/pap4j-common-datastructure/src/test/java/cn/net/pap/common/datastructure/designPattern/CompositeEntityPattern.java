@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class CompositeEntityPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(CompositeEntityPattern.class);
 
     class DependentObject1 {
 
@@ -61,7 +65,7 @@ public class CompositeEntityPattern {
 
         public void printData() {
             for (int i = 0; i < compositeEntity.getData().length; i++) {
-                System.out.println("Data: " + compositeEntity.getData()[i]);
+                log.info("Data: {}", compositeEntity.getData()[i]);
             }
         }
 

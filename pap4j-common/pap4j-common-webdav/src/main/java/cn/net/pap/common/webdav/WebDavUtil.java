@@ -75,7 +75,7 @@ public class WebDavUtil {
     public void delete(String uri) throws IOException {
         HttpDelete delete = new HttpDelete(uri);
         int status = this.client.execute(delete, this.context).getStatusLine().getStatusCode();
-        System.out.println("Delete " + uri + " status is :" + status);
+        log.info("Delete " + uri + " status is :" + status);
     }
 
     /**
@@ -99,7 +99,7 @@ public class WebDavUtil {
         HttpResponse execute = this.client.execute(put, this.context);
         StatusLine statusLine = execute.getStatusLine();
         int status = statusLine.getStatusCode();
-        System.out.println("Upload " + uri + " status is :" + status);
+        log.info("Upload " + uri + " status is :" + status);
     }
 
     /**
@@ -138,7 +138,7 @@ public class WebDavUtil {
     public void mkdir(String uri) throws IOException {
         HttpMkcol mkcol = new HttpMkcol(uri);
         int status = this.client.execute(mkcol, this.context).getStatusLine().getStatusCode();
-        System.out.println("Create folder " + uri + " status is :" + status);
+        log.info("Create folder " + uri + " status is :" + status);
     }
 
     public void download(String uri, String fileName, String downloadPath) throws IOException {
@@ -147,7 +147,7 @@ public class WebDavUtil {
         StatusLine status = execRel.getStatusLine();
         HttpEntity resp = execRel.getEntity();
         transStream2File(resp.getContent(), downloadPath + fileName);
-        System.out.println("Download " + uri + " status is :" + status);
+        log.info("Download " + uri + " status is :" + status);
     }
 
     /**
@@ -161,7 +161,7 @@ public class WebDavUtil {
             HttpPropfind propfind = new HttpPropfind(testuri, DavConstants.PROPFIND_ALL_PROP_INCLUDE, names, DavConstants.DEPTH_1);
             HttpResponse resp = this.client.execute(propfind, this.context);
             int status = resp.getStatusLine().getStatusCode();
-            System.out.println("List file " + testuri + " status is :" + status);
+            log.info("List file " + testuri + " status is :" + status);
 
             // 关键拦截：只有状态码为 207 (Multi-Status) 时，服务器回传的才是正确的 XML 文件属性信息
             if (status == 207) {

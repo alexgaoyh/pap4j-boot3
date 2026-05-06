@@ -114,7 +114,7 @@ public class W3CDocumentXmlParseMemoryTest {
             com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
             return threadMXBean.getThreadAllocatedBytes(Thread.currentThread().getId());
         } catch (Exception e) {
-            System.err.println("当前 JVM 不支持 ThreadMXBean 内存分配监控");
+            log.error("当前 JVM 不支持 ThreadMXBean 内存分配监控: ", e);
             return 0;
         }
     }

@@ -127,7 +127,7 @@ public class TaskDataServiceImpl implements ITaskDataService {
 
         // 业务处理示例：将内容转换为大写
         String processedContent = content.toUpperCase();
-        // System.out.println(processedContent);
+        // log.info(processedContent);
         // 这里可以根据需要更新数据内容或其他字段
 
         // 模拟处理耗时

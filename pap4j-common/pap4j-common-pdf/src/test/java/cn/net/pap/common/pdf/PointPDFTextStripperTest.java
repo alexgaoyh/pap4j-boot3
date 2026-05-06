@@ -6,6 +6,8 @@ import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.text.PDFTextStripper;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.Serializable;
@@ -15,16 +17,18 @@ import java.util.StringJoiner;
 
 public class PointPDFTextStripperTest {
 
+    private static final Logger log = LoggerFactory.getLogger(PointPDFTextStripperTest.class);
+
     @Test
     public void textExtractor() {
 
         try (PDDocument document = Loader.loadPDF(new File(TestResourceUtil.getFile("format.pdf").getAbsolutePath()))) {
             PDFTextStripper stripper = new PDFTextStripper();
             String texts = stripper.getText(document);
-            System.out.println(texts);
+            log.info("{}", texts);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in textExtractor: ", e);
         }
     }
 
@@ -44,12 +48,12 @@ public class PointPDFTextStripperTest {
                 PointTextDTO pointTextDTO = new PointTextDTO(string2Box(point), text);
                 pointTextDTOS.add(pointTextDTO);
             }
-            System.out.println(pointTextDTOS.size());
+            log.info("Size: {}", pointTextDTOS.size());
             ObjectMapper objectMapper = new ObjectMapper();
-            System.out.println(objectMapper.writeValueAsString(pointTextDTOS));
+            log.info("JSON: {}", objectMapper.writeValueAsString(pointTextDTOS));
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in pointTextExtractor: ", e);
         }
     }
 

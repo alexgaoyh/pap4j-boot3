@@ -5,6 +5,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.imageio.ImageIO;
 import javax.imageio.ImageReadParam;
 import javax.imageio.ImageReader;
@@ -40,6 +43,8 @@ import java.util.Iterator;
  */
 public class ImageResizeMemoryTest {
 
+    private static final Logger log = LoggerFactory.getLogger(ImageResizeMemoryTest.class);
+
     private File file;
 
     @BeforeEach
@@ -53,7 +58,7 @@ public class ImageResizeMemoryTest {
         g2d.fillRect(0, 0, 4000, 3000);
         g2d.dispose();
         ImageIO.write(img, "jpg", file);
-        System.out.println("测试图片已生成，大小: " + (file.length() / 1024) + " KB");
+        log.info("测试图片已生成，大小: {} KB", (file.length() / 1024));
     }
 
     @AfterEach
@@ -67,12 +72,12 @@ public class ImageResizeMemoryTest {
     public void compareMemoryAllocation() throws Exception {
         // 2. 预热阶段 (Warm-up)
         // 目的: 强制触发类的加载、静态变量初始化以及 JIT 编译，防止这些额外开销算入后续的内存测量中
-        System.out.println("--- 开始预热 ---");
+        log.info("--- 开始预热 ---");
         for (int i = 0; i < 3; i++) {
             thumb_thumbnailator();
             thumb_lowMemory();
         }
-        System.out.println("--- 预热完成 ---\n");
+        log.info("--- 预热完成 ---\n");
 
         int testIterations = 10; // 测试循环次数，取平均值更准确
 
@@ -95,11 +100,11 @@ public class ImageResizeMemoryTest {
         double lowMemoryAvgMb = (lowMemoryTotalMem / (double) testIterations) / 1024.0 / 1024.0;
 
         // 5. 打印对比结果
-        System.out.println("========== 内存分配测试结果 ==========");
-        System.out.printf("Thumbnailator 平均每次分配: %.2f MB\n", thumbnailatorAvgMb);
-        System.out.printf("LowMemory 方法 平均每次分配: %.2f MB\n", lowMemoryAvgMb);
-        System.out.printf("内存消耗比例: Thumbnailator 是 LowMemory 的 %.1f 倍\n", thumbnailatorAvgMb / lowMemoryAvgMb);
-        System.out.println("======================================");
+        log.info("========== 内存分配测试结果 ==========");
+        log.info("Thumbnailator 平均每次分配: {} MB", String.format("%.2f", thumbnailatorAvgMb));
+        log.info("LowMemory 方法 平均每次分配: {} MB", String.format("%.2f", lowMemoryAvgMb));
+        log.info("内存消耗比例: Thumbnailator 是 LowMemory 的 {} 倍", String.format("%.1f", thumbnailatorAvgMb / lowMemoryAvgMb));
+        log.info("======================================");
     }
 
     // --- 以下为你提供的方法 ---
@@ -142,7 +147,7 @@ public class ImageResizeMemoryTest {
             com.sun.management.ThreadMXBean threadMXBean = (com.sun.management.ThreadMXBean) ManagementFactory.getThreadMXBean();
             return threadMXBean.getThreadAllocatedBytes(Thread.currentThread().getId());
         } catch (Exception e) {
-            System.err.println("当前 JVM 不支持 ThreadMXBean 内存分配监控");
+            log.error("当前 JVM 不支持 ThreadMXBean 内存分配监控", e);
             return 0;
         }
     }

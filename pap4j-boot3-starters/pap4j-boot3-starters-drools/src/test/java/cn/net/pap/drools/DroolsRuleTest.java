@@ -88,7 +88,7 @@ public class DroolsRuleTest {
             kieSession.insert(order);
             kieSession.fireAllRules();
             kieSession.dispose();
-            System.out.println("指定规则引擎后的结果：" + order.getDiscount());
+            log.info("指定规则引擎后的结果：{}", order.getDiscount());
         }
 
     }
@@ -109,7 +109,7 @@ public class DroolsRuleTest {
             kieSession.insert(order);
             kieSession.fireAllRules();
             kieSession.dispose();
-            System.out.println("指定规则引擎后的结果：" + order.getMessage());
+            log.info("指定规则引擎后的结果：{}", order.getMessage());
         }
 
     }
@@ -153,7 +153,7 @@ public class DroolsRuleTest {
                         kieSession.insert(order);
                         kieSession.fireAllRules();
                         kieSession.dispose();
-                        System.out.println("指定规则引擎后的结果：" + order.getDiscount());
+                        log.info("指定规则引擎后的结果：{}", order.getDiscount());
                     } else {
                         KieSession kieSession = kieBase2.newKieSession();
                         OrderDTO order = new OrderDTO();
@@ -162,7 +162,7 @@ public class DroolsRuleTest {
                         kieSession.insert(order);
                         kieSession.fireAllRules();
                         kieSession.dispose();
-                        System.out.println("指定规则引擎后的结果：" + order.getMessage());
+                        log.info("指定规则引擎后的结果：{}", order.getMessage());
                     }
                     latch.countDown();
                 });

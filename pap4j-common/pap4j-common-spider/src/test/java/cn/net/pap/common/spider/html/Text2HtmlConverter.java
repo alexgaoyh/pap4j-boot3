@@ -6,6 +6,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,18 +16,20 @@ import java.util.stream.Collectors;
 
 public class Text2HtmlConverter {
 
+    private static final Logger log = LoggerFactory.getLogger(Text2HtmlConverter.class);
+
     @Test
     void test1() {
         String input = "👨‍👩‍👧‍👦𠀀此处为文字[=地图]😎\uD83D\uDD2E\n第二行（包含[=模糊]内容）";
         String html = Text2HtmlConverter.convertTextToHtml("IMG123", input, "color:red;");
-        System.out.println(html);
+        log.info("{}", html);
     }
 
     @Test
     void test2() {
         String input = "👨‍👩‍👧‍👦𠀀表格[=表格]残缺[=残缺]模糊[=模糊]😎\uD83D\uDD2E";
         String html = Text2HtmlConverter.convertTextToHtml("IMG456", input, "font-style:italic;");
-        System.out.println(html);
+        log.info("{}", html);
     }
 
     // ================================

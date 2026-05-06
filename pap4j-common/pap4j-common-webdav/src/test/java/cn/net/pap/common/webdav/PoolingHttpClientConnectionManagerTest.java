@@ -203,7 +203,6 @@ public class PoolingHttpClientConnectionManagerTest {
         if (response != null) {
             logger.info("请求成功，响应内容: {}", response);
         } else {
-            //System.out.println(1);
             logger.error("请求失败，未获取到有效响应");
         }
     }
@@ -226,7 +225,6 @@ public class PoolingHttpClientConnectionManagerTest {
                     if (response != null) {
                         logger.info("请求成功，响应内容: {}", response);
                     } else {
-                        //System.out.println(1);
                         logger.error("请求失败，未获取到有效响应");
                     }
                 });

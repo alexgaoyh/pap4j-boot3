@@ -34,7 +34,7 @@ public class MetadataExtractorTest {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in getTest: ", e);
         }
     }
 }

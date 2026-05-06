@@ -9,6 +9,8 @@ import com.fasterxml.jackson.databind.node.IntNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.node.TextNode;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.ParameterizedType;
@@ -30,13 +32,15 @@ import java.util.Set;
  */
 public class JsonWithCommentsTest {
 
+    private static final Logger log = LoggerFactory.getLogger(JsonWithCommentsTest.class);
+
     private final ObjectMapper mapper = new ObjectMapper();
 
     @Test
     public void testGenerateJson() throws Exception {
         String className = "cn.net.pap.common.datastructure.catalog.dto.CatalogTreeDTO";
         ObjectNode json = generateJsonFromClass(Class.forName(className), new HashSet<>(), 0);
-        System.out.println(mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
+        log.info("{}", mapper.writerWithDefaultPrettyPrinter().writeValueAsString(json));
     }
 
     /**

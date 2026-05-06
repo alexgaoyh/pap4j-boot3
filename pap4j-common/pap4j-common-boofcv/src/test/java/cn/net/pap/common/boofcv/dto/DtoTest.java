@@ -1,6 +1,8 @@
 package cn.net.pap.common.boofcv.dto;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Method;
 import java.time.LocalDateTime;
@@ -10,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 public class DtoTest {
+
+    private static final Logger log = LoggerFactory.getLogger(DtoTest.class);
 
     @Test
     public void testDtoSettersAndGetters() throws Exception {
@@ -78,7 +82,7 @@ public class DtoTest {
             // 检查是否是Object类的toString方法
             if (toStringMethod.getDeclaringClass() == Object.class) {
                 // 如果没有重写toString方法，则跳过测试
-                System.out.println(clazz.getSimpleName() + " 没有重写toString方法，跳过测试");
+                log.info("{} 没有重写toString方法，跳过测试", clazz.getSimpleName());
                 return;
             }
 
@@ -92,14 +96,14 @@ public class DtoTest {
             assertFalse(toStringResult.trim().isEmpty(), "toString() method returned empty string");
 
             // 打印toString结果
-            System.out.println(clazz.getSimpleName() + " toString: " + toStringResult);
+            log.info("{} toString: {}", clazz.getSimpleName(), toStringResult);
 
         } catch (NoSuchMethodException e) {
             // 如果没有toString方法（理论上所有类都有Object的toString），这行代码不会执行
-            System.out.println(clazz.getSimpleName() + " 没有toString方法，跳过测试");
+            log.info("{} 没有toString方法，跳过测试", clazz.getSimpleName());
         } catch (Exception e) {
             // 其他异常（如调用失败）也只打印日志，不中断测试
-            System.out.println(clazz.getSimpleName() + " toString方法调用失败: " + e.getMessage());
+            log.error("{} toString方法调用失败: {}", clazz.getSimpleName(), e.getMessage());
         }
     }
 

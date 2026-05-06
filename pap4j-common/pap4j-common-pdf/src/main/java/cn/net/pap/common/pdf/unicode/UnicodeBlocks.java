@@ -1,5 +1,8 @@
 package cn.net.pap.common.pdf.unicode;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.awt.*;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -12,6 +15,8 @@ import java.util.Comparator;
 import java.util.List;
 
 public class UnicodeBlocks {
+
+    private static final Logger log = LoggerFactory.getLogger(UnicodeBlocks.class);
 
     public static class Block {
         public final int start;
@@ -105,7 +110,7 @@ public class UnicodeBlocks {
         GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
         String[] fontNames = ge.getAvailableFontFamilyNames();
 
-        System.out.printf("开始分析 %d 种字体对 %d 个Unicode区块的支持情况...%n",
+        log.info("开始分析 {} 种字体对 {} 个Unicode区块的支持情况...",
                 fontNames.length, blocks.size());
 
         for (String fontName : fontNames) {
@@ -118,7 +123,7 @@ public class UnicodeBlocks {
             }
         }
 
-        System.out.println("字体支持分析完成！");
+        log.info("字体支持分析完成！");
     }
 
     /**
@@ -241,9 +246,9 @@ public class UnicodeBlocks {
             List<String> supportedBlocks = getBlocksSupportedByFont(fontName);
 
             if (!supportedBlocks.isEmpty()) {
-                System.out.printf("字体 [%s] 支持的区块：%s%n", fontName, supportedBlocks);
+                log.info("字体 [{}] 支持的区块：{}", fontName, supportedBlocks);
             } else {
-                System.out.printf("字体 [%s] 没有完整支持任何区块%n", fontName);
+                log.info("字体 [{}] 没有完整支持任何区块", fontName);
             }
         }
     }
@@ -254,39 +259,41 @@ public class UnicodeBlocks {
     public void printBlockCharacters(String blockName) {
         Block block = findBlock(blockName);
         if (block == null) {
-            System.out.println("未找到区块: " + blockName);
+            log.info("未找到区块: {}", blockName);
             return;
         }
 
-        System.out.printf("区块 '%s' 的字符范围: U+%04X - U+%04X (%d 个字符)%n",
+        log.info("区块 '{}' 的字符范围: U+{:04X} - U+{:04X} ({} 个字符)",
                 block.name, block.start, block.end, block.end - block.start + 1);
-        System.out.printf("支持该区块的字体: %s%n", block.getSupportedFonts());
+        log.info("支持该区块的字体: {}", block.getSupportedFonts());
 
         int count = 0;
+        StringBuilder sb = new StringBuilder();
         for (int codePoint = block.start; codePoint <= block.end; codePoint++) {
             if (Character.isValidCodePoint(codePoint)) {
                 char[] chars = Character.toChars(codePoint);
-                System.out.printf("U+%04X: %s\t", codePoint, new String(chars));
+                sb.append(String.format("U+%04X: %s\t", codePoint, new String(chars)));
 
                 count++;
                 if (count % 4 == 0) {
-                    System.out.println();
+                    log.info("{}", sb.toString());
+                    sb.setLength(0);
                 }
             }
         }
 
-        if (count % 4 != 0) {
-            System.out.println();
+        if (sb.length() > 0) {
+            log.info("{}", sb.toString());
         }
 
-        System.out.printf("%n总共打印了 %d 个字符%n", count);
+        log.info("总共打印了 {} 个字符", count);
     }
 
     /**
      * 生成支持情况报告
      */
     public void generateCoverageReport() {
-        System.out.println("=== Unicode区块支持情况报告 ===");
+        log.info("=== Unicode区块支持情况报告 ===");
 
         // 按支持字体数量排序
         List<Block> sortedBlocks = new ArrayList<>(blocks);
@@ -295,7 +302,7 @@ public class UnicodeBlocks {
 
         for (Block block : sortedBlocks) {
             int supportedFonts = block.getSupportedFonts().size();
-            System.out.printf("%s: %d种字体支持%n", block.name, supportedFonts);
+            log.info("{}: {}种字体 support", block.name, supportedFonts);
         }
 
         // 统计信息
@@ -303,7 +310,7 @@ public class UnicodeBlocks {
                 .filter(b -> !b.getSupportedFonts().isEmpty())
                 .count();
 
-        System.out.printf("%n统计信息: %d/%d 个区块有字体支持 (%.1f%%)%n",
+        log.info("统计信息: {}/{} 个区块有字体支持 ({:.1f}%)",
                 fullySupportedBlocks, blocks.size(),
                 (fullySupportedBlocks * 100.0 / blocks.size()));
     }

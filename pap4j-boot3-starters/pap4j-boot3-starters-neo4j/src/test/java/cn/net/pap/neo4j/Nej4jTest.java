@@ -10,6 +10,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
@@ -21,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @SpringBootTest(classes = {Neo4jApplication.class})
 @org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
 public class Nej4jTest extends Neo4jBaseTest {
+
+    private static final Logger log = LoggerFactory.getLogger(Nej4jTest.class);
 
     private final PersonRepository personRepository;
     private final HobbyRepository hobbyRepository;
@@ -106,8 +110,9 @@ public class Nej4jTest extends Neo4jBaseTest {
             // 在 PersonEntity.java 类上添加注解 @JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "personId")
             ObjectMapper objectMapperJsonIdentityInfo = new ObjectMapper();
             String jsonIdentityInfoStr = objectMapperJsonIdentityInfo.writeValueAsString(p2);
-            System.out.println(jsonIdentityInfoStr);
+            log.info("{}", jsonIdentityInfoStr);
         } catch (JsonProcessingException e) {
+            log.error("JSON identity info serialization failed", e);
         }
 
         try {
@@ -116,8 +121,9 @@ public class Nej4jTest extends Neo4jBaseTest {
             module.addSerializer(PersonEntity.class, new PersonEntitySerializer());
             objectMapperSerializer.registerModule(module);
             String serializerStr = objectMapperSerializer.writeValueAsString(p2);
-            System.out.println(serializerStr);
+            log.info("{}", serializerStr);
         } catch (JsonProcessingException e) {
+            log.error("JSON serializer serialization failed", e);
         }
 
     }

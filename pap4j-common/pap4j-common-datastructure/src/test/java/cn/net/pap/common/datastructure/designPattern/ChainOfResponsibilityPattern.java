@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class ChainOfResponsibilityPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(ChainOfResponsibilityPattern.class);
 
     abstract class AbstractLogger {
         public static int INFO = 1;
@@ -39,7 +43,7 @@ public class ChainOfResponsibilityPattern {
 
         @Override
         protected void write(String message) {
-            System.out.println("Standard Console::Logger: " + message);
+            log.info("Standard Console::Logger: {}", message);
         }
     }
 
@@ -51,7 +55,7 @@ public class ChainOfResponsibilityPattern {
 
         @Override
         protected void write(String message) {
-            System.out.println("Error Console::Logger: " + message);
+            log.info("Error Console::Logger: {}", message);
         }
     }
 
@@ -63,7 +67,7 @@ public class ChainOfResponsibilityPattern {
 
         @Override
         protected void write(String message) {
-            System.out.println("File::Logger: " + message);
+            log.info("File::Logger: {}", message);
         }
     }
 

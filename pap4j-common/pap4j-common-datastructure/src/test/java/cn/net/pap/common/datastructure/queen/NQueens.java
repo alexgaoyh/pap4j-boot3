@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.queen;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * N-Queens 回溯 非递归
  */
 public class NQueens {
+
+    private static final Logger log = LoggerFactory.getLogger(NQueens.class);
 
     @Test
     public void nqueensTest() {
@@ -56,18 +60,19 @@ public class NQueens {
 
     // 打印当前解决方案
     private static void printSolution() {
-        System.out.println("方案" + answer + "：");
+        log.info("方案{}：", answer);
         for (int i = 1; i <= N; i++) {
+            StringBuilder sb = new StringBuilder();
             for (int j = 1; j <= N; j++) {
                 if (queens[i] == j) {
-                    System.out.print("Q ");
+                    sb.append("Q ");
                 } else {
-                    System.out.print(". ");
+                    sb.append(". ");
                 }
             }
-            System.out.println();
+            log.info("{}", sb);
         }
-        System.out.println();
+        log.info("");
     }
 
 }

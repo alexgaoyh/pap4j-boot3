@@ -82,9 +82,9 @@ public class FtpController {
             boolean success = ftp.login("bj", "123456");
 
             if (FTPReply.isPositiveCompletion(ftp.sendCommand("OPTS UTF8", "ON"))) {
-                System.out.println("FTP服务器支持UTF-8编码");
+                log.info("FTP服务器支持UTF-8编码");
             } else {
-                System.out.println("FTP服务器不支持UTF-8编码，可能遇到中文问题");
+                log.info("FTP服务器不支持UTF-8编码，可能遇到中文问题");
             }
             ftp.setFileType(BINARY_FILE_TYPE);
 

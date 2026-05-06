@@ -1,6 +1,8 @@
 package cn.net.pap.quartz;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -20,6 +22,8 @@ import java.util.concurrent.Semaphore;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class PropertiesTest {
 
+    private static final Logger log = LoggerFactory.getLogger(PropertiesTest.class);
+
     private final Map<String, Semaphore> semaphoreMap;
 
     public PropertiesTest(Map<String, Semaphore> semaphoreMap) {
@@ -29,7 +33,7 @@ public class PropertiesTest {
     @Test
     public void test() {
         semaphoreMap.forEach((key, value) -> {
-            System.out.println(key + ":" + value.availablePermits());
+            log.info("{}:{}", key, value.availablePermits());
         });
     }
 

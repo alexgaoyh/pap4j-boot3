@@ -4,13 +4,17 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
 public class GraalvmJavaScriptTest {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(GraalvmJavaScriptTest.class);
+
     @Test
     public void test1() {
         try (Context context = Context.newBuilder("js").option("engine.WarnInterpreterOnly", "false").build()) {
@@ -22,13 +26,13 @@ public class GraalvmJavaScriptTest {
                 calculate(5, 3);
                 """;
             Value result = context.eval("js", jsCode);
-            System.out.println("计算结果: " + result.asInt()); // 输出: 计算结果: 25
+            log.info("计算结果: {}", result.asInt()); // 输出: 计算结果: 25
             // 调用 JavaScript 函数
             Value calculateFunc = context.eval("js", "calculate");
             Value result2 = calculateFunc.execute(7, 2);
-            System.out.println("函数调用结果: " + result2.asInt()); // 输出: 函数调用结果: 24
+            log.info("函数调用结果: {}", result2.asInt()); // 输出: 函数调用结果: 24
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in test1: ", e);
         }
     }
 
@@ -61,11 +65,11 @@ public class GraalvmJavaScriptTest {
             """;
             Value result = context.eval("js", script);
             List resultList = result.as(List.class);
-            System.out.println(resultList);
+            log.info("{}", resultList);
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in test2: ", e);
         }
     }
-    
+
 }

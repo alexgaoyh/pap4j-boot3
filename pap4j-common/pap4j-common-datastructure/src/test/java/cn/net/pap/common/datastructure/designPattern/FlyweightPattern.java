@@ -1,10 +1,14 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 
 public class FlyweightPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(FlyweightPattern.class);
 
     interface Shape {
         void draw();
@@ -34,8 +38,7 @@ public class FlyweightPattern {
 
         @Override
         public void draw() {
-            System.out.println("Circle: Draw() [Color : " + color
-                    + ", x : " + x + ", y :" + y + ", radius :" + radius);
+            log.info("Circle: Draw() [Color : {}, x : {}, y : {}, radius : {}]", color, x, y, radius);
         }
     }
 
@@ -48,7 +51,7 @@ public class FlyweightPattern {
             if (circle == null) {
                 circle = new Circle(color);
                 circleMap.put(color, circle);
-                System.out.println("Creating circle of color : " + color);
+                log.info("Creating circle of color : {}", color);
             }
             return circle;
         }
@@ -59,9 +62,9 @@ public class FlyweightPattern {
 
     @Test
     public void test() {
-        String color = colors[(int) (Math.random() * colors.length)];
 
         for (int i = 0; i < 20; ++i) {
+            String color = colors[(int) (Math.random() * colors.length)];
             Circle circle =
                     (Circle) ShapeFactory.getCircle(color);
             circle.setX((int) (Math.random() * 100));

@@ -13,6 +13,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +36,8 @@ import java.util.*;
 
 @RestController
 public class ProguardController {
+
+    private static final Logger log = LoggerFactory.getLogger(ProguardController.class);
 
     private final IProguardService proguardService;
 
@@ -102,12 +106,14 @@ public class ProguardController {
         try {
             if(SimpleRateLimiter.tryAcquire("123", 1)) {
                 acquired = true; // 拿到许可了！
-                System.out.println("执行业务逻辑...");
+                log.info("执行业务逻辑...");
                 Thread.sleep(1000);
             } else {
                 // 这里是被限流的逻辑，比如返回个 "请稍后再试"
-                System.out.println("被限流了");
+                log.info("被限流了");
             }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         } catch (Exception e) {
 
         } finally {
@@ -125,7 +131,7 @@ public class ProguardController {
      */
     @GetMapping(value = "/print", produces = "application/json;charset=UTF-8")
     public String print() {
-        System.out.println(new Date().toString());
+        log.info("{}", new Date().toString());
         return "pap.net.cn!";
     }
 
@@ -403,6 +409,7 @@ public class ProguardController {
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
         return "longtime";

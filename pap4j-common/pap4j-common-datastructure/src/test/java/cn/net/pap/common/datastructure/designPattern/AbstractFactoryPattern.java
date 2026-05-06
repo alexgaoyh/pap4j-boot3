@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class AbstractFactoryPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(AbstractFactoryPattern.class);
 
     interface Shape {
         void draw();
@@ -12,7 +16,7 @@ public class AbstractFactoryPattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Rectangle::draw() method.");
+            log.info("Inside Rectangle::draw() method.");
         }
     }
 
@@ -20,7 +24,7 @@ public class AbstractFactoryPattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Square::draw() method.");
+            log.info("Inside Square::draw() method.");
         }
     }
 
@@ -28,7 +32,7 @@ public class AbstractFactoryPattern {
 
         @Override
         public void draw() {
-            System.out.println("Inside Circle::draw() method.");
+            log.info("Inside Circle::draw() method.");
         }
     }
 
@@ -40,7 +44,7 @@ public class AbstractFactoryPattern {
 
         @Override
         public void fill() {
-            System.out.println("Inside Red::fill() method.");
+            log.info("Inside Red::fill() method.");
         }
     }
 
@@ -48,7 +52,7 @@ public class AbstractFactoryPattern {
 
         @Override
         public void fill() {
-            System.out.println("Inside Green::fill() method.");
+            log.info("Inside Green::fill() method.");
         }
     }
 
@@ -56,7 +60,7 @@ public class AbstractFactoryPattern {
 
         @Override
         public void fill() {
-            System.out.println("Inside Blue::fill() method.");
+            log.info("Inside Blue::fill() method.");
         }
     }
 

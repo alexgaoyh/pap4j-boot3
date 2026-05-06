@@ -22,7 +22,12 @@ import java.math.BigDecimal;
 import java.util.*;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class ITextTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ITextTest.class);
 
     /**
      * dpi 转换  PDF是72， IMAGE是 真是获取的
@@ -45,8 +50,8 @@ public class ITextTest {
                             Integer pageNum = 1;
                             Rectangle pageSize = reader.getPageSize(pageNum);
                             String textWithPoints = SafePdfTextExtractor.extractTextFromPage(reader, pageNum, pageSize.getWidth(), pageSize.getHeight(), reader.getPageRotation(pageNum), file.getPath().replace(".pdf", ".jpg"));
-                            System.out.println(textWithPoints);
-                            System.out.println(fileName);
+                            log.info("{}", textWithPoints);
+                            log.info("{}", fileName);
                             String pdf2JPG = file.getPath().replace(".pdf", ".jpg");
                             if(new File(pdf2JPG).exists()) {
                                 new File(pdf2JPG).deleteOnExit();
@@ -117,19 +122,19 @@ public class ITextTest {
                 }
             }
 
-            System.out.println(pointTextDTOS.size());
-            System.out.println(dpi);
+            log.info("{}", pointTextDTOS.size());
+            log.info("{}", dpi);
             ObjectMapper objectMapper = new ObjectMapper();
-            System.out.println(objectMapper.writeValueAsString(pointTextDTOS));
-            System.out.println("-------------------------------");
-            System.out.println(minWidth);
-            System.out.println(maxWidth);
-            System.out.println(objectMapper.writeValueAsString(centerXTextList));
+            log.info("{}", objectMapper.writeValueAsString(pointTextDTOS));
+            log.info("-------------------------------");
+            log.info("{}", minWidth);
+            log.info("{}", maxWidth);
+            log.info("{}", objectMapper.writeValueAsString(centerXTextList));
 
             // saveRotation90Chcek(reader.getPageRotation(pageNum), pageSize, pointTextDTOS, dpi72ToReal, System.getProperty("java.io.tmpdir") + "/123456.pdf");
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in pointTextTest: ", e);
         } finally {
             if (reader != null) {
                 reader.close();
@@ -255,7 +260,7 @@ public class ITextTest {
                 }
 
             } catch (IOException e) {
-                e.printStackTrace();
+                log.error("Error rendering image: ", e);
             }
         }
 
@@ -335,10 +340,10 @@ public class ITextTest {
                         if (!stack.isEmpty()) {
                             stack.pop();
                         } else {
-                            System.err.println("Skipped unmatched EMC (stack was empty)");
+                            log.error("Skipped unmatched EMC (stack was empty)");
                         }
                     } catch (Exception e) {
-                        System.err.println("EMC Error: " + e.getMessage());
+                        log.error("EMC Error: ", e);
                     }
                 }
             }
@@ -350,7 +355,7 @@ public class ITextTest {
                         Stack<Object> stack = (Stack<Object>) SafeProcessor.getMarkedContentStack(processor);
                         stack.push(new Object());
                     } catch (Exception e) {
-                        System.err.println("BMC Error: " + e.getMessage());
+                        log.error("BMC Error: ", e);
                     }
                 }
             }
@@ -450,7 +455,7 @@ public class ITextTest {
             graphicsStateField.setAccessible(true);
             return (GraphicsState) graphicsStateField.get(renderInfo);
         } catch (NoSuchFieldException | IllegalAccessException e) {
-            e.printStackTrace();
+            log.error("Error getting graphics state: ", e);
             return null;
         }
     }
@@ -696,7 +701,7 @@ public class ITextTest {
                                 BaseFont.EMBEDDED);
                         fonts.put(chineseFont.getFontName(), font);
                     } catch (Exception e) {
-                        System.err.println("Failed to load font: " + chineseFont.getFontName());
+                        log.error("Failed to load font: {}", chineseFont.getFontName(), e);
                         // Continue with next font
                     }
                 }
@@ -744,7 +749,7 @@ public class ITextTest {
 
                                 break; // Use first successful font
                             } catch (Exception e) {
-                                System.err.println("Error processing text element: " + e.getMessage());
+                                log.error("Error processing text element: ", e);
                                 // Continue with next font
                             }
                         }
@@ -752,8 +757,7 @@ public class ITextTest {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error in PDF generation: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error in PDF generation: ", e);
         } finally {
             if (document != null) {
                 try {
@@ -761,7 +765,7 @@ public class ITextTest {
                         document.close();
                     }
                 } catch (Exception e) {
-                    System.err.println("Error closing document: " + e.getMessage());
+                    log.error("Error closing document: ", e);
                 }
             }
         }
@@ -854,7 +858,7 @@ public class ITextTest {
     // 处理软遮罩（Alpha通道）
     private static void applySoftMask(Graphics2D g, PdfObject maskStream,
                                       int x, int y, int width, int height, float scale) {
-        System.out.println();
+        log.info("");
     }
 
     // 处理硬遮罩（二值透明）

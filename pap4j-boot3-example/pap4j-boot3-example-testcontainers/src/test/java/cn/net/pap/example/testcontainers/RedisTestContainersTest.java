@@ -5,9 +5,13 @@ import io.lettuce.core.RedisClient;
 import io.lettuce.core.api.StatefulRedisConnection;
 import io.lettuce.core.api.sync.RedisCommands;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.utility.DockerImageName;
 
 public class RedisTestContainersTest {
+
+    private static final Logger log = LoggerFactory.getLogger(RedisTestContainersTest.class);
 
     // @Test
     public void redisTest() {
@@ -18,7 +22,7 @@ public class RedisTestContainersTest {
         RedisClient client = RedisClient.create(redisContainer.getRedisURI());
         try (StatefulRedisConnection<String, String> connect = client.connect()) {
             RedisCommands<String, String> sync = connect.sync();
-            System.out.println(sync.ping());
+            log.info("{}", sync.ping());
         }
     }
 

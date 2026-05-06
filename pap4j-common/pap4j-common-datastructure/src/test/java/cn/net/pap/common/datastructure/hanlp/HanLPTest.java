@@ -3,10 +3,14 @@ package cn.net.pap.common.datastructure.hanlp;
 import com.hankcs.hanlp.HanLP;
 import com.hankcs.hanlp.dictionary.py.Pinyin;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.List;
 
 public class HanLPTest {
+
+    private static final Logger log = LoggerFactory.getLogger(HanLPTest.class);
 
     /**
      * https://github.com/hankcs/HanLP/tree/1.x?tab=readme-ov-file#17-%E6%8B%BC%E9%9F%B3%E8%BD%AC%E6%8D%A2
@@ -15,53 +19,54 @@ public class HanLPTest {
     public void pinyinTest() {
         String text = "重载不是重任";
         List<Pinyin> pinyinList = HanLP.convertToPinyinList(text);
-        System.out.print("原文,");
+        
+        StringBuilder sb = new StringBuilder("原文,");
         for (char c : text.toCharArray()) {
-            System.out.printf("%c,", c);
+            sb.append(c).append(",");
         }
-        System.out.println();
+        log.info("{}", sb);
 
-        System.out.print("拼音（数字音调）,");
+        sb = new StringBuilder("拼音（数字音调）,");
         for (Pinyin pinyin : pinyinList) {
-            System.out.printf("%s,", pinyin);
+            sb.append(pinyin).append(",");
         }
-        System.out.println();
+        log.info("{}", sb);
 
-        System.out.print("拼音（符号音调）,");
+        sb = new StringBuilder("拼音（符号音调）,");
         for (Pinyin pinyin : pinyinList) {
-            System.out.printf("%s,", pinyin.getPinyinWithToneMark());
+            sb.append(pinyin.getPinyinWithToneMark()).append(",");
         }
-        System.out.println();
+        log.info("{}", sb);
 
-        System.out.print("拼音（无音调）,");
+        sb = new StringBuilder("拼音（无音调）,");
         for (Pinyin pinyin : pinyinList) {
-            System.out.printf("%s,", pinyin.getPinyinWithoutTone());
+            sb.append(pinyin.getPinyinWithoutTone()).append(",");
         }
-        System.out.println();
+        log.info("{}", sb);
 
-        System.out.print("声调,");
+        sb = new StringBuilder("声调,");
         for (Pinyin pinyin : pinyinList) {
-            System.out.printf("%s,", pinyin.getTone());
+            sb.append(pinyin.getTone()).append(",");
         }
-        System.out.println();
+        log.info("{}", sb);
 
-        System.out.print("声母,");
+        sb = new StringBuilder("声母,");
         for (Pinyin pinyin : pinyinList) {
-            System.out.printf("%s,", pinyin.getShengmu());
+            sb.append(pinyin.getShengmu()).append(",");
         }
-        System.out.println();
+        log.info("{}", sb);
 
-        System.out.print("韵母,");
+        sb = new StringBuilder("韵母,");
         for (Pinyin pinyin : pinyinList) {
-            System.out.printf("%s,", pinyin.getYunmu());
+            sb.append(pinyin.getYunmu()).append(",");
         }
-        System.out.println();
+        log.info("{}", sb);
 
-        System.out.print("输入法头,");
+        sb = new StringBuilder("输入法头,");
         for (Pinyin pinyin : pinyinList) {
-            System.out.printf("%s,", pinyin.getHead());
+            sb.append(pinyin.getHead()).append(",");
         }
-        System.out.println();
+        log.info("{}", sb);
     }
 
 }

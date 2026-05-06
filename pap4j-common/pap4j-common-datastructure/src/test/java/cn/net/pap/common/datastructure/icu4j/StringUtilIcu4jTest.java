@@ -3,6 +3,8 @@ package cn.net.pap.common.datastructure.icu4j;
 import com.ibm.icu.text.*;
 import com.ibm.icu.util.ULocale;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -13,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StringUtilIcu4jTest {
+
+    private static final Logger log = LoggerFactory.getLogger(StringUtilIcu4jTest.class);
 
     @Test
     public void testIsEmptyAndIsNotEmpty() {
@@ -188,14 +192,14 @@ public class StringUtilIcu4jTest {
             BreakIterator wordIterator = BreakIterator.getWordInstance(Locale.CHINA);
             wordIterator.setText(chineseText);
 
-            System.out.println("中文分词结果:");
+            log.info("中文分词结果:");
             int start = wordIterator.first();
             int end = wordIterator.next();
 
             while (end != BreakIterator.DONE) {
                 String word = chineseText.substring(start, end);
                 if (!word.trim().isEmpty()) {
-                    System.out.println("'" + word + "'");
+                    log.info("'{}'", word);
                 }
                 start = end;
                 end = wordIterator.next();
@@ -219,16 +223,16 @@ public class StringUtilIcu4jTest {
         };
 
         for (String text : testTexts) {
-            System.out.println();
+            log.info("");
 
             List<String> icuSegments = segmentWithICU(text);
             List<String> stdSegments = segmentWithStandard(text);
 
             // 检查差异
             if (!icuSegments.equals(stdSegments)) {
-                System.out.println("\n测试文本: " + text + "❌ 发现差异！");
-                System.out.println(icuSegments);
-                System.out.println(stdSegments);
+                log.info("测试文本: {}, 发现差异！", text);
+                log.info("{}", icuSegments);
+                log.info("{}", stdSegments);
             }
         }
 
@@ -243,7 +247,7 @@ public class StringUtilIcu4jTest {
 
         int start = boundary.first();
         for (int end = boundary.next(); end != BreakIterator.DONE; start = end, end = boundary.next()) {
-            System.out.println(start + ": " + source.substring(start, end));
+            log.info("{}: {}", start, source.substring(start, end));
         }
     }
 

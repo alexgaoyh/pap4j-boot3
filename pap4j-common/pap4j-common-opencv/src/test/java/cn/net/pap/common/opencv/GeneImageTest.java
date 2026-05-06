@@ -175,7 +175,7 @@ public class GeneImageTest {
             }
             log.info("{}", "Image " + number + " has been generated.");
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error generating image: ", e);
         }
     }
 
@@ -251,7 +251,7 @@ public class GeneImageTest {
             }
             ImageIO.write(image, "jpg", outputFile);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error generating empty JPEG: ", e);
         }
     }
 
@@ -275,7 +275,7 @@ public class GeneImageTest {
                 log.info("{}", "Copied " + newFileName);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error in test method: ", e);
         } finally {
             Files.walkFileTree(destinationFolderPath, new SimpleFileVisitor<Path>() {
                 // 先删除文件
@@ -395,7 +395,7 @@ public class GeneImageTest {
         try {
             ImageIO.write(bufferedImage, "jpg", new File(filePath));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error generating text image: ", e);
         }
     }
 
@@ -442,7 +442,7 @@ public class GeneImageTest {
                 ImageIO.write(originalImage, "jpg", new File(outputImagePath));
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error in copyAndReNameTest: ", e);
         } finally {
             if (outputDir != null) {
                 try {
@@ -460,7 +460,7 @@ public class GeneImageTest {
                         }
                     });
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error("Error deleting output directory: ", e);
                 }
             }
         }

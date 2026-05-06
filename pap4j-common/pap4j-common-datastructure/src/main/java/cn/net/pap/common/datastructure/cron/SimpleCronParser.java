@@ -1,5 +1,8 @@
 package cn.net.pap.common.datastructure.cron;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -18,6 +21,8 @@ import java.time.temporal.ChronoUnit;
  * @author alexgaoyh
  */
 public class SimpleCronParser {
+
+    private static final Logger log = LoggerFactory.getLogger(SimpleCronParser.class);
 
     // Cron 字段常量索引
     private static final int SECOND = 0;
@@ -293,21 +298,21 @@ public class SimpleCronParser {
      * <p>在控制台打印解析好的 Cron 表达式的各部分详细信息。</p>
      */
     public void printCronDetails() {
-        System.out.println("Cron表达式解析结果:");
+        log.info("Cron表达式解析结果:");
 
         int index = 0;
         if (hasSecondField) {
-            System.out.println("秒: " + cronParts[index++]);
+            log.info("秒: {}", cronParts[index++]);
         }
 
-        System.out.println("分钟: " + cronParts[index++]);
-        System.out.println("小时: " + cronParts[index++]);
-        System.out.println("日: " + cronParts[index++]);
-        System.out.println("月: " + cronParts[index++]);
-        System.out.println("周几: " + cronParts[index++]);
+        log.info("分钟: {}", cronParts[index++]);
+        log.info("小时: {}", cronParts[index++]);
+        log.info("日: {}", cronParts[index++]);
+        log.info("月: {}", cronParts[index++]);
+        log.info("周几: {}", cronParts[index++]);
 
         if (hasYearField) {
-            System.out.println("年: " + cronParts[index]);
+            log.info("年: {}", cronParts[index]);
         }
     }
 

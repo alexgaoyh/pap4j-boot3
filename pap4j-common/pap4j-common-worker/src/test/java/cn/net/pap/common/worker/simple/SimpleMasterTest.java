@@ -5,8 +5,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 class SimpleMasterTest {
+
+    private static final Logger log = LoggerFactory.getLogger(SimpleMasterTest.class);
+
     private SimpleMaster master;
 
     @BeforeEach
@@ -35,7 +40,7 @@ class SimpleMasterTest {
         Thread.sleep(200);
 
         // 验证：手动查看控制台输出
-        System.out.println("测试单个任务完成");
+        log.info("测试单个任务完成");
     }
 
     @Test
@@ -58,7 +63,7 @@ class SimpleMasterTest {
         Thread.sleep(2000);
 
         // 验证：多个工作进程应该并行处理任务
-        System.out.println("测试并发任务完成");
+        log.info("测试并发任务完成");
     }
 
     @Test
@@ -73,7 +78,7 @@ class SimpleMasterTest {
         Thread.sleep(500);
 
         // 理论上3个工作进程应该都能处理到任务
-        System.out.println("负载均衡测试完成");
+        log.info("负载均衡测试完成");
     }
 
     @Test
@@ -106,15 +111,15 @@ class SimpleMasterTest {
         master.submitTask(ioTask);
 
         // 关键：等待足够长时间让任务处理完成
-        System.out.println("\n=== 等待任务处理 ===");
+        log.info("\n=== 等待任务处理 ===");
 
         try {
             Thread.sleep(600);
-            System.out.println("600ms后...");
+            log.info("600ms后...");
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-        System.out.println("混合任务测试完成");
+        log.info("混合任务测试完成");
         master.showStatus();
     }
 

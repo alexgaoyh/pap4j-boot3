@@ -1,11 +1,15 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 
 public class ServiceLocatorPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(ServiceLocatorPattern.class);
 
     interface Service {
         public String getName();
@@ -15,7 +19,7 @@ public class ServiceLocatorPattern {
 
     static class Service1 implements Service {
         public void execute() {
-            System.out.println("Executing Service1");
+            log.info("Executing Service1");
         }
 
         @Override
@@ -26,7 +30,7 @@ public class ServiceLocatorPattern {
 
     static class Service2 implements Service {
         public void execute() {
-            System.out.println("Executing Service2");
+            log.info("Executing Service2");
         }
 
         @Override
@@ -38,10 +42,10 @@ public class ServiceLocatorPattern {
     static class InitialContext {
         public Object lookup(String jndiName) {
             if (jndiName.equalsIgnoreCase("SERVICE1")) {
-                System.out.println("Looking up and creating a new Service1 object");
+                log.info("Looking up and creating a new Service1 object");
                 return new Service1();
             } else if (jndiName.equalsIgnoreCase("SERVICE2")) {
-                System.out.println("Looking up and creating a new Service2 object");
+                log.info("Looking up and creating a new Service2 object");
                 return new Service2();
             }
             return null;
@@ -59,7 +63,7 @@ public class ServiceLocatorPattern {
         public Service getService(String serviceName) {
             for (Service service : services) {
                 if (service.getName().equalsIgnoreCase(serviceName)) {
-                    System.out.println("Returning cached  " + serviceName + " object");
+                    log.info("Returning cached {} object", serviceName);
                     return service;
                 }
             }

@@ -1,5 +1,8 @@
 package cn.net.pap.example.admin.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
@@ -15,6 +18,8 @@ import java.util.jar.JarFile;
  * 用于对应用运行环境中的 ClassPath 资源（JAR、内嵌依赖 JAR、class 文件）进行完整性校验，防止代码被篡改。
  */
 public class IntegrityVerifierUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(IntegrityVerifierUtil.class);
 
     /**
      * 统一入口
@@ -57,7 +62,7 @@ public class IntegrityVerifierUtil {
         // 校验 jar 本身
         try (InputStream is = new FileInputStream(jarFile)) {
             String hash = DigestUtils.calculateMD5(is);
-            System.out.println("[JAR] " + canonicalPath + " -> " + hash);
+            log.info("[JAR] {} -> {}", canonicalPath, hash);
         }
 
         // 尝试解析 fat jar（Spring Boot / 自定义）
@@ -69,7 +74,7 @@ public class IntegrityVerifierUtil {
                 if (isEmbeddedJar(entry)) {
                     try (InputStream is = jar.getInputStream(entry)) {
                         String hash = DigestUtils.calculateMD5(is);
-                        System.out.println("[EMBEDDED-JAR] " + entry.getName() + " -> " + hash);
+                        log.info("[EMBEDDED-JAR] {} -> {}", entry.getName(), hash);
                     }
                 }
             }
@@ -92,7 +97,7 @@ public class IntegrityVerifierUtil {
         Files.walk(root).filter(p -> p.toString().endsWith(".class")).forEach(p -> {
             try (InputStream is = Files.newInputStream(p)) {
                 String hash = DigestUtils.calculateMD5(is);
-                System.out.println("[CLASS] " + p + " -> " + hash);
+                log.info("[CLASS] {} -> {}", p, hash);
             } catch (Exception e) {
                 throw new RuntimeException("校验失败: " + p, e);
             }

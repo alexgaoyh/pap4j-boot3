@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class BusinessDelegatePattern {
+
+    private static final Logger log = LoggerFactory.getLogger(BusinessDelegatePattern.class);
 
     interface BusinessService {
         public void doProcessing();
@@ -12,7 +16,7 @@ public class BusinessDelegatePattern {
 
         @Override
         public void doProcessing() {
-            System.out.println("Processing task by invoking EJB Service");
+            log.info("Processing task by invoking EJB Service");
         }
     }
 
@@ -20,7 +24,7 @@ public class BusinessDelegatePattern {
 
         @Override
         public void doProcessing() {
-            System.out.println("Processing task by invoking JMS Service");
+            log.info("Processing task by invoking JMS Service");
         }
     }
 

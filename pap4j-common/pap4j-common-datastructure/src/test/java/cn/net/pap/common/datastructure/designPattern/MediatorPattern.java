@@ -1,10 +1,14 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Date;
 
 public class MediatorPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(MediatorPattern.class);
 
     class User {
         private String name;
@@ -28,8 +32,7 @@ public class MediatorPattern {
 
     class ChatRoom {
         public static void showMessage(User user, String message) {
-            System.out.println(new Date().toString()
-                    + " [" + user.getName() + "] : " + message);
+            log.info("{} [{}] : {}", new Date().toString(), user.getName(), message);
         }
     }
 

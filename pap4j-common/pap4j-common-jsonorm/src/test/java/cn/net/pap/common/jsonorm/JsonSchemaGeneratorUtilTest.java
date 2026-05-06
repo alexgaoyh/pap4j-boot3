@@ -69,7 +69,7 @@ public class JsonSchemaGeneratorUtilTest {
 
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("JSON Schema 过滤测试异常: {}", e.getMessage(), e);
         }
     }
 

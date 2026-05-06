@@ -34,9 +34,9 @@ public class ISOExtractor {
             long startTime = System.currentTimeMillis();
             extractISO(isoFilePath, outputDir);
             long endTime = System.currentTimeMillis();
-            log.info("{}", "Extraction complete. Time taken: " + (endTime - startTime) + " ms");
+            log.info("Extraction complete. Time taken: {} ms", (endTime - startTime));
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error extracting ISO: ", e);
         }
     }
 
@@ -59,26 +59,26 @@ public class ISOExtractor {
                             try {
                                 fos.write(data);
                             } catch (IOException e) {
-                                e.printStackTrace();
+                                log.error("Error writing data: ", e);
                                 return -1;
                             }
                             return data.length;
                         });
 
                         if (result != ExtractOperationResult.OK) {
-                            System.err.println("Error extracting item: " + item.getPath());
+                            log.error("Error extracting item: {}", item.getPath());
                         }
                     }
                 }
             }
         } catch (SevenZipException e) {
-            e.printStackTrace();
+            log.error("SevenZip error: ", e);
         } finally {
             if (inArchive != null) {
                 try {
                     inArchive.close();
                 } catch (SevenZipException e) {
-                    e.printStackTrace();
+                    log.error("Error closing archive: ", e);
                 }
             }
             isoFile.close();

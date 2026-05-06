@@ -78,7 +78,7 @@ public class PDFFontTest {
             log.info("pdfTest: {}", file.getAbsolutePath().toString());
             List<FontInfo> fontInfos = listAllFonts(file.getAbsolutePath());
             for (FontInfo fontInfo : fontInfos) {
-                System.out.println(fontInfo);
+                log.info("{}", fontInfo);
             }
         } finally {
             if (file != null && file.exists()) {
@@ -296,7 +296,7 @@ public class PDFFontTest {
                             cb.endText();
                             cb.restoreState();
                         } catch (Exception ex) {
-                            ex.printStackTrace();
+                            log.error("Error during rendering: ", ex);
                         }
                     }
                 });
@@ -325,7 +325,7 @@ public class PDFFontTest {
 
                             cb.addImage(img, m.get(Matrix.I11), m.get(Matrix.I12), m.get(Matrix.I21), m.get(Matrix.I22), m.get(Matrix.I31), m.get(Matrix.I32));
                         } catch (Exception ex) {
-                            ex.printStackTrace();
+                            log.error("Error during rendering: ", ex);
                         }
                     }
                 });

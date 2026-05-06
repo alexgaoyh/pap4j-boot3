@@ -1,8 +1,12 @@
 package cn.net.pap.common.datastructure.designPattern;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class VisitorPattern {
+
+    private static final Logger log = LoggerFactory.getLogger(VisitorPattern.class);
 
     interface ComputerPart {
         public void accept(ComputerPartVisitor computerPartVisitor);
@@ -64,22 +68,22 @@ public class VisitorPattern {
 
         @Override
         public void visit(Computer computer) {
-            System.out.println("Displaying Computer.");
+            log.info("Displaying Computer.");
         }
 
         @Override
         public void visit(Mouse mouse) {
-            System.out.println("Displaying Mouse.");
+            log.info("Displaying Mouse.");
         }
 
         @Override
         public void visit(Keyboard keyboard) {
-            System.out.println("Displaying Keyboard.");
+            log.info("Displaying Keyboard.");
         }
 
         @Override
         public void visit(Monitor monitor) {
-            System.out.println("Displaying Monitor.");
+            log.info("Displaying Monitor.");
         }
     }
 

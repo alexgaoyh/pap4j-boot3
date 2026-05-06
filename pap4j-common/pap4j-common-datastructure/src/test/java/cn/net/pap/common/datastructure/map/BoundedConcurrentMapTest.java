@@ -151,8 +151,8 @@ class BoundedConcurrentMapTest {
             latch.await(); // 等待所有线程执行完毕
 
             long actualSize = concurrentMap.mappingCount();
-            System.out.println("并发塞入 500 个元素，最大容量限制: " + maxCap + "，最终 Map 实际大小: " + actualSize);
-            System.out.println("成功写入次数: " + successCount.get());
+            log.info("并发塞入 500 个元素，最大容量限制: {}，最终 Map 实际大小: {}", maxCap, actualSize);
+            log.info("成功写入次数: {}", successCount.get());
 
             // 【核心断言】
             // 由于是高并发下的软限制 (微小的时间差内可能有几个线程同时通过了 if 校验)，

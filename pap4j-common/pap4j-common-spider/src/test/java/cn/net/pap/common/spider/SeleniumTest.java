@@ -3,8 +3,12 @@ package cn.net.pap.common.spider;
 import org.junit.jupiter.api.Test;
 import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class SeleniumTest {
+
+    private static final Logger log = LoggerFactory.getLogger(SeleniumTest.class);
 
     // @Test
     @org.junit.jupiter.api.Disabled("Requires local environment/dataset")
@@ -30,7 +34,7 @@ public class SeleniumTest {
         // 重新加载页面或访问你需要验证 Cookie 的 URL
         driver.get("https://www.baidu.com");
 
-        System.out.println("Cookie added and page loaded!");
+        log.info("Cookie added and page loaded!");
 
         driver.quit();
     }
@@ -48,6 +52,8 @@ public class SeleniumTest {
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
+            log.error("Thread sleep interrupted: ", e);
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
 
@@ -62,11 +68,13 @@ public class SeleniumTest {
         // 重新加载页面或访问你需要验证 Cookie 的 URL
         driver.get("http://127.0.0.1:6060/business/archivers");
 
-        System.out.println("Cookie added and page loaded!");
+        log.info("Cookie added and page loaded!");
 
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
+            log.error("Thread sleep interrupted: ", e);
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
 

@@ -6,6 +6,9 @@ import com.itextpdf.text.Rectangle;
 import com.itextpdf.text.pdf.PdfWriter;
 import org.junit.jupiter.api.Test;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.FileOutputStream;
 import java.io.IOException;
 
@@ -13,6 +16,8 @@ import java.io.IOException;
  * 使用 itextpdf ，把 jp2 类型的图像转换为 pdf
  */
 public class DiffPic2PDFTest {
+
+    private static final Logger log = LoggerFactory.getLogger(DiffPic2PDFTest.class);
 
     public static String imagePath = "0.jp2";
 
@@ -31,10 +36,9 @@ public class DiffPic2PDFTest {
             document.open();
             document.add(jp2Image);
             document.close();
-            System.out.println("PDF 生成成功！" + tempPdf.toPath().toAbsolutePath());
+            log.info("PDF 生成成功！{}", tempPdf.toPath().toAbsolutePath());
         } catch (Exception e) {
-            e.printStackTrace();
-            System.err.println("错误: " + e.getMessage());
+            log.error("错误: ", e);
         } finally {
             if (document != null && document.isOpen()) {
                 document.close();
@@ -43,7 +47,7 @@ public class DiffPic2PDFTest {
                 try {
                     pdfOutputStream.close();
                 } catch (IOException e) {
-                    System.err.println("关闭文件流时出错: " + e.getMessage());
+                    log.error("关闭文件流时出错: ", e);
                 }
             }
             if (tempPdf != null && tempPdf.exists()) {
