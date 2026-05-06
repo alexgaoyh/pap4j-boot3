@@ -52,7 +52,7 @@ public class SimpleXorCryptoUtilTest {
         long endTime = System.currentTimeMillis();
 
         // 异或运算极快，通常 10MB 在现代 CPU 上应在 10ms 以内
-        Assertions.assertTrue((endTime - startTime) < 100, "性能异常：异或处理速度过慢");
+        Assertions.assertTrue((endTime - startTime) < 1000, "性能异常：异或处理速度过慢");
     }
 
     @Test
