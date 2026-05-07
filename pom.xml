@@ -373,7 +373,6 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>centralSonatype</publishingServerId>
-                    <tokenAuth>true</tokenAuth>
                 </configuration>
             </plugin>
             <plugin>
