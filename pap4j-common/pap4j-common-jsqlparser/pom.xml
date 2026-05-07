@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-jsqlparser</artifactId>
+    <name>pap4j-common-jsqlparser</name>
+    <description>pap4j-common-jsqlparser</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

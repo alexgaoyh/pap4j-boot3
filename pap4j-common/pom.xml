@@ -9,6 +9,7 @@
     </parent>
 
     <artifactId>pap4j-common</artifactId>
+    <description>pap4j-common</description>
     <packaging>pom</packaging>
 
     <name>pap4j-common</name>

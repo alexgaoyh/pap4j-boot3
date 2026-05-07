@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-boofcv</artifactId>
+    <name>pap4j-common-boofcv</name>
+    <description>pap4j-common-boofcv</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

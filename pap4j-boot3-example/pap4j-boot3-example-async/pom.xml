@@ -11,6 +11,8 @@
 
     <groupId>cn.net.pap.example.async</groupId>
     <artifactId>pap4j-boot3-example-async</artifactId>
+    <name>pap4j-boot3-example-async</name>
+    <description>pap4j-boot3-example-async</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

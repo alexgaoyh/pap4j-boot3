@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-kingbase</artifactId>
+    <name>pap4j-common-kingbase</name>
+    <description>pap4j-common-kingbase</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

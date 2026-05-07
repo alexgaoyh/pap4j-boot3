@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-example-wechat</artifactId>
+    <name>pap4j-boot3-example-wechat</name>
+    <description>pap4j-boot3-example-wechat</description>
 
     <properties>
         <java.version>17</java.version>

@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-jena</artifactId>
+    <name>pap4j-common-jena</name>
+    <description>pap4j-common-jena</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

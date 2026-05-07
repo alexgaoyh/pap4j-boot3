@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-webdav</artifactId>
+    <name>pap4j-common-webdav</name>
+    <description>pap4j-common-webdav</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

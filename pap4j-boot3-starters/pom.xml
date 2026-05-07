@@ -12,6 +12,7 @@
     <packaging>pom</packaging>
 
     <name>pap4j-boot3-starters</name>
+    <description>pap4j-boot3-starters</description>
     <url>http://maven.apache.org</url>
 
     <modules>

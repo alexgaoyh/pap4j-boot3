@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-spider</artifactId>
+    <name>pap4j-common-spider</name>
+    <description>pap4j-common-spider</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

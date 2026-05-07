@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-deeplearning4j</artifactId>
+    <name>pap4j-common-deeplearning4j</name>
+    <description>pap4j-common-deeplearning4j</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

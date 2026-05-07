@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-opencv</artifactId>
+    <name>pap4j-common-opencv</name>
+    <description>pap4j-common-opencv</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

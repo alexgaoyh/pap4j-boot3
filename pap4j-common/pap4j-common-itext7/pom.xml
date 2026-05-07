@@ -11,6 +11,8 @@
 
     <groupId>cn.net.pap.itext7</groupId>
     <artifactId>pap4j-common-itext7</artifactId>
+    <name>pap4j-common-itext7</name>
+    <description>pap4j-common-itext7</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

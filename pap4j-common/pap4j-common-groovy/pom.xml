@@ -11,6 +11,8 @@
 
     <groupId>cn.net.pap.common.groovy</groupId>
     <artifactId>pap4j-common-groovy</artifactId>
+    <name>pap4j-common-groovy</name>
+    <description>pap4j-common-groovy</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

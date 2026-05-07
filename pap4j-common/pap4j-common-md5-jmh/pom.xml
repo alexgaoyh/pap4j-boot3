@@ -11,6 +11,8 @@
 
     <groupId>cn.net.pap.md5.jmh</groupId>
     <artifactId>pap4j-common-md5-jmh</artifactId>
+    <name>pap4j-common-md5-jmh</name>
+    <description>pap4j-common-md5-jmh</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

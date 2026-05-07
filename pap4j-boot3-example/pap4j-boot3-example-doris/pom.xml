@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-example-doris</artifactId>
+    <name>pap4j-boot3-example-doris</name>
+    <description>pap4j-boot3-example-doris</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

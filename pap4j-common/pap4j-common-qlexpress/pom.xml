@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-qlexpress</artifactId>
+    <name>pap4j-common-qlexpress</name>
+    <description>pap4j-common-qlexpress</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

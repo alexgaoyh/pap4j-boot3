@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-example-devtools</artifactId>
+    <name>pap4j-boot3-example-devtools</name>
+    <description>pap4j-boot3-example-devtools</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

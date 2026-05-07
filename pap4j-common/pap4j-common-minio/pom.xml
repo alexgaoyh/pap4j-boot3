@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-minio</artifactId>
+    <name>pap4j-common-minio</name>
+    <description>pap4j-common-minio</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

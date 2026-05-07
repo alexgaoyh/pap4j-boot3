@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-pdf</artifactId>
+    <name>pap4j-common-pdf</name>
+    <description>pap4j-common-pdf</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

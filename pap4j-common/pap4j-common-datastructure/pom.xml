@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-datastructure</artifactId>
+    <name>pap4j-common-datastructure</name>
+    <description>pap4j-common-datastructure</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

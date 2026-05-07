@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-starters-gStore</artifactId>
+    <name>pap4j-boot3-starters-gStore</name>
+    <description>pap4j-boot3-starters-gStore</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

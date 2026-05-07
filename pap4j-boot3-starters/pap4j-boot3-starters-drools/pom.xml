@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-starters-drools</artifactId>
+    <name>pap4j-boot3-starters-drools</name>
+    <description>pap4j-boot3-starters-drools</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

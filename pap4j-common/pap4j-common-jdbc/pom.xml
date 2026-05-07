@@ -11,6 +11,8 @@
 
     <groupId>cn.net.pap.common.jdbc</groupId>
     <artifactId>pap4j-common-jdbc</artifactId>
+    <name>pap4j-common-jdbc</name>
+    <description>pap4j-common-jdbc</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

@@ -11,6 +11,8 @@
 
     <groupId>cn.net.pap.example</groupId>
     <artifactId>pap4j-boot3-example</artifactId>
+    <name>pap4j-boot3-example</name>
+    <description>pap4j-boot3-example</description>
     <packaging>pom</packaging>
     <modules>
         <module>pap4j-boot3-example-bean</module>

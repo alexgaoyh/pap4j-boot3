@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-jsonorm</artifactId>
+    <name>pap4j-common-jsonorm</name>
+    <description>pap4j-common-jsonorm</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

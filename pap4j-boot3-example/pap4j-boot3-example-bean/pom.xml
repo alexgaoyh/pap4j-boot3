@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-example-bean</artifactId>
+    <name>pap4j-boot3-example-bean</name>
+    <description>pap4j-boot3-example-bean</description>
     <packaging>jar</packaging>
 
     <properties>

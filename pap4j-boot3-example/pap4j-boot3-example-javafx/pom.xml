@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-example-javafx</artifactId>
+    <name>pap4j-boot3-example-javafx</name>
+    <description>pap4j-boot3-example-javafx</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

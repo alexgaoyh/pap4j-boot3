@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-starters-milvus</artifactId>
+    <name>pap4j-boot3-starters-milvus</name>
+    <description>pap4j-boot3-starters-milvus</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-common-datasketches</artifactId>
+    <name>pap4j-common-datasketches</name>
+    <description>pap4j-common-datasketches</description>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
