@@ -68,7 +68,7 @@
     <scm>
         <url>https://gitee.com/alexgaoyh/pap4j-boot3</url>
         <connection>https://gitee.com/alexgaoyh/pap4j-boot3.git</connection>
-        <developerConnection>https://gitee.com/alexgaoyh/pap4j-boot3.git</developerConnection>
+        <developerConnection>scm:git:https://gitee.com/alexgaoyh/pap4j-boot3.git</developerConnection>
     </scm>
 
     <dependencyManagement>
@@ -329,7 +329,7 @@
                     </execution>
                 </executions>
             </plugin>
-            <plugin>
+            <!--<plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
                 <version>1.6</version>
@@ -345,7 +345,7 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
+            </plugin>-->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
@@ -369,7 +369,7 @@
             <plugin>
                 <groupId>org.sonatype.central</groupId>
                 <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.4.0</version>
+                <version>0.5.0</version>
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>centralSonatype</publishingServerId>
