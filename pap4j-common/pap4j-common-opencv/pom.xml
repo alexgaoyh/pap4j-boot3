@@ -129,8 +129,6 @@
                     <groupId>org.opencv</groupId>
                     <artifactId>opencv-401</artifactId>
                     <version>401</version>
-                    <scope>system</scope>
-                    <systemPath>${project.basedir}/libs/opencv-401.jar</systemPath>
                 </dependency>
             </dependencies>
         </profile>
