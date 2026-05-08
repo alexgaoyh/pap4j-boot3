@@ -66,8 +66,13 @@ public class FtpController {
             if (metaClient.isConnected()) {
                 try {
                     metaClient.logout();
+                } catch (IOException ignored) {
+                    log.warn("FTP logout failed", ignored);
+                }
+                try {
                     metaClient.disconnect();
                 } catch (IOException ignored) {
+                    log.warn("FTP disconnect failed", ignored);
                 }
             }
         }
@@ -125,21 +130,42 @@ public class FtpController {
             }
             response.flushBuffer();
 
-            client.completePendingCommand();
-
         } catch (Exception e) {
             if (!isClientAbort(e)) {
                 log.error("FTP streaming failed: ", e);
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
             }
         } finally {
-            if (in != null) try {
-                in.close();
-            } catch (IOException ignored) {
+            // 必须先关闭数据输入流 (InputStream)
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException ignored) {
+                    log.warn("Failed to close FTP InputStream", ignored);
+                }
             }
-            if (client.isConnected()) try {
-                client.disconnect();
-            } catch (IOException ignored) {
+
+            // 流关闭后，再调用 completePendingCommand 接收 226 响应
+            if (client.isConnected()) {
+                try {
+                    client.completePendingCommand();
+                } catch (IOException ignored) {
+                    log.warn("Failed to complete pending command", ignored);
+                }
+
+                // 安全登出
+                try {
+                    client.logout();
+                } catch (IOException ignored) {
+                    log.warn("FTP logout failed", ignored);
+                }
+
+                // 安全断开 Socket 连接
+                try {
+                    client.disconnect();
+                } catch (IOException ignored) {
+                    log.warn("FTP disconnect failed", ignored);
+                }
             }
         }
     }
@@ -172,43 +198,74 @@ public class FtpController {
             client.enterLocalPassiveMode();
             client.setFileType(FTP.BINARY_FILE_TYPE);
             in = client.retrieveImgSendFileStream(JPG_PATH);
-            String replyString = client.getReplyString();
-            // 解析宽高信息
-            int width = 0;
-            int height = 0;
-            if (replyString != null && replyString.startsWith("150")) {
-                // 解析格式: "150 width:height"
-                String[] parts = replyString.split(" ");
-                if (parts.length > 1) {
-                    String metadata = parts[1];
-                    String[] dimensions = metadata.split(":");
-                    if (dimensions.length == 2) {
-                        try {
-                            width = Integer.parseInt(dimensions[0]);
-                            height = Integer.parseInt(dimensions[1]);
-                        } catch (NumberFormatException ignored) {
-                            // 解析失败，保持默认值
+            if (in != null) {
+                String replyString = client.getReplyString();
+                // 解析宽高信息
+                int width = 0;
+                int height = 0;
+                if (replyString != null && replyString.startsWith("150")) {
+                    // 解析格式: "150 width:height"
+                    String[] parts = replyString.split(" ");
+                    if (parts.length > 1) {
+                        String metadata = parts[1];
+                        String[] dimensions = metadata.split(":");
+                        if (dimensions.length == 2) {
+                            try {
+                                width = Integer.parseInt(dimensions[0]);
+                                height = Integer.parseInt(dimensions[1]);
+                            } catch (NumberFormatException ignored) {
+                                // 解析失败，保持默认值
+                            }
                         }
                     }
                 }
-            }
-            response.setHeader("X-Image-Width", String.valueOf(width));
-            response.setHeader("X-Image-Height", String.valueOf(height));
+                response.setHeader("X-Image-Width", String.valueOf(width));
+                response.setHeader("X-Image-Height", String.valueOf(height));
 
-            IOUtils.copy(in, response.getOutputStream());
+                // 将图片流写入响应
+                IOUtils.copy(in, response.getOutputStream());
+                response.flushBuffer();
+            } else {
+                // 如果在 FTP 上找不到图片，返回 404
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            }
+
         } catch (Exception e) {
             if (!isClientAbort(e)) {
                 log.error("FTP streaming failed: ", e);
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
             }
         } finally {
-            if (in != null) try {
-                in.close();
-            } catch (IOException ignored) {
+            // 先关闭 InputStream
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException ignored) {
+                    log.warn("Failed to close FTP InputStream", ignored);
+                }
             }
-            if (client.isConnected()) try {
-                client.disconnect();
-            } catch (IOException ignored) {
+
+            if (client.isConnected()) {
+                // 流关闭后，调用 completePendingCommand 接收 226 响应
+                try {
+                    client.completePendingCommand();
+                } catch (IOException ignored) {
+                    log.warn("Failed to complete pending command", ignored);
+                }
+
+                // 安全登出
+                try {
+                    client.logout();
+                } catch (IOException ignored) {
+                    log.warn("FTP logout failed", ignored);
+                }
+
+                // 安全断开 Socket 连接
+                try {
+                    client.disconnect();
+                } catch (IOException ignored) {
+                    log.warn("FTP disconnect failed", ignored);
+                }
             }
         }
     }
