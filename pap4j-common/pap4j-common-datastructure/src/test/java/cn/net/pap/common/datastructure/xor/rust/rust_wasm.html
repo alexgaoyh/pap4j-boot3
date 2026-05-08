@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>WASM 图像加解密演示</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; gap: 20px; }
+        .container { display: flex; gap: 20px; text-align: center; }
+        canvas, img { border: 2px solid #333; max-width: 300px; background: #eee; }
+        .status { color: #666; }
+    </style>
+</head>
+<body>
+    <h2>WASM 图像解密渲染测试</h2>
+    <script type="module">
+        import init, { process_in_place } from './pkg/xor_crypto_wasm.js';
+
+		async function run() {
+			await init();
+
+			// 从 Java 日志中复制出来的加密数据
+			const encryptedData = new Uint8Array([31,175,57,26,201,4,51,139,97,245,26,157,112,74,198,27,136,52,11,86,189,159,195,114,11,61,69,39,153,175,89,110,93,226,111,26,201,4,51,139,97,245,44,157,112,74,238,27,136,52,9,86,189,159,193,141,11,194,187,216,129,175,89,110,162,29,127,26,201,4]);
+
+			// 1. 调用 WASM 解密
+			process_in_place(encryptedData);
+
+			// 2. 将解密后的 BMP 字节数组转为可显示的图片 URL
+			const blob = new Blob([encryptedData], { type: 'image/bmp' });
+			const imageUrl = URL.createObjectURL(blob);
+
+			// 3. 在页面上展示
+			const img = document.createElement('img');
+			img.src = imageUrl;
+			img.style.width = "100px";        // 放大点看，不然 2x2 太小了
+			img.style.imageRendering = "pixelated"; // 防止浏览器平滑处理导致模糊
+			
+			document.body.appendChild(img);
+		}
+
+        run();
+    </script>
+</body>
+</html>

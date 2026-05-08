@@ -3,7 +3,14 @@ package cn.net.pap.common.datastructure.xor;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -12,6 +19,8 @@ import java.util.Random;
  * 验证：正确性、对称性、原位处理效率
  */
 public class SimpleXorCryptoUtilTest {
+
+    private static final Logger log = LoggerFactory.getLogger(SimpleXorCryptoUtilTest.class);
 
     @Test
     @DisplayName("基础功能测试：验证加密后再解密是否能够 100% 还原")
@@ -78,4 +87,42 @@ public class SimpleXorCryptoUtilTest {
         byte[] restored = SimpleXorCryptoUtil.process(result);
         Assertions.assertArrayEquals(original, restored);
     }
+
+    @Test
+    @DisplayName("java端加密图像，然后rust层生成wasm解密图像，将如下生成的这个数据放到rust_wasm.html中进行使用")
+    public void testImageEncryptionForHtml() throws IOException {
+        // 1. 创建 2x2 测试图像
+        BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        image.setRGB(0, 0, Color.RED.getRGB());
+        image.setRGB(0, 1, Color.GREEN.getRGB());
+        image.setRGB(1, 0, Color.BLUE.getRGB());
+        image.setRGB(1, 1, Color.WHITE.getRGB());
+
+        // 2. 转为 BMP 字节数组
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ImageIO.write(image, "bmp", baos);
+        byte[] originalBytes = baos.toByteArray();
+
+        // 3. 调用工具类加密
+        byte[] encryptedBytes = originalBytes.clone();
+        SimpleXorCryptoUtil.processInPlace(encryptedBytes);
+
+        // 4. 构建 JS 数组格式字符串
+        StringBuilder jsArrayBuilder = new StringBuilder();
+        jsArrayBuilder.append("const encryptedData = new Uint8Array([");
+
+        for (int i = 0; i < encryptedBytes.length; i++) {
+            // Java byte 有符号 (-128~127)，转为无符号整数 (0~255)
+            jsArrayBuilder.append(Byte.toUnsignedInt(encryptedBytes[i]));
+            if (i < encryptedBytes.length - 1) {
+                jsArrayBuilder.append(",");
+            }
+        }
+        jsArrayBuilder.append("]);");
+
+        // 5. 使用 log.info 输出结果
+        log.info("图像加密完成，原始大小: {} bytes", originalBytes.length);
+        log.info("复制以下代码到 HTML 中使用:\n{}", jsArrayBuilder.toString());
+    }
+
 }
