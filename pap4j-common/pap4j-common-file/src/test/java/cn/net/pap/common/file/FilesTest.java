@@ -9,12 +9,17 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
+
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class FilesTest {
     private static final Logger log = LoggerFactory.getLogger(FilesTest.class);
@@ -173,6 +178,32 @@ public class FilesTest {
         }
 
         Files.copy(source, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
+    }
+
+    @Test
+    public void testGetFileTimes() throws Exception {
+        String realPath = Files.createTempFile("testGetFileTimes", ".txt").toAbsolutePath().toString();
+        try {
+            BasicFileAttributes attrs = Files.readAttributes(Paths.get(realPath), BasicFileAttributes.class);
+            FileTime creationTime = attrs.creationTime();
+            FileTime lastModifiedTime = attrs.lastModifiedTime();
+            FileTime lastAccessTime = attrs.lastAccessTime();
+
+            assertNotNull(creationTime, "创建时间不应为空");
+            assertNotNull(lastModifiedTime, "修改时间不应为空");
+            assertNotNull(lastAccessTime, "访问时间不应为空");
+
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS").withZone(ZoneId.systemDefault());
+
+            log.info("文件路径: " + realPath);
+            log.info("创建时间 (Creation Time):      " + formatter.format(creationTime.toInstant()));
+            log.info("修改时间 (Last Modified Time): " + formatter.format(lastModifiedTime.toInstant()));
+            log.info("访问时间 (Last Access Time):   " + formatter.format(lastAccessTime.toInstant()));
+        } finally {
+            if (realPath != null) {
+                Files.deleteIfExists(Paths.get(realPath));
+            }
+        }
     }
 
 }
