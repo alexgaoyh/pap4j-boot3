@@ -2,6 +2,7 @@ package cn.net.pap.example.ftp.server.config;
 
 import cn.net.pap.example.ftp.server.command.ContentCommand;
 import cn.net.pap.example.ftp.server.command.EncodingCommand;
+import cn.net.pap.example.ftp.server.command.FileAttrCommand;
 import cn.net.pap.example.ftp.server.command.ImgGetCommand;
 import cn.net.pap.example.ftp.server.command.ImgSendCommand;
 import cn.net.pap.example.ftp.server.command.LogbackSetCommand;
@@ -155,6 +156,7 @@ public class FtpServerConfig {
         factoryFactory.addCommand("SITE_IMGGET", new ImgGetCommand());
         factoryFactory.addCommand("SITE_IMGSEND", new ImgSendCommand());
         factoryFactory.addCommand("SITE_LOGBACKSET", new LogbackSetCommand());
+        factoryFactory.addCommand("SITE_FILEATTR", new FileAttrCommand());
 
 
         // 注册到 serverFactory
