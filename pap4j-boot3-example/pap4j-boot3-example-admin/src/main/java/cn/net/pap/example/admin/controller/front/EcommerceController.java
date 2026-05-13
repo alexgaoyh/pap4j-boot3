@@ -37,6 +37,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+@io.swagger.v3.oas.annotations.security.SecurityScheme(
+        name = "BearerAuth",
+        type = io.swagger.v3.oas.annotations.enums.SecuritySchemeType.HTTP,
+        scheme = "bearer",
+        bearerFormat = "JWT"
+)
 @RestController
 @RequestMapping("/front/api/ecommerce")
 @Tag(name = "电商核心业务 (E-Commerce)", description = "电商核心业务流程接口，提供极其严格的字段描述、数据边界和枚举限制，用于完全消除AI Agent在对接时的幻觉。")
@@ -291,10 +297,10 @@ public class EcommerceController {
             @ApiResponse(responseCode = "200", description = "更新成功",
                     content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = StandardResponse.class)))
     })
-    @PostMapping(value = "/products/{id}/status", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+    @PostMapping(value = "/products/status", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public StandardResponse<Void> updateProductStatusForm(
-            @Parameter(description = "商品ID", in = ParameterIn.PATH, example = "PROD-1001", required = true)
-            @PathVariable String id,
+            @Parameter(description = "商品ID", example = "PROD-1001", required = true)
+            @RequestParam("id") String id,
 
             @Parameter(description = "新状态", required = true, schema = @Schema(implementation = ProductStatus.class))
             @RequestParam("status") ProductStatus status
@@ -336,6 +342,10 @@ public class EcommerceController {
     @Schema(
             name = "ReportData",
             description = "多态报表数据基类。AI Agent 需根据 type 字段的值，将其向下转型为具体的子类(SummaryReportVO 或 DetailedReportVO)",
+            oneOf = {
+                    SummaryReportVO.class,
+                    DetailedReportVO.class
+            },
             discriminatorProperty = "type",
             discriminatorMapping = {
                     @io.swagger.v3.oas.annotations.media.DiscriminatorMapping(value = "SUMMARY", schema = SummaryReportVO.class),
@@ -414,7 +424,10 @@ public class EcommerceController {
 
     @Schema(name = "OrderCreateRequest", description = "创建订单请求参数")
     public record OrderCreateRequest(
-            @Schema(description = "订单包含的商品项列表，不能为空", requiredMode = Schema.RequiredMode.REQUIRED, minProperties = 1)
+            @ArraySchema(
+                    minItems = 1,
+                    schema = @Schema(implementation = OrderItemDTO.class, description = "订单包含的商品项列表，不能为空", requiredMode = Schema.RequiredMode.REQUIRED)
+            )
             List<OrderItemDTO> items,
 
             @Schema(description = "收货地址-省份", example = "浙江省", requiredMode = Schema.RequiredMode.REQUIRED, maxLength = 20)
@@ -429,7 +442,7 @@ public class EcommerceController {
             @Schema(description = "客户端计算的订单总金额(用于服务端防篡改校验)", example = "299.00", requiredMode = Schema.RequiredMode.REQUIRED, minimum = "0.01")
             BigDecimal totalAmount,
 
-            @Schema(description = "回调通知URL (用于Webhook异步接收发货通知)", example = "https://client.com/api/webhook/orders", requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+            @Schema(description = "回调通知URL (用于Webhook异步接收发货通知)", example = "https://client.com/api/webhook/orders", requiredMode = Schema.RequiredMode.REQUIRED)
             String callbackUrl
     ) {
     }
