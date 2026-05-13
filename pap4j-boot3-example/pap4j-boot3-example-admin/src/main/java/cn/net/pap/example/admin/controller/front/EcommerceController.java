@@ -390,7 +390,8 @@ public class EcommerceController {
         }
     }
 
-    @Schema(name = "ProductVO", description = "商品信息视图对象，提供明确的商品属性及状态枚举")
+    @Schema(name = "ProductVO", description = "商品信息视图对象，提供明确的商品属性及状态枚举",
+            additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
     public record ProductVO(
             @Schema(description = "商品全局唯一ID，固定以PROD-开头", example = "PROD-1001", requiredMode = Schema.RequiredMode.REQUIRED, maxLength = 32)
             String id,
@@ -412,7 +413,8 @@ public class EcommerceController {
     ) {
     }
 
-    @Schema(name = "CartAddRequest", description = "加入购物车请求参数")
+    @Schema(name = "CartAddRequest", description = "加入购物车请求参数",
+            additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
     public record CartAddRequest(
             @Schema(description = "需要加入购物车的商品ID", example = "PROD-1001", requiredMode = Schema.RequiredMode.REQUIRED, pattern = "^PROD-[a-zA-Z0-9]+$")
             String productId,
@@ -422,7 +424,8 @@ public class EcommerceController {
     ) {
     }
 
-    @Schema(name = "OrderCreateRequest", description = "创建订单请求参数")
+    @Schema(name = "OrderCreateRequest", description = "创建订单请求参数",
+            additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
     public record OrderCreateRequest(
             @ArraySchema(
                     minItems = 1,
@@ -447,7 +450,8 @@ public class EcommerceController {
     ) {
     }
 
-    @Schema(name = "OrderItemDTO", description = "订单商品项")
+    @Schema(name = "OrderItemDTO", description = "订单商品项",
+            additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
     public record OrderItemDTO(
             @Schema(description = "商品ID", example = "PROD-1001", requiredMode = Schema.RequiredMode.REQUIRED)
             String productId,
@@ -457,7 +461,8 @@ public class EcommerceController {
     ) {
     }
 
-    @Schema(name = "OrderVO", description = "订单详情视图对象")
+    @Schema(name = "OrderVO", description = "订单详情视图对象",
+            additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
     public record OrderVO(
             @Schema(description = "系统生成的订单号", example = "ORD-A1B2C3D4", requiredMode = Schema.RequiredMode.REQUIRED)
             String orderId,
@@ -476,7 +481,8 @@ public class EcommerceController {
     ) {
     }
 
-    @Schema(name = "StandardResponse", description = "标准业务响应体")
+    @Schema(name = "StandardResponse", description = "标准业务响应体",
+            additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
     public record StandardResponse<T>(
             @Schema(description = "业务状态码，200代表成功，其他代表具体业务错误", example = "200", requiredMode = Schema.RequiredMode.REQUIRED)
             Integer code,
@@ -492,7 +498,8 @@ public class EcommerceController {
         }
     }
 
-    @Schema(name = "ReportQueryRequest", description = "报表查询请求体")
+    @Schema(name = "ReportQueryRequest", description = "报表查询请求体",
+            additionalProperties = Schema.AdditionalPropertiesValue.FALSE)
     public record ReportQueryRequest(
             @Schema(description = "报表类型，决定返回的数据结构", requiredMode = Schema.RequiredMode.REQUIRED)
             ReportType type,
