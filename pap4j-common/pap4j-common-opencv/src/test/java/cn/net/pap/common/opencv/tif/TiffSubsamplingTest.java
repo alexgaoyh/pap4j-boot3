@@ -127,6 +127,75 @@ public class TiffSubsamplingTest {
     }
 
     /**
+     * <h3>Pyramid TIFF (金字塔模型) 多页读取性能与内存测试</h3>
+     * <p>金字塔模型是在生成 TIFF 文件的阶段，提前将 1/2、1/4、1/8 的缩略图生成好，作为额外的“页面 (Pages) / SubIFDs” 塞进同一个 TIFF 文件里。</p>
+     * <p>读取时，无需在内存中解码大图并进行子采样，而是直接定位到所需分辨率的页面直接解码。这是一种典型的“空间换时间、空间换内存”策略。</p>
+     *
+     * <h4>生成命令示例 (ImageMagick)</h4>
+     * <pre>{@code
+     * # 将普通 TIFF 转换为包含多级分辨率的金字塔 TIFF (PTIF)
+     * magick striped_a4.tif -define tiff:tile-geometry=256x256 ptif:pyramid_a4.tif
+     * }</pre>
+     *
+     * @throws Exception 测试异常
+     */
+    @Test
+    public void pyramidTiffReadingTest() throws Exception {
+        File pyramidFile = null;
+        try {
+            pyramidFile = TestResourceUtil.getFile("striped_a4_pyramid.tif");
+        } catch (Exception e) {
+            log.info("未找到 striped_a4_pyramid.tif 测试文件，跳过 Pyramid TIFF 测试。");
+            return;
+        }
+
+        if (!pyramidFile.exists()) {
+            return;
+        }
+
+        log.info("====== Pyramid TIFF 多页面 (金字塔图层) 读取测试 ======");
+
+        try (ImageInputStream iis = ImageIO.createImageInputStream(pyramidFile)) {
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
+            if (!readers.hasNext()) {
+                throw new RuntimeException("未找到 TIFF 解码器");
+            }
+
+            ImageReader reader = readers.next();
+            reader.setInput(iis, false, true);
+
+            // 获取 TIFF 包含的总页数（图层数）
+            int numImages = reader.getNumImages(true);
+            log.info("检测到该 TIFF 文件共包含 {} 个页面 (图层)", numImages);
+
+            for (int i = 0; i < numImages; i++) {
+                // 每次读取前强制垃圾回收，以便观察更真实的内存分配波动
+                System.gc();
+                Thread.sleep(500);
+                Runtime rt = Runtime.getRuntime();
+                long startMem = rt.totalMemory() - rt.freeMemory();
+
+                long startTime = System.nanoTime();
+                
+                // 核心：直接读取指定索引的页面，无需手动设置降采样参数
+                BufferedImage image = reader.read(i);
+                
+                long endTime = System.nanoTime();
+
+                long endMem = rt.totalMemory() - rt.freeMemory();
+                double timeMs = (endTime - startTime) / 1_000_000.0;
+                long memUsedMb = (endMem - startMem) / (1024 * 1024);
+
+                log.info("[页面 {}] 分辨率: {}x{}, 耗时: {} ms, 粗略内存波动: ~{} MB",
+                        i, image.getWidth(), image.getHeight(), String.format("%8.2f", timeMs), memUsedMb);
+
+                assertNotNull(image);
+            }
+            reader.dispose();
+        }
+    }
+
+    /**
      * 核心逻辑：全局子采样读取
      */
     private BufferedImage readWithSubsampling(File tiffFile) throws Exception {
