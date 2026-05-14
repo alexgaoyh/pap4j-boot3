@@ -26,17 +26,17 @@ public class DoubleArrayTrieTest {
         words.add("一举成名天下知");
         Collections.sort(words);
 
-        Set<Character> charset = new HashSet<Character>();
+        Set<Integer> charset = new HashSet<Integer>();
 
         log.info("字典词条：{}", words.size());
 
         {
             String infoCharsetValue = "";
             String infoCharsetCode = "";
-            for (Character c : charset)
+            for (Integer c : charset)
             {
-                infoCharsetValue += c.charValue() + "    ";
-                infoCharsetCode += (int)c.charValue() + " ";
+                infoCharsetValue += new String(Character.toChars(c)) + "    ";
+                infoCharsetCode += c + " ";
             }
             infoCharsetValue += '\n';
             infoCharsetCode += '\n';
@@ -61,15 +61,12 @@ public class DoubleArrayTrieTest {
         BufferedReader reader = new BufferedReader(new java.io.InputStreamReader(new FileInputStream(new File(TestResourceUtil.getFile("dict.dict").toPath().toAbsolutePath().toString()))));
         String line;
         List<String> words = new ArrayList<String>();
-        Set<Character> charset = new HashSet<Character>();
+        Set<Integer> charset = new HashSet<Integer>();
         while ((line = reader.readLine()) != null)
         {
             words.add(line);
             // 制作一份码表debug
-            for (char c : line.toCharArray())
-            {
-                charset.add(c);
-            }
+            line.codePoints().forEach(charset::add);
         }
         reader.close();
         // 这个字典如果要加入新词必须按字典序，参考下面的代码
@@ -88,10 +85,10 @@ public class DoubleArrayTrieTest {
         {
             String infoCharsetValue = "";
             String infoCharsetCode = "";
-            for (Character c : charset)
+            for (Integer c : charset)
             {
-                infoCharsetValue += c.charValue() + "    ";
-                infoCharsetCode += (int)c.charValue() + " ";
+                infoCharsetValue += new String(Character.toChars(c)) + "    ";
+                infoCharsetCode += c + " ";
             }
             infoCharsetValue += '\n';
             infoCharsetCode += '\n';

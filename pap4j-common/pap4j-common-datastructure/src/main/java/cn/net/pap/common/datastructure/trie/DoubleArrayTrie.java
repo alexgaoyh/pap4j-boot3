@@ -80,14 +80,15 @@ public class DoubleArrayTrie {
         int prev = 0;
 
         for (int i = parent.left; i < parent.right; i++) {
-            if ((length != null ? length[i] : key.get(i).length()) < parent.depth)
+            int[] cps = key.get(i).codePoints().toArray();
+            int currentLength = length != null ? length[i] : cps.length;
+
+            if (currentLength < parent.depth)
                 continue;
 
-            String tmp = key.get(i);
-
             int cur = 0;
-            if ((length != null ? length[i] : tmp.length()) != parent.depth)
-                cur = (int) tmp.charAt(parent.depth) + 1;
+            if (currentLength != parent.depth)
+                cur = cps[parent.depth] + 1;
 
             if (prev > cur) {
                 error_ = -3;
@@ -438,14 +439,13 @@ public class DoubleArrayTrie {
      */
     public List<Integer> commonPrefixSearch(String key, int pos, int len,
                                             int nodePos) {
+        int[] keyChars = key.codePoints().toArray();
         if (len <= 0)
-            len = key.length();
+            len = keyChars.length;
         if (nodePos <= 0)
             nodePos = 0;
 
         List<Integer> result = new ArrayList<Integer>();
-
-        char[] keyChars = key.toCharArray();
 
         int b = base[nodePos];
         int n;
@@ -459,7 +459,7 @@ public class DoubleArrayTrie {
                 result.add(-n - 1);
             }
 
-            p = b + (int) (keyChars[i]) + 1;
+            p = b + keyChars[i] + 1;
             if (b == check[p])
                 b = base[p];
             else

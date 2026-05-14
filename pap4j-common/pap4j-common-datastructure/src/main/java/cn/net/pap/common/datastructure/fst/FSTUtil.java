@@ -35,11 +35,13 @@ public class FSTUtil {
     @Deprecated
     public static List<String> maxMatch(String text, FST dict) {
         List<String> result = new ArrayList<>();
+        if (text == null) return result;
+        int[] codePoints = text.codePoints().toArray();
         int start = 0;
-        while (start < text.length()) {
-            int end = text.length();
+        while (start < codePoints.length) {
+            int end = codePoints.length;
             while (end > start) {
-                String substr = text.substring(start, end);
+                String substr = new String(codePoints, start, end - start);
                 if (dict.isWord(substr)) {
                     result.add(substr);
                     start = end;
@@ -48,10 +50,8 @@ public class FSTUtil {
                 end--;
             }
             if (end == start) {
-                String substring = text.substring(start, end == text.length() ? end : end + 1);
-                if (substring != null && !"".equals(substring)) {
-                    result.add(substring);
-                }
+                String substring = new String(codePoints, start, 1);
+                result.add(substring);
                 start++;
             }
         }
@@ -59,13 +59,13 @@ public class FSTUtil {
     }
 
     /**
-     * <p>执行最大正向匹配并返回每个匹配项的确切位置。</p>
+     * <p>执行最大正向匹配并返回每个匹配项的确切位置（基于 Code Point）。</p>
      *
      * <p>此方法遍历文本并尝试查找字典中存在的最长子串。它能正确处理补充的 Unicode 字符。</p>
      *
      * <ul>
      *     <li>提取匹配的词汇。</li>
-     *     <li>记录匹配项的起始和结束索引。</li>
+     *     <li>记录匹配项的起始和结束索引（Code Point 的下标索引）。</li>
      * </ul>
      *
      * @param text 要匹配的输入字符串。
@@ -74,34 +74,27 @@ public class FSTUtil {
      */
     public static List<ValueLocationDTO> maxMatchLocation(String text, FST dict) {
         List<ValueLocationDTO> result = new ArrayList<>();
-        int start = 0;
-        while (start < text.length()) {
+        if (text == null) return result;
+        int[] codePoints = text.codePoints().toArray();
+        int startCp = 0;
+        while (startCp < codePoints.length) {
             boolean continueFlag = false;
-            int end = text.length();
-            while (end > start) {
-                String substr = text.substring(start, end);
+            int endCp = codePoints.length;
+            while (endCp > startCp) {
+                String substr = new String(codePoints, startCp, endCp - startCp);
                 if (dict.isWord(substr)) {
-                    result.add(new ValueLocationDTO(substr, start, end));
-                    start = end;
+                    result.add(new ValueLocationDTO(substr, startCp, endCp));
+                    startCp = endCp;
                     continueFlag = true;
                     break;
                 }
-                if(Character.isSupplementaryCodePoint(substr.codePointBefore(substr.length()))) {
-                    end = end - 2;
-                } else {
-                    end = end - 1;
-                }
+                endCp--;
             }
             if (continueFlag) {
                 continue;
             }
-            if (end == start) {
-                char[] chars = text.toCharArray();
-                if (Character.isHighSurrogate(chars[start])) {
-                    start = start + 2;
-                } else {
-                    start = start + 1;
-                }
+            if (endCp == startCp) {
+                startCp++;
             }
         }
         return result;

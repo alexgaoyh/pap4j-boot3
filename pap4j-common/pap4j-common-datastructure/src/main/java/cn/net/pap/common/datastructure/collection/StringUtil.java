@@ -45,12 +45,7 @@ public class StringUtil {
      */
     public static void print(String str) {
         StringBuilder sb = new StringBuilder();
-        for (int strIdx = 0; strIdx < str.length(); ) {
-            int codePoint = str.codePointAt(strIdx);
-            String c = new String(Character.toChars(codePoint));
-            sb.append(c);
-            strIdx += Character.charCount(codePoint);
-        }
+        str.codePoints().forEach(cp -> sb.append(new String(Character.toChars(cp))));
         log.info("{}", sb.toString());
     }
 
@@ -64,21 +59,32 @@ public class StringUtil {
      */
     public static List<String> groupSpecialStrings(String input, List<String> specialStrings) {
         List<String> result = new ArrayList<>();
-        for (int i = 0; i < input.length(); ) {
-            int codePoint = input.codePointAt(i);
-            String c = new String(Character.toChars(codePoint));
+        if (input == null || input.isEmpty()) return result;
+        int[] codePoints = input.codePoints().toArray();
+        int len = codePoints.length;
+        for (int i = 0; i < len; ) {
             boolean found = false;
             for (String special : specialStrings) {
-                if (input.startsWith(special, i)) {
-                    result.add(special);
-                    i += special.length();
-                    found = true;
-                    break;
+                int[] specialCps = special.codePoints().toArray();
+                if (i + specialCps.length <= len) {
+                    boolean match = true;
+                    for (int j = 0; j < specialCps.length; j++) {
+                        if (codePoints[i + j] != specialCps[j]) {
+                            match = false;
+                            break;
+                        }
+                    }
+                    if (match) {
+                        result.add(special);
+                        i += specialCps.length;
+                        found = true;
+                        break;
+                    }
                 }
             }
             if (!found) {
-                result.add(c);
-                i += Character.charCount(codePoint);
+                result.add(new String(Character.toChars(codePoints[i])));
+                i++;
             }
         }
         return result;
@@ -96,39 +102,23 @@ public class StringUtil {
         if (A == null || B == null) {
             return -1;
         }
-        int lenA = A.length();
-        int lenB = B.length();
+        int[] cpsA = A.codePoints().toArray();
+        int[] cpsB = B.codePoints().toArray();
+        int lenA = cpsA.length;
+        int lenB = cpsB.length;
         if (lenB == 0) {
             return 0;
         }
         for (int i = 0; i <= lenA - lenB; i++) {
             int j = 0;
-            while (j < lenB && A.codePointAt(i + j) == B.codePointAt(j)) {
+            while (j < lenB && cpsA[i + j] == cpsB[j]) {
                 j++;
             }
             if (j == lenB) {
-                return getCharacterIndex(A, i);
+                return i;
             }
         }
         return -1;
-    }
-
-    /**
-     * <p>根据字符串底层 char 数组的索引位置，返回按真实字符计数（代码点）的实际位置。</p>
-     *
-     * @param str   原始字符串
-     * @param index 字符串底层的 char 索引位置
-     * @return 字符的实际位置（按完整字符作为单位）
-     */
-    private static int getCharacterIndex(String str, int index) {
-        int realIndex = 0;
-        for (int i = 0; i < index; i++) {
-            if (Character.isHighSurrogate(str.charAt(i)) || Character.isLowSurrogate(str.charAt(i))) {
-                i++;
-            }
-            realIndex++;
-        }
-        return realIndex;
     }
 
     /**
@@ -185,14 +175,13 @@ public class StringUtil {
         StringBuilder pattern = new StringBuilder();
         pattern.append("[");
 
-        for (int i = 0; i < delimiters.length(); i++) {
-            char c = delimiters.charAt(i);
-            // 对正则表达式中的特殊字符进行转义
-            if (isRegexMetaCharacter(c)) {
+        delimiters.codePoints().forEach(cp -> {
+            String c = new String(Character.toChars(cp));
+            if (isRegexMetaCharacter(cp)) {
                 pattern.append("\\");
             }
             pattern.append(c);
-        }
+        });
 
         pattern.append("]");
         return pattern.toString();
@@ -201,11 +190,11 @@ public class StringUtil {
     /**
      * <p>检查指定字符是否是正则表达式的元字符。</p>
      *
-     * @param c 要检查的字符
+     * @param cp 要检查的字符Code Point
      * @return 如果是元字符返回 {@code true}，否则返回 {@code false}
      */
-    private static boolean isRegexMetaCharacter(char c) {
-        return "\\.[]{}()*+?^$|".indexOf(c) != -1;
+    private static boolean isRegexMetaCharacter(int cp) {
+        return "\\.[]{}()*+?^$|-".codePoints().anyMatch(meta -> meta == cp);
     }
 
 }

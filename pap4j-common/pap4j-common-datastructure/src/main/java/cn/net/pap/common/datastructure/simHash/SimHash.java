@@ -32,7 +32,7 @@ public class SimHash {
      */
     public static BigInteger computeSimHash(String input) {
         // 分词（简单基于字符分割，实际应用可以替换为更复杂的分词器）
-        String[] words = input.split("");  // 中文中每个字符可以看作一个“词”
+        String[] words = input.codePoints().mapToObj(cp -> new String(Character.toChars(cp))).toArray(String[]::new);
 
         // 词频统计
         Map<String, Integer> wordFrequency = new HashMap<>();

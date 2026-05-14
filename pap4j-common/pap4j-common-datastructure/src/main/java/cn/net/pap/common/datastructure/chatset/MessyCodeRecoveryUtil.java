@@ -21,7 +21,7 @@ public class MessyCodeRecoveryUtil {
     /**
      * <p>匹配中文字符的正则表达式模式。</p>
      */
-    private static final Pattern CHINESE_PATTERN = Pattern.compile("[\u4E00-\u9FA5]");
+    private static final Pattern CHINESE_PATTERN = Pattern.compile("\\p{IsHan}");
 
     /**
      * <p>用于交叉匹配的常用字符集数组。</p>

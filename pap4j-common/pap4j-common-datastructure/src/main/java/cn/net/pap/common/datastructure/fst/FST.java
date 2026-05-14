@@ -35,28 +35,21 @@ public class FST implements Serializable {
      * @param word 想要添加到字典树中的目标词汇
      */
     public void addWord(String word) {
-        if (word.isEmpty()) {
+        if (word == null || word.isEmpty()) {
             isFinalState = true;
             return;
         }
-        char c = word.charAt(0);
-        String cStr = "";
-        Integer length = 1;
-        
-        // 自动探测并组合基于高低代理区对的扩展字符
-        if (Character.isHighSurrogate(c)) {
-            cStr = new String(Character.toChars(Character.toCodePoint(c, word.charAt(1))));
-            length = 2;
-        } else {
-            cStr = c + "";
+        addWord(word.codePoints().toArray(), 0);
+    }
+
+    private void addWord(int[] codePoints, int index) {
+        if (index == codePoints.length) {
+            isFinalState = true;
+            return;
         }
-        
-        FST nextState = transitions.get(cStr);
-        if (nextState == null) {
-            nextState = new FST();
-            transitions.put(cStr, nextState);
-        }
-        nextState.addWord(word.substring(length));
+        String cStr = new String(Character.toChars(codePoints[index]));
+        FST nextState = transitions.computeIfAbsent(cStr, k -> new FST());
+        nextState.addWord(codePoints, index + 1);
     }
 
     /**
@@ -66,24 +59,22 @@ public class FST implements Serializable {
      * @return 如果词汇在字典中并且被标识为一个完整词结尾则返回 {@code true}，否则返回 {@code false}
      */
     public boolean isWord(String word) {
-        if (word.isEmpty()) {
+        if (word == null || word.isEmpty()) {
             return isFinalState;
         }
-        char c = word.charAt(0);
-        String cStr = "";
-        Integer length = 1;
-        if (Character.isHighSurrogate(c)) {
-            cStr = new String(Character.toChars(Character.toCodePoint(c, word.charAt(1))));
-            length = 2;
-        } else {
-            cStr = c + "";
+        return isWord(word.codePoints().toArray(), 0);
+    }
+
+    private boolean isWord(int[] codePoints, int index) {
+        if (index == codePoints.length) {
+            return isFinalState;
         }
-        
+        String cStr = new String(Character.toChars(codePoints[index]));
         FST nextState = transitions.get(cStr);
         if (nextState == null) {
             return false;
         }
-        return nextState.isWord(word.substring(length));
+        return nextState.isWord(codePoints, index + 1);
     }
 
     /**
@@ -93,26 +84,26 @@ public class FST implements Serializable {
      * @return 如果这个词条被成功找到并移除了则返回 {@code true}，否则（不存在此词）返回 {@code false}
      */
     public boolean removeWord(String word) {
-        if (word.isEmpty()) {
+        if (word == null || word.isEmpty()) {
             boolean wasFinal = isFinalState;
             isFinalState = false;
             return wasFinal;
         }
-        char c = word.charAt(0);
-        String cStr = "";
-        Integer length = 1;
-        if (Character.isHighSurrogate(c)) {
-            cStr = new String(Character.toChars(Character.toCodePoint(c, word.charAt(1))));
-            length = 2;
-        } else {
-            cStr = c + "";
+        return removeWord(word.codePoints().toArray(), 0);
+    }
+
+    private boolean removeWord(int[] codePoints, int index) {
+        if (index == codePoints.length) {
+            boolean wasFinal = isFinalState;
+            isFinalState = false;
+            return wasFinal;
         }
-        
+        String cStr = new String(Character.toChars(codePoints[index]));
         FST nextState = transitions.get(cStr);
         if (nextState == null) {
             return false;
         }
-        boolean wasRemoved = nextState.removeWord(word.substring(length));
+        boolean wasRemoved = nextState.removeWord(codePoints, index + 1);
         
         // 当下一个状态节点移除词后既不是独立词的结尾，也没有向下的子节点转移边时，可以直接安全剪枝卸除
         if (nextState.transitions.isEmpty() && !nextState.isFinalState) {
