@@ -11,13 +11,59 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class UnicodeEscapeTest {
 
     private static final Logger log = LoggerFactory.getLogger(UnicodeEscapeTest.class);
+    // 究极复杂的 Unicode 测试文本
+    private static final String TEST_TEXT = "你好👨‍👩‍👧‍👦世界。【卷之壹】📜「𪜀」字考：𝕿𝖍𝖎𝖘 𝖎𝖘 測試！《漢書·卷九十九》云：『王莽字巨君〇』〻。拼音：wáng mǎng。注音：ㄨㄤˊ ㄇㄤˇ。OCR異狀：１２３４ ＡＢＣ，𠀀𢀖𣢾（Ext B-C）。学者批注：此處繁簡混雜（如汉漢同現），且有龍 🐉 躍于淵。Page Ⅻ。";
+
+    @Test
+    @DisplayName("测试传统 String.length() 统计底层 char 数量")
+    void traditionalStringLengthTest() {
+        log.info("=== 开始执行 testTraditionalStringLength ===");
+
+        int length = TEST_TEXT.length();
+        log.info("测试文本: {}", TEST_TEXT);
+        log.info("底层 char 的数量: {}", length);
+
+        // 这里的 length 会非常大，因为包含了大量占 2 个 char 的生僻字和占 11 个 char 的复杂 Emoji
+        assertTrue(length > 0, "字符串长度应大于 0");
+
+        log.info("=== testTraditionalStringLength 执行完毕 ===\n");
+    }
+
+    @Test
+    @DisplayName("测试使用 \\X 正则匹配真实视觉字符数量")
+    void graphemeClusterMatchingTest() {
+        log.info("=== 开始执行 testGraphemeClusterMatching ===");
+
+        Pattern pattern = Pattern.compile("\\X");
+        Matcher matcher = pattern.matcher(TEST_TEXT);
+
+        int visualCharCount = 0;
+        StringBuilder parsedResult = new StringBuilder();
+
+        while (matcher.find()) {
+            String visualUnit = matcher.group();
+            parsedResult.append("[").append(visualUnit).append("] ");
+            visualCharCount++;
+        }
+
+        log.info("视觉单元切分结果: \n{}", parsedResult.toString());
+        log.info("底层 char 数量: {}", TEST_TEXT.length());
+        log.info("真实视觉字符数: {}", visualCharCount);
+
+        // 断言：证明 \X 切分出来的视觉字符总数，远远小于底层的 char 数量
+        assertTrue(visualCharCount < TEST_TEXT.length(), "由于存在大量 Emoji 和 Surrogate Pairs，视觉字符数必然小于底层 char 数量");
+
+        log.info("=== testGraphemeClusterMatching 执行完毕 ===");
+    }
 
     @Test
     @DisplayName("测试扩展汉字的匹配与识别")
