@@ -1,5 +1,8 @@
 package cn.net.pap.common.datastructure.pipeline;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -8,6 +11,8 @@ import java.util.List;
  * 负责驱动整个考试流水线的执行，支持节点的跳过、动态分发和挂起/恢复（断点续传）机制。
  */
 public class DynamicExamEngine {
+
+    private static final Logger log = LoggerFactory.getLogger(DynamicExamEngine.class);
 
     // 处理器注册表
     private final List<TaskHandler> handlers = new ArrayList<>();
@@ -33,7 +38,7 @@ public class DynamicExamEngine {
 
             // 1. 规则判断：是否需要跳过该节点
             if (shouldSkip(currentNode, context)) {
-                System.out.println("[引擎跳过] 节点: " + currentNode.nodeId());
+                log.info("[引擎跳过] 节点: {}", currentNode.nodeId());
                 continue; // 直接将游标推向下一个节点
             }
 
@@ -42,7 +47,7 @@ public class DynamicExamEngine {
 
             // 3. 状态控制：如果任务要求挂起，引擎立即保存游标并退出
             if (action == TaskAction.SUSPEND) {
-                System.out.println("[引擎挂起] 在节点: " + currentNode.nodeId() + "，保存游标: " + cursor);
+                log.info("[引擎挂起] 在节点: {}，保存游标: {}", currentNode.nodeId(), cursor);
                 return EngineResult.suspended(cursor);
             }
         }
