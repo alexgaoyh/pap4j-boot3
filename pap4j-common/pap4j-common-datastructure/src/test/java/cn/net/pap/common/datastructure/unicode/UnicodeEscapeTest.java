@@ -1,4 +1,4 @@
-package cn.net.pap.common.datastructure;
+package cn.net.pap.common.datastructure.unicode;
 
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
