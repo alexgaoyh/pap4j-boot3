@@ -38,7 +38,7 @@ public class AES256CBCUtilTest {
         cipher.init(Cipher.ENCRYPT_MODE, keySpec, ivSpec);
         byte[] encrypted = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
 
-        return Base64.getEncoder().encodeToString(encrypted);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(encrypted);
     }
 
     /**
@@ -53,7 +53,7 @@ public class AES256CBCUtilTest {
         IvParameterSpec ivSpec = new IvParameterSpec(IV.getBytes(StandardCharsets.UTF_8));
 
         cipher.init(Cipher.DECRYPT_MODE, keySpec, ivSpec);
-        byte[] decodedBytes = Base64.getDecoder().decode(base64CipherText);
+        byte[] decodedBytes = Base64.getUrlDecoder().decode(base64CipherText);
         byte[] decrypted = cipher.doFinal(decodedBytes);
 
         return new String(decrypted, StandardCharsets.UTF_8);

@@ -90,12 +90,36 @@ local aes_256_cbc = assert(aes:new(
 -- 加密方法
 function _M.encrypt(data)
     local encrypted = aes_256_cbc:encrypt(data)
-    return ngx.encode_base64(encrypted)
+
+    -- 2. 标准 Base64 编码
+    local b64 = ngx.encode_base64(encrypted)
+    
+    -- 3. 手动转换为 URL-safe:
+    -- 将 "+" 替换为 "-", 将 "/" 替换为 "_"
+    b64 = string.gsub(b64, "%+", "-")
+    b64 = string.gsub(b64, "/", "_")
+    
+    -- 4. 移除末尾的等号 "=" (对应 Java 的 withoutPadding)
+    b64 = string.gsub(b64, "=", "")
+    
+    return b64
 end
 
 -- 解密方法
 function _M.decrypt(base64_str)
-    local encrypted = ngx.decode_base64(base64_str)
+    -- 1. 还原 URL-safe: 将 "-" 替换回 "+", 将 "_" 替换回 "/"
+    local b64 = string.gsub(base64_str, "-", "+")
+    b64 = string.gsub(b64, "_", "/")
+    
+    -- 2. 补全缺失的等号 "="
+    -- 标准 Base64 字符串的长度必须是 4 的倍数，如果去掉了 padding，这里需要补回来
+    local remainder = #b64 % 4
+    if remainder > 0 then
+        b64 = b64 .. string.rep("=", 4 - remainder)
+    end
+    
+    -- 3. 标准 Base64 解码
+    local encrypted = ngx.decode_base64(b64)
     if not encrypted then
         return nil, "base64 解码失败"
     end
