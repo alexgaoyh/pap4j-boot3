@@ -50,31 +50,59 @@ public class JsonSchemaDiffTool {
     private void collect(JsonNode schema, String path, String absPath, Map<String, FieldInfoDTO> infos, Context ctx) {
         if (schema == null || schema.isMissingNode()) return;
 
-        // 1. 处理 $ref
+        // 1. 获取当前节点的“有效 Schema”（合并 $ref 和 allOf），确保与提取引擎一致
+        JsonNode effectiveSchema = getEffectiveSchema(schema, ctx);
+
+        // 2. 检查循环引用保护
         if (schema.has("$ref")) {
             String ref = schema.get("$ref").asText();
-            JsonNode resolved = resolveRef(ctx.rootSchema, ref);
-            if (resolved != null && !resolved.isMissingNode()) {
-                String visitKey = absPath + "@" + ref;
-                if (ctx.visitedRefs.contains(visitKey)) return;
-                ctx.visitedRefs.add(visitKey);
-                try {
-                    collect(resolved, path, absPath, infos, ctx);
-                } finally {
-                    ctx.visitedRefs.remove(visitKey);
+            String visitKey = absPath + "@" + ref;
+            if (ctx.visitedRefs.contains(visitKey)) return;
+            ctx.visitedRefs.add(visitKey);
+            try {
+                doCollect(effectiveSchema, path, absPath, infos, ctx);
+            } finally {
+                ctx.visitedRefs.remove(visitKey);
+            }
+        } else {
+            doCollect(effectiveSchema, path, absPath, infos, ctx);
+        }
+    }
+
+    private JsonNode getEffectiveSchema(JsonNode schema, Context ctx) {
+        if (schema == null || !schema.isObject()) return schema;
+        if (!schema.has("$ref") && !schema.has("allOf")) return schema;
+
+        com.fasterxml.jackson.databind.node.ObjectNode merged = MAPPER.createObjectNode();
+        if (schema.has("$ref")) {
+            JsonNode resolved = resolveRef(ctx.rootSchema, schema.get("$ref").asText());
+            if (resolved.isObject()) {
+                deepMerge(merged, (com.fasterxml.jackson.databind.node.ObjectNode) getEffectiveSchema(resolved, ctx));
+            }
+        }
+        JsonNode allOf = schema.path("allOf");
+        if (allOf.isArray()) {
+            for (JsonNode sub : allOf) {
+                if (sub.isObject()) {
+                    deepMerge(merged, (com.fasterxml.jackson.databind.node.ObjectNode) getEffectiveSchema(sub, ctx));
                 }
             }
-            return;
         }
+        deepMerge(merged, (com.fasterxml.jackson.databind.node.ObjectNode) schema);
+        merged.remove("$ref");
+        merged.remove("allOf");
+        return merged;
+    }
 
-        // 2. 识别当前节点标记
+    private void doCollect(JsonNode schema, String path, String absPath, Map<String, FieldInfoDTO> infos, Context ctx) {
+        // A. 识别当前节点标记
         String type = schema.path("type").asText();
         if (schema.path(X_EXTRACT).asBoolean()) {
             String finalPath = path.isEmpty() ? "root" : path;
             infos.put(finalPath, new FieldInfoDTO(finalPath, type, mapToJavaType(type)));
         }
 
-        // 3. 数组剪枝：遇到数组则不再向下拆解具体的子列，因为 1:N 关系在存储时会被序列化为 JSON 字符串列
+        // B. 数组剪枝
         if ("array".equals(type) || schema.has("items")) {
             if (hasMarkersInSubtree(schema, new HashSet<>(), ctx.rootSchema)) {
                 String finalPath = path.isEmpty() ? "root" : path;
@@ -85,7 +113,7 @@ public class JsonSchemaDiffTool {
             return;
         }
 
-        // 4. 对象递归：1:1 关系继续向下拆解为拍扁的列
+        // C. 对象递归
         JsonNode props = schema.path("properties");
         if (props.isObject()) {
             props.fields().forEachRemaining(entry -> {
@@ -96,8 +124,8 @@ public class JsonSchemaDiffTool {
             });
         }
 
-        // 5. 组合器处理
-        String[] combs = {"allOf", "anyOf", "oneOf", "then", "else"};
+        // D. 组合器处理 (逻辑组合器)
+        String[] combs = {"anyOf", "oneOf", "then", "else"};
         for (String comb : combs) {
             JsonNode sub = schema.path(comb);
             if (sub.isArray()) {
@@ -107,7 +135,7 @@ public class JsonSchemaDiffTool {
             }
         }
 
-        // 6. 正则属性
+        // E. 正则属性
         JsonNode patterns = schema.path("patternProperties");
         if (patterns.isObject()) {
             patterns.fields().forEachRemaining(entry -> {
@@ -115,6 +143,18 @@ public class JsonSchemaDiffTool {
                 collect(entry.getValue(), (path.isEmpty() ? "" : path + ".") + pKey, (absPath.isEmpty() ? "" : absPath + ".") + pKey, infos, ctx);
             });
         }
+    }
+
+    private void deepMerge(com.fasterxml.jackson.databind.node.ObjectNode mainNode, com.fasterxml.jackson.databind.node.ObjectNode updateNode) {
+        updateNode.fields().forEachRemaining(entry -> {
+            String fieldName = entry.getKey();
+            JsonNode value = entry.getValue();
+            if (mainNode.has(fieldName) && mainNode.get(fieldName).isObject() && value.isObject()) {
+                deepMerge((com.fasterxml.jackson.databind.node.ObjectNode) mainNode.get(fieldName), (com.fasterxml.jackson.databind.node.ObjectNode) value);
+            } else {
+                mainNode.set(fieldName, value);
+            }
+        });
     }
 
     private boolean hasMarkersInSubtree(JsonNode schema, Set<Integer> visited, JsonNode root) {

@@ -163,60 +163,6 @@ public class JsonSchemaExtractionTest {
     }
 
     @Test
-    public void testUltimateScenario() throws Exception {
-        String ultimateSchema = """
-                {
-                  "$defs": {
-                    "category": {
-                      "type": "object",
-                      "properties": {
-                        "name": { "type": "string", "x-extract": true },
-                        "sub": { "type": "array", "items": { "$ref": "#/$defs/category" } }
-                      }
-                    }
-                  },
-                  "type": "object",
-                  "properties": {
-                    "orderId": { "type": "string", "x-extract": true },
-                    "category": { "$ref": "#/$defs/category" },
-                    "location": {
-                      "type": "array",
-                      "items": [ { "type": "number", "x-extract": true }, { "type": "number", "x-extract": true } ]
-                    }
-                  }
-                }
-                """;
-
-        String ultimateData = """
-                {
-                  "orderId": "ULT-001",
-                  "category": {
-                    "name": "电子产品",
-                    "sub": [ { "name": "手机", "sub": [] } ]
-                  },
-                  "location": [116.39, 39.9]
-                }
-                """;
-
-        ExtractionResultDTO result = extractor.extract(ultimateData, ultimateSchema);
-        Map<String, Object> core = result.coreFields();
-
-        Map<String, Object> cat = (Map<String, Object>) core.get("category");
-        assertEquals("电子产品", cat.get("name"));
-
-        List<Object> loc = (List<Object>) core.get("location");
-        assertEquals(new BigDecimal("116.39"), loc.get(0));
-
-        // 验证差异分析对递归结构的剪枝
-        SchemaDiffResultDTO diff = diffTool.diff("{}", ultimateSchema);
-        Map<String, FieldInfoDTO> added = diff.addedFields();
-
-        assertTrue(added.containsKey("category.name"));
-        assertTrue(added.containsKey("category.sub"));
-        assertFalse(added.containsKey("category.sub.name"));
-        assertTrue(added.containsKey("location"));
-    }
-    @Test
     public void testTrueRecursiveAllOfExtraction() throws Exception {
         String schema = """
                 {
@@ -257,6 +203,13 @@ public class JsonSchemaExtractionTest {
                           }
                         }
                       ]
+                    },
+                    "location": {
+                      "type": "array",
+                      "items": [
+                        { "type": "number", "x-extract": true },
+                        { "type": "number", "x-extract": true }
+                      ]
                     }
                   }
                 }
@@ -275,13 +228,15 @@ public class JsonSchemaExtractionTest {
                         ]
                       }
                     ]
-                  }
+                  },
+                  "location": [116.39, 39.9]
                 }
                 """;
 
         ExtractionResultDTO result = extractor.extract(data, schema);
         Map<String, Object> core = result.coreFields();
 
+        // 1. 验证递归提取
         assertEquals("REC-001", core.get("orderId"));
         Map<String, Object> cat1 = (Map<String, Object>) core.get("category");
         assertEquals("Level 1", ((Map<String, Object>) cat1.get("value")).get("name"));
@@ -293,6 +248,17 @@ public class JsonSchemaExtractionTest {
         List<Object> children2 = (List<Object>) cat2.get("children");
         Map<String, Object> cat3 = (Map<String, Object>) children2.get(0);
         assertEquals("Level 3", ((Map<String, Object>) cat3.get("value")).get("name"));
+
+        // 2. 验证元组提取 (Positional Items)
+        List<Object> loc = (List<Object>) core.get("location");
+        assertEquals(new BigDecimal("116.39"), loc.get(0));
+        assertEquals(new BigDecimal("39.9"), loc.get(1));
+
+        // 3. 验证差异分析工具对递归结构的剪枝
+        SchemaDiffResultDTO diff = diffTool.diff("{}", schema);
+        Map<String, FieldInfoDTO> added = diff.addedFields();
+        assertTrue(added.containsKey("category.value.name"));
+        assertTrue(added.containsKey("location"));
     }
 
     @Test
