@@ -24,6 +24,14 @@ public class JsonSchemaDiffTool {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String X_EXTRACT = "x-extract";
 
+    /**
+     * 计算两个 Schema 之间的差异，识别新增和删除的提取字段。
+     *
+     * @param oldSchemaJson 旧 Schema 字符串
+     * @param newSchemaJson 新 Schema 字符串
+     * @return 差异结果 DTO
+     * @throws Exception 解析异常
+     */
     public SchemaDiffResultDTO diff(String oldSchemaJson, String newSchemaJson) throws Exception {
         JsonNode oldSchema = MAPPER.readTree(oldSchemaJson);
         JsonNode newSchema = MAPPER.readTree(newSchemaJson);
@@ -47,10 +55,13 @@ public class JsonSchemaDiffTool {
         return new SchemaDiffResultDTO(added, removed);
     }
 
+    /**
+     * 递归收集 Schema 中的提取字段信息。
+     */
     private void collect(JsonNode schema, String path, String absPath, Map<String, FieldInfoDTO> infos, Context ctx) {
         if (schema == null || schema.isMissingNode()) return;
 
-        // 1. 获取当前节点的“有效 Schema”（合并 $ref 和 allOf），确保与提取引擎一致
+        // 1. 获取有效 Schema（合并 $ref 和 allOf），确保预测逻辑与提取逻辑一致
         JsonNode effectiveSchema = getEffectiveSchema(schema, ctx);
 
         // 2. 检查循环引用保护
@@ -69,6 +80,9 @@ public class JsonSchemaDiffTool {
         }
     }
 
+    /**
+     * 对 Schema 进行归一化处理，合并所有约束。
+     */
     private JsonNode getEffectiveSchema(JsonNode schema, Context ctx) {
         if (schema == null || !schema.isObject()) return schema;
         if (!schema.has("$ref") && !schema.has("allOf")) return schema;
@@ -94,6 +108,9 @@ public class JsonSchemaDiffTool {
         return merged;
     }
 
+    /**
+     * 执行实际的字段收集逻辑。
+     */
     private void doCollect(JsonNode schema, String path, String absPath, Map<String, FieldInfoDTO> infos, Context ctx) {
         // A. 识别当前节点标记
         String type = schema.path("type").asText();
@@ -102,7 +119,7 @@ public class JsonSchemaDiffTool {
             infos.put(finalPath, new FieldInfoDTO(finalPath, type, mapToJavaType(type)));
         }
 
-        // B. 数组剪枝
+        // B. 数组剪枝：数组下的具体字段不作为列，因为数组会被整体序列化
         if ("array".equals(type) || schema.has("items")) {
             if (hasMarkersInSubtree(schema, new HashSet<>(), ctx.rootSchema)) {
                 String finalPath = path.isEmpty() ? "root" : path;
@@ -124,7 +141,7 @@ public class JsonSchemaDiffTool {
             });
         }
 
-        // D. 组合器处理 (逻辑组合器)
+        // D. 组合器处理
         String[] combs = {"anyOf", "oneOf", "then", "else"};
         for (String comb : combs) {
             JsonNode sub = schema.path(comb);
@@ -145,6 +162,9 @@ public class JsonSchemaDiffTool {
         }
     }
 
+    /**
+     * 深度合并两个 ObjectNode。
+     */
     private void deepMerge(com.fasterxml.jackson.databind.node.ObjectNode mainNode, com.fasterxml.jackson.databind.node.ObjectNode updateNode) {
         updateNode.fields().forEachRemaining(entry -> {
             String fieldName = entry.getKey();
@@ -157,6 +177,9 @@ public class JsonSchemaDiffTool {
         });
     }
 
+    /**
+     * 检查子树中是否存在任何提取标记，用于决定数组节点是否需要保留。
+     */
     private boolean hasMarkersInSubtree(JsonNode schema, Set<Integer> visited, JsonNode root) {
         if (schema == null || schema.isMissingNode()) return false;
         if (schema.path(X_EXTRACT).asBoolean()) return true;
@@ -194,6 +217,9 @@ public class JsonSchemaDiffTool {
         return null;
     }
 
+    /**
+     * 将 JSON 类型映射为 Java 类型。
+     */
     private String mapToJavaType(String jsonType) {
         return switch (jsonType) {
             case "string" -> "String";

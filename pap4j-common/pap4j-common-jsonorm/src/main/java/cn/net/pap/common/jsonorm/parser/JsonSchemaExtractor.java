@@ -15,8 +15,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * <p>基于 JSON Schema 的结构化核心数据提取 engine。</p>
- * <p>该 engine 采用“嵌套保留”策略，确保提取后的数据依然维持原始的层级结构（如递归分类树），
+ * <p>基于 JSON Schema 的结构化核心数据提取引擎。</p>
+ * <p>该引擎采用“嵌套保留”策略，确保提取后的数据依然维持原始的层级结构（如递归分类树），
  * 并深度支持各种逻辑组合器与条件分支。</p>
  */
 public class JsonSchemaExtractor {
@@ -26,7 +26,12 @@ public class JsonSchemaExtractor {
     private static final String X_EXTRACT = "x-extract";
 
     /**
-     * <p>执行结构化数据提取。</p>
+     * 执行结构化数据提取。
+     *
+     * @param jsonData 原始 JSON 数据字符串
+     * @param schemaJson JSON Schema 字符串
+     * @return 提取结果 DTO
+     * @throws Exception 解析异常
      */
     public ExtractionResultDTO extract(String jsonData, String schemaJson) throws Exception {
         JsonNode dataNode = MAPPER.readTree(jsonData);
@@ -44,6 +49,9 @@ public class JsonSchemaExtractor {
         return new ExtractionResultDTO(coreFields, jsonData);
     }
 
+    /**
+     * 核心递归处理入口。负责处理 $ref 引用保护和 Schema 归一化。
+     */
     private Object process(JsonNode data, JsonNode schema, String absPath, Context ctx) {
         if (schema == null || schema.isMissingNode() || data == null || data.isMissingNode()) return null;
 
@@ -66,6 +74,11 @@ public class JsonSchemaExtractor {
         return doProcess(data, effectiveSchema, absPath, ctx);
     }
 
+    /**
+     * 获取当前节点的有效 Schema。
+     * 该方法会递归合并 $ref 引用和 allOf 组合条件，生成一个扁平化的、包含所有约束的 Schema 节点。
+     * 这种“归一化”处理是实现 AOP 式提取标记注入的关键。
+     */
     private JsonNode getEffectiveSchema(JsonNode schema, Context ctx) {
         if (schema == null || !schema.isObject()) return schema;
 
@@ -97,6 +110,9 @@ public class JsonSchemaExtractor {
         return merged;
     }
 
+    /**
+     * 执行实际的数据提取逻辑。
+     */
     private Object doProcess(JsonNode data, JsonNode schema, String absPath, Context ctx) {
         Map<String, Object> currentLevelMap = new LinkedHashMap<>();
 
@@ -120,7 +136,7 @@ public class JsonSchemaExtractor {
             if (arrayResult != null) return arrayResult;
         }
 
-        // 3. 最终判定逻辑
+        // 3. 最终判定逻辑：如果有 x-extract 标记，或者当前层级有提取出的子字段，则返回结果
         if (schema.path(X_EXTRACT).asBoolean()) {
             if (currentLevelMap.isEmpty()) {
                 return convertNodeValue(data);
@@ -130,6 +146,9 @@ public class JsonSchemaExtractor {
         return currentLevelMap.isEmpty() ? null : currentLevelMap;
     }
 
+    /**
+     * 处理对象类型的字段提取。
+     */
     private void processObjectFields(JsonNode data, JsonNode schema, String absPath, Map<String, Object> result, Context ctx) {
         JsonNode props = schema.path("properties");
         if (props.isObject()) {
@@ -154,6 +173,9 @@ public class JsonSchemaExtractor {
         }
     }
 
+    /**
+     * 处理数组项。支持 standard List 和 Tuple 两种模式。
+     */
     private Object processArrayItems(JsonNode data, JsonNode schema, String absPath, Context ctx) {
         JsonNode items = schema.path("items");
         if (items.isObject()) {
@@ -180,6 +202,9 @@ public class JsonSchemaExtractor {
         return null;
     }
 
+    /**
+     * 处理逻辑组合器。
+     */
     private Object handleCombinators(JsonNode data, JsonNode schema, String absPath, Context ctx) {
         String[] combs = {"anyOf", "oneOf"};
         Map<String, Object> merged = new LinkedHashMap<>();
@@ -201,6 +226,9 @@ public class JsonSchemaExtractor {
         return foundMap ? merged : null;
     }
 
+    /**
+     * 合并子解析结果到当前 Map。
+     */
     private void mergeToResult(Map<String, Object> target, Object source) {
         if (source instanceof Map<?, ?> m) {
             m.forEach((k, v) -> target.put(k.toString(), v));
@@ -212,7 +240,7 @@ public class JsonSchemaExtractor {
      * <ul>
      *   <li><b>1:1 关系 (Map):</b> 递归拍扁，Key 使用点号拼接（如 user.userId）。</li>
      *   <li><b>1:N 关系 (List):</b> 整体序列化为 JSON 字符串存储。</li>
-     *   <li><b>基本类型:</b> 转换为 String。</li>
+     *   <li><b>基本类型:</b> 保持原始类型。</li>
      * </ul>
      */
     public Map<String, Object> toFlattenedStorageMap(Map<String, Object> coreFields) {
@@ -275,6 +303,9 @@ public class JsonSchemaExtractor {
         return null;
     }
 
+    /**
+     * 深度合并两个 ObjectNode。
+     */
     private void deepMerge(com.fasterxml.jackson.databind.node.ObjectNode mainNode, com.fasterxml.jackson.databind.node.ObjectNode updateNode) {
         updateNode.fields().forEachRemaining(entry -> {
             String fieldName = entry.getKey();

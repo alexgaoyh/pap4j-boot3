@@ -24,6 +24,9 @@ public class JsonSchemaExtractionTest {
     private final JsonSchemaDiffTool diffTool = new JsonSchemaDiffTool();
     private final ObjectMapper mapper = new ObjectMapper();
 
+    /**
+     * 测试标准电商数据提取场景，验证嵌套对象、数组以及存储平铺转换逻辑。
+     */
     @Test
     public void testEcommerceDataExtraction() throws Exception {
         String schemaV1 = """
@@ -89,6 +92,9 @@ public class JsonSchemaExtractionTest {
         assertFalse(diff.addedFields().containsKey("items.skuId"));
     }
 
+    /**
+     * 测试 Schema 差异分析工具，验证对新增字段和 Java 类型推断的准确性。
+     */
     @Test
     public void testSchemaDiffing() throws Exception {
         String schemaV1 = """
@@ -123,6 +129,9 @@ public class JsonSchemaExtractionTest {
         assertEquals("Long", diff.addedFields().get("status").javaType());
     }
 
+    /**
+     * 测试带有 $ref 引用的 Schema 差异分析，验证跨引用的字段识别。
+     */
     @Test
     public void testSchemaDiffingWithRefs() throws Exception {
         String schemaV1 = """
@@ -162,6 +171,14 @@ public class JsonSchemaExtractionTest {
         assertTrue(diff.addedFields().containsKey("office.city"));
     }
 
+    /**
+     * 测试深度递归、allOf 覆盖注入以及位置数组（Tuple）提取的综合场景。
+     * 该测试验证了：
+     * 1. 引擎能处理基于 $ref 的无限递归结构。
+     * 2. allOf 能够将 x-extract 标记成功注入到递归模型的每一层。
+     * 3. 数组元组（Positional Items）模式的提取准确性。
+     * 4. 差异分析工具在处理递归结构时的防展开剪枝逻辑。
+     */
     @Test
     public void testTrueRecursiveAllOfExtraction() throws Exception {
         String schema = """
@@ -261,6 +278,9 @@ public class JsonSchemaExtractionTest {
         assertTrue(added.containsKey("location"));
     }
 
+    /**
+     * 测试全量分支覆盖，包括 if/then/else 条件分支、正则属性以及 root 基本类型提取。
+     */
     @Test
     public void testFullBranchCoverage() throws Exception {
         String coverageSchema = """
