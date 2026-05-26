@@ -1,13 +1,17 @@
 package cn.net.pap.common.jsonorm.parser;
 
+import cn.net.pap.common.jsonorm.dto.ExtractionResultDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import cn.net.pap.common.jsonorm.dto.ExtractionResultDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.math.BigDecimal;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
@@ -21,12 +25,15 @@ public class JsonSchemaExtractor {
     private static final ObjectMapper MAPPER = new ObjectMapper();
     private static final String X_EXTRACT = "x-extract";
 
+    /**
+     * <p>执行结构化数据提取。</p>
+     */
     public ExtractionResultDTO extract(String jsonData, String schemaJson) throws Exception {
         JsonNode dataNode = MAPPER.readTree(jsonData);
         JsonNode rootSchema = MAPPER.readTree(schemaJson);
 
         Object result = process(dataNode, rootSchema, "", new Context(rootSchema, new HashSet<>()));
-        
+
         Map<String, Object> coreFields = new LinkedHashMap<>();
         if (result instanceof Map<?, ?> map) {
             map.forEach((k, v) -> coreFields.put(k.toString(), v));
@@ -40,6 +47,7 @@ public class JsonSchemaExtractor {
     private Object process(JsonNode data, JsonNode schema, String absPath, Context ctx) {
         if (schema == null || schema.isMissingNode() || data == null || data.isMissingNode()) return null;
 
+        // 1. 处理 $ref
         if (schema.has("$ref")) {
             String ref = schema.get("$ref").asText();
             String visitKey = ref + "@" + absPath;
@@ -54,6 +62,7 @@ public class JsonSchemaExtractor {
 
         Map<String, Object> currentLevelMap = new LinkedHashMap<>();
 
+        // A. 处理逻辑组合器 (oneOf, anyOf, allOf)
         Object combined = handleCombinators(data, schema, absPath, ctx);
         if (combined instanceof Map<?, ?> m) {
             m.forEach((k, v) -> currentLevelMap.put(k.toString(), v));
@@ -61,9 +70,11 @@ public class JsonSchemaExtractor {
             return combined;
         }
 
+        // B. 处理条件分支 (then, else)
         mergeToResult(currentLevelMap, process(data, schema.path("then"), absPath, ctx));
         mergeToResult(currentLevelMap, process(data, schema.path("else"), absPath, ctx));
 
+        // C. 处理容器类型属性
         if (data.isObject()) {
             processObjectFields(data, schema, absPath, currentLevelMap, ctx);
         } else if (data.isArray()) {
@@ -71,12 +82,13 @@ public class JsonSchemaExtractor {
             if (arrayResult != null) return arrayResult;
         }
 
+        // 3. 最终判定逻辑
         if (schema.path(X_EXTRACT).asBoolean()) {
             if (currentLevelMap.isEmpty()) {
                 return convertNodeValue(data);
             }
         }
-        
+
         return currentLevelMap.isEmpty() ? null : currentLevelMap;
     }
 
@@ -142,7 +154,7 @@ public class JsonSchemaExtractor {
                         m.forEach((k, v) -> merged.put(k.toString(), v));
                         foundMap = true;
                     } else if (res != null) {
-                        return res; 
+                        return res;
                     }
                 }
             }
@@ -181,13 +193,19 @@ public class JsonSchemaExtractor {
                 flattenRecursive(v, newPrefix, target);
             });
         } else if (value instanceof List<?>) {
-            try { target.put(prefix, MAPPER.writeValueAsString(value)); }
-            catch (Exception e) { target.put(prefix, value.toString()); }
+            try {
+                target.put(prefix, MAPPER.writeValueAsString(value));
+            } catch (Exception e) {
+                target.put(prefix, value.toString());
+            }
         } else {
             target.put(prefix, value);
         }
     }
 
+    /**
+     * <p>将投影结果转换为存储格式（仅处理顶级 Key，Value 为 JSON 字符串或基本类型字符串）。</p>
+     */
     public Map<String, String> toStorageReadyMap(Map<String, Object> coreFields) {
         Map<String, String> storageMap = new LinkedHashMap<>();
         coreFields.forEach((key, value) -> {
@@ -195,8 +213,11 @@ public class JsonSchemaExtractor {
             else if (value instanceof String s) storageMap.put(key, s);
             else if (value instanceof Number || value instanceof Boolean) storageMap.put(key, value.toString());
             else {
-                try { storageMap.put(key, MAPPER.writeValueAsString(value)); }
-                catch (Exception e) { storageMap.put(key, value.toString()); }
+                try {
+                    storageMap.put(key, MAPPER.writeValueAsString(value));
+                } catch (Exception e) {
+                    storageMap.put(key, value.toString());
+                }
             }
         });
         return storageMap;
@@ -215,5 +236,6 @@ public class JsonSchemaExtractor {
         return null;
     }
 
-    private record Context(JsonNode rootSchema, Set<String> visitedRefs) {}
+    private record Context(JsonNode rootSchema, Set<String> visitedRefs) {
+    }
 }

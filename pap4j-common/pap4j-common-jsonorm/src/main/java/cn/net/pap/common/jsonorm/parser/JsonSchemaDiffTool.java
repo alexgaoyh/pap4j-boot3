@@ -9,11 +9,14 @@ import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
 /**
  * <p>工业级 JSON Schema 差异分析引擎。</p>
+ * <p>该引擎通过静态扫描识别 Schema 中的提取标记，并与存储平铺策略（1:1 拍扁，1:N 字符串）保持高度一致。</p>
  */
 public class JsonSchemaDiffTool {
 
@@ -47,77 +50,103 @@ public class JsonSchemaDiffTool {
     private void collect(JsonNode schema, String path, String absPath, Map<String, FieldInfoDTO> infos, Context ctx) {
         if (schema == null || schema.isMissingNode()) return;
 
-        // 核心防环：针对静态结构的绝对路径防环
-        // 在静态分析中，如果 absPath 已经包含该节点，说明进入了无限递归（如分类树）
-        // 我们只需扫描到第一层递归即可停止。
-        String visitKey = System.identityHashCode(schema) + "@" + absPath;
-        if (ctx.visitedRefs.contains(visitKey) || absPath.length() > 500) return;
-        ctx.visitedRefs.add(visitKey);
-
-        try {
-            // 1. 处理 $ref
-            if (schema.has("$ref")) {
-                String ref = schema.get("$ref").asText();
-                collect(resolveRef(ctx.rootSchema, ref), path, absPath, infos, ctx);
-                return;
-            }
-
-            // 2. 识别标记
-            String type = schema.path("type").asText();
-            if (schema.path(X_EXTRACT).asBoolean()) {
-                String finalPath = path.isEmpty() ? "root" : path;
-                infos.put(finalPath, new FieldInfoDTO(finalPath, type, mapToJavaType(type)));
-            }
-
-            // 3. 递归属性
-            JsonNode props = schema.path("properties");
-            if (props.isObject()) {
-                props.fields().forEachRemaining(entry -> {
-                    String name = entry.getKey();
-                    String nextPath = path.isEmpty() ? name : path + "." + name;
-                    String nextAbsPath = absPath.isEmpty() ? name : absPath + "." + name;
-                    collect(entry.getValue(), nextPath, nextAbsPath, infos, ctx);
-                });
-            }
-
-            // 4. 组合器
-            String[] combs = {"allOf", "anyOf", "oneOf", "then", "else"};
-            for (String comb : combs) {
-                JsonNode sub = schema.path(comb);
-                if (sub.isArray()) {
-                    for (JsonNode item : sub) collect(item, path, absPath, infos, ctx);
-                } else if (sub.isObject()) {
-                    collect(sub, path, absPath, infos, ctx);
+        // 1. 处理 $ref
+        if (schema.has("$ref")) {
+            String ref = schema.get("$ref").asText();
+            JsonNode resolved = resolveRef(ctx.rootSchema, ref);
+            if (resolved != null && !resolved.isMissingNode()) {
+                String visitKey = absPath + "@" + ref;
+                if (ctx.visitedRefs.contains(visitKey)) return;
+                ctx.visitedRefs.add(visitKey);
+                try {
+                    collect(resolved, path, absPath, infos, ctx);
+                } finally {
+                    ctx.visitedRefs.remove(visitKey);
                 }
             }
-
-            // 5. 正则属性
-            JsonNode patterns = schema.path("patternProperties");
-            if (patterns.isObject()) {
-                patterns.fields().forEachRemaining(entry -> {
-                    String patternKey = entry.getKey();
-                    String suffix = "<pattern:" + patternKey + ">";
-                    String nextPath = (path.isEmpty() ? "" : path + ".") + suffix;
-                    String nextAbsPath = (absPath.isEmpty() ? "" : absPath + ".") + suffix;
-                    collect(entry.getValue(), nextPath, nextAbsPath, infos, ctx);
-                });
-            }
-
-            // 6. 数组处理 (修复 Items 路径)
-            JsonNode items = schema.path("items");
-            if (items.isObject()) {
-                // 静态分析中，进入数组项。为了防止无限递归，我们不在这里无限累加 path。
-                // 仅累加 absPath 探测结构。
-                collect(items, path, absPath + "[]", infos, ctx);
-            } else if (items.isArray()) {
-                for (int i = 0; i < items.size(); i++) {
-                    String idx = "[" + i + "]";
-                    collect(items.get(i), path + idx, absPath + idx, infos, ctx);
-                }
-            }
-        } finally {
-            // 注意：不要在 finally 中 remove visitKey，因为我们是针对路径进行剪枝
+            return;
         }
+
+        // 2. 识别当前节点标记
+        String type = schema.path("type").asText();
+        if (schema.path(X_EXTRACT).asBoolean()) {
+            String finalPath = path.isEmpty() ? "root" : path;
+            infos.put(finalPath, new FieldInfoDTO(finalPath, type, mapToJavaType(type)));
+        }
+
+        // 3. 数组剪枝：遇到数组则不再向下拆解具体的子列，因为 1:N 关系在存储时会被序列化为 JSON 字符串列
+        if ("array".equals(type) || schema.has("items")) {
+            if (hasMarkersInSubtree(schema, new HashSet<>(), ctx.rootSchema)) {
+                String finalPath = path.isEmpty() ? "root" : path;
+                if (!infos.containsKey(finalPath)) {
+                    infos.put(finalPath, new FieldInfoDTO(finalPath, "array", "List<Object>"));
+                }
+            }
+            return;
+        }
+
+        // 4. 对象递归：1:1 关系继续向下拆解为拍扁的列
+        JsonNode props = schema.path("properties");
+        if (props.isObject()) {
+            props.fields().forEachRemaining(entry -> {
+                String name = entry.getKey();
+                String nextPath = path.isEmpty() ? name : path + "." + name;
+                String nextAbsPath = absPath.isEmpty() ? name : absPath + "." + name;
+                collect(entry.getValue(), nextPath, nextAbsPath, infos, ctx);
+            });
+        }
+
+        // 5. 组合器处理
+        String[] combs = {"allOf", "anyOf", "oneOf", "then", "else"};
+        for (String comb : combs) {
+            JsonNode sub = schema.path(comb);
+            if (sub.isArray()) {
+                for (JsonNode item : sub) collect(item, path, absPath, infos, ctx);
+            } else if (sub.isObject()) {
+                collect(sub, path, absPath, infos, ctx);
+            }
+        }
+
+        // 6. 正则属性
+        JsonNode patterns = schema.path("patternProperties");
+        if (patterns.isObject()) {
+            patterns.fields().forEachRemaining(entry -> {
+                String pKey = "<pattern:" + entry.getKey() + ">";
+                collect(entry.getValue(), (path.isEmpty() ? "" : path + ".") + pKey, (absPath.isEmpty() ? "" : absPath + ".") + pKey, infos, ctx);
+            });
+        }
+    }
+
+    private boolean hasMarkersInSubtree(JsonNode schema, Set<Integer> visited, JsonNode root) {
+        if (schema == null || schema.isMissingNode()) return false;
+        if (schema.path(X_EXTRACT).asBoolean()) return true;
+
+        int identity = System.identityHashCode(schema);
+        if (visited.contains(identity)) return false;
+        visited.add(identity);
+
+        if (schema.has("$ref")) {
+            return hasMarkersInSubtree(resolveRef(root, schema.get("$ref").asText()), visited, root);
+        }
+
+        List<String> keys = List.of("properties", "patternProperties", "items", "allOf", "anyOf", "oneOf", "then", "else");
+        for (String key : keys) {
+            JsonNode sub = schema.path(key);
+            if (sub.isObject()) {
+                if (hasMarkersInSubtree(sub, visited, root)) return true;
+                if ("properties".equals(key) || "patternProperties".equals(key)) {
+                    Iterator<JsonNode> it = sub.elements();
+                    while (it.hasNext()) {
+                        if (hasMarkersInSubtree(it.next(), visited, root)) return true;
+                    }
+                }
+            } else if (sub.isArray()) {
+                for (JsonNode item : sub) {
+                    if (hasMarkersInSubtree(item, visited, root)) return true;
+                }
+            }
+        }
+        return false;
     }
 
     private JsonNode resolveRef(JsonNode root, String ref) {

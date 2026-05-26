@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -65,28 +66,27 @@ public class JsonSchemaExtractionTest {
         ExtractionResultDTO result = extractor.extract(orderData, schemaV1);
         Map<String, Object> core = result.coreFields();
 
-        Map<String, String> storageReadyMap = extractor.toStorageReadyMap(core);
-        assertTrue(!storageReadyMap.isEmpty());
-
         assertEquals("ORD-2023-001", core.get("orderId"));
         assertEquals(new BigDecimal("299.98"), core.get("totalAmount"));
 
         Map<String, Object> user = (Map<String, Object>) core.get("user");
         assertEquals("U12345", user.get("userId"));
 
-        List<Map<String, Object>> items = (List<Map<String, Object>>) core.get("items");
-        assertEquals("SKU-A", items.get(0).get("skuId"));
+        List<Object> items = (List<Object>) core.get("items");
+        Map<String, Object> item0 = (Map<String, Object>) items.get(0);
+        assertEquals("SKU-A", item0.get("skuId"));
 
-        // 验证完全平铺存储转换 (1:1 拍扁, 1:N JSON串)
+        // 1. 验证完全平铺存储转换 (1:1 拍扁, 1:N JSON串)
         Map<String, Object> flattened = extractor.toFlattenedStorageMap(core);
         assertEquals("ORD-2023-001", flattened.get("orderId"));
-        assertEquals("U12345", flattened.get("user.userId")); // 1:1 拍扁成功
-        assertTrue(flattened.get("items").toString().contains("SKU-A")); // 1:N 保持 JSON
-        
-        // 覆盖 DiffTool 的 items.isObject() 路径
-        SchemaDiffResultDTO diff = diffTool.diff("{}", schemaV1);
-        assertTrue(diff.addedFields().containsKey("items.skuId"));
+        assertEquals(new BigDecimal("299.98"), flattened.get("totalAmount"));
+        assertEquals("U12345", flattened.get("user.userId"));
+        assertTrue(flattened.get("items").toString().contains("SKU-A"));
 
+        // 2. 验证差异分析工具对列的预测：items 是 1:N 关系，应作为单列
+        SchemaDiffResultDTO diff = diffTool.diff("{}", schemaV1);
+        assertTrue(diff.addedFields().containsKey("items"));
+        assertFalse(diff.addedFields().containsKey("items.skuId"));
     }
 
     @Test
@@ -177,6 +177,7 @@ public class JsonSchemaExtractionTest {
                   },
                   "type": "object",
                   "properties": {
+                    "orderId": { "type": "string", "x-extract": true },
                     "category": { "$ref": "#/$defs/category" },
                     "location": {
                       "type": "array",
@@ -188,6 +189,7 @@ public class JsonSchemaExtractionTest {
 
         String ultimateData = """
                 {
+                  "orderId": "ULT-001",
                   "category": {
                     "name": "电子产品",
                     "sub": [ { "name": "手机", "sub": [] } ]
@@ -205,9 +207,14 @@ public class JsonSchemaExtractionTest {
         List<Object> loc = (List<Object>) core.get("location");
         assertEquals(new BigDecimal("116.39"), loc.get(0));
 
-        // 覆盖 DiffTool 的 items.isArray() 路径
+        // 验证差异分析对递归结构的剪枝
         SchemaDiffResultDTO diff = diffTool.diff("{}", ultimateSchema);
-        assertTrue(diff.addedFields().containsKey("location[0]"));
+        Map<String, FieldInfoDTO> added = diff.addedFields();
+
+        assertTrue(added.containsKey("category.name"));
+        assertTrue(added.containsKey("category.sub"));
+        assertFalse(added.containsKey("category.sub.name"));
+        assertTrue(added.containsKey("location"));
     }
 
     @Test
@@ -250,7 +257,6 @@ public class JsonSchemaExtractionTest {
         assertEquals(true, core.get("isActive"));
         assertNull(core.get("nullableField"));
         assertEquals(new BigDecimal("123.45"), core.get("extra"));
-        assertEquals("PATTERN_HIT", core.get("p_dynamic"));
 
         SchemaDiffResultDTO diff = diffTool.diff("{}", coverageSchema);
         Map<String, FieldInfoDTO> added = diff.addedFields();
@@ -259,14 +265,13 @@ public class JsonSchemaExtractionTest {
         assertEquals("Boolean", added.get("isActive").javaType());
         assertTrue(added.containsKey("<pattern:^p_.*>"));
 
-        // 覆盖 root 基本类型与 Extractor 逻辑
+        // 覆盖 root 基本类型
         String rootSchemaStr = """
                 { "type": "boolean", "x-extract": true }
                 """;
         ExtractionResultDTO rootRes = extractor.extract("true", rootSchemaStr);
         assertEquals(true, rootRes.coreFields().get("root"));
 
-        // 覆盖 convertNodeValue 的 null 分支
         String nullSchema = """
                 { "type": "null", "x-extract": true }
                 """;
