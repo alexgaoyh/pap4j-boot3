@@ -78,10 +78,10 @@ public class JsonSchemaExtractionTest {
         assertEquals("SKU-A", items.get(0).get("skuId"));
 
         // 验证完全平铺存储转换 (1:1 拍扁, 1:N JSON串)
-        Map<String, String> flattened = extractor.toFlattenedStorageMap(core);
+        Map<String, Object> flattened = extractor.toFlattenedStorageMap(core);
         assertEquals("ORD-2023-001", flattened.get("orderId"));
         assertEquals("U12345", flattened.get("user.userId")); // 1:1 拍扁成功
-        assertTrue(flattened.get("items").contains("SKU-A")); // 1:N 保持 JSON
+        assertTrue(flattened.get("items").toString().contains("SKU-A")); // 1:N 保持 JSON
         
         // 覆盖 DiffTool 的 items.isObject() 路径
         SchemaDiffResultDTO diff = diffTool.diff("{}", schemaV1);

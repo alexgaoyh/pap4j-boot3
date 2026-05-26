@@ -164,13 +164,13 @@ public class JsonSchemaExtractor {
      *   <li><b>基本类型:</b> 转换为 String。</li>
      * </ul>
      */
-    public Map<String, String> toFlattenedStorageMap(Map<String, Object> coreFields) {
-        Map<String, String> flattenedMap = new LinkedHashMap<>();
+    public Map<String, Object> toFlattenedStorageMap(Map<String, Object> coreFields) {
+        Map<String, Object> flattenedMap = new LinkedHashMap<>();
         flattenRecursive(coreFields, "", flattenedMap);
         return flattenedMap;
     }
 
-    private void flattenRecursive(Object value, String prefix, Map<String, String> target) {
+    private void flattenRecursive(Object value, String prefix, Map<String, Object> target) {
         if (value == null) {
             if (!prefix.isEmpty()) target.put(prefix, null);
             return;
@@ -184,7 +184,7 @@ public class JsonSchemaExtractor {
             try { target.put(prefix, MAPPER.writeValueAsString(value)); }
             catch (Exception e) { target.put(prefix, value.toString()); }
         } else {
-            target.put(prefix, value.toString());
+            target.put(prefix, value);
         }
     }
 
