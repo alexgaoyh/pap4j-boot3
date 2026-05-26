@@ -216,6 +216,84 @@ public class JsonSchemaExtractionTest {
         assertFalse(added.containsKey("category.sub.name"));
         assertTrue(added.containsKey("location"));
     }
+    @Test
+    public void testTrueRecursiveAllOfExtraction() throws Exception {
+        String schema = """
+                {
+                  "$defs": {
+                    "treeNode": {
+                      "type": "object",
+                      "properties": {
+                        "value": {
+                          "type": "object",
+                          "properties": {
+                            "name": { "type": "string" }
+                          }
+                        },
+                        "children": {
+                          "type": "array",
+                          "items": { "$ref": "#/$defs/treeNode" }
+                        }
+                      }
+                    }
+                  },
+                  "type": "object",
+                  "properties": {
+                    "orderId": { "type": "string", "x-extract": true },
+                    "category": {
+                      "allOf": [
+                        { "$ref": "#/$defs/treeNode" },
+                        {
+                          "properties": {
+                            "value": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string",
+                                  "x-extract": true
+                                }
+                              }
+                            }
+                          }
+                        }
+                      ]
+                    }
+                  }
+                }
+                """;
+
+        String data = """
+                {
+                  "orderId": "REC-001",
+                  "category": {
+                    "value": { "name": "Level 1" },
+                    "children": [
+                      {
+                        "value": { "name": "Level 2" },
+                        "children": [
+                          { "value": { "name": "Level 3" }, "children": [] }
+                        ]
+                      }
+                    ]
+                  }
+                }
+                """;
+
+        ExtractionResultDTO result = extractor.extract(data, schema);
+        Map<String, Object> core = result.coreFields();
+
+        assertEquals("REC-001", core.get("orderId"));
+        Map<String, Object> cat1 = (Map<String, Object>) core.get("category");
+        assertEquals("Level 1", ((Map<String, Object>) cat1.get("value")).get("name"));
+
+        List<Object> children1 = (List<Object>) cat1.get("children");
+        Map<String, Object> cat2 = (Map<String, Object>) children1.get(0);
+        assertEquals("Level 2", ((Map<String, Object>) cat2.get("value")).get("name"));
+
+        List<Object> children2 = (List<Object>) cat2.get("children");
+        Map<String, Object> cat3 = (Map<String, Object>) children2.get(0);
+        assertEquals("Level 3", ((Map<String, Object>) cat3.get("value")).get("name"));
+    }
 
     @Test
     public void testFullBranchCoverage() throws Exception {

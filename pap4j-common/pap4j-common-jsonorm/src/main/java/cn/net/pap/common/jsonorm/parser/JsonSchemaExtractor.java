@@ -15,8 +15,8 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 /**
- * <p>基于 JSON Schema 的结构化核心数据提取引擎。</p>
- * <p>该引擎采用“嵌套保留”策略，确保提取后的数据依然维持原始的层级结构（如递归分类树），
+ * <p>基于 JSON Schema 的结构化核心数据提取 engine。</p>
+ * <p>该 engine 采用“嵌套保留”策略，确保提取后的数据依然维持原始的层级结构（如递归分类树），
  * 并深度支持各种逻辑组合器与条件分支。</p>
  */
 public class JsonSchemaExtractor {
@@ -47,22 +47,60 @@ public class JsonSchemaExtractor {
     private Object process(JsonNode data, JsonNode schema, String absPath, Context ctx) {
         if (schema == null || schema.isMissingNode() || data == null || data.isMissingNode()) return null;
 
-        // 1. 处理 $ref
+        // 1. 获取当前节点的“有效 Schema”（合并 $ref 和 allOf）
+        JsonNode effectiveSchema = getEffectiveSchema(schema, ctx);
+
+        // 2. 检查循环引用保护
         if (schema.has("$ref")) {
             String ref = schema.get("$ref").asText();
             String visitKey = ref + "@" + absPath;
             if (ctx.visitedRefs.contains(visitKey)) return null;
             ctx.visitedRefs.add(visitKey);
             try {
-                return process(data, resolveRef(ctx.rootSchema, ref), absPath, ctx);
+                return doProcess(data, effectiveSchema, absPath, ctx);
             } finally {
                 ctx.visitedRefs.remove(visitKey);
             }
         }
 
+        return doProcess(data, effectiveSchema, absPath, ctx);
+    }
+
+    private JsonNode getEffectiveSchema(JsonNode schema, Context ctx) {
+        if (schema == null || !schema.isObject()) return schema;
+
+        com.fasterxml.jackson.databind.node.ObjectNode merged = MAPPER.createObjectNode();
+
+        // A. 如果有 $ref，先合并引用的内容
+        if (schema.has("$ref")) {
+            JsonNode resolved = resolveRef(ctx.rootSchema, schema.get("$ref").asText());
+            if (resolved.isObject()) {
+                deepMerge(merged, (com.fasterxml.jackson.databind.node.ObjectNode) getEffectiveSchema(resolved, ctx));
+            }
+        }
+
+        // B. 合并 allOf
+        JsonNode allOf = schema.path("allOf");
+        if (allOf.isArray()) {
+            for (JsonNode sub : allOf) {
+                if (sub.isObject()) {
+                    deepMerge(merged, (com.fasterxml.jackson.databind.node.ObjectNode) getEffectiveSchema(sub, ctx));
+                }
+            }
+        }
+
+        // C. 合并本地定义的属性（本地定义具有最高优先级，最后合并）
+        deepMerge(merged, (com.fasterxml.jackson.databind.node.ObjectNode) schema);
+        merged.remove("$ref");
+        merged.remove("allOf");
+
+        return merged;
+    }
+
+    private Object doProcess(JsonNode data, JsonNode schema, String absPath, Context ctx) {
         Map<String, Object> currentLevelMap = new LinkedHashMap<>();
 
-        // A. 处理逻辑组合器 (oneOf, anyOf, allOf)
+        // A. 处理逻辑组合器 (anyOf, oneOf)
         Object combined = handleCombinators(data, schema, absPath, ctx);
         if (combined instanceof Map<?, ?> m) {
             m.forEach((k, v) -> currentLevelMap.put(k.toString(), v));
@@ -101,6 +139,7 @@ public class JsonSchemaExtractor {
                 if (val != null) result.put(key, val);
             });
         }
+
         JsonNode patterns = schema.path("patternProperties");
         if (patterns.isObject()) {
             patterns.fields().forEachRemaining(pEntry -> {
@@ -142,7 +181,7 @@ public class JsonSchemaExtractor {
     }
 
     private Object handleCombinators(JsonNode data, JsonNode schema, String absPath, Context ctx) {
-        String[] combs = {"allOf", "anyOf", "oneOf"};
+        String[] combs = {"anyOf", "oneOf"};
         Map<String, Object> merged = new LinkedHashMap<>();
         boolean foundMap = false;
         for (String comb : combs) {
@@ -234,6 +273,18 @@ public class JsonSchemaExtractor {
     private JsonNode resolveRef(JsonNode root, String ref) {
         if (ref.startsWith("#")) return root.at(ref.substring(1));
         return null;
+    }
+
+    private void deepMerge(com.fasterxml.jackson.databind.node.ObjectNode mainNode, com.fasterxml.jackson.databind.node.ObjectNode updateNode) {
+        updateNode.fields().forEachRemaining(entry -> {
+            String fieldName = entry.getKey();
+            JsonNode value = entry.getValue();
+            if (mainNode.has(fieldName) && mainNode.get(fieldName).isObject() && value.isObject()) {
+                deepMerge((com.fasterxml.jackson.databind.node.ObjectNode) mainNode.get(fieldName), (com.fasterxml.jackson.databind.node.ObjectNode) value);
+            } else {
+                mainNode.set(fieldName, value);
+            }
+        });
     }
 
     private record Context(JsonNode rootSchema, Set<String> visitedRefs) {
