@@ -1,5 +1,7 @@
 package cn.net.pap.common.opencv;
 
+import org.apache.commons.imaging.ImageInfo;
+import org.apache.commons.imaging.Imaging;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -310,13 +312,13 @@ public class GeneImageTest {
     }
 
     /**
-     * 引入 org.apache.sanselan.sanselan 后，获得原始图像的 DPI
+     * 引入 commons-imaging 后，获得原始图像的 DPI
      * @param imageAbsPath
      * @return
      * @throws Exception
      */
     private static Integer getDPI(String imageAbsPath) throws Exception {
-        org.apache.sanselan.ImageInfo imageInfo = org.apache.sanselan.Sanselan.getImageInfo(new File(imageAbsPath));
+        ImageInfo imageInfo = Imaging.getImageInfo(new File(imageAbsPath));
         int physicalWidthDpi = imageInfo.getPhysicalWidthDpi();
         int physicalHeightDpi = imageInfo.getPhysicalHeightDpi();
         return Math.max(physicalWidthDpi, physicalHeightDpi);

@@ -45,12 +45,11 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- https://mvnrepository.com/artifact/org.apache.sanselan/sanselan -->
-        <!-- get DPI in image -->
+        <!-- Source: https://mvnrepository.com/artifact/org.apache.commons/commons-imaging -->
         <dependency>
-            <groupId>org.apache.sanselan</groupId>
-            <artifactId>sanselan</artifactId>
-            <version>0.97-incubator</version>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-imaging</artifactId>
+            <version>1.0.0-alpha6</version>
             <scope>test</scope>
         </dependency>
 
