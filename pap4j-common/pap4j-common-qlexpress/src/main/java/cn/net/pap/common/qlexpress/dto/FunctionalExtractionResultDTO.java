@@ -1,4 +1,4 @@
-package cn.net.pap.common.qlexpress.parser.dto;
+package cn.net.pap.common.qlexpress.dto;
 
 import java.io.Serializable;
 import java.util.Map;

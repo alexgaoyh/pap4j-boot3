@@ -1,4 +1,4 @@
-package cn.net.pap.common.qlexpress.parser;
+package cn.net.pap.common.qlexpress.operator;
 
 import com.alibaba.qlexpress4.runtime.Parameters;
 import com.alibaba.qlexpress4.runtime.QContext;
@@ -9,7 +9,7 @@ import com.jayway.jsonpath.JsonPath;
  * <p>QLExpress 扩展函数：使用 JsonPath 提取数据。</p>
  * <p>用法：JSON_PATH(json, '$.path.to.field')</p>
  */
-public class JsonPathFunction implements CustomFunction {
+public class JsonPathOperator implements CustomFunction {
 
     @Override
     public Object call(QContext qContext, Parameters parameters) throws Throwable {
