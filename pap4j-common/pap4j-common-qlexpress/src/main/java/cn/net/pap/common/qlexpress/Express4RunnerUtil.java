@@ -1,14 +1,18 @@
 package cn.net.pap.common.qlexpress;
 
+import cn.net.pap.common.qlexpress.dto.FunctionalExtractionResultDTO;
+import cn.net.pap.common.qlexpress.dto.FunctionalExtractionRuleDTO;
 import cn.net.pap.common.qlexpress.operator.DivideOperator;
 import cn.net.pap.common.qlexpress.operator.IsBlankOperator;
 import cn.net.pap.common.qlexpress.operator.JsonPathOperator;
 import cn.net.pap.common.qlexpress.operator.ListJoinOperator;
 import cn.net.pap.common.qlexpress.operator.ListSizeOperator;
+import cn.net.pap.common.qlexpress.operator.SubstringOperator;
 import cn.net.pap.common.qlexpress.operator.TernaryOperator;
+import cn.net.pap.common.qlexpress.operator.TreeFlattenOperator;
+import cn.net.pap.common.qlexpress.operator.TreeLeafFlattenOperator;
+import cn.net.pap.common.qlexpress.operator.TrimOperator;
 import cn.net.pap.common.qlexpress.operator.UpperOperator;
-import cn.net.pap.common.qlexpress.dto.FunctionalExtractionResultDTO;
-import cn.net.pap.common.qlexpress.dto.FunctionalExtractionRuleDTO;
 import com.alibaba.qlexpress4.Express4Runner;
 import com.alibaba.qlexpress4.InitOptions;
 import com.alibaba.qlexpress4.QLOptions;
@@ -33,6 +37,10 @@ public class Express4RunnerUtil {
         runner.addFunction("DIV2", new DivideOperator(2));
         runner.addFunction("ISBLANK", new IsBlankOperator());
         runner.addFunction("UPPER", new UpperOperator());
+        runner.addFunction("SUBSTRING", new SubstringOperator());
+        runner.addFunction("TRIM", new TrimOperator());
+        runner.addFunction("TREE_FLATTEN", new TreeFlattenOperator());
+        runner.addFunction("TREE_LEAF_FLATTEN", new TreeLeafFlattenOperator());
         runner.addFunction("TERNARY", new TernaryOperator());
         runner.addFunction("JSON_PATH", new JsonPathOperator());
         runner.addFunction("LIST_JOIN", new ListJoinOperator());
