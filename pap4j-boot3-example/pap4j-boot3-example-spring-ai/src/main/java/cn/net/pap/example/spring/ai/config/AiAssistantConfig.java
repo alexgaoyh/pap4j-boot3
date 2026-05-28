@@ -1,17 +1,16 @@
 package cn.net.pap.example.spring.ai.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
-import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.reader.TextReader;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
-import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,6 +24,8 @@ import java.util.List;
 
 @Configuration
 public class AiAssistantConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(AiAssistantConfig.class);
 
     @Value("${ai.knowledge.vector-store-path}")
     private String vectorStorePath;
@@ -42,13 +43,13 @@ public class AiAssistantConfig {
 
         // 【优化点】：为了保证 YAML 知识库修改能立即生效，这里强制执行一次知识库向量化。
         // 在生产环境建议改回判断 storeFile.exists() 以提升启动速度。
-        System.out.println("正在刷新并向量化本地知识库...");
+        log.info("正在刷新并向量化本地知识库...");
         loadAndVectorizeKnowledge(vectorStore);
         
         // 保存到本地磁盘（覆盖旧版本）
         storeFile.getParentFile().mkdirs();
         vectorStore.save(storeFile);
-        System.out.println("知识库刷新并向量化完成！向量文件位置: " + vectorStorePath);
+        log.info("知识库刷新并向量化完成！向量文件位置: {}", vectorStorePath);
         
         return vectorStore;
     }
