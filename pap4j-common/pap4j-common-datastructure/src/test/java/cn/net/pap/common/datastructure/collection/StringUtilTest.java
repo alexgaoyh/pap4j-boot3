@@ -146,6 +146,19 @@ public class StringUtilTest {
     }
 
     /**
+     * unicode 判断
+     */
+    @Test
+    public void unicodeDefinitionTest() {
+        // \u08B6 是一个在更高版本 Unicode 中才被定义的字符
+        char testChar = '\u08B6';
+        boolean isDefined = Character.isDefined(testChar);
+        log.info("Java Version: {}", System.getProperty("java.version"));
+        log.info("字符 \\u08B6 是否属于有效 Unicode 字符: {}", isDefined);
+        // 在 1.8.0_281， 这段代码返回的是 isDefined == false
+    }
+
+    /**
      * 验证错误解析。
      */
     @Test
