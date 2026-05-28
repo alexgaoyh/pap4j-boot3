@@ -1,7 +1,10 @@
 package cn.net.pap.example.spring.ai.config;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.client.advisor.QuestionAnswerAdvisor;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.memory.InMemoryChatMemory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.reader.TextReader;
@@ -55,22 +58,26 @@ public class AiAssistantConfig {
     }
 
     /**
-     * 2. 预置携带 RAG 能力的 ChatClient
+     * 2. 声明聊天记忆组件（内存型）
      */
     @Bean
-    public ChatClient customChatClient(ChatClient.Builder builder, VectorStore vectorStore) {
+    public ChatMemory chatMemory() {
+        return new InMemoryChatMemory();
+    }
 
-        // 1. 核心修改点：使用 Builder 模式重写 SearchRequest 和 QuestionAnswerAdvisor
-        QuestionAnswerAdvisor ragAdvisor = QuestionAnswerAdvisor.builder(vectorStore)
-                // 设定检索策略，去 VectorStore 搜 Top-3 最相关的知识点
-                .searchRequest(SearchRequest.builder().topK(3).build())
-                .build();
+    /**
+     * 3. 预置携带聊天记忆能力的 ChatClient
+     */
+    @Bean
+    public ChatClient customChatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
+
+        // 1. ChatMemory 顾问：维护对话上下文
+        MessageChatMemoryAdvisor memoryAdvisor = new MessageChatMemoryAdvisor(chatMemory);
 
         // 2. 注入到 ChatClient 中
         return builder
-                .defaultSystem("你是一个资深 Java 开发架构师。请严格参考提供的上下文（Context）中的 QLExpress4 和 JSON-Path 扩展函数规则，回答用户的开发问题或编写脚本。如果没有在上下文中找到确切答案，请基于你的代码知识合理推断，但要标明。")
-                // 注入重构后的 RAG 顾问
-                .defaultAdvisors(ragAdvisor)
+                .defaultSystem("你是一个资深 Java 开发架构师。请参考提供的上下文回答用户的开发问题。如果没有找到确切答案，请基于你的知识合理推断并说明。")
+                .defaultAdvisors(memoryAdvisor)
                 .build();
     }
 
@@ -80,7 +87,7 @@ public class AiAssistantConfig {
     private void loadAndVectorizeKnowledge(SimpleVectorStore vectorStore) {
         try {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            Resource[] resources = resolver.getResources(docsLocation + "*.md");
+            Resource[] resources = resolver.getResources(docsLocation + "*.yml");
 
             List<Document> allDocuments = new ArrayList<>();
             for (Resource resource : resources) {

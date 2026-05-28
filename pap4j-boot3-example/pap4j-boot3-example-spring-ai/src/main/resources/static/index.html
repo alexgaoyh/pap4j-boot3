@@ -169,6 +169,9 @@
     const promptInput = document.getElementById('promptInput');
     const sendBtn = document.getElementById('sendBtn');
 
+    // 生成一个简单的唯一会话 ID
+    const chatId = 'chat-' + Math.random().toString(36).substr(2, 9);
+
     // 格式化换行符
     function escapeHtmlAndNewlines(text) {
         // 先转义 HTML 实体防止 XSS，再将 \n 转换为 <br>
@@ -186,7 +189,7 @@
         return msgDiv;
     }
 
-    function sendPrompt() {
+    async function sendPrompt() {
         const prompt = promptInput.value.trim();
         if (!prompt) return;
 
@@ -207,33 +210,54 @@
 
         let fullResponse = '';
 
-        // 4. 发起 Server-Sent Events (SSE) 请求
-        const eventSource = new EventSource('/api/ai/stream?prompt=' + encodeURIComponent(prompt));
+        try {
+            // 4. 使用 fetch 发起 POST 请求 (因为 EventSource 不支持 POST)
+            const response = await fetch('/api/ai/stream', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ prompt, chatId })
+            });
 
-        eventSource.onmessage = function (event) {
-            // 每次接收到数据块，拼接并渲染
-            // 注意：SSE的 event.data 遇到换行可能有些截断处理，这里以 Spring WebFlux 默认序列化为准
-            fullResponse += event.data;
-            botMsgDiv.innerHTML = escapeHtmlAndNewlines(fullResponse) + '<span class="cursor"></span>';
-            chatMessages.scrollTop = chatMessages.scrollHeight;
-        };
+            if (!response.ok) {
+                throw new Error('网络响应错误');
+            }
 
-        eventSource.onerror = function (event) {
-            // Spring WebFlux 在 Flux 结束时会自动关闭连接，这会触发浏览器的 onerror (因为没有收到异常的状态码，单纯的连接断开)
-            // 我们需要手动关闭 EventSource，防止它无限重连
-            eventSource.close();
+            // 5. 读取流式数据
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
 
-            // 移除光标
-            botMsgDiv.innerHTML = escapeHtmlAndNewlines(fullResponse);
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                const chunk = decoder.decode(value, { stream: true });
+                // SSE 格式解析: 简单的 data: 内容 处理
+                const lines = chunk.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data:')) {
+                        const content = line.replace('data:', '').trim();
+                        if (content) {
+                            fullResponse += content;
+                            botMsgDiv.innerHTML = escapeHtmlAndNewlines(fullResponse) + '<span class="cursor"></span>';
+                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                        }
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error:', error);
             if (!fullResponse) {
                 botMsgDiv.innerText = "[发生错误或未收到回复]";
             }
-
-            // 恢复输入
+        } finally {
+            // 移除光标并恢复输入
+            botMsgDiv.innerHTML = escapeHtmlAndNewlines(fullResponse);
             sendBtn.disabled = false;
             promptInput.disabled = false;
             promptInput.focus();
-        };
+        }
     }
 
     sendBtn.addEventListener('click', sendPrompt);

@@ -1,7 +1,7 @@
 spring:
   ai:
     ollama:
-      base-url: https://hz-4.matpool.com:26222/
+      base-url: https://hz-4.matpool.com:26793/
       chat:
         options:
           model: qwen2.5-coder:7b
