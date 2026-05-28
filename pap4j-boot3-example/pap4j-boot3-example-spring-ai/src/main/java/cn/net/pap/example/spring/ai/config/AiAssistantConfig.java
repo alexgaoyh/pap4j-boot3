@@ -37,23 +37,19 @@ public class AiAssistantConfig {
      */
     @Bean
     public SimpleVectorStore simpleVectorStore(EmbeddingModel embeddingModel) {
-        // 【核心修改点】：使用 builder 模式进行实例化
         SimpleVectorStore vectorStore = SimpleVectorStore.builder(embeddingModel).build();
-
         File storeFile = new File(vectorStorePath);
 
-        // 如果已经有向量化好的本地文件，直接加载
-        if (storeFile.exists() && storeFile.length() > 0) {
-            vectorStore.load(storeFile);
-            System.out.println("成功从本地加载知识库向量文件");
-        } else {
-            // 初始化知识库：读取 Markdown/Txt 并写入 VectorStore
-            loadAndVectorizeKnowledge(vectorStore);
-            // 保存到本地磁盘
-            storeFile.getParentFile().mkdirs();
-            vectorStore.save(storeFile);
-            System.out.println("知识库初始化并向量化完成！");
-        }
+        // 【优化点】：为了保证 YAML 知识库修改能立即生效，这里强制执行一次知识库向量化。
+        // 在生产环境建议改回判断 storeFile.exists() 以提升启动速度。
+        System.out.println("正在刷新并向量化本地知识库...");
+        loadAndVectorizeKnowledge(vectorStore);
+        
+        // 保存到本地磁盘（覆盖旧版本）
+        storeFile.getParentFile().mkdirs();
+        vectorStore.save(storeFile);
+        System.out.println("知识库刷新并向量化完成！向量文件位置: " + vectorStorePath);
+        
         return vectorStore;
     }
 

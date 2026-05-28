@@ -3,27 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Spring AI 流式对话示例</title>
+    <title>Spring AI 智能助手 - 增强版</title>
+    <!-- 引入 marked 用于解析 Markdown -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <!-- 引入 highlight.js (使用全量或常用语言包) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
     <style>
         :root {
-            --bg-color: #f5f7f9;
+            --bg-color: #f4f7f9;
             --chat-bg: #ffffff;
             --primary-color: #007bff;
-            --text-color: #333333;
-            --bot-bubble: #f0f0f0;
+            --text-color: #2c3e50;
+            --bot-bubble: #f8f9fa;
             --user-bubble: #007bff;
             --user-text: #ffffff;
-            --border-color: #e0e0e0;
+            --border-color: #e9ecef;
+            --code-bg: #282c34;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
@@ -34,60 +36,106 @@
 
         .chat-container {
             width: 100%;
-            max-width: 800px;
-            height: 90vh;
+            max-width: 1000px;
+            height: 95vh;
             background-color: var(--chat-bg);
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
             display: flex;
             flex-direction: column;
             overflow: hidden;
         }
 
         .chat-header {
-            padding: 20px;
-            background-color: var(--chat-bg);
-            border-bottom: 1px solid var(--border-color);
-            text-align: center;
+            padding: 18px 24px;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
             font-size: 1.2rem;
             font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .chat-messages {
             flex: 1;
-            padding: 20px;
+            padding: 24px;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 16px;
+            gap: 20px;
         }
 
         .message {
-            max-width: 80%;
-            padding: 12px 16px;
-            border-radius: 12px;
-            line-height: 1.5;
-            word-wrap: break-word;
-            white-space: pre-wrap;
+            max-width: 85%;
+            padding: 14px 18px;
+            border-radius: 15px;
+            line-height: 1.6;
+            font-size: 0.95rem;
         }
 
         .message.user {
             align-self: flex-end;
             background-color: var(--user-bubble);
             color: var(--user-text);
-            border-bottom-right-radius: 4px;
+            border-bottom-right-radius: 2px;
+            white-space: pre-wrap;
         }
 
         .message.bot {
             align-self: flex-start;
             background-color: var(--bot-bubble);
             color: var(--text-color);
-            border-bottom-left-radius: 4px;
+            border-bottom-left-radius: 2px;
+            border: 1px solid var(--border-color);
+        }
+
+        /* 代码块增强 */
+        .code-block-wrapper {
+            margin: 14px 0;
+            border-radius: 8px;
+            background-color: var(--code-bg);
+            border: 1px solid #3e4451;
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 14px;
+            background-color: #21252b;
+            color: #abb2bf;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .copy-btn {
+            background-color: rgba(255,255,255,0.1);
+            border: none;
+            color: #abb2bf;
+            padding: 3px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.2s;
+        }
+
+        .copy-btn:hover { background-color: rgba(255,255,255,0.2); color: #fff; }
+
+        .message pre { margin: 0; padding: 14px; overflow-x: auto; }
+        .message code { font-family: 'Fira Code', 'JetBrains Mono', monospace; font-size: 0.85rem; }
+        .message-content :not(pre) > code {
+            background-color: rgba(0,0,0,0.05);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #d63384;
         }
 
         .chat-input-area {
-            padding: 16px 20px;
-            background-color: var(--chat-bg);
+            padding: 20px 24px;
+            background-color: #fff;
             border-top: 1px solid var(--border-color);
             display: flex;
             gap: 12px;
@@ -95,72 +143,47 @@
 
         #promptInput {
             flex: 1;
-            padding: 12px 16px;
+            padding: 12px 20px;
             border: 1px solid var(--border-color);
             border-radius: 24px;
             font-size: 1rem;
             outline: none;
-            transition: border-color 0.2s;
+            background-color: #f8f9fa;
         }
 
-        #promptInput:focus {
-            border-color: var(--primary-color);
-        }
+        #promptInput:focus { border-color: var(--primary-color); background-color: #fff; }
 
         #sendBtn {
-            padding: 0 24px;
+            width: 44px;
+            height: 44px;
             background-color: var(--primary-color);
             color: white;
             border: none;
-            border-radius: 24px;
-            font-size: 1rem;
-            font-weight: 600;
+            border-radius: 50%;
             cursor: pointer;
-            transition: background-color 0.2s, opacity 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.2s;
         }
 
-        #sendBtn:hover {
-            background-color: #0056b3;
-        }
+        #sendBtn:hover { transform: scale(1.05); background-color: #0069d9; }
+        #sendBtn:disabled { background-color: #ced4da; cursor: not-allowed; }
 
-        #sendBtn:disabled {
-            background-color: #a0cbfc;
-            cursor: not-allowed;
-        }
-
-        /* 简单的打字机闪烁光标效果 */
-        .cursor {
-            display: inline-block;
-            width: 8px;
-            height: 16px;
-            background-color: #666;
-            margin-left: 2px;
-            vertical-align: middle;
-            animation: blink 1s step-end infinite;
-        }
-
-        @keyframes blink {
-            0%, 100% {
-                opacity: 1;
-            }
-            50% {
-                opacity: 0;
-            }
-        }
+        .cursor { display: inline-block; width: 2px; height: 1.2em; background-color: var(--primary-color); animation: blink 1s step-end infinite; vertical-align: middle; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     </style>
 </head>
 <body>
 
 <div class="chat-container">
-    <div class="chat-header">
-        🤖 Spring AI 流式助手
-    </div>
+    <div class="chat-header">🤖 Spring AI 智能助手</div>
     <div class="chat-messages" id="chatMessages">
-        <div class="message bot">你好！我是 Spring AI 助手。有什么我可以帮你的吗？</div>
+        <div class="message bot"><div class="message-content">你好！我支持多种编程语言的高亮展示。你可以通过 `languageAliasMap` 轻松扩展我识别的标签。</div></div>
     </div>
     <div class="chat-input-area">
-        <input type="text" id="promptInput" placeholder="输入你想问的问题，按回车发送..." autocomplete="off"/>
-        <button id="sendBtn">发送</button>
+        <input type="text" id="promptInput" placeholder="输入问题..." autocomplete="off"/>
+        <button id="sendBtn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg></button>
     </div>
 </div>
 
@@ -169,91 +192,150 @@
     const promptInput = document.getElementById('promptInput');
     const sendBtn = document.getElementById('sendBtn');
 
-    // 生成一个简单的唯一会话 ID
-    const chatId = 'chat-' + Math.random().toString(36).substr(2, 9);
+    const languageAliasMap = {
+        'ql': 'javascript',
+        'jsonpath': 'json',
+        'expr': 'java',
+        'text': 'plaintext'
+    };
 
-    // 格式化换行符
-    function escapeHtmlAndNewlines(text) {
-        // 先转义 HTML 实体防止 XSS，再将 \n 转换为 <br>
-        const div = document.createElement('div');
-        div.innerText = text;
-        return div.innerHTML.replace(/\n/g, '<br>');
+    const renderer = new marked.Renderer();
+    renderer.code = function(code, language) {
+        const targetLang = languageAliasMap[language?.toLowerCase()] || language;
+        let highlighted;
+        const validLang = !!(targetLang && hljs.getLanguage(targetLang));
+        
+        try {
+            if (validLang) {
+                highlighted = hljs.highlight(code, { language: targetLang }).value;
+            } else {
+                highlighted = hljs.highlightAuto(code).value;
+            }
+        } catch (e) {
+            highlighted = code;
+        }
+
+        const displayLang = language || 'text';
+
+        return `
+            <div class="code-block-wrapper">
+                <div class="code-header">
+                    <span>${displayLang}</span>
+                    <button class="copy-btn" onclick="copyCode(this)">复制</button>
+                </div>
+                <pre><code class="hljs ${validLang ? 'language-' + targetLang : ''}">${highlighted}</code></pre>
+            </div>
+        `;
+    };
+
+    marked.setOptions({ renderer: renderer, breaks: true, gfm: true });
+
+    function copyCode(btn) {
+        const code = btn.parentElement.nextElementSibling.innerText;
+        navigator.clipboard.writeText(code).then(() => {
+            const oldText = btn.innerText;
+            btn.innerText = '已复制!';
+            setTimeout(() => btn.innerText = oldText, 2000);
+        });
     }
 
     function appendMessage(sender, text) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${sender}`;
-        msgDiv.innerHTML = escapeHtmlAndNewlines(text);
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
+        if (sender === 'bot') contentDiv.innerHTML = marked.parse(text);
+        else contentDiv.textContent = text;
+        msgDiv.appendChild(contentDiv);
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
-        return msgDiv;
+        return contentDiv;
     }
+
+    const chatId = 'chat-' + Math.random().toString(36).substr(2, 9);
 
     async function sendPrompt() {
         const prompt = promptInput.value.trim();
         if (!prompt) return;
 
-        // 1. 追加用户消息
         appendMessage('user', prompt);
         promptInput.value = '';
-
-        // 2. 禁用输入与按钮
         sendBtn.disabled = true;
         promptInput.disabled = true;
 
-        // 3. 准备接收 AI 回复的容器
         const botMsgDiv = document.createElement('div');
         botMsgDiv.className = 'message bot';
-        botMsgDiv.innerHTML = '<span class="cursor"></span>';
+        const botContentDiv = document.createElement('div');
+        botContentDiv.className = 'message-content';
+        botContentDiv.innerHTML = '<span class="cursor"></span>';
+        botMsgDiv.appendChild(botContentDiv);
         chatMessages.appendChild(botMsgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
         let fullResponse = '';
 
         try {
-            // 4. 使用 fetch 发起 POST 请求 (因为 EventSource 不支持 POST)
             const response = await fetch('/api/ai/stream', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, chatId })
             });
-
-            if (!response.ok) {
-                throw new Error('网络响应错误');
-            }
-
-            // 5. 读取流式数据
+            if (!response.ok) throw new Error('网络请求失败');
+            
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-
+            
+            // 鲁棒的 SSE 解析逻辑
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-
+                
                 const chunk = decoder.decode(value, { stream: true });
-                // SSE 格式解析: 简单的 data: 内容 处理
-                const lines = chunk.split('\n');
-                for (const line of lines) {
-                    if (line.startsWith('data:')) {
-                        const content = line.replace('data:', '').trim();
-                        if (content) {
-                            fullResponse += content;
-                            botMsgDiv.innerHTML = escapeHtmlAndNewlines(fullResponse) + '<span class="cursor"></span>';
-                            chatMessages.scrollTop = chatMessages.scrollHeight;
+                // SSE 以双换行分割事件块
+                const events = chunk.split('\n\n');
+                
+                for (const event of events) {
+                    if (!event.trim()) continue;
+                    
+                    const lines = event.split('\n');
+                    let eventData = "";
+                    let hasData = false;
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data:')) {
+                            hasData = true;
+                            let content = line.slice(5);
+                            if (content.startsWith(' ')) content = content.slice(1);
+                            eventData += content + (lines.length > 1 ? '\n' : '');
+                        }
+                    }
+                    
+                    if (hasData) {
+                        // 如果是一个多行 data 事件，最后会多出一个 \n，去掉它
+                        if (lines.length > 1 && eventData.endsWith('\n')) {
+                            eventData = eventData.slice(0, -1);
+                        }
+                        
+                        // 【核心修复】：在 Spring AI/WebFlux 中，如果 Flux 发送的是一个换行符 token，
+                        // 表现为 data: 后面直接跟着 \n\n。
+                        // 这里我们检测如果 eventData 是空的，但确实收到了 data 标签，
+                        // 则极有可能是 AI 发送的一个换行符。
+                        if (eventData === "") {
+                            fullResponse += '\n';
+                        } else {
+                            fullResponse += eventData;
                         }
                     }
                 }
+                
+                // 实时渲染
+                botContentDiv.innerHTML = marked.parse(fullResponse) + '<span class="cursor"></span>';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         } catch (error) {
-            console.error('Error:', error);
-            if (!fullResponse) {
-                botMsgDiv.innerText = "[发生错误或未收到回复]";
-            }
+            botContentDiv.innerHTML = "错误: " + error.message;
         } finally {
-            // 移除光标并恢复输入
-            botMsgDiv.innerHTML = escapeHtmlAndNewlines(fullResponse);
+            botContentDiv.innerHTML = marked.parse(fullResponse);
             sendBtn.disabled = false;
             promptInput.disabled = false;
             promptInput.focus();
@@ -261,12 +343,7 @@
     }
 
     sendBtn.addEventListener('click', sendPrompt);
-
-    promptInput.addEventListener('keypress', function (e) {
-        if (e.key === 'Enter') {
-            sendPrompt();
-        }
-    });
+    promptInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') sendPrompt(); });
 </script>
 
 </body>

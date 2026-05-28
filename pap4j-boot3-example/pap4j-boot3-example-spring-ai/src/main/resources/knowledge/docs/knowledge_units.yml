@@ -30,7 +30,7 @@ knowledge_units:
       - script: "json.user.name"
         explanation: "访问 json 对象中的嵌套属性。"
     hallucination_prevention:
-      - "在 QLExpress 脚本中，必须通过 'json.' 前缀访问属性，除非该属性已被展平到根级别。"
+      - "在 QLExpress 脚本中，必须通过 'json.' 前缀访问属性，除非该属性已被展平到根级别。不允许有连续的两个json，同样不允许ql后面紧跟着json"
 
   - title: 基础算术运算符 (Arithmetic Operators)
     module: Arithmetic
