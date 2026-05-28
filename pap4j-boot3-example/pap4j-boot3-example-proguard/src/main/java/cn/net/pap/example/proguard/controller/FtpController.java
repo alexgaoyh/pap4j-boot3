@@ -12,8 +12,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.imageio.ImageIO;
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -411,6 +416,89 @@ public class FtpController {
                     log.warn("FTP logout failed", ignored);
                 }
 
+                // 安全断开 Socket 连接
+                try {
+                    client.disconnect();
+                } catch (IOException ignored) {
+                    log.warn("FTP disconnect failed", ignored);
+                }
+            }
+        }
+    }
+
+    /**
+     *
+     * @param request
+     * @param response
+     * @param picPath
+     * @throws IOException
+     */
+    @GetMapping("/streamdefaultjpg")
+    public void streamDefaultJpg(HttpServletRequest request, HttpServletResponse response, @RequestParam String picPath) throws IOException {
+        response.setContentType(MediaType.IMAGE_JPEG_VALUE);
+        AutoCloseableFTPClient client = new AutoCloseableFTPClient();
+        InputStream in = null;
+        try {
+            client.setControlEncoding("UTF-8");
+            client.connect(FTP_HOST, FTP_PORT);
+            client.login(FTP_USER, FTP_PASS);
+            client.enterLocalPassiveMode();
+            client.setFileType(FTP.BINARY_FILE_TYPE);
+            in = client.retrieveFileStream(picPath);
+            if (in != null) {
+                // 不要再转成 byte[]，利用包装流防止大图 OOM，同时让 ImageIO 自动判断格式
+                try (BufferedInputStream bis = new BufferedInputStream(in)) {
+                    BufferedImage bufferedImage = ImageIO.read(bis);
+
+                    if (bufferedImage != null) {
+                        // 解决部分 CMYK 或 Alpha 通道写出 JPG 报错/变色的万能画板法
+                        BufferedImage rgbImage = new BufferedImage(bufferedImage.getWidth(), bufferedImage.getHeight(), BufferedImage.TYPE_INT_RGB);
+
+                        Graphics2D g = rgbImage.createGraphics();
+                        // 设置白色底色，防止带有透明通道的图片变成背景全黑
+                        g.setColor(Color.WHITE);
+                        g.fillRect(0, 0, bufferedImage.getWidth(), bufferedImage.getHeight());
+                        // 绘制原图
+                        g.drawImage(bufferedImage, 0, 0, null);
+                        g.dispose();
+
+                        // 输出为标准 JPG
+                        ImageIO.write(rgbImage, "jpg", response.getOutputStream());
+                    } else {
+                        response.setStatus(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+                    }
+                }
+            } else {
+                response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            }
+        } catch (Exception e) {
+            if (!isClientAbort(e)) {
+                log.error("FTP streaming failed: ", e);
+                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
+            }
+        } finally {
+            // 先关闭 InputStream
+            if (in != null) {
+                try {
+                    in.close();
+                } catch (IOException ignored) {
+                    log.warn("Failed to close FTP InputStream", ignored);
+                }
+            }
+            if (client.isConnected()) {
+                // 流关闭后，调用 completePendingCommand 接收 226 响应
+                try {
+                    client.completePendingCommand();
+                } catch (IOException ignored) {
+                    log.warn("Failed to complete pending command", ignored);
+                }
+
+                // 安全登出
+                try {
+                    client.logout();
+                } catch (IOException ignored) {
+                    log.warn("FTP logout failed", ignored);
+                }
                 // 安全断开 Socket 连接
                 try {
                     client.disconnect();
