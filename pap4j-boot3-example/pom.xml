@@ -33,6 +33,7 @@
         <module>pap4j-boot3-example-devtools</module>
         <module>pap4j-boot3-example-websocket</module>
         <module>pap4j-boot3-example-dynamic-form</module>
+        <module>pap4j-boot3-example-spring-ai</module>
     </modules>
 
     <properties>

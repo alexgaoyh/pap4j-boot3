@@ -1,0 +1,22 @@
+spring:
+  ai:
+    ollama:
+      base-url: https://hz-4.matpool.com:26222/
+      chat:
+        options:
+          model: qwen2.5-coder:7b
+          temperature: 0.2
+    embedding:
+      transformer:
+        onnx:
+          # 指向 resources/onnx 目录下的本地模型文件，避免从 GitHub 联网下载
+          model-uri: classpath:/onnx/model.onnx
+        tokenizer:
+          # 指向 resources/onnx 目录下的本地分词器文件
+          uri: classpath:/onnx/tokenizer.json
+
+# 自定义配置：知识库文件目录和向量存储位置
+ai:
+  knowledge:
+    docs-location: classpath:/knowledge/docs/
+    vector-store-path: ${java.io.tmpdir}/pap4j-boot3-example-spring-ai/vector
