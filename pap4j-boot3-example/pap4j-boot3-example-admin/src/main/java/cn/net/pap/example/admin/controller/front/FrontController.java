@@ -15,8 +15,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.IOException;
 import java.util.UUID;
 
 @RestController
@@ -55,6 +57,27 @@ public class FrontController {
     @GetMapping("/users/{userId}")
     public UserResponse getUserById(@Parameter(description = "用户ID") @PathVariable String userId) {
         return new UserResponse(userId, "张三 (模拟数据)");
+    }
+
+    /**
+     * switchByParam
+     * @param picPath
+     * @return
+     */
+    @GetMapping("/switchByParam")
+    public ResponseEntity switchByParam(@RequestParam String picPath) {
+        String ext = picPath.substring(picPath.lastIndexOf('.') + 1).toLowerCase();
+
+        switch (ext) {
+            case "jpg":
+            case "jpeg":
+                return new ResponseEntity<>("jpg", HttpStatus.OK);
+            case "tif":
+            case "tiff":
+                return new ResponseEntity<>("tiff", HttpStatus.OK);
+            default:
+                return new ResponseEntity<>("default", HttpStatus.OK);
+        }
     }
 
     // --- DTO 内部类 ---
