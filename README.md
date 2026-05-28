@@ -1,6 +1,7 @@
 # pap4j-boot3
 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://gitee.com/alexgaoyh/pap4j-boot3/raw/master/LICENSE)
+[![Maven Central](https://img.shields.io/maven-central/v/cn.net.pap/pap4j-boot3.svg)](https://central.sonatype.com/namespace/cn.net.pap)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.x-green.svg)](https://spring.io/projects/spring-boot)
 [![Spring AI](https://img.shields.io/badge/Spring%20AI-1.0.0--M6-blue.svg)](https://spring.io/projects/spring-ai)
@@ -139,7 +140,17 @@
 mvn clean install -Dfile.encoding=UTF-8
 ```
 
-**2. 核心规约**
+**2. 中央仓库依赖 (Version 0.0.3)**
+项目核心组件已发布至 Maven 中央仓库，可直接引入：
+```xml
+<dependency>
+    <groupId>cn.net.pap</groupId>
+    <artifactId>pap4j-boot3-starters-cache</artifactId>
+    <version>0.0.3</version>
+</dependency>
+```
+
+**3. 核心规约**
 - **Java 规范**: 严禁显式 `new Thread()`，必须通过自定义 `ThreadPoolExecutor`。
 - **日志规约**: 杜绝 `System.out`，强制使用 `SLF4J` 占位符记录。
 - **信创适配**: 优先支持国产图数据库 (gStore) 与国产关系型数据库 (Kingbase)。
