@@ -158,6 +158,109 @@ public class StringUtilTest {
         // 在 1.8.0_281， 这段代码返回的是 isDefined == false
     }
 
+    @Test
+    void testReplaceVsReplaceAll() {
+        // ========== 1. 点号 . ==========
+        String text1 = "a.b.c.d";
+        assertEquals("a-b-c-d", text1.replace(".", "-"));
+        assertEquals("-------", text1.replaceAll(".", "-"));  // 正则 . 匹配任意字符
+        assertEquals("a-b-c-d", text1.replaceAll(Pattern.quote("."), "-")); // Pattern.quote 形式
+
+        // ========== 2. 美元符号 $ ==========
+        String text2 = "price = $100";
+        assertEquals("price = USD100", text2.replace("$", "USD"));
+        assertEquals("price = USD100", text2.replaceAll("\\$", "USD"));
+        assertEquals("price = $100USD", text2.replaceAll("$", "USD")); // 正则，$ 是行尾锚点，匹配字符串的末尾
+        assertEquals("price = USD100", text2.replaceAll(Pattern.quote("$"), "USD")); // Pattern.quote 形式
+
+        // ========== 3. 反斜杠 \ ==========
+        String text3 = "C:\\Windows\\System32";
+        assertEquals("C:/Windows/System32", text3.replace("\\", "/"));
+        assertEquals("C:/Windows/System32", text3.replaceAll("\\\\", "/"));
+        assertEquals("C:/Windows/System32", text3.replaceAll(Pattern.quote("\\"), "/")); // Pattern.quote 形式
+
+        // ========== 4. 方括号 [] ==========
+        String text4 = "Hello [world] (java)";
+        assertEquals("Hello {world] (java)", text4.replace("[", "{"));
+        assertEquals("Hello {world] (java)", text4.replaceAll("\\[", "{"));
+        assertEquals("Hello {world] (java)", text4.replaceAll(Pattern.quote("["), "{")); // Pattern.quote 形式
+
+        // ========== 5. 捕获组（replaceAll 独有能力）==========
+        String text5 = "2024-01-15";
+        // replaceAll 可以引用捕获组重新格式化
+        assertEquals("01/15/2024", text5.replaceAll("(\\d{4})-(\\d{2})-(\\d{2})", "$2/$3/$1"));
+        // replace 不支持捕获组，当做普通字符串处理
+        assertEquals("2024-01-15", text5.replace("(\\d{4})-(\\d{2})-(\\d{2})", "$2/$3/$1"));
+        // Pattern.quote 不适用于此场景，因为这里需要使用捕获组功能，不能转义正则
+
+        // ========== 6. replacement 中的 $ 符号 ==========
+        String text6 = "value = 100";
+        // 想替换成 "value = $100"，replacement 中的 $ 需要转义
+        assertEquals("value = $100", text6.replaceAll("(value = )\\d+", "$1\\$100"));
+        // Pattern.quote 不适用于 replacement 参数，只用于正则表达式字符串
+
+        // ========== 7. 多个正则特殊字符 ==========
+        String text7 = "1.2+3*4?5^6$7|8(9)";
+        // replace: 逐个字面量替换
+        assertEquals("1_2_3_4?5^6$7|8(9)", text7.replace(".", "_").replace("+", "_").replace("*", "_"));
+        // replaceAll: 使用正则字符类批量替换
+        assertEquals("1_2_3_4?5^6$7|8(9)", text7.replaceAll("[.+*]", "_"));
+        // Pattern.quote 不能用于字符类，但可以单个使用
+        assertEquals("1_2_3_4?5^6$7|8(9)", text7.replaceAll(Pattern.quote("."), "_").replaceAll(Pattern.quote("+"), "_").replaceAll(Pattern.quote("*"), "_"));
+
+        // ========== 8. 使用 Pattern.quote 自动转义 ==========
+        String text8 = "A+B-C?D";
+        assertEquals("A-B-C?D", text8.replace("+", "-"));
+        assertEquals("A-B-C?D", text8.replaceAll("\\+", "-"));
+        // 推荐：使用 Pattern.quote 自动处理转义
+        assertEquals("A-B-C?D", text8.replaceAll(Pattern.quote("+"), "-"));
+
+        // ========== 9. 问号 ? ==========
+        String text9 = "Is it true? Really?";
+        assertEquals("Is it true! Really!", text9.replace("?", "!"));
+        assertEquals("Is it true! Really!", text9.replaceAll("\\?", "!"));
+        assertEquals("Is it true! Really!", text9.replaceAll(Pattern.quote("?"), "!")); // Pattern.quote 形式
+
+        // ========== 10. 星号 * ==========
+        String text10 = "abc*def*ghi";
+        assertEquals("abc-def-ghi", text10.replace("*", "-"));
+        assertEquals("abc-def-ghi", text10.replaceAll("\\*", "-"));
+        assertEquals("abc-def-ghi", text10.replaceAll(Pattern.quote("*"), "-")); // Pattern.quote 形式
+
+        // ========== 11. 加号 + ==========
+        String text11 = "a+b+c";
+        assertEquals("a-b-c", text11.replace("+", "-"));
+        assertEquals("a-b-c", text11.replaceAll("\\+", "-"));
+        assertEquals("a-b-c", text11.replaceAll(Pattern.quote("+"), "-")); // Pattern.quote 形式
+
+        // ========== 12. 竖线 | ==========
+        String text12 = "a|b|c";
+        assertEquals("a-b-c", text12.replace("|", "-"));
+        assertEquals("a-b-c", text12.replaceAll("\\|", "-"));
+        assertEquals("a-b-c", text12.replaceAll(Pattern.quote("|"), "-")); // Pattern.quote 形式
+
+        // ========== 13. 花括号 {} ==========
+        String text13 = "Hello {world}";
+        assertEquals("Hello (world)", text13.replace("{", "(").replace("}", ")"));
+        assertEquals("Hello (world)", text13.replaceAll("\\{", "(").replaceAll("\\}", ")"));
+        assertEquals("Hello (world)", text13.replaceAll(Pattern.quote("{"), "(").replaceAll(Pattern.quote("}"), ")")); // Pattern.quote 形式
+
+        // ========== 14. 圆括号 () ==========
+        String text14 = "func(a,b)";
+        assertEquals("func[a,b)", text14.replace("(", "[").replace("]", ")"));
+        assertEquals("func[a,b]", text14.replaceAll("\\(", "[").replaceAll("\\)", "]"));
+        assertEquals("func[a,b]", text14.replaceAll(Pattern.quote("("), "[").replaceAll(Pattern.quote(")"), "]")); // Pattern.quote 形式
+
+        // ========== 15. 实际应用场景：清理用户输入 ==========
+        String userInput = "用户输入了特殊字符 .*+?^${}()|[]\\";
+        // 使用 replace 简单替换单个字符
+        assertEquals("用户输入了特殊字符 _*+?^${}()|[]\\", userInput.replace(".", "_"));
+        // 使用 replaceAll 批量替换多个正则元字符
+        assertEquals("用户输入了特殊字符 ______________", userInput.replaceAll("[.*+?^${}()|\\[\\]\\\\]", "_"));
+        // 使用 Pattern.quote 替换特定字符（需要多次调用或循环）
+        assertEquals("用户输入了特殊字符 _*+?^${}()|[]\\", userInput.replaceAll(Pattern.quote("."), "_"));
+    }
+
     /**
      * 验证错误解析。
      */
