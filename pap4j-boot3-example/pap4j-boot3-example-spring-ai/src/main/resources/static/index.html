@@ -204,7 +204,7 @@
         const targetLang = languageAliasMap[language?.toLowerCase()] || language;
         let highlighted;
         const validLang = !!(targetLang && hljs.getLanguage(targetLang));
-        
+
         try {
             if (validLang) {
                 highlighted = hljs.highlight(code, { language: targetLang }).value;
@@ -223,7 +223,7 @@
                     <span>${displayLang}</span>
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
                 </div>
-                <pre><code class="hljs ${validLang ? 'language-' + targetLang : ''}">${highlighted}</code></pre>
+                <pre><code class="hljs ${validLang ? 'language-' + targetLang : ''}">${code.text}</code></pre>
             </div>
         `;
     };
@@ -281,26 +281,26 @@
                 body: JSON.stringify({ prompt, chatId })
             });
             if (!response.ok) throw new Error('网络请求失败');
-            
+
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
-            
+
             // 鲁棒的 SSE 解析逻辑
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                
+
                 const chunk = decoder.decode(value, { stream: true });
                 // SSE 以双换行分割事件块
                 const events = chunk.split('\n\n');
-                
+
                 for (const event of events) {
                     if (!event.trim()) continue;
-                    
+
                     const lines = event.split('\n');
                     let eventData = "";
                     let hasData = false;
-                    
+
                     for (const line of lines) {
                         if (line.startsWith('data:')) {
                             hasData = true;
@@ -309,13 +309,13 @@
                             eventData += content + (lines.length > 1 ? '\n' : '');
                         }
                     }
-                    
+
                     if (hasData) {
                         // 如果是一个多行 data 事件，最后会多出一个 \n，去掉它
                         if (lines.length > 1 && eventData.endsWith('\n')) {
                             eventData = eventData.slice(0, -1);
                         }
-                        
+
                         // 【核心修复】：在 Spring AI/WebFlux 中，如果 Flux 发送的是一个换行符 token，
                         // 表现为 data: 后面直接跟着 \n\n。
                         // 这里我们检测如果 eventData 是空的，但确实收到了 data 标签，
@@ -327,7 +327,7 @@
                         }
                     }
                 }
-                
+
                 // 实时渲染
                 botContentDiv.innerHTML = marked.parse(fullResponse) + '<span class="cursor"></span>';
                 chatMessages.scrollTop = chatMessages.scrollHeight;
