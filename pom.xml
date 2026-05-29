@@ -243,11 +243,11 @@
                 <version>3.5.6</version>
             </dependency>
 
-            <!-- https://mvnrepository.com/artifact/org.codehaus.groovy/groovy-all -->
+            <!-- Source: https://mvnrepository.com/artifact/org.apache.groovy/groovy-all -->
             <dependency>
-                <groupId>org.codehaus.groovy</groupId>
+                <groupId>org.apache.groovy</groupId>
                 <artifactId>groovy-all</artifactId>
-                <version>3.0.23</version>
+                <version>4.0.32</version>
                 <type>pom</type>
             </dependency>
 
