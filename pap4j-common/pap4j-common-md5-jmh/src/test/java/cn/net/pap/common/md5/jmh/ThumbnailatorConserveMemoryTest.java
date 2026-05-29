@@ -55,27 +55,28 @@ public class ThumbnailatorConserveMemoryTest {
     public void testConserveMemoryImpact() throws Exception {
         // 1. 测试默认模式 (false)
         System.clearProperty(KEY);
-        double defaultAvg = runTest("默认模式(false)");
+        double[] defaultAvg = runTest("默认模式(false)");
 
         System.gc();
         Thread.sleep(500);
 
         // 2. 测试优化模式 (true)
         System.setProperty(KEY, "true");
-        double optimizedAvg = runTest("优化模式(true)");
+        double[] optimizedAvg = runTest("优化模式(true)");
 
         // 3. 结果输出与业务断言
-        log.info("【对比结果】默认平均: {} MB | 优化平均: {} MB", String.format("%.2f", defaultAvg), String.format("%.2f", optimizedAvg));
+        log.info("【对比结果】默认平均: {} MB | 优化平均: {} MB", String.format("%.2f", defaultAvg[0]), String.format("%.2f", optimizedAvg[0]));
+        log.info("【对比结果】默认平均: {} MS | 优化平均: {} MS", String.format("%.2f", defaultAvg[1]), String.format("%.2f", optimizedAvg[1]));
 
-        if (optimizedAvg < defaultAvg) {
-            double savedPercent = (1 - optimizedAvg / defaultAvg) * 100;
+        if (optimizedAvg[0] < defaultAvg[0]) {
+            double savedPercent = (1 - optimizedAvg[0] / defaultAvg[0]) * 100;
             log.info("优化成功，InputStream 解码内存分配减少了: {}%", String.format("%.2f", savedPercent));
         }
 
-        assertTrue(optimizedAvg < defaultAvg, "优化模式下的 InputStream 内存分配应当低于默认模式");
+        assertTrue(optimizedAvg[0] < defaultAvg[0], "优化模式下的 InputStream 内存分配应当低于默认模式");
     }
 
-    private double runTest(String modeName) throws Exception {
+    private double[] runTest(String modeName) throws Exception {
         // 预热
         for (int i = 0; i < WARM_UP; i++) {
             generateThumbnail();
@@ -83,14 +84,22 @@ public class ThumbnailatorConserveMemoryTest {
 
         // 正式计数
         long startBytes = getThreadAllocatedBytes();
+        long startTime = System.nanoTime(); // 纳秒级精确耗时
+
         for (int i = 0; i < ITERATIONS; i++) {
             generateThumbnail();
         }
+
+        long endTime = System.nanoTime();
         long totalAllocated = getThreadAllocatedBytes() - startBytes;
 
+        // 计算平均值
         double avgMB = (totalAllocated / (1024.0 * 1024.0)) / ITERATIONS;
-        log.info("{} 完成 -> 平均每次分配内存: {} MB", modeName, String.format("%.2f", avgMB));
-        return avgMB;
+        double avgTimeMs = ((endTime - startTime) / 1_000_000.0) / ITERATIONS; // 毫秒
+
+        log.info("{} 完成 -> 平均每次分配内存: {} MB | 平均每次耗时: {} ms", modeName, String.format("%.2f", avgMB), String.format("%.2f", avgTimeMs));
+
+        return new double[]{avgMB, avgTimeMs};
     }
 
     /**
