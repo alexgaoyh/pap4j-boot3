@@ -6,7 +6,7 @@ import org.slf4j.LoggerFactory;
 import cn.net.pap.common.jsonorm.util.JacksonUtil;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.FileWriter;

@@ -1,7 +1,7 @@
 package cn.net.pap.task;
 
 import cn.net.pap.task.util.DynamicTaskExecutorUtil;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

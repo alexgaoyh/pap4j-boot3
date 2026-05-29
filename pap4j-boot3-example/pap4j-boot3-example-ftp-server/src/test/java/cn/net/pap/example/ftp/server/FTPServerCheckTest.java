@@ -4,9 +4,9 @@
 //import org.apache.commons.net.ftp.FTPClient;
 //import org.apache.commons.net.ftp.FTPFile;
 //import org.apache.commons.net.ftp.FTPReply;
-//import org.junit.After;
-//import org.junit.Before;
-//import org.junit.Test;
+//import org.junit.jupiter.api.AfterAll;
+//import org.junit.jupiter.api.BeforeAll;
+//import org.junit.jupiter.api.Test;
 //import org.springframework.core.annotation.Order;
 //
 //import java.io.*;
@@ -24,7 +24,7 @@
 //
 //    private static FTPClient ftpClient;
 //
-//    @Before
+//    @BeforeAll
 //    public void setUp() throws Exception {
 //        try {
 //            ftpClient = new FTPClient();
@@ -50,7 +50,7 @@
 //        }
 //    }
 //
-//    @After
+//    @AfterAll
 //    public void tearDown() throws Exception {
 //        if (ftpClient.isConnected()) {
 //            ftpClient.logout();
