@@ -42,7 +42,7 @@ public class ITextTest {
             PdfCanvasProcessor processor = new PdfCanvasProcessor(strategy);
             processor.processPageContent(page);
             String resultText = strategy.getResultantText();
-            log.info("{}" + resultText);
+            log.info("{}", resultText);
         } catch (Exception e) {
             log.error("{}", e);
         }
