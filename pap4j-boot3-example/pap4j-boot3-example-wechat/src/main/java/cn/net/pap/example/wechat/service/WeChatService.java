@@ -4,14 +4,16 @@ import cn.net.pap.example.wechat.vo.Result;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.http.HttpEntity;
-import org.apache.http.client.config.RequestConfig;
-import org.apache.http.client.methods.CloseableHttpResponse;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
-import org.apache.http.util.EntityUtils;
+import org.apache.hc.client5.http.classic.methods.HttpPost;
+import org.apache.hc.client5.http.config.RequestConfig;
+import org.apache.hc.client5.http.entity.EntityBuilder;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpResponse;
+import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.core5.http.ContentType;
+import org.apache.hc.core5.http.HttpEntity;
+import org.apache.hc.core5.http.io.entity.EntityUtils;
+import org.apache.hc.core5.util.Timeout;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,6 +30,7 @@ import java.net.URLConnection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 
 @Service("wechat")
 public class WeChatService {
@@ -266,50 +269,37 @@ public class WeChatService {
             return null;
         }
 
-        CloseableHttpClient httpClient = null;
-        CloseableHttpResponse response = null;
         String result = null;
-        try {
-            httpClient = HttpClients.createDefault();
+
+        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost httpPost = new HttpPost(url);
 
-            StringEntity stringEntity = new StringEntity(param, "UTF-8");
-            stringEntity.setContentType("application/json");
+            httpPost.setEntity(EntityBuilder.create().setText(param).setContentType(ContentType.APPLICATION_JSON).build());
 
-            httpPost.setEntity(stringEntity);
             httpPost.setConfig(builderRequestConfig());
 
-            response = httpClient.execute(httpPost);
-
-            int statusCode = response.getStatusLine().getStatusCode();
-            if (statusCode == 200) {
-                HttpEntity entity = response.getEntity();
-                result = EntityUtils.toString(entity);
+            try (CloseableHttpResponse response = httpClient.execute(httpPost)) {
+                int statusCode = response.getCode();
+                if (statusCode == 200) {
+                    HttpEntity entity = response.getEntity();
+                    result = EntityUtils.toString(entity);
+                }
             }
+
         } catch (IOException e) {
             log.error("调用HttpUtils.sendPostByHttpClient IOException, url=" + url, e);
         } catch (Exception e) {
             log.error("调用HttpUtils.sendPostByHttpClient Exception, url=" + url, e);
-        } finally {
-            try {
-                if (response != null) {
-                    response.close();
-                }
-                if (httpClient != null) {
-                    httpClient.close();
-                }
-            } catch (IOException e) {
-                log.error("sendPostByHttpClient", e);
-            }
         }
+
         return result;
     }
 
     private static RequestConfig builderRequestConfig() {
         return RequestConfig.custom()
-                .setConnectTimeout(5000)
-                .setConnectionRequestTimeout(5000)
-                .setSocketTimeout(120000).build();
+                .setConnectTimeout(Timeout.of(5000, TimeUnit.MILLISECONDS))
+                .setConnectionRequestTimeout(Timeout.of(5000, TimeUnit.MILLISECONDS))
+                .setResponseTimeout(Timeout.of(120000, TimeUnit.MILLISECONDS)).build();
     }
 
 
