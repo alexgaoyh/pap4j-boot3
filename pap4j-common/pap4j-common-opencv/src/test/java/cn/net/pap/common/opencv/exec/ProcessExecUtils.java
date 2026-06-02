@@ -16,6 +16,10 @@ import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Apache Commons Exec 进程执行工具类
@@ -75,6 +79,67 @@ public class ProcessExecUtils {
         log.info("{}", "ExitCode: " + execResult.toString());
     }
 
+    @Test
+    public void testThreadExplosionUnderConcurrency() throws InterruptedException {
+        // 模拟 200 个总请求，但限制最大并发为 50
+        int totalTasks = 200;
+        int concurrency = 50;
+
+        ExecutorService webServerThreadPool = Executors.newFixedThreadPool(concurrency);
+        CountDownLatch doneLatch = new CountDownLatch(totalTasks);
+        AtomicInteger maxThreadCount = new AtomicInteger(0);
+        AtomicInteger successCount = new AtomicInteger(0);
+
+        int baseThreadCount = Thread.activeCount();
+        log.info("测试启动前基准线程数: {}", baseThreadCount);
+
+        Thread monitorThread = new Thread(() -> {
+            while (doneLatch.getCount() > 0) {
+                int currentThreads = Thread.activeCount();
+                if (currentThreads > maxThreadCount.get()) {
+                    maxThreadCount.set(currentThreads);
+                }
+                try {
+                    Thread.sleep(20);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        });
+        monitorThread.setDaemon(true);
+        monitorThread.start();
+
+        // 提交 200 个任务到 50 并发的线程池
+        for (int i = 0; i < totalTasks; i++) {
+            webServerThreadPool.submit(() -> {
+                try {
+                    boolean isWin = System.getProperty("os.name").toLowerCase().contains("win");
+                    // 缩短耗时，让任务快速交替，体现复用
+                    String cmd = isWin ? "ping 127.0.0.1 -n 2" : "sleep 1";
+
+                    ExecResult result = execWithShell(cmd, null, null, 5000);
+                    if (result.isSuccess()) {
+                        successCount.incrementAndGet();
+                    }
+                } catch (Exception e) {
+                    log.error("执行异常", e);
+                } finally {
+                    doneLatch.countDown();
+                }
+            });
+        }
+
+        doneLatch.await();
+        webServerThreadPool.shutdown();
+
+        log.info("{}个任务执行完毕，成功数量: {} / {}", totalTasks, successCount.get(), totalTasks);
+        log.info("测试中监测到的峰值活动线程数: {}", maxThreadCount.get());
+
+        int increasedThreads = maxThreadCount.get() - baseThreadCount;
+        log.info("相比基准增加的线程峰值: {}", increasedThreads);
+
+    }
+
     private static Map<String, String> mergeEnv(Map<String, String> extra) {
         // 拷贝当前进程环境（保留 PATH, HOME 等）
         Map<String, String> merged = new HashMap<>(System.getenv());
@@ -115,7 +180,12 @@ public class ProcessExecUtils {
         PumpStreamHandler streamHandler = new PumpStreamHandler(outStream, errStream);
 
         // 使用 1.5.0 推荐的 Builder 替代 new DefaultExecutor()
-        DefaultExecutor executor = DefaultExecutor.builder().get();
+        DefaultExecutor executor = DefaultExecutor.builder()
+                .setThreadFactory(r -> {
+                    Thread t = new Thread(r, "Exec-Main-" + cmdLine.getExecutable());
+                    t.setDaemon(true);
+                    return t;
+                }).get();
         if (workingDir != null) {
             executor.setWorkingDirectory(workingDir);
         }

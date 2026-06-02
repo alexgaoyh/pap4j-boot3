@@ -64,7 +64,12 @@ public class ProcessExecUtils {
         PumpStreamHandler streamHandler = new PumpStreamHandler(outStream, errStream);
 
         // 使用 1.5.0 推荐的 Builder 替代 new DefaultExecutor()
-        DefaultExecutor executor = DefaultExecutor.builder().get();
+        DefaultExecutor executor = DefaultExecutor.builder()
+                .setThreadFactory(r -> {
+                    Thread t = new Thread(r, "Exec-Main-" + cmdLine.getExecutable());
+                    t.setDaemon(true);
+                    return t;
+                }).get();
         if (workingDir != null) {
             executor.setWorkingDirectory(workingDir);
         }
