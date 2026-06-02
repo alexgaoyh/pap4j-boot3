@@ -34,7 +34,7 @@
     *   **结果闭环 (Result Loop)**: 除非编译和测试全部通过，否则不应宣布任务完成。若验证失败，必须自动进行诊断并尝试修复。
 *   **常用命令**: 
   ```bash
-  mvn clean test -pl <module> -Dtest=<test_class> "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true" "-DskipTests=false"
+  mvn clean test -pl <module> "-Dtest=<test_class>" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true" "-DskipTests=false"
   ```
 *   **清理**: 删除调试期间添加的所有临时文件、日志或 `System.out`。
 
