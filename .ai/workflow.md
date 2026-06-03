@@ -38,6 +38,7 @@
 *   **PowerShell 常用命令**:
   ```powershell
   mvn clean test -pl <module> "-Dtest=<test_class>" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true" "-DskipTests=false"
+  Get-ChildItem -Path . -Filter *Test.java -Recurse | Select-String -Pattern "Autowired"
   ```
 *   **清理**: 删除调试期间添加的所有临时文件、日志或 `System.out`。
 

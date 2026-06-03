@@ -9,9 +9,15 @@
 *   **`[Search]`**: 调用代码搜索、路径匹配或文件列表工具，用于探索上下文。
 *   **`[Plan]`**: 开启深度思考或设计规划模式，在修改前输出详细的设计逻辑。
 *   **`[Edit]`**: 执行代码修改、重写或外科手术式编辑操作。
-*   **`[Shell]`**: **【当前环境：Windows 操作系统】** 在 **PowerShell 终端**中执行命令（如 Maven 编译、测试、Git 操作等）。
-    *   *环境绝对约束*：严禁输出 Linux 独有命令（如 `ls -la`, `cat`, `rm -rf`, `export`）。
-    *   *等价替换原则*：必须直接采用 PowerShell 兼容语法或内建 Cmdlet（如 `Get-ChildItem`, `Get-Content`, `Remove-Item`, `$env:VAR=value`）。
+*   **`[Shell]`**: **【强制：当前绝对是 Windows 10/11 PowerShell 环境】**
+    *   🚨 **【思想钢印：Linux 命令死罪红线】**：
+        *   严禁使用 `grep` ── 必须替换为 `Select-String`。
+        *   严禁使用 `find` ── 必须替换为 `Get-ChildItem`。
+        *   严禁使用 `cat` ── 必须替换为 `Get-Content` 或 `type`。
+        *   严禁使用 `rm -rf` ── 必须替换为 `Remove-Item -Recurse -Force`。
+        *   严禁使用 `pwd` ── 必须替换为 `(Get-Location).Path`。
+        *   严禁在命令中拼接 `&&` ── 必须替换为分号 `;`。
+    *   *执行原则*：模型在生成 `[Shell]` 指令的**前 1 毫秒**，必须自检是否包含上述违禁词。如果包含，必须立刻重写为原生 PowerShell 语法。
 
 ---
 
