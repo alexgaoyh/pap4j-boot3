@@ -13,12 +13,45 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@SpringBootTest
+/**
+ * <p>
+ * <b>Dynamic Form 模块集成测试用例</b>
+ * </p>
+ *
+ * <p>
+ * 该测试类主要验证 <b>EAV (Entity-Attribute-Value)</b> 模型下的核心业务逻辑，包括：
+ * </p>
+ * <ul>
+ *     <li>复杂嵌套 JSON 结构的递归持久化。</li>
+ *     <li>基于 EAV 表结构的数据精准还原。</li>
+ *     <li>级联删除 (Cascade Delete) 的安全性与完整性。</li>
+ * </ul>
+ *
+ * <p>
+ * <b>测试环境优化：</b>
+ * 采用内存数据库 <code>jdbc:sqlite::memory:</code> 以确保测试运行过程中不会生成物理文件，保证测试环境的干净与隔离。
+ * </p>
+ *
+ * @author
+ */
+@SpringBootTest(properties = "spring.datasource.url=jdbc:sqlite::memory:")
 class Pap4jBoot3ExampleDynamicFormApplicationTests {
 
     @Autowired
     private DynamicRecordService recordService;
 
+    /**
+     * <p>
+     * 验证<b>复杂嵌套记录</b>的保存与重构。
+     * </p>
+     * <b>测试步骤：</b>
+     * <ol>
+     *     <li>构建一个包含嵌套 List (Order -> Items) 的 Map 结构。</li>
+     *     <li>调用 Service 层进行递归保存。</li>
+     *     <li>根据生成的 ID 重新读取并重构数据。</li>
+     *     <li>断言原始数据与还原数据在结构和内容上的一致性。</li>
+     * </ol>
+     */
     @Test
     @Transactional
     void testSaveAndReconstructComplexRecord() {
@@ -54,6 +87,17 @@ class Pap4jBoot3ExampleDynamicFormApplicationTests {
         assertEquals(1.0, laptop.get("qty"));
     }
 
+    /**
+     * <p>
+     * 验证<b>级联删除</b>逻辑。
+     * </p>
+     * <b>测试内容：</b>
+     * <ul>
+     *     <li>保存一个带有嵌套关系的记录。</li>
+     *     <li>执行删除操作。</li>
+     *     <li>验证主记录及其关联的所有 EAV 属性和关系是否已从数据库中彻底移除。</li>
+     * </ul>
+     */
     @Test
     void testDeleteCascading() {
         // 1. Save
