@@ -14,6 +14,7 @@ import org.springframework.jdbc.core.DataClassRowMapper;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.junit.jupiter.SpringExtension;
 import org.springframework.transaction.PlatformTransactionManager;
 
@@ -26,7 +27,7 @@ import java.util.Map;
 
 @ExtendWith(SpringExtension.class)
 @ContextConfiguration(classes = JdbcAccessTemplateTest.Config.class)
-@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class JdbcAccessTemplateTest {
     private static final Logger log = LoggerFactory.getLogger(JdbcAccessTemplateTest.class);
 

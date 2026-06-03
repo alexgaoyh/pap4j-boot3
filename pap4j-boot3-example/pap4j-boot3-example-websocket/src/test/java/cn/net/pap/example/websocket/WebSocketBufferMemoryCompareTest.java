@@ -16,6 +16,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.context.annotation.Bean;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.web.socket.server.standard.ServerEndpointExporter;
 import org.springframework.web.socket.server.standard.ServletServerContainerFactoryBean;
 
@@ -137,9 +138,13 @@ public class WebSocketBufferMemoryCompareTest {
     @Nested
     @SpringBootTest(classes = {WsTestApplication.class, TestServerEndpoint.class}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "ws.buffer.size=8192" // 8KB
     )
+    @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
     class SmallBufferTest {
-        @LocalServerPort
-        private int port;
+        private final int port;
+
+        public SmallBufferTest(@LocalServerPort int port) {
+            this.port = port;
+        }
 
         @Test
         void testSmallBufferMemory() throws Exception {
@@ -154,9 +159,13 @@ public class WebSocketBufferMemoryCompareTest {
     @Nested
     @SpringBootTest(classes = {WsTestApplication.class, TestServerEndpoint.class}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = "ws.buffer.size=10485760" // 10MB
     )
+    @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
     class LargeBufferTest {
-        @LocalServerPort
-        private int port;
+        private final int port;
+
+        public LargeBufferTest(@LocalServerPort int port) {
+            this.port = port;
+        }
 
         @Test
         void testLargeBufferMemory() throws Exception {

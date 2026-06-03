@@ -7,6 +7,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -19,14 +20,18 @@ import java.time.Instant;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class PdfWebFluxControllerLoadTest {
 
     private static final Logger log = LoggerFactory.getLogger(PdfWebFluxControllerLoadTest.class);
     private static final String TEST_FILE_NAME = "test-pressure.pdf";
     private static final int CONCURRENCY = 1000; // 并发请求数量
 
-    @LocalServerPort
-    private int port;
+    private final int port;
+
+    public PdfWebFluxControllerLoadTest(@LocalServerPort int port) {
+        this.port = port;
+    }
 
     @BeforeAll
     static void setupDummyFile() throws IOException {

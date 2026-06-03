@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
+import org.springframework.test.context.TestConstructor;
 
 import java.util.HashMap;
 import java.util.List;
@@ -20,7 +21,7 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest(classes = {Neo4jApplication.class})
-@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class DepartmentEntityTest extends Neo4jBaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(DepartmentEntityTest.class);

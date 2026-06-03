@@ -9,6 +9,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.HashMap;
@@ -18,7 +19,7 @@ import java.util.concurrent.Semaphore;
 @SpringBootTest(classes = {PropertiesTest.SemaphoreTestConfig.class})
 @TestPropertySource("classpath:application.properties")
 @EnableConfigurationProperties
-@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class PropertiesTest {
 

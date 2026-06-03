@@ -8,11 +8,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.neo4j.core.Neo4jClient;
+import org.springframework.test.context.TestConstructor;
 
 import java.util.*;
 
 @SpringBootTest(classes = {Neo4jApplication.class})
-@org.springframework.test.context.TestConstructor(autowireMode = org.springframework.test.context.TestConstructor.AutowireMode.ALL)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class HobbyEntityTest extends Neo4jBaseTest {
 
     private static final Logger log = LoggerFactory.getLogger(HobbyEntityTest.class);

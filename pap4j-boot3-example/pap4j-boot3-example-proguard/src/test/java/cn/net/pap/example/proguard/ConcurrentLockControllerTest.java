@@ -8,18 +8,24 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.*;
 
+import org.springframework.test.context.TestConstructor;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class ConcurrentLockControllerTest {
 
     private static final Logger log = LoggerFactory.getLogger(ConcurrentLockControllerTest.class);
 
-    @LocalServerPort
-    private int port;
+    private final int port;
+
+    public ConcurrentLockControllerTest(@LocalServerPort int port) {
+        this.port = port;
+    }
 
     private final TestRestTemplate restTemplate = new TestRestTemplate();
 
