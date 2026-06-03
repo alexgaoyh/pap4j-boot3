@@ -10,7 +10,7 @@
     * ⚠️ **PowerShell 下的 Maven 执行约束**:
         * 优先使用 `mvn`，若不存在则使用项目自带的包装器 `.\mvnw`。
         * **参数包裹规则**: 在 PowerShell 中传递复杂的 Maven 参数（如测试类名、多模块指定等）时，**必须使用双引号 `"` 包裹参数**（例如 `"-Dtest=..."`），严禁使用单引号，防止参数被 PowerShell 引擎解析截断。
-        * **文件编码强制**: 运行任何构建或测试命令时，必须显式附加 `"-Dfile.encoding=UTF-8"` 参数，以防止 Windows 默认的 GBK 环境导致控制台乱码。
+        * **文件编码与插件跳过强制**: 运行任何构建、编译或测试验证命令时，**必须**同时显式附加 `"-Dfile.encoding=UTF-8"` 以及 `"-Dmaven.gitcommitid.skip=true"` 参数，以防止 Windows 默认的 GBK 环境导致控制台乱码，并严防因为 `git-commit-id-maven-plugin` 插件的重复扫描拖慢自动化验证流程。
 * **命名空间**: 仅使用 `jakarta.*`。严禁使用 `javax.*`。
 
 ## 2. Java 17 现代模式
