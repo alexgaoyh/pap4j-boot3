@@ -30,10 +30,13 @@
 *   **测试覆盖**: 新功能或 Bug 修复必须包含单元测试或集成测试。
 *   **自动化验证协议 (Mandatory)**: 
     *   **链式执行 (Chained Execution)**: 任何代码修改 **`[Edit]`**，**必须**在同一个交互回合内紧随一个验证或测试命令 **`[Shell]`**。
+    *   **PowerShell 链式控制规范**: 多条命令连续执行时，**严禁使用 Linux 的 `&&` 拼接符**（在 Windows 内置的 PowerShell 5.1 中会导致语法错误）。必须改用分号 `;` 或 PowerShell 逻辑控制符。
+        *   ❌ 错误: `cd my-module && mvn clean test`
+        *   ✅ 正确: `cd my-module; mvn clean test` 或者是 `mvn clean test -pl my-module`
     *   **顺序控制 (Sequential Control)**: 必须确保验证步骤在代码写入完全完成后再执行。
     *   **结果闭环 (Result Loop)**: 除非编译和测试全部通过，否则不应宣布任务完成。若验证失败，必须自动进行诊断并尝试修复。
-*   **常用命令**: 
-  ```bash
+*   **PowerShell 常用命令**:
+  ```powershell
   mvn clean test -pl <module> "-Dtest=<test_class>" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true" "-DskipTests=false"
   ```
 *   **清理**: 删除调试期间添加的所有临时文件、日志或 `System.out`。
