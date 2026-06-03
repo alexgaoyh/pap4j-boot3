@@ -2,8 +2,8 @@ package cn.net.pap.example.dynamic.form;
 
 import cn.net.pap.example.dynamic.form.service.DynamicRecordService;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
@@ -32,14 +32,18 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
  * 采用内存数据库 <code>jdbc:sqlite::memory:</code> 以确保测试运行过程中不会生成物理文件，保证测试环境的干净与隔离。
  * </p>
  *
- * @author
+ * @author alexgaoyh
+ * @since 2026-06-03
  */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:sqlite::memory:")
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 class Pap4jBoot3ExampleDynamicFormApplicationTests {
 
-    @Autowired
-    private DynamicRecordService recordService;
+    private final DynamicRecordService recordService;
 
+    public Pap4jBoot3ExampleDynamicFormApplicationTests(DynamicRecordService recordService) {
+        this.recordService = recordService;
+    }
     /**
      * <p>
      * 验证<b>复杂嵌套记录</b>的保存与重构。
