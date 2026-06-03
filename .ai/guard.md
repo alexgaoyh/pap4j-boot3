@@ -8,7 +8,7 @@
 * **运行环境**: Java 17+ & Spring Boot 3.x (Jakarta EE)。
 * **构建工具**: Maven。
     * ⚠️ **PowerShell 下的 Maven 执行约束**:
-        * 优先使用项目自带的包装器 `.\mvnw`，若不存在则使用 `mvn`。
+        * 优先使用 `mvn`，若不存在则使用项目自带的包装器 `.\mvnw`。
         * **参数包裹规则**: 在 PowerShell 中传递复杂的 Maven 参数（如测试类名、多模块指定等）时，**必须使用双引号 `"` 包裹参数**（例如 `"-Dtest=..."`），严禁使用单引号，防止参数被 PowerShell 引擎解析截断。
         * **文件编码强制**: 运行任何构建或测试命令时，必须显式附加 `"-Dfile.encoding=UTF-8"` 参数，以防止 Windows 默认的 GBK 环境导致控制台乱码。
 * **命名空间**: 仅使用 `jakarta.*`。严禁使用 `javax.*`。
