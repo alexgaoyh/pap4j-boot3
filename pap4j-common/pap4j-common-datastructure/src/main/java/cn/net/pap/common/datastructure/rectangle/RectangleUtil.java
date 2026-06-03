@@ -1,6 +1,7 @@
 package cn.net.pap.common.datastructure.rectangle;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -352,8 +353,8 @@ public class RectangleUtil {
         for (int i = 0; i < partSize; i++) {
             double newY = rect[1] + i * quarterHeight;
             double newYPrime = newY + quarterHeight;
-            BigDecimal newYBigDecimal = new BigDecimal(newY).setScale(2, BigDecimal.ROUND_HALF_UP);
-            BigDecimal newYPrimeBigDecimal = new BigDecimal(newYPrime).setScale(2, BigDecimal.ROUND_HALF_UP);
+            BigDecimal newYBigDecimal = BigDecimal.valueOf(newY).setScale(2, RoundingMode.HALF_UP);
+            BigDecimal newYPrimeBigDecimal = BigDecimal.valueOf(newYPrime).setScale(2, RoundingMode.HALF_UP);
             subRects.add(new Double[]{rect[0], newYBigDecimal.doubleValue(), rect[2], newYPrimeBigDecimal.doubleValue()});
         }
 

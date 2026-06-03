@@ -169,7 +169,7 @@ public class ReadFileToMapUtilTest {
             }
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("File mapping error", e);
         }
 
         long endTime = System.currentTimeMillis();

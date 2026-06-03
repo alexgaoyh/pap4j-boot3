@@ -37,7 +37,7 @@ public class BigTextProcessorTest {
                         return words;
                     });
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error("File processing error", e);
                 }
             });
 
@@ -51,11 +51,11 @@ public class BigTextProcessorTest {
                         String first = allLines.get(0);
                     }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error("Read all lines error", e);
                 }
             });
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Big text test error", e);
         } finally {
             File file = new File(outputPath);
             if (file.exists()) {

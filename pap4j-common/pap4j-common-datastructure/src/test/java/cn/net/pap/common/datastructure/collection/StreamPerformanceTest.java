@@ -18,6 +18,10 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -120,7 +124,12 @@ public class StreamPerformanceTest {
         log.info("=== 测试三：高并发场景下处理小数据量 ===");
 
         int concurrentRequests = 200; // 模拟 200 个并发 HTTP 请求
-        ExecutorService tomcatThreadPool = Executors.newFixedThreadPool(50); // 模拟 Tomcat 线程池（50个工作线程）
+        AtomicInteger counter = new AtomicInteger(1);
+        ExecutorService tomcatThreadPool = new ThreadPoolExecutor(
+                50, 50, 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(1000),
+                r -> new Thread(r, "tomcat-sim-" + counter.getAndIncrement())
+        );
 
         // 1. 测试全部使用普通 stream()
         CountDownLatch latch1 = new CountDownLatch(concurrentRequests);

@@ -524,7 +524,7 @@ public final class XmlParseUtil {
             });
 
             // 格式化输出
-            log.info("%s├─ Seq: %-3s | Level: %s | Parent: %-3s | Title: %s%n", indent, sequence, levelStr, parentId != null ? parentId : "N/A", title);
+        log.info("{}├─ Seq: {} | Level: {} | Parent: {} | Title: {}", indent, String.format("%-3s", sequence), levelStr, parentId != null ? String.format("%-3s", parentId) : "N/A", title);
 
             // 更新缩进映射
             if (!levelIndentMap.containsKey(level + 1)) {

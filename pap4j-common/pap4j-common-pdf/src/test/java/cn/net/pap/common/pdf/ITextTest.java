@@ -25,6 +25,8 @@ import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.math.RoundingMode;
+
 public class ITextTest {
 
     private static final Logger log = LoggerFactory.getLogger(ITextTest.class);
@@ -32,7 +34,7 @@ public class ITextTest {
     /**
      * dpi 转换  PDF是72， IMAGE是 真是获取的
      */
-    private static BigDecimal dpi72ToReal = new BigDecimal(300).divide(new BigDecimal(72), 2, BigDecimal.ROUND_HALF_UP);
+    private static BigDecimal dpi72ToReal = BigDecimal.valueOf(300).divide(BigDecimal.valueOf(72), 2, RoundingMode.HALF_UP);
 
     @Test
     public void dirConvertTest() throws Exception {

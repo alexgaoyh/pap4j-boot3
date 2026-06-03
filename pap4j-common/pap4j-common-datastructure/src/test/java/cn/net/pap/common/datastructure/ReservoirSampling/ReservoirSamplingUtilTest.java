@@ -21,6 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -301,29 +305,36 @@ class ReservoirSamplingUtilTest {
         int iterations = 1000;
 
         AtomicInteger errorCount = new AtomicInteger(0);
-        List<Thread> threads = new ArrayList<>();
+        AtomicInteger threadCounter = new AtomicInteger(1);
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                numThreads, numThreads, 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(100),
+                r -> new Thread(r, "reservoir-test-" + threadCounter.getAndIncrement())
+        );
 
+        CountDownLatch latch = new CountDownLatch(numThreads);
         for (int i = 0; i < numThreads; i++) {
-            Thread thread = new Thread(() -> {
-                for (int j = 0; j < iterations; j++) {
-                    try {
-                        List<Integer> result = ReservoirSamplingUtil.sample(mediumList, k);
-                        if (result.size() != Math.min(k, mediumList.size())) {
+            executor.submit(() -> {
+                try {
+                    for (int j = 0; j < iterations; j++) {
+                        try {
+                            List<Integer> result = ReservoirSamplingUtil.sample(mediumList, k);
+                            if (result.size() != Math.min(k, mediumList.size())) {
+                                errorCount.incrementAndGet();
+                            }
+                        } catch (Exception e) {
+                            log.error("采样过程发生异常", e);
                             errorCount.incrementAndGet();
                         }
-                    } catch (Exception e) {
-                        log.error("采样过程发生异常", e);
-                        errorCount.incrementAndGet();
                     }
+                } finally {
+                    latch.countDown();
                 }
             });
-            threads.add(thread);
         }
 
-        threads.forEach(Thread::start);
-        for (Thread thread : threads) {
-            thread.join();
-        }
+        latch.await();
+        executor.shutdown();
 
         assertEquals(0, errorCount.get(),
                 "多线程环境下应无错误发生");

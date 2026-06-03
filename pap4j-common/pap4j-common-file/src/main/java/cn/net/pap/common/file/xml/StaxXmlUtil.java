@@ -1024,7 +1024,7 @@ public class StaxXmlUtil {
 
         } catch (NumberFormatException e) {
             // 捕获异常，防止脏数据导致程序崩溃
-            System.err.println("坐标转换失败，非法的数据格式: " + rectStr);
+            log.error("坐标转换失败，非法的数据格式: {}", rectStr, e);
             return "";
         }
     }

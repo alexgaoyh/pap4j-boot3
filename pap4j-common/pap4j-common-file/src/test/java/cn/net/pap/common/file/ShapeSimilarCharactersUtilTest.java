@@ -21,7 +21,7 @@ public class ShapeSimilarCharactersUtilTest {
             Set<Character> similarChars = ssc.querySimilarCharacters(queryChar);
             log.info("{}", "与 '" + queryChar + "' 形近的字有: " + similarChars);
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Shape similar characters read error", e);
         }
     }
 

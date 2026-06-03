@@ -14,6 +14,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import java.math.RoundingMode;
+
 /**
  * 聚类算法
  */
@@ -26,11 +28,11 @@ public class MeanShiftUtilTest {
 
 
     // 这个结果可以从 pap4j-common-pdf.ITextTest.java 中的 minWidth 获得。
-    private static final BigDecimal minWidth = new BigDecimal(0);
+    private static final BigDecimal minWidth = BigDecimal.ZERO;
 
 
     // 这个结果可以从 pap4j-common-pdf.ITextTest.java 中的 maxWidth 获得。
-    private static final BigDecimal maxWidth = new BigDecimal(0);
+    private static final BigDecimal maxWidth = BigDecimal.ZERO;
 
     @Test
     public void test() throws Exception {
@@ -38,7 +40,7 @@ public class MeanShiftUtilTest {
             ObjectMapper objectMapper = new ObjectMapper();
             List<PointX> pointXES = objectMapper.readValue(rectJSON, new TypeReference<List<PointX>>() {
             });
-            List<List<PointX>> lists = MeanShiftUtil.meanShiftRemoveZero(pointXES, maxWidth.divide(new BigDecimal(2), 2, BigDecimal.ROUND_HALF_UP).doubleValue());
+            List<List<PointX>> lists = MeanShiftUtil.meanShiftRemoveZero(pointXES, maxWidth.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP).doubleValue());
             for(List<PointX> groupList : lists) {
                 StringBuilder sb = new StringBuilder();
                 for(PointX pointX : groupList) {
@@ -55,7 +57,7 @@ public class MeanShiftUtilTest {
             pointXList.add(new PointX(300, new HashMap<>(){{put("text", "300");}}));
             pointXList.add(new PointX(400, new HashMap<>(){{put("text", "400");}}));
             pointXList.add(new PointX(500, new HashMap<>(){{put("text", "500");}}));
-            List<List<PointX>> lists = MeanShiftUtil.meanShiftRemoveZero(pointXList, new BigDecimal(100).divide(new BigDecimal(2), 2, BigDecimal.ROUND_HALF_UP).doubleValue());
+            List<List<PointX>> lists = MeanShiftUtil.meanShiftRemoveZero(pointXList, BigDecimal.valueOf(100).divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP).doubleValue());
             for(List<PointX> groupList : lists) {
                 StringBuilder sb = new StringBuilder();
                 for(PointX pointX : groupList) {

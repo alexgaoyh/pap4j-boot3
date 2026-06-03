@@ -7,7 +7,10 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 主进程：负责管理任务队列和工作进程
@@ -20,14 +23,31 @@ public class SimpleMaster {
 
     private List<SimpleWorker> workers = new ArrayList<>();
 
+    private ExecutorService executorService;
+
     private volatile boolean running = true;
 
     public SimpleMaster(int workerCount) {
+        // 使用 ThreadPoolExecutor 管理工作进程，符合并发与线程规范
+        this.executorService = new ThreadPoolExecutor(
+                workerCount,
+                workerCount,
+                0L,
+                TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(),
+                r -> {
+                    int id = workers.size(); // 这里仅作为演示，实际 id 可能需要更严谨的计数
+                    Thread t = new Thread(r, "SimpleWorker-" + id);
+                    t.setDaemon(true);
+                    return t;
+                }
+        );
+
         // 创建工作进程
         for (int i = 0; i < workerCount; i++) {
             SimpleWorker worker = new SimpleWorker(i, taskQueue);
             workers.add(worker);
-            new Thread(worker, "SimpleWorker-" + i).start();
+            executorService.execute(worker);
         }
     }
 
@@ -52,6 +72,17 @@ public class SimpleMaster {
         running = false;
         for (SimpleWorker worker : workers) {
             worker.stop();
+        }
+        if (executorService != null) {
+            executorService.shutdown();
+            try {
+                if (!executorService.awaitTermination(5, TimeUnit.SECONDS)) {
+                    executorService.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                executorService.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
         }
         log.info("Master: 已停止所有工作进程");
     }

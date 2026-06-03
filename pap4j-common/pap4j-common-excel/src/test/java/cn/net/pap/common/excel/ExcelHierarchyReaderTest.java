@@ -39,7 +39,7 @@ public class ExcelHierarchyReaderTest {
             log.info("{}", jsonResult);
 
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Excel hierarchy read error", e);
         }
     }
 

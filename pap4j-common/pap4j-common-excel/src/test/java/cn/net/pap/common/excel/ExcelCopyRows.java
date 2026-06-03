@@ -1,6 +1,8 @@
 package cn.net.pap.common.excel;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -8,6 +10,8 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 
 public class ExcelCopyRows {
+
+    private static final Logger log = LoggerFactory.getLogger(ExcelCopyRows.class);
 
     @Test
     public void copy() {
@@ -19,13 +23,13 @@ public class ExcelCopyRows {
             // 定义源/模板文件路径，输出文件路径， 明确偏移4行， 偏移后以4行数据为一组，渲染3组。
             ExcelCopyUtil.copyRowWithStyleInGroup(sourceFilePath, destFilePath, "Sheet1", 4, 4, 3);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Excel copy error", e);
         } finally {
             if (destFilePath != null) {
                 try {
                     Files.deleteIfExists(Paths.get(destFilePath));
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    log.error("Delete file error", e);
                 }
             }
         }

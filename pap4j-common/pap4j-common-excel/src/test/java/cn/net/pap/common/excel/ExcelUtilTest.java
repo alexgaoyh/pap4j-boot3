@@ -166,7 +166,7 @@ public class ExcelUtilTest {
             log.info("{}", parentChildDTOList);
 
         } catch (JsonProcessingException e) {
-            e.printStackTrace();
+            log.error("JSON processing error", e);
         }
     }
 
