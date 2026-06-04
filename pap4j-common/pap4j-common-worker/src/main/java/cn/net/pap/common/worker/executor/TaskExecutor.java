@@ -31,7 +31,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *     </li>
  * </ul>
  */
-public class TaskExecutor {
+public class TaskExecutor implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(TaskExecutor.class);
 
@@ -87,9 +87,11 @@ public class TaskExecutor {
                 // 拒绝策略
                 new ThreadPoolExecutor.AbortPolicy()
         );
+    }
 
-        // JVM 关闭时优雅停机，防止线程池资源泄露
-        Runtime.getRuntime().addShutdownHook(new Thread(this::shutdown));
+    @Override
+    public void close() {
+        shutdown();
     }
 
     /**

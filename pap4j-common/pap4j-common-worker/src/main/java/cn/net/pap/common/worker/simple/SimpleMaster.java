@@ -19,7 +19,7 @@ public class SimpleMaster {
 
     private static final Logger log = LoggerFactory.getLogger(SimpleMaster.class);
 
-    private BlockingQueue<SimpleTaskDTO> taskQueue = new LinkedBlockingQueue<>();
+    private BlockingQueue<SimpleTaskDTO> taskQueue = new LinkedBlockingQueue<>(2000);
 
     private List<SimpleWorker> workers = new ArrayList<>();
 
@@ -34,7 +34,7 @@ public class SimpleMaster {
                 workerCount,
                 0L,
                 TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(),
+                new LinkedBlockingQueue<>(1000),
                 r -> {
                     int id = workers.size(); // 这里仅作为演示，实际 id 可能需要更严谨的计数
                     Thread t = new Thread(r, "SimpleWorker-" + id);

@@ -31,12 +31,6 @@ public class Pap4jBoot3ExampleWebhookApplication {
                 .beanNameGenerator(new Pap4jCustomGenerator())
                 .run(args);
 
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            if (context != null && context.isActive()) {
-                int code = SpringApplication.exit(context);
-                log.info("Web应用优雅关闭，退出码: {}", code);
-            }
-        }));
     }
 
 }

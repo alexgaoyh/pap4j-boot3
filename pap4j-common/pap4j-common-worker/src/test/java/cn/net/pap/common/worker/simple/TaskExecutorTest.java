@@ -14,25 +14,26 @@ public class TaskExecutorTest {
 
     @Test
     public void test1() throws Exception {
-        TaskExecutor taskExecute = new TaskExecutor(5, 10, 100);
+        try (TaskExecutor taskExecute = new TaskExecutor(5, 10, 100);){
+            for (int i = 0; i < 10; i++) {
+                Task task = new Task();
+                task.setId(UUID.randomUUID().toString());
+                task.setProcessingTime(2000);
+                taskExecute.submit(task);
+            }
 
-        for (int i = 0; i < 10; i++) {
-            Task task = new Task();
-            task.setId(UUID.randomUUID().toString());
-            task.setProcessingTime(2000);
-            taskExecute.submit(task);
+            int monitorSeconds = 8;
+            long endTime = System.currentTimeMillis() + monitorSeconds * 1000L;
+            while (System.currentTimeMillis() < endTime) {
+                log.info("队列: {} 活跃线程: {}", taskExecute.getQueueSize(), taskExecute.getActiveCount());
+                Thread.sleep(1000);
+            }
+
+            log.info("监控结束，关闭任务执行器...");
+            log.info("程序退出");
+        } finally {
+
         }
-
-        int monitorSeconds = 8;
-        long endTime = System.currentTimeMillis() + monitorSeconds * 1000L;
-        while (System.currentTimeMillis() < endTime) {
-            log.info("队列: {} 活跃线程: {}", taskExecute.getQueueSize(), taskExecute.getActiveCount());
-            Thread.sleep(1000);
-        }
-
-        log.info("监控结束，关闭任务执行器...");
-        taskExecute.shutdown();
-        log.info("程序退出");
     }
 
 }

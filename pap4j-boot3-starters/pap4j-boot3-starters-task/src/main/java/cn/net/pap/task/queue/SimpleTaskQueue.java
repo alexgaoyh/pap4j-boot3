@@ -47,7 +47,7 @@ public class SimpleTaskQueue {
         executorService = new ThreadPoolExecutor(
                 1, 1,
                 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(),
+                new LinkedBlockingQueue<>(1000),
                 new ThreadFactory() {
                     private final AtomicInteger counter = new AtomicInteger(1);
                     @Override
