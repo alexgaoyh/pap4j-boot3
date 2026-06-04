@@ -40,12 +40,16 @@ public class PartChapterParseTest {
         List<ChapterInfo> chapters = parseChapters(root, new ArrayList<>());
 
         for (ChapterInfo info : chapters) {
-            log.info("{}", "Chapter: " + info.getIdentifier() + ", Type: " + info.getType() + ", Seq: " + info.getSeq() + ", Chapter Element: " + info.getChapterElement().getTagName() + " with ID: " + info.getChapterElement().getAttribute("identifier"));
-            log.info("{}", "Part titles: " + info.getPartTitles());
+            log.info("Chapter: {}, Type: {}, Seq: {}, Chapter Element: {} with ID: {}", 
+                    info.getIdentifier(), info.getType(), info.getSeq(), 
+                    info.getChapterElement().getTagName(), 
+                    info.getChapterElement().getAttribute("identifier"));
+            log.info("Part titles: {}", info.getPartTitles());
 
             log.info("Part Elements hierarchy:");
             for (PartInfo part : info.getPartHierarchy()) {
-                log.info("{}", "  Part title: " + part.getTitle() + ", Element: " + part.getPartElement().getTagName() + ", Seq: " + part.getSeq());
+                log.info("  Part title: {}, Element: {}, Seq: {}", 
+                        part.getTitle(), part.getPartElement().getTagName(), part.getSeq());
             }
             log.info("-------------------");
         }

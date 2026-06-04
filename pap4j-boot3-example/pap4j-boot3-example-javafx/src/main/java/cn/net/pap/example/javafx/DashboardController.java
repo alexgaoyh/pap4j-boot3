@@ -847,16 +847,24 @@ public class DashboardController implements Initializable {
             folderTreeView.getSelectionModel().select(folderItem); // 选中该文件夹
         }
 
-        // 隐藏单图，显示缩略图
-        zoomableView.setVisible(false);
-        zoomableView.setManaged(false);
-
-        thumbnailScrollPane.setVisible(true);
-        thumbnailScrollPane.setManaged(true);
+        // 切换视图模式
+        toggleViewMode(false);
 
         thumbnailTilePane.getChildren().clear();
 
-        Task<Void> task = new Task<>() {
+        Task<Void> task = createThumbnailTask(folder);
+        BackGroundExecutors.background().execute(task);
+    }
+
+    private void toggleViewMode(boolean isSingleImage) {
+        zoomableView.setVisible(isSingleImage);
+        zoomableView.setManaged(isSingleImage);
+        thumbnailScrollPane.setVisible(!isSingleImage);
+        thumbnailScrollPane.setManaged(!isSingleImage);
+    }
+
+    private Task<Void> createThumbnailTask(Path folder) {
+        return new Task<>() {
             @Override
             protected Void call() throws Exception {
                 // 1. 获取目录下所有图片路径
@@ -877,51 +885,59 @@ public class DashboardController implements Initializable {
                 );
 
                 try {
-                    List<VBox> batch = new ArrayList<>();
-
-                    // 3. 提交所有异步任务
-                    List<CompletableFuture<VBox>> futures = imagePaths.stream()
-                            .map(file -> CompletableFuture.supplyAsync(() -> {
-                                // 此处执行耗时操作
-                                BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(file.toAbsolutePath().toString(), thumbnailScrollPaneWidth - 20);
-                                WritableImage fxImage = SwingFXUtils.toFXImage(lowMemoryThumbnail, null);
-                                // 构建 UI 组件（注意：虽然在异步线程，但只要不挂载到 Stage 上的 Node 是允许创建的）
-                                return createThumbContainer(file, fxImage);
-                            }, executor))
-                            .collect(Collectors.toList());
-
-                    // 4. 按顺序获取结果并分批更新 UI
-                    for (int i = 0; i < futures.size(); i++) {
-                        // join() 会阻塞直到该图片处理完成
-                        // 由于是按顺序 join，保证了 batch 里的顺序就是文件读取顺序
-                        VBox thumbContainer = futures.get(i).join();
-                        batch.add(thumbContainer);
-
-                        if (batch.size() >= 10 || i == futures.size() - 1) {
-                            List<VBox> toAdd = new ArrayList<>(batch);
-                            Platform.runLater(() -> {
-                                thumbnailTilePane.getChildren().addAll(toAdd);
-                                // 布局完成后滚动
-                                Platform.runLater(() -> thumbnailScrollPane.setVvalue(1.0));
-                            });
-                            batch.clear();
-                        }
-                    }
+                    processThumbnailsInBatch(imagePaths, executor);
                 } finally {
-                    executor.shutdown(); // 关闭线程池
-                    try {
-                        // 等待 N 秒，给正在运行的任务一点时间
-                        if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
-                            log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
-                            executor.shutdownNow(); // 超时强制关闭
-                        }
-                    } catch (InterruptedException e) {
-                        log.error("关闭线程池时被中断", e);
-                        executor.shutdownNow();
-                        Thread.currentThread().interrupt();
-                    }
+                    shutdownExecutor(executor);
                 }
                 return null;
+            }
+
+            private void processThumbnailsInBatch(List<Path> imagePaths, ThreadPoolExecutor executor) {
+                List<VBox> batch = new ArrayList<>(10);
+
+                // 3. 提交所有异步任务
+                List<CompletableFuture<VBox>> futures = imagePaths.stream()
+                        .map(file -> CompletableFuture.supplyAsync(() -> {
+                            // 此处执行耗时操作
+                            BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(file.toAbsolutePath().toString(), thumbnailScrollPaneWidth - 20);
+                            WritableImage fxImage = SwingFXUtils.toFXImage(lowMemoryThumbnail, null);
+                            // 构建 UI 组件（注意：虽然在异步线程，但只要不挂载到 Stage 上的 Node 是允许创建的）
+                            return createThumbContainer(file, fxImage);
+                        }, executor))
+                        .collect(Collectors.toList());
+
+                // 4. 按顺序获取结果并分批更新 UI
+                for (int i = 0; i < futures.size(); i++) {
+                    // join() 会阻塞直到该图片处理完成
+                    // 由于是按顺序 join，保证了 batch 里的顺序就是文件读取顺序
+                    VBox thumbContainer = futures.get(i).join();
+                    batch.add(thumbContainer);
+
+                    if (batch.size() >= 10 || i == futures.size() - 1) {
+                        List<VBox> toAdd = new ArrayList<>(batch);
+                        Platform.runLater(() -> {
+                            thumbnailTilePane.getChildren().addAll(toAdd);
+                            // 布局完成后滚动
+                            Platform.runLater(() -> thumbnailScrollPane.setVvalue(1.0));
+                        });
+                        batch.clear();
+                    }
+                }
+            }
+
+            private void shutdownExecutor(ThreadPoolExecutor executor) {
+                executor.shutdown(); // 关闭线程池
+                try {
+                    // 等待 N 秒，给正在运行的任务一点时间
+                    if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
+                        log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
+                        executor.shutdownNow(); // 超时强制关闭
+                    }
+                } catch (InterruptedException e) {
+                    log.error("关闭线程池时被中断", e);
+                    executor.shutdownNow();
+                    Thread.currentThread().interrupt();
+                }
             }
 
             @Override
@@ -941,8 +957,6 @@ public class DashboardController implements Initializable {
                 hideLoading();
             }
         };
-
-        BackGroundExecutors.background().execute(task);
     }
 
     /**
