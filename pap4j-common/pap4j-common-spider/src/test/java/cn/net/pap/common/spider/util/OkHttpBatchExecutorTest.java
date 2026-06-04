@@ -1,6 +1,8 @@
 package cn.net.pap.common.spider.util;
 
+import okhttp3.ConnectionPool;
 import okhttp3.OkHttpClient;
+import okhttp3.Protocol;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
@@ -332,4 +334,81 @@ public class OkHttpBatchExecutorTest {
             assertEquals(0, server.getRequestCount());
         }
     }
+
+    /**
+     * 深度演示：连接池大小对“唯一URL”高并发请求的影响
+     * 使用 BodyDelay 强制并发，确保 10 个线程必须同时持有 10 个物理连接
+     */
+    @Test
+    public void testConnectionPoolEfficiency() throws Exception {
+        List<String> bodies = Collections.nCopies(10, "{}");
+
+        // --- 场景 A：使用默认连接池（最大空闲 = 5） ---
+        AtomicInteger connectCountA = new AtomicInteger(0);
+        try (MockWebServer serverA = new MockWebServer()) {
+            serverA.start();
+            OkHttpClient clientA = new OkHttpClient.Builder()
+                    .protocols(Arrays.asList(Protocol.HTTP_1_1))
+                    .eventListener(new okhttp3.EventListener() {
+                        @Override
+                        public void connectStart(okhttp3.Call call, java.net.InetSocketAddress addr, java.net.Proxy p) {
+                            connectCountA.incrementAndGet();
+                        }
+                    }).build();
+
+            try (OkHttpBatchExecutor execA = new OkHttpBatchExecutor(clientA, 10, 10, 20, 100)) {
+                // 第一批：设置延迟，强制所有线程同时开线
+                for (int i = 0; i < 10; i++) {
+                    serverA.enqueue(new MockResponse().setBody("OK").setBodyDelay(200, TimeUnit.MILLISECONDS));
+                }
+                execA.executeBatch(serverA.url("/").toString(), bodies);
+                int connectionsAfterBatch1 = connectCountA.get();
+
+                // 第二批：无延迟执行
+                for (int i = 0; i < 10; i++) {
+                    serverA.enqueue(new MockResponse().setBody("OK"));
+                }
+                execA.executeBatch(serverA.url("/").toString(), bodies);
+                int newConnectionsInBatch2 = connectCountA.get() - connectionsAfterBatch1;
+                System.out.println("场景 A (默认池) - 第一批物理连接: " + connectionsAfterBatch1 + ", 第二批【被迫重新握手】数: " + newConnectionsInBatch2);
+                // 默认池只能留 5 个，所以第二批 10 个请求至少要新开 5 个连接
+                assertTrue(newConnectionsInBatch2 >= 4, "默认池应该因为空闲位不足而产生大量重新握手");
+            }
+        }
+
+        // --- 场景 B：使用优化连接池（最大空闲 = 10） ---
+        AtomicInteger connectCountB = new AtomicInteger(0);
+        try (MockWebServer serverB = new MockWebServer()) {
+            serverB.start();
+            ConnectionPool poolB = new ConnectionPool(10, 5, TimeUnit.MINUTES);
+            OkHttpClient clientB = new OkHttpClient.Builder()
+                    .protocols(Arrays.asList(Protocol.HTTP_1_1))
+                    .connectionPool(poolB)
+                    .eventListener(new okhttp3.EventListener() {
+                        @Override
+                        public void connectStart(okhttp3.Call call, java.net.InetSocketAddress addr, java.net.Proxy p) {
+                            connectCountB.incrementAndGet();
+                        }
+                    }).build();
+
+            try (OkHttpBatchExecutor execB = new OkHttpBatchExecutor(clientB, 10, 10, 20, 100)) {
+                for (int i = 0; i < 10; i++) {
+                    serverB.enqueue(new MockResponse().setBody("OK").setBodyDelay(200, TimeUnit.MILLISECONDS));
+                }
+                execB.executeBatch(serverB.url("/").toString(), bodies);
+                int connectionsAfterBatch1 = connectCountB.get();
+
+                for (int i = 0; i < 10; i++) {
+                    serverB.enqueue(new MockResponse().setBody("OK"));
+                }
+                execB.executeBatch(serverB.url("/").toString(), bodies);
+
+                int newConnectionsInBatch2 = connectCountB.get() - connectionsAfterBatch1;
+                System.out.println("场景 B (优化池) - 第一批物理连接: " + connectionsAfterBatch1 + ", 第二批【新增握手】数: " + newConnectionsInBatch2);
+                // 优化池保留了全部连接，第二批应该几乎 0 新增
+                assertTrue(newConnectionsInBatch2 <= 1, "优化池应该实现连接完美复用，几乎不产生新握手");
+            }
+        }
+    }
+
 }
