@@ -5,6 +5,8 @@ import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.BaseFont;
 import com.itextpdf.text.pdf.PdfWriter;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.nio.charset.StandardCharsets;
@@ -12,6 +14,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class ITextWriteParagraphTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ITextWriteParagraphTest.class);
 
     // @Test
     public void utf16ToPdfTest() throws Exception {
@@ -25,7 +29,7 @@ public class ITextWriteParagraphTest {
                 paragraphs.add(line);
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error in utf16ToPdfTest: ", e);
         }
 
         writeParagraph("utf16.pdf", paragraphs);

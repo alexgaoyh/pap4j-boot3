@@ -15,8 +15,10 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -47,9 +49,12 @@ public class BeanController {
 
     private final ExampleUserDTO exampleUserDTO;
 
-    public BeanController(ExampleBeanDTO exampleBeanDTO, ExampleUserDTO exampleUserDTO) {
+    private final ThreadPoolTaskExecutor taskExecutor;
+
+    public BeanController(ExampleBeanDTO exampleBeanDTO, ExampleUserDTO exampleUserDTO, @Qualifier("processExecutor") ThreadPoolTaskExecutor taskExecutor) {
         this.exampleBeanDTO = exampleBeanDTO;
         this.exampleUserDTO = exampleUserDTO;
+        this.taskExecutor = taskExecutor;
     }
 
     @GetMapping(value = "gitCommitInfo", produces = "application/json;charset=UTF-8")
@@ -61,7 +66,7 @@ public class BeanController {
         } catch (Exception e) {
             return new GitCommitInfo();
         } finally {
-            Thread.sleep(2000);
+            Thread.sleep(2000L);
         }
 
     }
@@ -78,7 +83,7 @@ public class BeanController {
         } catch (Exception e) {
             return e.getMessage();
         } finally {
-            Thread.sleep(2000);
+            Thread.sleep(2000L);
         }
 
     }
@@ -189,7 +194,7 @@ public class BeanController {
     @CrossOrigin
     public SseEmitter conversation(HttpServletRequest request) {
         final SseEmitter emitter = new SseEmitter();
-        new Thread(() -> {
+        taskExecutor.execute(() -> {
             try {
                 for (int i = 0; i < 10; i++) {
                     try {
@@ -197,16 +202,18 @@ public class BeanController {
                         Thread.sleep(1000L);
                         emitter.send("这是第" + i + "次往服务端发送内容");
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        log.error("SSE send error", e);
+                        emitter.completeWithError(e);
+                        return;
                     }
                 }
                 emitter.send(SseEmitter.event().name("end").data("数据发送完毕"));
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            } finally {
                 emitter.complete();
+            } catch (Exception e) {
+                log.error("SSE error", e);
+                emitter.completeWithError(e);
             }
-        }).start();
+        });
         return emitter;
     }
 
@@ -228,7 +235,7 @@ public class BeanController {
                 String content = "Line " + i + " - 中文 - " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")) + "\n";
                 writer.write("data: " + content + "\n\n");
                 writer.flush();
-                Thread.sleep(1000);
+                Thread.sleep(1000L);
             }
             // 发送结束标志
             writer.write("event: end\n"); // 特定事件名称

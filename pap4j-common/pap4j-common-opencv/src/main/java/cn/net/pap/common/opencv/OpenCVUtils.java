@@ -1829,7 +1829,6 @@ public class OpenCVUtils {
 //            return result;
 //
 //        } catch (IOException e) {
-//            e.printStackTrace();
 //            return null;
 //        }
 //    }

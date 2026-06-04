@@ -216,7 +216,7 @@ public class ProguardController {
         Map<String, Object> abstractMap = new HashMap<>();
         abstractMap.put("extMap", extMap);
         abstractMap.put("extList", extList);
-        abstractMap.put("long", 1l);
+        abstractMap.put("long", 1L);
         abstractMap.put("float", 1.23f);
         abstractMap.put("boolean", true);
 
@@ -253,7 +253,7 @@ public class ProguardController {
         Map<String, Object> abstractMap = new HashMap<>();
         abstractMap.put("extMap", extMap);
         abstractMap.put("extList", extList);
-        abstractMap.put("long", 1l);
+        abstractMap.put("long", 1L);
         abstractMap.put("float", 1.23f);
         abstractMap.put("boolean", true);
 
@@ -313,7 +313,7 @@ public class ProguardController {
     @GetMapping("/saveAllAndFlush2")
     public Boolean saveAllAndFlush2() {
         Proguard proguard = new Proguard();
-        proguard.setProguardId(1l);
+        proguard.setProguardId(1L);
         proguard.setProguardName(proguard.getProguardId() + "");
 
         Map<String, Object> extMap = new HashMap<>();
@@ -331,7 +331,7 @@ public class ProguardController {
         Map<String, Object> abstractMap = new HashMap<>();
         abstractMap.put("extMap", extMap);
         abstractMap.put("extList", extList);
-        abstractMap.put("long", 1l);
+        abstractMap.put("long", 1L);
         abstractMap.put("float", 1.23f);
         abstractMap.put("boolean", true);
 
@@ -369,7 +369,7 @@ public class ProguardController {
         Map<String, Object> abstractMap = new HashMap<>();
         abstractMap.put("extMap", extMap);
         abstractMap.put("extList", extList);
-        abstractMap.put("long", 1l);
+        abstractMap.put("long", 1L);
         abstractMap.put("float", 1.23f);
         abstractMap.put("boolean", true);
 
@@ -418,7 +418,7 @@ public class ProguardController {
     @GetMapping("/timeout")
     public Proguard timeout(@RequestParam(name = "timeoutMS") Long timeoutMS) {
         Proguard proguard = new Proguard();
-        proguard.setProguardId(1l);
+        proguard.setProguardId(1L);
         proguard.setProguardName(proguard.getProguardId() + "");
 
         Map<String, Object> extMap = new HashMap<>();
@@ -436,7 +436,7 @@ public class ProguardController {
         Map<String, Object> abstractMap = new HashMap<>();
         abstractMap.put("extMap", extMap);
         abstractMap.put("extList", extList);
-        abstractMap.put("long", 1l);
+        abstractMap.put("long", 1L);
         abstractMap.put("float", 1.23f);
         abstractMap.put("boolean", true);
 
@@ -536,7 +536,7 @@ public class ProguardController {
         Map<String, Object> abstractMap = new HashMap<>();
         abstractMap.put("extMap", extMap);
         abstractMap.put("extList", extList);
-        abstractMap.put("long", 1l);
+        abstractMap.put("long", 1L);
         abstractMap.put("float", 1.23f);
         abstractMap.put("boolean", true);
 

@@ -98,7 +98,7 @@ public class AsyncController {
             return "CPU密集型任务完成，结果: " + result;
         };
 
-        return new WebAsyncTask<>(3000l, taskExecutor, callable);
+        return new WebAsyncTask<>(3000L, taskExecutor, callable);
     }
 
     @GetMapping("/async-with-timeout")
@@ -115,7 +115,7 @@ public class AsyncController {
             }
         };
 
-        WebAsyncTask<String> task = new WebAsyncTask<>(2000l, callable);
+        WebAsyncTask<String> task = new WebAsyncTask<>(2000L, callable);
         task.onTimeout(() -> "Timeout occurred");
         task.onError(() -> {
             log.info("task onError");

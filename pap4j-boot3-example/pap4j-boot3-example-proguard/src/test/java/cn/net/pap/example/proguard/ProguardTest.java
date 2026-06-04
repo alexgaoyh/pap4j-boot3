@@ -143,7 +143,7 @@ public class ProguardTest {
             log.info("{} : {}", optional.get().getProguardId(), optional.get().getProguardName());
         }
 
-        List<Proguard> proguards = proguardService.searchAllByProguardNameRange(proguardId + "-" + (proguardId + 10l) + "," + proguardId);
+        List<Proguard> proguards = proguardService.searchAllByProguardNameRange(proguardId + "-" + (proguardId + 10L) + "," + proguardId);
         assertTrue(proguards.size() == 1);
 
 
@@ -233,12 +233,12 @@ public class ProguardTest {
         List<String> extList = new ArrayList<>();
         extList.add("A");
 
-        SearchConditionDTO idEqual = new SearchConditionDTO("proguardId", SearchConditionDTO.Operator.EQUAL, 1l);
-        SearchConditionDTO greaterEqual = new SearchConditionDTO("proguardId", SearchConditionDTO.Operator.GREATER_THAN, 1l);
+        SearchConditionDTO idEqual = new SearchConditionDTO("proguardId", SearchConditionDTO.Operator.EQUAL, 1L);
+        SearchConditionDTO greaterEqual = new SearchConditionDTO("proguardId", SearchConditionDTO.Operator.GREATER_THAN, 1L);
         SearchConditionDTO nameLike = new SearchConditionDTO("proguardName", SearchConditionDTO.Operator.LIKE, "gao");
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(4000001l);
+        proguard1.setProguardId(4000001L);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
@@ -291,7 +291,7 @@ public class ProguardTest {
         extList.add("A");
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(2000001l);
+        proguard1.setProguardId(2000001L);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
@@ -310,11 +310,11 @@ public class ProguardTest {
 
         proguardService.saveAndFlush(proguard1);
 
-        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
+        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1L);
 
         log.info("{}", proguardByProguardId);
 
-        proguardService.deleteAllById(1l);
+        proguardService.deleteAllById(1L);
 
         log.info("deleteAllById");
     }
@@ -336,7 +336,7 @@ public class ProguardTest {
         arrayNode.add(nestedObject);
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(1000001l);
+        proguard1.setProguardId(1000001L);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
@@ -347,11 +347,11 @@ public class ProguardTest {
 
         proguardService.saveAndFlush(proguard1);
 
-        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
+        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1L);
 
         log.info("{}", proguardByProguardId);
 
-        proguardService.deleteAllById(1l);
+        proguardService.deleteAllById(1L);
 
         log.info("deleteAllById");
 
@@ -374,7 +374,7 @@ public class ProguardTest {
         arrayNode.add(nestedObject);
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(3000001l);
+        proguard1.setProguardId(3000001L);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);
@@ -390,14 +390,14 @@ public class ProguardTest {
         executeSQLList.add("UPDATE proguard SET proguard_name = '2' WHERE proguard_id = 1");
         Boolean b = proguardService.executeNaiveSQLBatchUsingJDBC(executeSQLList);
 
-        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
+        Proguard proguardByProguardId = proguardService.getProguardByProguardId(1L);
         log.info("{}", proguardByProguardId);
 
     }
 
     public Integer get_sync(String seqName, int length) {
         synchronized (seqName) {
-            Proguard proguardByProguardId = proguardService.getProguardByProguardId(1l);
+            Proguard proguardByProguardId = proguardService.getProguardByProguardId(1L);
             if(proguardByProguardId == null) {
                 Map<String, Object> extMap = new HashMap<>();
                 extMap.put("timeswap", System.currentTimeMillis());
@@ -414,7 +414,7 @@ public class ProguardTest {
                 arrayNode.add(nestedObject);
 
                 Proguard proguard1 = new Proguard();
-                proguard1.setProguardId(1l);
+                proguard1.setProguardId(1L);
                 proguard1.setProguardName("alexgaoyh");
                 proguard1.setExtMap(extMap);
                 proguard1.setExtList(extList);
@@ -467,7 +467,7 @@ public class ProguardTest {
                 // assertEquals(String.valueOf(i), futures1.get(i).get());
             }
 
-            Proguard proguardByProguardId = proguardRepository.getProguardByProguardId(1l);
+            Proguard proguardByProguardId = proguardRepository.getProguardByProguardId(1L);
             assertEquals(proguardByProguardId.getProguardIdx(), numThreads);
         } finally {
             executor.shutdown();
@@ -659,7 +659,7 @@ public class ProguardTest {
     public void timeMSTest() throws Exception {
         // spring.datasource.hikari.leak-detection-threshold=3000
         // logging.level.com.zaxxer.hikari.pool.ProxyLeakTask: WARN
-        Proguard sleep = proguardService.sleep(9000l);
+        Proguard sleep = proguardService.sleep(9000L);
         assertEquals(sleep, null);
     }
 

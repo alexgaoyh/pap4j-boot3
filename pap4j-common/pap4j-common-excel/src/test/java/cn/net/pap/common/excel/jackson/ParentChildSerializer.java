@@ -28,25 +28,32 @@ public class ParentChildSerializer extends JsonSerializer<ParentChildDTO> {
 
         seenObjects.put(person, Boolean.TRUE);
 
-        jgen.writeStartObject();
-        jgen.writeStringField("remark", person.getRemark());
+        try {
+            jgen.writeStartObject();
+            jgen.writeStringField("remark", person.getRemark());
 
-        if (person.getChild() != null) {
-            jgen.writeArrayFieldStart("child");
-            for (ParentChildDTO child : person.getChild()) {
-                serialize(child, jgen, provider);
+            if (person.getChild() != null) {
+                jgen.writeArrayFieldStart("child");
+                for (ParentChildDTO child : person.getChild()) {
+                    serialize(child, jgen, provider);
+                }
+                jgen.writeEndArray();
             }
-            jgen.writeEndArray();
-        }
 
-        if (person.getParent() != null) {
-            jgen.writeObjectFieldStart("parent");
-            jgen.writeStringField("remark", person.getParent().getRemark());
+            if (person.getParent() != null) {
+                jgen.writeObjectFieldStart("parent");
+                jgen.writeStringField("remark", person.getParent().getRemark());
+                jgen.writeEndObject();
+            }
+
             jgen.writeEndObject();
+        } finally {
+            // 通过 try-finally 保证状态一定被清理，通过 ThreadLocal.remove() 保证线程级资源被彻底释放，使序列化器在异常场景和线程池环境下更加安全可靠。
+            seenObjects.remove(person);
+            if (seenObjects.isEmpty()) {
+                seen.remove();
+            }
         }
-
-        jgen.writeEndObject();
-        seenObjects.remove(person);
     }
 
 }

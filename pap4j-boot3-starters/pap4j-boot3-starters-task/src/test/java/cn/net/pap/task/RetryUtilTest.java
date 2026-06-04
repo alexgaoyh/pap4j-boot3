@@ -5,6 +5,9 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -85,21 +88,36 @@ public class RetryUtilTest {
     @Test
     void testInterruptedDuringSleep() throws Exception {
         AtomicInteger count = new AtomicInteger(0);
-        Thread testThread = new Thread(() -> {
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                1, 1, 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(),
+                r -> new Thread(r, "retry-interruption-test")
+        );
+
+        try {
+            java.util.concurrent.Future<?> future = executor.submit(() -> {
+                try {
+                    RetryUtil.retryT(3, 5000, () -> {
+                        count.incrementAndGet();
+                        throw new RuntimeException("fail");
+                    }, r -> true);
+                } catch (Exception e) {
+                    log.error("Error in test thread", e);
+                }
+            });
+
+            Thread.sleep(100);
+            future.cancel(true); // This will interrupt the thread
+            
+            // 等待任务结束
             try {
-                RetryUtil.retryT(3, 5000, () -> {
-                    count.incrementAndGet();
-                    throw new RuntimeException("fail");
-                }, r -> true);
-            } catch (Exception e) {
-                // e.printStackTrace();
-                // ignored
-            }
-        });
-        testThread.start();
-        Thread.sleep(100);
-        testThread.interrupt();
-        testThread.join();
+                future.get(1, TimeUnit.SECONDS);
+            } catch (Exception ignored) {}
+
+        } finally {
+            executor.shutdownNow();
+        }
+
         // 中断后至少执行了第一次尝试
         assertTrue(count.get() >= 1);
     }

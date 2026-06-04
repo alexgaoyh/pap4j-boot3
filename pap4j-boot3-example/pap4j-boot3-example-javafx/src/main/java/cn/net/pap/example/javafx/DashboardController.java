@@ -5,6 +5,7 @@ import cn.net.pap.example.javafx.config.ApplicationProperties;
 import cn.net.pap.example.javafx.dto.ExecResult;
 import cn.net.pap.example.javafx.dto.FileTreeItem;
 import cn.net.pap.example.javafx.dto.ImageViewDTO;
+import cn.net.pap.example.javafx.util.BackGroundExecutors;
 import cn.net.pap.example.javafx.util.ImageProcessorContext;
 import cn.net.pap.example.javafx.util.ImageUtil;
 import cn.net.pap.example.javafx.util.PathHistoryManager;
@@ -199,6 +200,9 @@ public class DashboardController implements Initializable {
         Task<Void> task = new Task<>() {
             @Override
             protected Void call() throws Exception {
+                Thread currentThread = Thread.currentThread();
+                String oldName = currentThread.getName();
+                currentThread.setName(oldName + " - [ImageRollbackThread: " + Paths.get(inputFilePath).getFileName() + "]");
                 // 耗时文件操作放后台
                 try (FileChannel inChannel = FileChannel.open(Paths.get(recentSavedPath), StandardOpenOption.READ);
                      FileChannel outChannel = FileChannel.open(Paths.get(inputFilePath), StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
@@ -236,7 +240,7 @@ public class DashboardController implements Initializable {
             }
         };
 
-        new Thread(task, "ImageRollbackThread").start();
+        BackGroundExecutors.background().execute(task);
     }
 
 
@@ -252,6 +256,9 @@ public class DashboardController implements Initializable {
             Task<Void> task = new Task<>() {
                 @Override
                 protected Void call() throws Exception {
+                    Thread currentThread = Thread.currentThread();
+                    String oldName = currentThread.getName();
+                    currentThread.setName(oldName + " - [ImageRemoveInThread: " + Paths.get(inputFilePath).getFileName() + "]");
                     // 耗时操作放后台
                     long l = System.currentTimeMillis();
                     ExecResult execResult = ImageProcessorContext.imageRemoveIn(inputFilePath, inputFilePath, reRectangle2D.getMinX(), reRectangle2D.getMinY(), reRectangle2D.getMaxX(), reRectangle2D.getMaxY());
@@ -283,7 +290,7 @@ public class DashboardController implements Initializable {
                     hideLoading();
                 }
             };
-            new Thread(task, "ImageRemoveInThread").start();
+            BackGroundExecutors.background().execute(task);
         } else {
             showErrorAlert("图像处理失败", "执行图像操作时发生错误。\n原因: " + "未获得有效矩形框");
             hideLoading();
@@ -676,10 +683,19 @@ public class DashboardController implements Initializable {
                                 });
                                 return;
                             }
+
+                            // 如果当前是缩略图模式，切换回单图模式
+                            if (thumbnailScrollPane.isVisible()) {
+                                thumbnailScrollPane.setVisible(false);
+                                thumbnailScrollPane.setManaged(false);
+                                zoomableView.setVisible(true);
+                                zoomableView.setManaged(true);
+                            }
+
                             showLoading();
                             imageLoadTask = createSimpleLoadTask(selectedPath);
 
-                            new Thread(imageLoadTask, "ImageLoadThread").start();
+                            BackGroundExecutors.background().execute(imageLoadTask);
                         }
                     }
                 }
@@ -690,6 +706,9 @@ public class DashboardController implements Initializable {
         return new Task<>() {
             @Override
             protected ImageViewDTO call() throws Exception {
+                Thread currentThread = Thread.currentThread();
+                String oldName = currentThread.getName();
+                currentThread.setName(oldName + " - [ImageLoadThread: " + selectedPath.getFileName() + "]");
                 return ImageUtil.readFXImageEfficiently(selectedPath.toAbsolutePath().toString(), ApplicationProperties.getInt("image.processor.shown.targetWidth", Integer.MAX_VALUE));
             }
 
@@ -923,9 +942,7 @@ public class DashboardController implements Initializable {
             }
         };
 
-        Thread thread = new Thread(task);
-        thread.setDaemon(true);
-        thread.start();
+        BackGroundExecutors.background().execute(task);
     }
 
     /**

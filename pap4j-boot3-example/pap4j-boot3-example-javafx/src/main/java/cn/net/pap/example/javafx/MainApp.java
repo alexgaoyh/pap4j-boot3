@@ -2,6 +2,7 @@ package cn.net.pap.example.javafx;
 
 import cn.net.pap.example.javafx.config.ApplicationProperties;
 import cn.net.pap.example.javafx.h2.H2ServerManager;
+import cn.net.pap.example.javafx.util.BackGroundExecutors;
 import cn.net.pap.example.javafx.util.ImageProcessorStrategy;
 import javafx.application.Application;
 import javafx.application.Platform;
@@ -14,7 +15,6 @@ import org.slf4j.LoggerFactory;
 import java.awt.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -143,6 +143,8 @@ public class MainApp extends Application {
 
         // 关闭 图像那里的 IO 线程池
         ImageProcessorStrategy.shutdownExecutor();
+        // 关闭 线程池
+        BackGroundExecutors.shutdownAll();
     }
 
 }

@@ -22,15 +22,15 @@ public class CRUDGeneratorUtilTest {
         try {
             CCJSqlParserManager parserManager = new CCJSqlParserManager();
 
-            Doris doris1 = new Doris(1l, "alex1", "alexgaoyh1");
+            Doris doris1 = new Doris(1L, "alex1", "alexgaoyh1");
             String insertSQL1 = CRUDGeneratorUtil.generateInsertSQL(doris1);
             log.info("Insert SQL 1: {}", parserManager.parse(new StringReader(insertSQL1)));
 
-            Doris doris2 = new Doris(2l, "alex2", "alexgaoyh2");
+            Doris doris2 = new Doris(2L, "alex2", "alexgaoyh2");
             String insertSQL2 = CRUDGeneratorUtil.generateInsertSQL(doris2);
             log.info("Insert SQL 2: {}", parserManager.parse(new StringReader(insertSQL2)));
 
-            doris2 = new Doris(2l, "alex22", "alexgaoyh22");
+            doris2 = new Doris(2L, "alex22", "alexgaoyh22");
             String updateSQL2 = CRUDGeneratorUtil.generateUpdateSQL(doris2);
             log.info("Update SQL 2: {}", parserManager.parse(new StringReader(updateSQL2)));
 

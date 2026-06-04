@@ -129,7 +129,7 @@ public class TfIdfDataSketchesUtilTest {
 
                 @Override
                 public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                    //System.err.println("访问文件失败: " + file.toAbsolutePath() + " - " + exc.getMessage());
+                    log.error("访问文件失败: {} - {}", file.toAbsolutePath(), exc.getMessage());
                     return FileVisitResult.CONTINUE;
                 }
             });

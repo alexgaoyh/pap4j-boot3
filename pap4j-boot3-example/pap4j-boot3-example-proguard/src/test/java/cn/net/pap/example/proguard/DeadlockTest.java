@@ -60,7 +60,7 @@ class DeadlockTest {
                     finalLatch.countDown();
                     finalLatch.await(); // 等待所有线程就绪
 
-                    proguardService.checkDeadLock(1l, 2l);
+                    proguardService.checkDeadLock(1L, 2L);
 
                     return null;
                 };
@@ -69,7 +69,7 @@ class DeadlockTest {
                     finalLatch.countDown();
                     finalLatch.await(); // 等待所有线程就绪
 
-                    proguardService.checkDeadLock(2l, 1l);
+                    proguardService.checkDeadLock(2L, 1L);
 
                     return null;
                 };

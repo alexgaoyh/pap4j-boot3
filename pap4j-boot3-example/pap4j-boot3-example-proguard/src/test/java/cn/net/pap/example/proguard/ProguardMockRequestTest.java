@@ -61,7 +61,7 @@ public class ProguardMockRequestTest {
         arrayNode.add(nestedObject);
 
         Proguard proguard1 = new Proguard();
-        proguard1.setProguardId(1l);
+        proguard1.setProguardId(1L);
         proguard1.setProguardName("alexgaoyh");
         proguard1.setExtMap(extMap);
         proguard1.setExtList(extList);

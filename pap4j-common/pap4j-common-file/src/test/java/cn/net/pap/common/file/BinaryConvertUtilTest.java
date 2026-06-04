@@ -15,7 +15,7 @@ public class BinaryConvertUtilTest {
 
     @Test
     public void convertBase64() {
-        for(long i = 1000000000000000l; i < 1000000000001000l; i++) {
+        for(long i = 1000000000000000L; i < 1000000000001000L; i++) {
             String baseHigh = BinaryConvertUtil.dToB62(i);
             long l = BinaryConvertUtil.b62Tod(baseHigh);
             log.info("{}", i + " : " + baseHigh);

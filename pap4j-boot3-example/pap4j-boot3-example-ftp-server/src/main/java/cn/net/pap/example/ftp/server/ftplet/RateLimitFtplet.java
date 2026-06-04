@@ -10,8 +10,8 @@ import org.slf4j.LoggerFactory;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -37,11 +37,14 @@ public class RateLimitFtplet extends DefaultFtplet {
         this.intervalMs = 1000L / ratePerSecond;
         this.maxQueueSize = maxQueueSize;
         this.queue = new ArrayBlockingQueue<>(maxQueueSize);
-        this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
+        // 使用手动创建的 ScheduledThreadPoolExecutor 替换 Executors.newSingleThreadScheduledExecutor
+        ScheduledThreadPoolExecutor stpe = new ScheduledThreadPoolExecutor(1, r -> {
             Thread t = new Thread(r, "ftp-leaky-bucket");
             t.setDaemon(true);
             return t;
         });
+        stpe.setRemoveOnCancelPolicy(true);
+        this.scheduler = stpe;
         startWorker();
     }
 

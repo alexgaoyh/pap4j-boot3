@@ -22,11 +22,11 @@ public class Roaring64NavigableMapTest {
         long currentTimeMillis = System.currentTimeMillis();
         Roaring64NavigableMap r64nMap = new Roaring64NavigableMap();
         // 添加范围，前闭区间后开区间
-        long rangeLong = 1000000l;
+        long rangeLong = 1000000L;
         r64nMap.add(currentTimeMillis, currentTimeMillis + rangeLong);
         // 取第K个值，并判断值是否正确。
         long value1000 = r64nMap.select(1000);
-        assertTrue(currentTimeMillis == value1000 - 1000l);
+        assertTrue(currentTimeMillis == value1000 - 1000L);
         // 判断数据长度
         assertTrue(r64nMap.getLongCardinality() == rangeLong);
         // 获得所有值
@@ -49,10 +49,10 @@ public class Roaring64NavigableMapTest {
 
     @Test
     public void getPageOrderByAddedTest() {
-        long currentTimeMillis = 101l;
+        long currentTimeMillis = 101L;
         Roaring64NavigableMap r64nMap = new Roaring64NavigableMap();
         // 添加范围，前闭区间后开区间
-        long rangeLong = 100l;
+        long rangeLong = 100L;
         r64nMap.add(currentTimeMillis, currentTimeMillis + rangeLong);
         for(int pageIdx = 1; pageIdx <= 10; pageIdx++) {
             List<Long> valueList = Roaring64NavigableMapUtil.getPageOrderByAdded(r64nMap, pageIdx, 10);

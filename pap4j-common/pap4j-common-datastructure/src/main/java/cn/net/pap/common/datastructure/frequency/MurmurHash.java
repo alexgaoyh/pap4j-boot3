@@ -178,7 +178,7 @@ public class MurmurHash {
      */
     public static long hash64(Object o) {
         if (o == null) {
-            return 0l;
+            return 0L;
         } else if (o instanceof String) {
             final byte[] bytes = ((String) o).getBytes();
             return hash64(bytes, bytes.length);
@@ -213,7 +213,7 @@ public class MurmurHash {
         final long m = 0xc6a4a7935bd1e995L;
         final int r = 47;
 
-        long h = (seed & 0xffffffffl) ^ (length * m);
+        long h = (seed & 0xffffffffL) ^ (length * m);
 
         int length8 = length / 8;
 

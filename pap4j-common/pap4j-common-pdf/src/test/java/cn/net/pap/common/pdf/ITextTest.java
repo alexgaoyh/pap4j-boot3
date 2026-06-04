@@ -795,7 +795,7 @@ public class ITextTest {
             }
             return baseFontSize * scaleFactor;
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in computeFittedFontSize: ", e);
             return baseFontSize;
         }
     }

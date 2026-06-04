@@ -1,6 +1,8 @@
 package cn.net.pap.common.datastructure.lamba;
 
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
  * 帮助理解 Function<Builder, ObjectBuilder> 的巧妙结合
  */
 public class ElasticsearchLambdaBuilderMockTest {
+
+    private static final Logger log = LoggerFactory.getLogger(ElasticsearchLambdaBuilderMockTest.class);
 
     // ---------------------------------------------------------
     // 1. 核心接口：ObjectBuilder (所有 Builder 最终都要实现该接口并返回构建的对象)
@@ -207,7 +211,7 @@ public class ElasticsearchLambdaBuilderMockTest {
                 )
         );
 
-        System.out.println("成功构建出类似 ES Client 语法的复杂查询对象！");
+        log.info("成功构建出类似 ES Client 语法的复杂查询对象！");
         assertNotNull(nativeQuery);
         assertNotNull(nativeQuery.bool);
 

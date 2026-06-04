@@ -10,7 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 public class RabinKarpTest {
 
     // 基底与模（使用 long 保证不会溢出）
-    private long base = 256l;
+    private long base = 256L;
     private long mod = 1_000_000_007L;
 
     public long getBase() {

@@ -29,7 +29,7 @@ public class JaxBXMLTest {
             PageDTO pageDTO = (PageDTO) jaxbUnmarshaller.unmarshal(new StringReader(xmlString));
             log.info("{}", pageDTO);
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Error in JaxBXMLTest.test: ", e);
         }
     }
 }

@@ -18,15 +18,15 @@ public class SimpleTaskQueueTest {
     public void testSimpleTaskQueue() throws InterruptedException {
         SimpleTaskQueue queue = SimpleTaskQueue.getInstance();
 
-        Thread consumerThread = queue.startConsumer();
+        queue.startConsumer();
 
         boolean b1 = queue.addTask(new SimpleTaskQueueDTO("1", "task 1"));
         boolean b2 = queue.addTask(new SimpleTaskQueueDTO("2", "task 2"));
         boolean b3 = queue.addTask(new SimpleTaskQueueDTO("3", "task 3"));
         boolean b4 = queue.addTask(new SimpleTaskQueueDTO("4", "task 4"));
 
-        // 稍等线程完全退出
-        consumerThread.join(500);
+        // 稍等任务处理
+        Thread.sleep(500);
 
         List<SimpleTaskQueueDTO> simpleTaskQueueDTOS = queue.stopConsumerAndReturnUnProcessed();
         log.info("{}", simpleTaskQueueDTOS);
@@ -39,13 +39,10 @@ public class SimpleTaskQueueTest {
         boolean b5 = queue.addTask(task);
 
         // 启动消费者线程
-        Thread consumerThread = queue.startConsumer();
+        queue.startConsumer();
 
         // 立即中断，任务还没来得及执行
         List<SimpleTaskQueueDTO> remainingTasks = queue.stopConsumerAndReturnUnProcessed();
-
-        // 稍等线程完全退出
-        consumerThread.join(500);
 
         // 验证任务确实没有被执行
         assertEquals(1, remainingTasks.size(), "There should be 1 unprocessed task.");

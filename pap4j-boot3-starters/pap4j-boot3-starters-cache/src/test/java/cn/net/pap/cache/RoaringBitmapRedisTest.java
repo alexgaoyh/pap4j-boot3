@@ -26,7 +26,7 @@ public class RoaringBitmapRedisTest extends CacheBaseTest {
         long currentTimeMillis = System.currentTimeMillis();
         Roaring64NavigableMap r64nMap = new Roaring64NavigableMap();
         // 添加范围，前闭区间后开区间
-        long rangeLong = 1000000l;
+        long rangeLong = 1000000L;
         r64nMap.add(currentTimeMillis, currentTimeMillis + rangeLong);
 
         redisTemplate.opsForValue().set("r64nMap", Roaring64NavigableMapUtil.serialize(r64nMap));

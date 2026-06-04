@@ -43,7 +43,7 @@ public class DroolsRuleTest {
     @Test
     public void crudDB() {
         DroolsRule droolsRule = new DroolsRule();
-        droolsRule.setRuleId(1l);
+        droolsRule.setRuleId(1L);
         droolsRule.setRuleContent("crudDB");
         droolsRule.setKiePackageName("cn.net.pap.drools");
         droolsRule.setKieBaseName("crudDB");
@@ -51,22 +51,22 @@ public class DroolsRuleTest {
 
         droolsRuleService.save(droolsRule);
 
-        DroolsRule byIdDB1 = droolsRuleService.findById(1l);
-        assertTrue(byIdDB1.getRuleId() == 1l);
+        DroolsRule byIdDB1 = droolsRuleService.findById(1L);
+        assertTrue(byIdDB1.getRuleId().equals(1L));
 
         droolsRule.setUpdateTime(new Date());
         droolsRuleService.edit(droolsRule);
 
-        DroolsRule byIdDB2 = droolsRuleService.findById(1l);
-        assertTrue(byIdDB2.getRuleId() == 1l);
+        DroolsRule byIdDB2 = droolsRuleService.findById(1L);
+        assertTrue(byIdDB2.getRuleId().equals(1L));
 
         List<DroolsRule> all = droolsRuleService.findAll();
         assertTrue(all.size() == 1);
 
-        boolean b = droolsRuleService.deleteById(1l);
+        boolean b = droolsRuleService.deleteById(1L);
         assertTrue(b == true);
 
-        DroolsRule byIdDB3 = droolsRuleService.findById(1l);
+        DroolsRule byIdDB3 = droolsRuleService.findById(1L);
         assertTrue(byIdDB3 == null);
 
     }

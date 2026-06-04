@@ -22,7 +22,7 @@ public class OrderController {
     @GetMapping("/created")
     public String created() {
         Order order = new Order();
-        order.setId(1l);
+        order.setId(1L);
         order.setOrderNumber("alexgaoyh");
         order.setStatus(OrderStates.CREATED);
 
@@ -36,7 +36,7 @@ public class OrderController {
     @GetMapping("/paid")
     public String paid() {
         Order order = new Order();
-        order.setId(1l);
+        order.setId(1L);
         order.setOrderNumber("alexgaoyh");
         order.setStatus(OrderStates.PAID);
 

@@ -66,7 +66,8 @@ public class DeadlockRetryDemoServiceImpl implements IDeadlockRetryDemoService {
     @Recover
     public void recover(Exception e, Long id1, Long id2) {
         log.error("!!! 重试耗尽，恢复逻辑触发，参数：{} -> {}，异常：", id1, id2, e);
-        // todo maybe throw exception
+        // maybe throw exception
+        throw new RuntimeException("Deadlock retry exhausted", e);
     }
 
 }

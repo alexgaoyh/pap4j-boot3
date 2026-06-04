@@ -6,9 +6,9 @@ import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 public class SimpleTaskQueue {
 
@@ -21,7 +21,7 @@ public class SimpleTaskQueue {
 
     private final AtomicBoolean running = new AtomicBoolean(false);
 
-    private Thread consumerThread;
+    private ExecutorService executorService;
 
     private SimpleTaskQueue() {}
 
@@ -38,13 +38,27 @@ public class SimpleTaskQueue {
         return queue.offer(task);
     }
 
-    public Thread startConsumer() {
-        if (consumerThread != null && consumerThread.isAlive()) {
-            return consumerThread;
+    public synchronized void startConsumer() {
+        if (executorService != null && !executorService.isShutdown()) {
+            return;
         }
 
         running.set(true);
-        consumerThread = new Thread(() -> {
+        executorService = new ThreadPoolExecutor(
+                1, 1,
+                0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(),
+                new ThreadFactory() {
+                    private final AtomicInteger counter = new AtomicInteger(1);
+                    @Override
+                    public Thread newThread(Runnable r) {
+                        return new Thread(r, "SimpleTaskConsumer-" + counter.getAndIncrement());
+                    }
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+
+        executorService.execute(() -> {
             while (running.get()) {
                 try {
                     // take 的时候，有可能会抛出 InterruptedException
@@ -61,26 +75,27 @@ public class SimpleTaskQueue {
                     Thread.currentThread().interrupt();
                 }
             }
-        }, "SimpleTaskConsumer");
-
-        consumerThread.start();
-        return consumerThread;
+        });
     }
 
     public List<SimpleTaskQueueDTO> stopConsumerAndReturnUnProcessed() {
         running.set(false);
-        if (consumerThread != null) {
-            consumerThread.interrupt();
+        if (executorService != null) {
+            executorService.shutdownNow();
+            try {
+                if (!executorService.awaitTermination(2, TimeUnit.SECONDS)) {
+                    log.warn("ExecutorService did not terminate in time");
+                }
+            } catch (InterruptedException e) {
+                log.error("Interrupted while waiting for ExecutorService termination", e);
+                Thread.currentThread().interrupt();
+            }
         }
         return drainUnprocessedTasks();
     }
 
     public boolean isRunning() {
         return running.get();
-    }
-
-    public Thread getConsumerThread() {
-        return consumerThread;
     }
 
     public int getPendingTaskCount() {

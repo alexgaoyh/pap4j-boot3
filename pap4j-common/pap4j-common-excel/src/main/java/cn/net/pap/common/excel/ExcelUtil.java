@@ -90,7 +90,7 @@ public class ExcelUtil {
 
             }
         } catch (Exception error) {
-            error.printStackTrace();
+            log.error("Error in getRowList: ", error);
         }
         return resultData;
     }
@@ -123,7 +123,7 @@ public class ExcelUtil {
 
             }
         } catch (Exception error) {
-            error.printStackTrace();
+            log.error("Error in getRowListWithMergeCell: ", error);
         }
         return resultData;
     }
