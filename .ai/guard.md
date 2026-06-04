@@ -14,7 +14,7 @@
 * **命名空间**: 仅使用 `jakarta.*`。严禁使用 `javax.*`。
 
 ## 2. Java 17 现代模式
-* **文本块 (Text Blocks)**: 对于多行字符串（SQL、JSON），使用 `"""`。
+* **文本块 (Text Blocks)**: 对于多行字符串（SQL、JSON），必须使用 `"""`。
 * **记录类 (Records)**: 对于 DTO/VO（不可变性），优先使用 `record`。
 * **模式匹配**: 使用 `instanceof` 模式匹配和 `switch` 表达式 (`->`)。
 * **密封类 (Sealed Classes)**: 在 DDD 或状态机中，使用 `sealed` 限制继承。
@@ -31,20 +31,22 @@
 * **禁止生吞异常**: 严禁 catch 块为空或仅使用 `e.printStackTrace()`。
 * **状态安全**: 使用 `volatile` 保证可见性。在可能的情况下，优先使用原子 API（`AtomicReference`, `compute`）而非手动加锁。
 * **防内存泄漏**: 任何内存缓存/注册表必须有清理机制（Caffeine, 定时任务）。
-* **BigDecimal**: 使用 `String` 构造函数或 `BigDecimal.valueOf(double)`。严禁使用 `new BigDecimal(double)`。
+* **BigDecimal**: 使用 `String` 构造函数或 `BigDecimal.valueOf(double)`。严禁使用 `new BigDecimal(double)`。值比对必须使用 `compareTo()`，严禁使用 `equals()`。
 
 ## 5. 代码整洁与 OOP
-* **构造器注入**: 优于字段注入 (`@Autowired`)。
+* **依赖注入**: 强制使用构造器注入，严禁字段注入 (`@Autowired`)。
 * **单一职责**: 方法超过 50 行应进行重构。
 * **禁止魔法值**: 使用 `Enum` 或 `static final` 常量。
 * **Optional**: 仅用于返回值。严禁作为参数或字段。
+* **比较规范**: 使用 `Objects.equals(a, b)` 进行空安全比对。
+* **格式约束**: 严禁使用通配符导入 (`import java.util.*`)。所有重写方法必须标注 `@Override`。
 * **集合**:
     * 指定初始容量（如 `new HashMap<>(16)`）。
     * 返回 `Collections.emptyList()` 而非 `new ArrayList<>()`。
     * 包装类 (Long/Integer) 的等值判断必须使用 `.equals()`。
 
 ## 6. 日志规范 (SLF4J)
-* **禁止标准输出**: 使用 `org.slf4j.Logger`。
+* **禁止标准输出**: 使用 `org.slf4j.Logger`。严禁使用 `System.out` 或 `System.err`。
 * **占位符**: 使用 `log.info("msg: {}", arg)`。禁止字符串拼接。
 * **异常日志**: 异常对象 `e` 必须作为最后一个参数传递：`log.error("Failed: ", e)`。
 
