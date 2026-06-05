@@ -191,7 +191,7 @@ public class OkHttpBatchExecutor implements AutoCloseable {
                         }
                         return BatchResult.success(currentInput, body);
                     } catch (Exception e) {
-                        log.error("HTTP 请求执行失败: {}", url, e);
+                        log.error("HTTP 请求执行失败: {}, {}", url, json, e);
                         return BatchResult.failure(currentInput, e.getMessage());
                     }
                 }, executor));
