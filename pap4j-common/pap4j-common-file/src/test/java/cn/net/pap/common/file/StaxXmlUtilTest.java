@@ -403,4 +403,52 @@ public class StaxXmlUtilTest {
         }
     }
 
+    @Test
+    public void crossReferenceFunctionTest() throws Exception {
+        String schoolXml = """
+           <?xml version="1.0" encoding="utf-8"?>
+           <school>
+             <grades>
+               <grade id="G1" gradeTitle="一年级" teacher="王老师" />
+               <grade id="G2" gradeTitle="二年级" teacher="张老师" />
+             </grades>
+             <students>
+               <student name="小明" gradeId="G1" age="7" />
+               <student name="小红" gradeId="G2" age="8" />
+             </students>
+           </school>
+           """;
+        Document schoolDoc = XmlParseUtil.getDocumentByContent(schoolXml.trim());
+        XPath xpath = XPathFactory.newInstance().newXPath();
+        xpath.setXPathFunctionResolver(new ExtFunctionResolver());
+        xpath.setNamespaceContext(new NamespaceContext() {
+            @Override
+            public String getNamespaceURI(String prefix) {
+                if ("ext".equals(prefix)) {
+                    return ExtFunctionResolver.EXT_NS;
+                }
+                return null;
+            }
+            @Override public String getPrefix(String uri) { return null; }
+            @Override public Iterator<String> getPrefixes(String uri) { return null; }
+        });
+
+        // 逻辑：拿着小明的 gradeId (G1)，去查找 grade 节点的 id 为 G1 的 gradeTitle
+        String gradeTitle = (String) xpath.evaluate(
+            // language=TEXT
+            "ext:xref(/, //student[@name='小明']/@gradeId, 'grade', 'id', 'gradeTitle')",
+             schoolDoc, XPathConstants.STRING
+         );
+
+         assertEquals("一年级", gradeTitle);
+
+         // 同样可以灵活获取老师名字（只需改变最后一个参数，即“出参”）
+         String teacherName = (String) xpath.evaluate(
+             // language=TEXT
+             "ext:xref(/, //student[@name='小红']/@gradeId, 'grade', 'id', 'teacher')",
+             schoolDoc, XPathConstants.STRING
+         );
+         assertEquals("张老师", teacherName);
+    }
+
 }
