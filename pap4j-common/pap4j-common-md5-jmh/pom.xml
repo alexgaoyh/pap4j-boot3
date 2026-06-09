@@ -115,6 +115,23 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.6.1</version>
+                <!-- 
+                    注意：如果在此处或其它模块中使用 maven-shade-plugin 进行 Spring Boot 模块/Starter 的合并打包，
+                    必须配置 AppendingTransformer 来合并同名配置文件，否则后者的同名文件会覆盖前者的同名文件，
+                    导致被覆盖模块的自动配置类失效（如 META-INF/spring.factories 或 
+                    META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports）。
+                    配置示例如下：
+                    <configuration>
+                        <transformers>
+                            <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                <resource>META-INF/spring.factories</resource>
+                            </transformer>
+                            <transformer implementation="org.apache.maven.plugins.shade.resource.AppendingTransformer">
+                                <resource>META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</resource>
+                            </transformer>
+                        </transformers>
+                    </configuration>
+                -->
                 <configuration>
                     <createDependencyReducedPom>false</createDependencyReducedPom>
                 </configuration>
