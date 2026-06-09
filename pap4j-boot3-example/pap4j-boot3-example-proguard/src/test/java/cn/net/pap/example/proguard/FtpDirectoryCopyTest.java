@@ -72,6 +72,7 @@ public class FtpDirectoryCopyTest {
     }
 
     private void makeDirectoryRecursive(FTPClient client, String path) throws IOException {
+        client.changeWorkingDirectory("/");
         String[] dirs = path.split("/");
         StringBuilder current = new StringBuilder();
         for (String dir : dirs) {
@@ -87,6 +88,7 @@ public class FtpDirectoryCopyTest {
         if (client == null) {
             return;
         }
+        client.changeWorkingDirectory("/");
         FTPFile[] files = client.listFiles(path);
         if (files == null) {
             return;
@@ -107,6 +109,7 @@ public class FtpDirectoryCopyTest {
     }
 
     private void uploadFile(FTPClient client, String path, String content) throws IOException {
+        client.changeWorkingDirectory("/");
         try (OutputStream out = client.storeFileStream(path)) {
             if (out != null) {
                 out.write(content.getBytes(StandardCharsets.UTF_8));
@@ -153,6 +156,7 @@ public class FtpDirectoryCopyTest {
     }
 
     private void copyRecursiveSingleClient(FTPClient client, String srcPath, String destPath) throws IOException {
+        client.changeWorkingDirectory("/");
         FTPFile[] files = client.listFiles(srcPath);
         if (files == null) {
             return;
@@ -198,6 +202,8 @@ public class FtpDirectoryCopyTest {
     }
 
     private void copyRecursiveTwoClients(FTPClient srcClient, FTPClient destClient, String srcPath, String destPath) throws IOException {
+        srcClient.changeWorkingDirectory("/");
+        destClient.changeWorkingDirectory("/");
         FTPFile[] files = srcClient.listFiles(srcPath);
         if (files == null) {
             return;
@@ -291,6 +297,7 @@ public class FtpDirectoryCopyTest {
     }
 
     private void copyRecursiveSingleClientStreams(FTPClient client, String srcPath, String destPath) throws IOException {
+        client.changeWorkingDirectory("/");
         FTPFile[] files = client.listFiles(srcPath);
         if (files == null) {
             return;
@@ -346,6 +353,7 @@ public class FtpDirectoryCopyTest {
     }
 
     private boolean verifyDirectoriesEqual(FTPClient client, String path1, String path2) throws IOException {
+        client.changeWorkingDirectory("/");
         FTPFile[] files1 = client.listFiles(path1);
         FTPFile[] files2 = client.listFiles(path2);
         if (files1 == null || files2 == null) {
@@ -401,6 +409,7 @@ public class FtpDirectoryCopyTest {
     }
 
     private byte[] downloadBytes(FTPClient client, String path) throws IOException {
+        client.changeWorkingDirectory("/");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         client.retrieveFile(path, bos);
         return bos.toByteArray();
