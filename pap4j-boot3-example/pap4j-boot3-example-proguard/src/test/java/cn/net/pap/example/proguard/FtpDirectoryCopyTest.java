@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -284,6 +285,45 @@ public class FtpDirectoryCopyTest {
                     client.completePendingCommand();
                 }
             }
+        } finally {
+            disconnectQuietly(client);
+        }
+    }
+
+    @Test
+    public void testSameClientSequentialCopySucceeds() throws IOException {
+        FTPClient client = createFtpClient();
+        if (client == null) {
+            return;
+        }
+        try {
+            String srcFile = "/copy_test_src/fileRoot.txt";
+            String destFile = "/copy_test_dst_single/fileRoot_sequential.txt";
+
+            client.makeDirectory("/copy_test_dst_single");
+
+            byte[] fileContent;
+            // 1. 打开并直接读取全部字节
+            try (InputStream in = client.retrieveFileStream(srcFile)) {
+                assertNotNull(in, "retrieveFileStream 应该成功返回输入流");
+                fileContent = in.readAllBytes();
+            }
+            // 2. 关闭读取流，获取 226 完成状态以复位控制通道
+            boolean retrieveComplete = client.completePendingCommand();
+            assertTrue(retrieveComplete, "读取文件的挂起命令应当执行完成且成功");
+
+            // 3. 打开写入流上传文件
+            try (OutputStream out = client.storeFileStream(destFile)) {
+                assertNotNull(out, "在读取流关闭并完成挂起命令后，同一客户端的 storeFileStream 应该能成功打开");
+                out.write(fileContent);
+            }
+            // 4. 关闭写入流，获取 226 完成状态以复位控制通道
+            boolean storeComplete = client.completePendingCommand();
+            assertTrue(storeComplete, "写入文件的挂起命令应当执行完成且成功");
+
+            // 5. 校验拷贝结果是否与源内容一致
+            byte[] copiedContent = downloadBytes(client, destFile);
+            assertArrayEquals(fileContent, copiedContent, "顺序拷贝后的文件内容应该与源文件一致");
         } finally {
             disconnectQuietly(client);
         }
