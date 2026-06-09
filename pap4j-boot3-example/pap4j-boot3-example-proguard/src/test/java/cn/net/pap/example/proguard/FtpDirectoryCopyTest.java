@@ -290,6 +290,44 @@ public class FtpDirectoryCopyTest {
         }
     }
 
+    private void copyRecursiveSingleClientStreams(FTPClient client, String srcPath, String destPath) throws IOException {
+        FTPFile[] files = client.listFiles(srcPath);
+        if (files == null) {
+            return;
+        }
+        for (FTPFile file : files) {
+            String name = file.getName();
+            if (".".equals(name) || "..".equals(name)) {
+                continue;
+            }
+            String subSrcPath = srcPath + "/" + name;
+            String subDestPath = destPath + "/" + name;
+            if (file.isDirectory()) {
+                client.makeDirectory(subDestPath);
+                copyRecursiveSingleClientStreams(client, subSrcPath, subDestPath);
+            } else if (file.isFile()) {
+                byte[] fileContent;
+                // 1. 打开并直接读取源文件全部字节，然后关闭流
+                try (InputStream in = client.retrieveFileStream(subSrcPath)) {
+                    assertNotNull(in, "retrieveFileStream 应该成功返回输入流");
+                    fileContent = in.readAllBytes();
+                }
+                // 2. 必须接收 226 完成状态以复位控制通道
+                boolean retrieveComplete = client.completePendingCommand();
+                assertTrue(retrieveComplete, "读取文件的挂起命令应当执行完成且成功");
+
+                // 3. 在同一客户端控制连接空闲后，安全地打开写入流进行存储
+                try (OutputStream out = client.storeFileStream(subDestPath)) {
+                    assertNotNull(out, "在读取流关闭并完成挂起命令后，同一客户端的 storeFileStream 应该能成功打开");
+                    out.write(fileContent);
+                }
+                // 4. 必须接收 226 完成状态以复位控制通道
+                boolean storeComplete = client.completePendingCommand();
+                assertTrue(storeComplete, "写入文件的挂起命令应当执行完成且成功");
+            }
+        }
+    }
+
     @Test
     public void testSameClientSequentialCopySucceeds() throws IOException {
         FTPClient client = createFtpClient();
@@ -297,33 +335,11 @@ public class FtpDirectoryCopyTest {
             return;
         }
         try {
-            String srcFile = "/copy_test_src/fileRoot.txt";
-            String destFile = "/copy_test_dst_single/fileRoot_sequential.txt";
+            makeDirectoryRecursive(client, "/copy_test_dst_single/sequential");
+            copyRecursiveSingleClientStreams(client, "/copy_test_src", "/copy_test_dst_single/sequential");
 
-            client.makeDirectory("/copy_test_dst_single");
-
-            byte[] fileContent;
-            // 1. 打开并直接读取全部字节
-            try (InputStream in = client.retrieveFileStream(srcFile)) {
-                assertNotNull(in, "retrieveFileStream 应该成功返回输入流");
-                fileContent = in.readAllBytes();
-            }
-            // 2. 关闭读取流，获取 226 完成状态以复位控制通道
-            boolean retrieveComplete = client.completePendingCommand();
-            assertTrue(retrieveComplete, "读取文件的挂起命令应当执行完成且成功");
-
-            // 3. 打开写入流上传文件
-            try (OutputStream out = client.storeFileStream(destFile)) {
-                assertNotNull(out, "在读取流关闭并完成挂起命令后，同一客户端的 storeFileStream 应该能成功打开");
-                out.write(fileContent);
-            }
-            // 4. 关闭写入流，获取 226 完成状态以复位控制通道
-            boolean storeComplete = client.completePendingCommand();
-            assertTrue(storeComplete, "写入文件的挂起命令应当执行完成且成功");
-
-            // 5. 校验拷贝结果是否与源内容一致
-            byte[] copiedContent = downloadBytes(client, destFile);
-            assertArrayEquals(fileContent, copiedContent, "顺序拷贝后的文件内容应该与源文件一致");
+            assertTrue(verifyDirectoriesEqual(client, "/copy_test_src", "/copy_test_dst_single/sequential"),
+                    "顺序流式拷贝后的目录结构与内容应该与源目录一致");
         } finally {
             disconnectQuietly(client);
         }
