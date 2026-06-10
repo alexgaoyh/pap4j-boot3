@@ -1,0 +1,57 @@
+{
+  "main_table": "students",
+  "columns": [],
+  "joins": [
+    {
+      "join_table": "classes",
+      "on_left": "students.class_id",
+      "on_right": "classes.id",
+      "type": "LEFT"
+    }
+  ],
+  "filters": [
+    {
+      "logic": "AND",
+      "conditions": [
+        {
+          "field": "classes.grade",
+          "operator": "EQUALS",
+          "value": "三年级"
+        },
+        {
+          "logic": "OR",
+          "conditions": [
+            {
+              "field": "students.hometown",
+              "operator": "EQUALS",
+              "value": "北京"
+            },
+            {
+              "field": "students.hometown",
+              "operator": "EQUALS",
+              "value": "上海"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "groups": [
+    "classes.grade"
+  ],
+  "aggs": [
+    {
+      "function": "COUNT",
+      "field": "students.id",
+      "alias": "student_count"
+    }
+  ],
+  "orders": [
+    {
+      "field": "student_count",
+      "direction": "DESC"
+    }
+  ],
+  "limit": 10,
+  "offset": 0
+}
