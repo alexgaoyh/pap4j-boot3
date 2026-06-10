@@ -18,8 +18,10 @@ import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
 import javax.xml.xpath.XPathFactory;
+import org.xml.sax.InputSource;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -181,7 +183,7 @@ public class StaxXmlUtilTest {
             </student>
         """;
 
-        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(xml.trim().getBytes(StandardCharsets.UTF_8)));
+        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(xml.trim())));
         XPath xpath = XPathFactory.newInstance().newXPath();
         xpath.setXPathFunctionResolver(new ExtFunctionResolver());
         xpath.setNamespaceContext(new NamespaceContext() {
@@ -360,7 +362,7 @@ public class StaxXmlUtilTest {
             </root>
         """;
 
-        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new ByteArrayInputStream(xml.trim().getBytes(StandardCharsets.UTF_8)));
+        Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(new InputSource(new StringReader(xml.trim())));
         XPath xpath = XPathFactory.newInstance().newXPath();
         xpath.setXPathFunctionResolver(new ExtFunctionResolver());
         xpath.setNamespaceContext(new NamespaceContext() {
