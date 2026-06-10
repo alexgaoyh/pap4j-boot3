@@ -1,7 +1,13 @@
 package cn.net.pap.common.jsqlparser;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import net.sf.jsqlparser.parser.CCJSqlParserUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +27,7 @@ public class JsonToSqlConverter {
             @JsonProperty("main_table") String mainTable,
             @JsonProperty("columns") List<String> columns,
             @JsonProperty("joins") List<JoinInfo> joins,
-            @JsonProperty("filters") List<FilterInfo> filters,
+            @JsonProperty("filters") List<Filter> filters,
             @JsonProperty("groups") List<String> groups,
             @JsonProperty("aggs") List<AggInfo> aggs,
             @JsonProperty("orders") List<OrderInfo> orders,
@@ -38,14 +44,36 @@ public class JsonToSqlConverter {
     ) {
     }
 
-    public record FilterInfo(
+    @JsonDeserialize(using = FilterDeserializer.class)
+    public sealed interface Filter permits LogicFilter, ConditionFilter {
+    }
+
+    public static class FilterDeserializer extends JsonDeserializer<Filter> {
+        @Override
+        public Filter deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            ObjectMapper mapper = (ObjectMapper) p.getCodec();
+            ObjectNode root = mapper.readTree(p);
+            if (root.has("logic") || root.has("conditions")) {
+                return mapper.treeToValue(root, LogicFilter.class);
+            } else if (root.has("field")) {
+                return mapper.treeToValue(root, ConditionFilter.class);
+            }
+            throw new JsonMappingException(p, "Unable to deserialize Filter node. Missing type discriminator or matching properties.");
+        }
+    }
+
+    @JsonDeserialize(using = JsonDeserializer.None.class)
+    public record LogicFilter(
             @JsonProperty("logic") String logic,
-            @JsonProperty("conditions") List<FilterInfo> conditions,
+            @JsonProperty("conditions") List<Filter> conditions
+    ) implements Filter {}
+
+    @JsonDeserialize(using = JsonDeserializer.None.class)
+    public record ConditionFilter(
             @JsonProperty("field") String field,
             @JsonProperty("operator") String operator,
             @JsonProperty("value") Object value
-    ) {
-    }
+    ) implements Filter {}
 
     public record AggInfo(
             @JsonProperty("function") String function,
@@ -171,7 +199,7 @@ public class JsonToSqlConverter {
             return "";
         }
         List<String> filterSqls = new ArrayList<>();
-        for (FilterInfo filter : query.filters()) {
+        for (Filter filter : query.filters()) {
             if (filter == null) {
                 continue;
             }
@@ -186,39 +214,47 @@ public class JsonToSqlConverter {
         return " WHERE " + String.join(" AND ", filterSqls);
     }
 
-    private static String buildFilterSql(FilterInfo filter) {
+    private static String buildFilterSql(Filter filter) {
         if (filter == null) {
             return "";
         }
-        if (filter.logic() != null && !filter.logic().isBlank()) {
-            String logicOp = filter.logic().toUpperCase();
-            if (!"AND".equals(logicOp) && !"OR".equals(logicOp)) {
-                throw new IllegalArgumentException("logic operator must be AND or OR");
-            }
-            if (filter.conditions() == null || filter.conditions().isEmpty()) {
-                return "";
-            }
-            List<String> list = new ArrayList<>();
-            for (FilterInfo cond : filter.conditions()) {
-                String sub = buildFilterSql(cond);
-                if (sub != null && !sub.isBlank()) {
-                    list.add(sub);
-                }
-            }
-            if (list.isEmpty()) {
-                return "";
-            }
-            if (list.size() == 1) {
-                return list.get(0);
-            }
-            return "(" + String.join(" " + logicOp + " ", list) + ")";
-        } else if (filter.field() != null && !filter.field().isBlank()) {
-            return buildConditionSql(filter);
+        if (filter instanceof LogicFilter lf) {
+            return buildLogicSql(lf);
+        } else if (filter instanceof ConditionFilter cf) {
+            return buildConditionSql(cf);
         }
         return "";
     }
 
-    private static String buildConditionSql(FilterInfo filter) {
+    private static String buildLogicSql(LogicFilter filter) {
+        String logicOp = filter.logic();
+        if (logicOp == null || logicOp.isBlank()) {
+            throw new IllegalArgumentException("logic operator is required for logic filter");
+        }
+        logicOp = logicOp.toUpperCase();
+        if (!"AND".equals(logicOp) && !"OR".equals(logicOp)) {
+            throw new IllegalArgumentException("logic operator must be AND or OR");
+        }
+        if (filter.conditions() == null || filter.conditions().isEmpty()) {
+            return "";
+        }
+        List<String> list = new ArrayList<>();
+        for (Filter cond : filter.conditions()) {
+            String sub = buildFilterSql(cond);
+            if (sub != null && !sub.isBlank()) {
+                list.add(sub);
+            }
+        }
+        if (list.isEmpty()) {
+            return "";
+        }
+        if (list.size() == 1) {
+            return list.get(0);
+        }
+        return "(" + String.join(" " + logicOp + " ", list) + ")";
+    }
+
+    private static String buildConditionSql(ConditionFilter filter) {
         String field = filter.field();
         if (field == null || field.isBlank()) {
             throw new IllegalArgumentException("field is required for condition");
