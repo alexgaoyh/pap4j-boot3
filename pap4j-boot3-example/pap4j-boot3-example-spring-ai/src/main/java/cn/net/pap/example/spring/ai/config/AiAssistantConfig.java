@@ -5,7 +5,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.memory.InMemoryChatMemory;
+import org.springframework.ai.chat.memory.ChatMemoryRepository;
+import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.reader.TextReader;
@@ -58,8 +59,11 @@ public class AiAssistantConfig {
      * 2. 声明聊天记忆组件（内存型）
      */
     @Bean
-    public ChatMemory chatMemory() {
-        return new InMemoryChatMemory();
+    public ChatMemory chatMemory(ChatMemoryRepository repository) {
+        return MessageWindowChatMemory.builder()
+                .chatMemoryRepository(repository)
+                .maxMessages(20)
+                .build();
     }
 
     /**
@@ -69,7 +73,7 @@ public class AiAssistantConfig {
     public ChatClient customChatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
 
         // 1. ChatMemory 顾问：维护对话上下文
-        MessageChatMemoryAdvisor memoryAdvisor = new MessageChatMemoryAdvisor(chatMemory);
+        MessageChatMemoryAdvisor memoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
 
         // 2. 注入到 ChatClient 中
         return builder
@@ -93,7 +97,7 @@ public class AiAssistantConfig {
             }
 
             // 对文本进行切块，避免超出模型的输入上下文窗口
-            TokenTextSplitter splitter = new TokenTextSplitter(800, 400, 10, 10000, true);
+            TokenTextSplitter splitter = new TokenTextSplitter(true);
             List<Document> splitDocuments = splitter.apply(allDocuments);
 
             // 加入向量库（此时会自动调用 EmbeddingModel 将文本转为数字向量）
