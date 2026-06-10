@@ -40,6 +40,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StaxXmlUtilTest {
     private static final Logger log = LoggerFactory.getLogger(StaxXmlUtilTest.class);
+    private static final XPathFactory XPATH_FACTORY = XPathFactory.newInstance();
 
     /**
      * <root><firstNode><secondNode><thirdNode>alexgaoyh</thirdNode></secondNode></firstNode></root>
@@ -450,7 +451,50 @@ public class StaxXmlUtilTest {
              "ext:xref(/, //student[@name='小红']/@gradeId, 'grade', 'id', 'teacher')",
              schoolDoc, XPathConstants.STRING
          );
-         assertEquals("张老师", teacherName);
+          assertEquals("张老师", teacherName);
+     }
+
+    @Test
+    public void testInnerXmlConcurrency() {
+        XPath xpath = XPATH_FACTORY.newXPath();
+        xpath.setXPathFunctionResolver(new ExtFunctionResolver());
+        xpath.setNamespaceContext(new NamespaceContext() {
+            @Override
+            public String getNamespaceURI(String prefix) {
+                if ("ext".equals(prefix)) {
+                    return ExtFunctionResolver.EXT_NS;
+                }
+                return null;
+            }
+            @Override public String getPrefix(String uri) { return null; }
+            @Override public Iterator<String> getPrefixes(String uri) { return null; }
+        });
+
+        java.util.stream.IntStream.range(0, 500).parallel().forEach(idx -> {
+            try {
+                String uniqueId = "ID-" + idx;
+                String dynamicXml = """
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <student>
+                      <props>
+                        <prop>一<class id="%s">章</class>内&gt;容<anchor number="1"></anchor></prop>
+                      </props>
+                    </student>
+                    """.formatted(uniqueId);
+
+                Document doc = DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(
+                        new InputSource(new StringReader(dynamicXml))
+                );
+                // language=TEXT
+                String result = (String) xpath.evaluate("ext:inner-xml(/student[1]/props[1]/prop[1])", doc, XPathConstants.STRING);
+                
+                assertTrue(result.contains("id=\"" + uniqueId + "\""), "Data contamination! Expected: " + uniqueId + " but got: " + result);
+                assertTrue(result.contains("一"));
+            } catch (Exception e) {
+                log.error("Concurrency test failed at index: {}", idx, e);
+                org.junit.jupiter.api.Assertions.fail("Concurrency issue detected: " + e.getMessage());
+            }
+        });
     }
 
 }
