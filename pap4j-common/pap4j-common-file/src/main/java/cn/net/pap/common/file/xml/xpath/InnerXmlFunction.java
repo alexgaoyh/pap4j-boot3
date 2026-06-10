@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 public class InnerXmlFunction implements XPathFunction {
 
     private static final Pattern NUMERIC_ENTITY_PATTERN = Pattern.compile("&#(\\d+);");
+    private static final TransformerFactory TRANSFORMER_FACTORY = TransformerFactory.newInstance();
 
     @Override
     public Object evaluate(List<?> args) throws XPathFunctionException {
@@ -37,7 +38,7 @@ public class InnerXmlFunction implements XPathFunction {
         Object arg = args.get(0);
 
         try {
-            Transformer transformer = TransformerFactory.newInstance().newTransformer();
+            Transformer transformer = TRANSFORMER_FACTORY.newTransformer();
             transformer.setOutputProperty(OutputKeys.OMIT_XML_DECLARATION, "yes");
             transformer.setOutputProperty(OutputKeys.INDENT, "no");
 

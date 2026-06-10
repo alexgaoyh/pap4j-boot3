@@ -22,21 +22,25 @@ public class ExtFunctionResolver implements XPathFunctionResolver {
      */
     public static final String EXT_NS = "http://pap.net.cn/ext";
 
+    private final XPathFunction innerXmlFunction = new InnerXmlFunction();
+    private final XPathFunction positionInParentFunction = new PositionInParentFunction();
+    private final XPathFunction crossReferenceFunction = new CrossReferenceFunction();
+
     @Override
     public XPathFunction resolveFunction(QName name, int arity) {
         if (EXT_NS.equals(name.getNamespaceURI()) && "inner-xml".equals(name.getLocalPart()) && arity == 1) {
             // ExtFunctionResolver 是一个自定义的 XPathFunctionResolver，用于解析自定义扩展函数 "inner-xml"。
             // 该解析器会在 XPath 表达式中遇到命名空间为 {@value #EXT_NS} 且函数名为"inner-xml" 的函数时返回对应的 {@link InnerXmlFunction} 实例。
             // 使用场景：在处理 XML 文档时，需要获取某个节点的内部 XML 内容而不是整个节点。
-            return new InnerXmlFunction();
+            return innerXmlFunction;
         }
         if (EXT_NS.equals(name.getNamespaceURI()) && "position-in-parent".equals(name.getLocalPart()) && arity == 1) {
             // position-in-parent 函数：获取节点在其父节点中的位置
-            return new PositionInParentFunction();
+            return positionInParentFunction;
         }
         if (EXT_NS.equals(name.getNamespaceURI()) && "xref".equals(name.getLocalPart()) && arity == 5) {
             // xref 函数：从其他节点获取非主键属性
-            return new CrossReferenceFunction();
+            return crossReferenceFunction;
         }
 
         return null;
