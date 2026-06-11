@@ -2,7 +2,10 @@ package cn.net.pap.common.datastructure.chatset;
 
 import java.io.Serializable;
 import java.nio.charset.Charset;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 

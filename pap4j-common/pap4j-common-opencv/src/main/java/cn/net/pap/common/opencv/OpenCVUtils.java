@@ -12,7 +12,12 @@ import org.opencv.objdetect.HOGDescriptor;
 import org.opencv.photo.Photo;
 
 import java.net.URL;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedList;
+import java.util.List;
 
 import static org.opencv.core.Core.*;
 import static org.opencv.core.CvType.CV_32F;

@@ -3,7 +3,10 @@ package cn.net.pap.common.datastructure.catalog;
 import cn.net.pap.common.datastructure.catalog.dto.CatalogDTO;
 import cn.net.pap.common.datastructure.catalog.dto.CatalogTreeDTO;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * <h1>目录工具类 (Catalog Utility)</h1>

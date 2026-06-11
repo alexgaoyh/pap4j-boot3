@@ -6,7 +6,12 @@ import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.Test;
 
 import java.io.File;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 public class VertorUtilTest {
     private static final Logger log = LoggerFactory.getLogger(VertorUtilTest.class);
