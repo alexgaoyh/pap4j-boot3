@@ -52,8 +52,9 @@ public class DeadLockRetryDemoController {
     public String test() {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 2, 2, 0L, TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(),
-                r -> new Thread(r, "deadlock-test-thread")
+                new LinkedBlockingQueue<>(10),
+                r -> new Thread(r, "deadlock-test-thread"),
+                new ThreadPoolExecutor.AbortPolicy()
         );
         try {
             Future<?> future1 = executor.submit(() -> deadlockRetryDemoService.updateTwoRowsOrderly(1L, 2L));

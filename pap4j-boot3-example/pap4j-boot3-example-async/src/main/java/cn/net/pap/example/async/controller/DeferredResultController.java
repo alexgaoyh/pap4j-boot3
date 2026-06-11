@@ -64,12 +64,13 @@ public class DeferredResultController {
                 }
 
             } catch (InterruptedException e) {
-                log.warn("任务被中断");
+                log.warn("任务被中断：", e);
+                Thread.currentThread().interrupt();
                 if (!deferredResult.isSetOrExpired()) {
                     deferredResult.setErrorResult("任务被中断");
                 }
             } catch (Exception e) {
-                log.error("任务执行失败: {}", e.getMessage());
+                log.error("任务执行失败：", e);
                 if (!deferredResult.isSetOrExpired()) {
                     deferredResult.setErrorResult("任务执行失败: " + e.getMessage());
                 }

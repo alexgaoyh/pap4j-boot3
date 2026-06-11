@@ -111,11 +111,12 @@ public class ITextTest {
                             info.put("point", string2Box(point, dpi72ToReal));
                             info.put("text", text);
                             tmp.put("info", info);
-                            if(minWidth.compareTo(new BigDecimal(centerWidth(point, dpi72ToReal))) > 0) {
-                                minWidth = new BigDecimal(centerWidth(point, dpi72ToReal)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                            BigDecimal currentWidth = BigDecimal.valueOf(centerWidth(point, dpi72ToReal));
+                            if(minWidth.compareTo(currentWidth) > 0) {
+                                minWidth = currentWidth.setScale(2 , BigDecimal.ROUND_HALF_UP);
                             }
-                            if(maxWidth.compareTo(new BigDecimal(centerWidth(point, dpi72ToReal))) < 0) {
-                                maxWidth = new BigDecimal(centerWidth(point, dpi72ToReal)).setScale(2 , BigDecimal.ROUND_HALF_UP);
+                            if(maxWidth.compareTo(currentWidth) < 0) {
+                                maxWidth = currentWidth.setScale(2 , BigDecimal.ROUND_HALF_UP);
                             }
                             centerXTextList.add(tmp);
                         }

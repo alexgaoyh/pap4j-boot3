@@ -5,7 +5,6 @@ import cn.net.pap.example.proguard.repository.TreeStorageRepository;
 import cn.net.pap.example.proguard.service.ITreeStorageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,8 +20,11 @@ public class TreeStorageServiceImpl implements ITreeStorageService {
 
     private static final Logger log = LoggerFactory.getLogger(TreeStorageServiceImpl.class);
 
-    @Autowired
-    private TreeStorageRepository treeStorageRepository;
+    private final TreeStorageRepository treeStorageRepository;
+
+    public TreeStorageServiceImpl(TreeStorageRepository treeStorageRepository) {
+        this.treeStorageRepository = treeStorageRepository;
+    }
 
     @Override
     @Transactional(rollbackFor = Exception.class)

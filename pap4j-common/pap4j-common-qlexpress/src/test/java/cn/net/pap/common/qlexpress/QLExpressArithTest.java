@@ -198,7 +198,7 @@ public class QLExpressArithTest {
         assertTrue((Boolean)Express4RunnerUtil.runner.execute("1.3==a+b", context, QLOptions.builder().precise(true).build()).getResult());
 
         Object result = Express4RunnerUtil.runner.execute("a / b", context, QLOptions.builder().precise(true).build()).getResult();
-        assertTrue(new BigDecimal("3.33").equals(result));
+        assertEquals(0, new BigDecimal("3.33").compareTo((BigDecimal) result));
 
     }
 
