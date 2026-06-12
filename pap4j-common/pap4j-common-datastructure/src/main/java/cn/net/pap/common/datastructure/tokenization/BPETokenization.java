@@ -120,25 +120,44 @@ public class BPETokenization {
      * @return 字符串标记的 {@link List}。
      */
     public List<String> tokenize(String text) {
-        // 转换为字符列表
-        List<String> chars = text.chars().mapToObj(c -> String.valueOf((char) c)).collect(Collectors.toList());
+        if (text == null || text.isEmpty()) {
+            return Collections.emptyList();
+        }
 
-        // 贪心最大匹配
         List<String> result = new ArrayList<>();
-        while (!chars.isEmpty()) {
+        int length = text.length();
+        int index = 0;
+
+        // 统计词表中最长词的长度，避免无谓的长文本截取与查找尝试
+        int maxVocabLen = 0;
+        for (String v : vocab) {
+            maxVocabLen = Math.max(maxVocabLen, v.length());
+        }
+        if (maxVocabLen == 0) {
+            maxVocabLen = 1;
+        }
+
+        // 贪心最长匹配：直接在原 String 上通过指针偏移扫描，彻底消除了 List<String> 频繁分词与 String.join 拼接带来的海量 GC 内存抖动
+        while (index < length) {
             String longest = "";
-            for (int len = chars.size(); len > 0; len--) {
-                String candidate = String.join("", chars.subList(0, len));
-                if (vocab.contains(candidate) && candidate.length() > longest.length()) {
+            int maxLimit = Math.min(maxVocabLen, length - index);
+
+            // 从可能匹配的最长词长度开始递减搜索
+            for (int len = maxLimit; len > 0; len--) {
+                String candidate = text.substring(index, index + len);
+                if (vocab.contains(candidate)) {
                     longest = candidate;
+                    // 从最大长度向下遍历，第一个命中的就是最长匹配，可以直接 break 退出，避开 O(N) 冗余匹配
+                    break;
                 }
             }
+
             if (!longest.isEmpty()) {
                 result.add(longest);
-                chars = chars.subList(longest.length(), chars.size());
+                index += longest.length();
             } else {
-                result.add(chars.get(0));
-                chars = chars.subList(1, chars.size());
+                result.add(String.valueOf(text.charAt(index)));
+                index++;
             }
         }
         return result;

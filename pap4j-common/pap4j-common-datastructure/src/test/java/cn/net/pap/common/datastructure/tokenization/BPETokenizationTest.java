@@ -29,4 +29,25 @@ public class BPETokenizationTest {
         log.info("{}", bpe.tokenize(testText));
     }
 
+    @Test
+    public void performanceTest() {
+        BPETokenization bpe = new BPETokenization();
+        List<String> trainingData = Arrays.asList("机器学习", "学习模型", "深度模型", "深度学习", "科技公司", "公鸡", "科技企业", "民营企业", "民营科技企业");
+        bpe.train(trainingData);
+
+        // 构建一个长度为 60000 字符的长文本（重复 4000 次）
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 4000; i++) {
+            sb.append("深度学习模型机器学习科技公司");
+        }
+        String longText = sb.toString();
+
+        long startTime = System.nanoTime();
+        List<String> tokens = bpe.tokenize(longText);
+        long endTime = System.nanoTime();
+
+        log.info("BPE分词测试 - 文本长度: {}, 分词数: {}", longText.length(), tokens.size());
+        log.info("分词耗时: {} ms", (endTime - startTime) / 1e6);
+    }
+
 }
