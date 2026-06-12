@@ -78,3 +78,12 @@
 *   **高频循环产生海量垃圾对象 (GC 压力)**
     *   ❌ 错误: 在 for/while 循环体内为每一行数据分配 `new ByteArrayOutputStream()`，并频繁调用 `toByteArray()` 拷贝小字节数组。
     *   ✅ 正确: 一次性读取数据块到大 `byte[]` 数组中，在方法间传递 `(byte[] bytes, int start, int end)` 等指针偏移量进行逻辑切片，实现零垃圾内存分配。
+
+## 8. 代码审计强制清单 (Mandatory Audit Checklist)
+在进行代码审查或执行 **`[Edit]`** 前，AI 必须对照以下清单进行深度“自检”，并在回复中列出：
+1. **并发安全**: 是否存在 `new Thread()` 或未指定容量的无界 `LinkedBlockingQueue`？
+2. **日志规范**: 日志打印是否使用了 `+` 拼接字符串而非 SLF4J 占位符？
+3. **方法边界**: 单个方法逻辑是否超过 50 行？
+4. **精度安全**: 是否存在 `new BigDecimal(double)`？
+5. **生命周期**: 是否硬编码了 `addShutdownHook`？
+
