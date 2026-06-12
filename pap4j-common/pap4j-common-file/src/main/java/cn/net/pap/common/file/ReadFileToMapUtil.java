@@ -26,29 +26,29 @@ public class ReadFileToMapUtil {
      * @return
      */
     public static ConcurrentHashMap<String, String> toMap(String filePath, byte separator) {
-        ConcurrentHashMap<String, String> lineMap = new ConcurrentHashMap<>();
-
         try (RandomAccessFile file = new RandomAccessFile(filePath, "r");
              FileChannel channel = file.getChannel()) {
 
             long fileSize = channel.size();
             MappedByteBuffer buffer = channel.map(FileChannel.MapMode.READ_ONLY, 0, fileSize);
 
-            ForkJoinPool pool = new ForkJoinPool();
-            pool.invoke(new ParseTask(buffer, 0, (int) fileSize, separator, lineMap));
+            int initialCapacity = Math.max(16, (int) (fileSize / 16));
+            ConcurrentHashMap<String, String> lineMap = new ConcurrentHashMap<>(initialCapacity, 0.75f);
 
+            ForkJoinPool.commonPool().invoke(new ParseTask(buffer, 0, (int) fileSize, separator, lineMap));
+
+            return lineMap;
         } catch (IOException e) {
             log.error("toMap", e);
+            return new ConcurrentHashMap<>();
         }
-
-        return lineMap;
     }
 
     /**
      * 解析任务
      */
     static class ParseTask extends RecursiveAction {
-        private static final int THRESHOLD = 8192; // 可以根据性能测试调整阈值大小
+        private static final int THRESHOLD = 65536;
         private final MappedByteBuffer buffer;
         private final int start;
         private final int end;
@@ -75,44 +75,66 @@ public class ReadFileToMapUtil {
                     mid++;
                 }
 
-                invokeAll(
-                        new ParseTask(buffer, start, mid, separator, lineMap),
-                        new ParseTask(buffer, mid + 1, end, separator, lineMap)
-                );
+                if (mid >= end) {
+                    invokeAll(new ParseTask(buffer, start, end, separator, lineMap));
+                } else {
+                    invokeAll(
+                            new ParseTask(buffer, start, mid, separator, lineMap),
+                            new ParseTask(buffer, mid + 1, end, separator, lineMap)
+                    );
+                }
             }
         }
 
         private void processChunk() {
-            ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-            boolean withinLine = false;
+            int length = end - start;
+            if (length <= 0) {
+                return;
+            }
 
-            for (int i = start; i < end; i++) {
-                byte b = buffer.get(i);
-                if (b == '\n') {
-                    processLine(byteArrayOutputStream);
-                    byteArrayOutputStream.reset();
-                    withinLine = false;
-                } else {
-                    byteArrayOutputStream.write(b);
-                    withinLine = true;
+            byte[] chunkBytes = new byte[length];
+            buffer.get(start, chunkBytes, 0, length);
+
+            int lineStart = 0;
+            for (int i = 0; i < length; i++) {
+                if (chunkBytes[i] == '\n') {
+                    processLine(chunkBytes, lineStart, i);
+                    lineStart = i + 1;
                 }
             }
 
-            if (withinLine) {
-                // Process the last line in the chunk
-                processLine(byteArrayOutputStream);
+            if (lineStart < length) {
+                processLine(chunkBytes, lineStart, length);
             }
         }
 
-        private void processLine(ByteArrayOutputStream byteArrayOutputStream) {
-            byte[] lineBytes = byteArrayOutputStream.toByteArray();
-            int separatorIndex = findByte(lineBytes, separator);
+        private void processLine(byte[] bytes, int lineStart, int lineEnd) {
+            // 兼容 Windows 换行符：去除行末的 \r
+            int actualEnd = lineEnd;
+            if (actualEnd > lineStart && bytes[actualEnd - 1] == '\r') {
+                actualEnd--;
+            }
+
+            int len = actualEnd - lineStart;
+            if (len <= 0) {
+                return;
+            }
+
+            // 直接在字节范围内查找分隔符，避免分配额外的 ByteArrayOutputStream 和 byte 数组
+            int separatorIndex = -1;
+            for (int i = lineStart; i < actualEnd; i++) {
+                if (bytes[i] == separator) {
+                    separatorIndex = i;
+                    break;
+                }
+            }
+
             if (separatorIndex != -1) {
-                String key = stringAt(lineBytes, 0, separatorIndex);
-                String value = stringAt(lineBytes, separatorIndex + 1, lineBytes.length);
+                String key = stringAt(bytes, lineStart, separatorIndex);
+                String value = stringAt(bytes, separatorIndex + 1, actualEnd);
                 lineMap.put(key, value);
             } else {
-                String key = stringAt(lineBytes, 0, lineBytes.length);
+                String key = stringAt(bytes, lineStart, actualEnd);
                 lineMap.put(key.trim(), "");
             }
         }
