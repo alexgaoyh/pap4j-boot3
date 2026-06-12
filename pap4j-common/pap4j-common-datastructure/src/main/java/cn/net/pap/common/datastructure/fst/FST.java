@@ -21,12 +21,30 @@ public class FST implements Serializable {
      * <p>管理当前节点所有往后状态转移的字典映射。</p>
      * <p>使用了 {@link ConcurrentHashMap} 以保证多线程环境下的线程安全性。</p>
      */
-    private ConcurrentHashMap<String, FST> transitions = new ConcurrentHashMap<>(10000);
+    private ConcurrentHashMap<String, FST> transitions = new ConcurrentHashMap<>(1024);
 
     /**
      * <p>标记当前节点是否可以被认为是一个词条的合法结尾点。</p>
      */
     private boolean isFinalState = false;
+
+    /**
+     * <p>获取状态转移的映射。</p>
+     *
+     * @return 状态转移映射。
+     */
+    public ConcurrentHashMap<String, FST> getTransitions() {
+        return transitions;
+    }
+
+    /**
+     * <p>获取当前节点是否为词条结尾点。</p>
+     *
+     * @return 如果是结尾点返回 {@code true}，否则返回 {@code false}。
+     */
+    public boolean isFinalState() {
+        return isFinalState;
+    }
 
     /**
      * <p>向当前 FST 状态机中逐层添加指定的词语。</p>

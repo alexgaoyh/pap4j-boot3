@@ -35,24 +35,34 @@ public class FSTUtil {
     @Deprecated
     public static List<String> maxMatch(String text, FST dict) {
         List<String> result = new ArrayList<>();
-        if (text == null) return result;
+        if (text == null || text.isEmpty()) {
+            return result;
+        }
         int[] codePoints = text.codePoints().toArray();
-        int start = 0;
-        while (start < codePoints.length) {
-            int end = codePoints.length;
-            while (end > start) {
-                String substr = new String(codePoints, start, end - start);
-                if (dict.isWord(substr)) {
-                    result.add(substr);
-                    start = end;
+        int startCp = 0;
+        while (startCp < codePoints.length) {
+            int longestMatchEnd = -1;
+            FST currentNode = dict;
+            
+            for (int i = startCp; i < codePoints.length; i++) {
+                String cStr = Character.toString(codePoints[i]);
+                currentNode = currentNode.getTransitions().get(cStr);
+                if (currentNode == null) {
                     break;
                 }
-                end--;
+                if (currentNode.isFinalState()) {
+                    longestMatchEnd = i + 1;
+                }
             }
-            if (end == start) {
-                String substring = new String(codePoints, start, 1);
-                result.add(substring);
-                start++;
+            
+            if (longestMatchEnd != -1) {
+                String matchedText = new String(codePoints, startCp, longestMatchEnd - startCp);
+                result.add(matchedText);
+                startCp = longestMatchEnd;
+            } else {
+                String singleChar = Character.toString(codePoints[startCp]);
+                result.add(singleChar);
+                startCp++;
             }
         }
         return result;
@@ -74,26 +84,31 @@ public class FSTUtil {
      */
     public static List<ValueLocationDTO> maxMatchLocation(String text, FST dict) {
         List<ValueLocationDTO> result = new ArrayList<>();
-        if (text == null) return result;
+        if (text == null || text.isEmpty()) {
+            return result;
+        }
         int[] codePoints = text.codePoints().toArray();
         int startCp = 0;
         while (startCp < codePoints.length) {
-            boolean continueFlag = false;
-            int endCp = codePoints.length;
-            while (endCp > startCp) {
-                String substr = new String(codePoints, startCp, endCp - startCp);
-                if (dict.isWord(substr)) {
-                    result.add(new ValueLocationDTO(substr, startCp, endCp));
-                    startCp = endCp;
-                    continueFlag = true;
+            int longestMatchEnd = -1;
+            FST currentNode = dict;
+            
+            for (int i = startCp; i < codePoints.length; i++) {
+                String cStr = Character.toString(codePoints[i]);
+                currentNode = currentNode.getTransitions().get(cStr);
+                if (currentNode == null) {
                     break;
                 }
-                endCp--;
+                if (currentNode.isFinalState()) {
+                    longestMatchEnd = i + 1;
+                }
             }
-            if (continueFlag) {
-                continue;
-            }
-            if (endCp == startCp) {
+            
+            if (longestMatchEnd != -1) {
+                String matchedText = new String(codePoints, startCp, longestMatchEnd - startCp);
+                result.add(new ValueLocationDTO(matchedText, startCp, longestMatchEnd));
+                startCp = longestMatchEnd;
+            } else {
                 startCp++;
             }
         }
