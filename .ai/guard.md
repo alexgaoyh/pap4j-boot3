@@ -26,6 +26,7 @@
 * **命名规范**: 必须使用 `ThreadFactory` 为线程命名（如 `task-worker-%d`）。
 * **ThreadLocal**: 必须在 `finally` 块中调用 `.remove()`。
 * **中断处理**: 捕获 `InterruptedException` 后，必须通过 `Thread.currentThread().interrupt()` 恢复中断状态。
+* **重用公共线程池**: 执行 **纯 CPU 密集型/无阻塞** 的并行分治任务（如内存计算、字节分块解析）时，必须优先重用 `ForkJoinPool.commonPool()`，严禁在方法内高频创建且未 shutdown 的自定义 `new ForkJoinPool()`。**严禁在公共线程池（含并行流）中执行任何阻塞型 I/O 操作**（如网络请求、数据库查询、阻塞写锁），凡涉及 I/O 阻塞的并发任务，必须使用独立配置的 `ThreadPoolExecutor`。
 
 ## 4. 异常处理与安全
 * **禁止生吞异常**: 严禁 catch 块为空或仅使用 `e.printStackTrace()`。
@@ -46,6 +47,7 @@
     * 指定初始容量（如 `new HashMap<>(16)`）。
     * 返回 `Collections.emptyList()` 而非 `new ArrayList<>()`。
     * 包装类 (Long/Integer) 的等值判断必须使用 `.equals()`。
+* **海量数据高频解析防抖**: 在海量文本、大文件或字节流的高频循环解析场景中，严禁在循环内部重复创建 `ByteArrayOutputStream` 等缓冲流或调用 `toByteArray()` 产生海量临时数组。应优先使用字节指针偏移量（Slice Reference）在主字节数组上进行逻辑切片，直接传递 `(byte[] bytes, int start, int end)` 等区间参数，将垃圾对象产生和 GC 暂停时间降至最低。
 
 ## 6. 日志规范 (SLF4J)
 * **禁止标准输出**: 使用 `org.slf4j.Logger`。严禁使用 `System.out` 或 `System.err`。
@@ -70,3 +72,9 @@
 *   **错误金额 (精度丢失)**
     *   ❌ 错误: `new BigDecimal(0.1)`
     *   ✅ 正确: `new BigDecimal("0.1")` 或 `BigDecimal.valueOf(0.1)`
+*   **错误并发与内存泄漏 (ForkJoinPool 滥用与重建)**
+    *   ❌ 错误: 在 CPU 密集计算方法中写 `ForkJoinPool pool = new ForkJoinPool(); pool.invoke(task);`（未 shutdown 导致僵尸线程泄露）；或者在 `ForkJoinPool.commonPool()` / 并行流中执行数据库查询或 HTTP 请求（导致全局公共池阻塞挂起）。
+    *   ✅ 正确: 纯 CPU 计算任务使用 `ForkJoinPool.commonPool().invoke(task)`；含有阻塞型 I/O 的任务使用自定义的、配置了有界队列和饱和策略的 `ThreadPoolExecutor`。
+*   **高频循环产生海量垃圾对象 (GC 压力)**
+    *   ❌ 错误: 在 for/while 循环体内为每一行数据分配 `new ByteArrayOutputStream()`，并频繁调用 `toByteArray()` 拷贝小字节数组。
+    *   ✅ 正确: 一次性读取数据块到大 `byte[]` 数组中，在方法间传递 `(byte[] bytes, int start, int end)` 等指针偏移量进行逻辑切片，实现零垃圾内存分配。
