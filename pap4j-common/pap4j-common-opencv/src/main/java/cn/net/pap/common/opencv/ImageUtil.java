@@ -118,7 +118,8 @@ public class ImageUtil {
             }
             ImageReader reader = readers.next();
 
-            try (ImageInputStream iis = ImageIO.createImageInputStream(new File(inputFilePath))) {
+            try (ImageInputStream iis = ImageIO.createImageInputStream(new File(inputFilePath));
+                 ByteArrayOutputStream baos = new ByteArrayOutputStream(65536)) {
                 reader.setInput(iis);
 
                 for (Rectangle rect : regions) {
@@ -126,12 +127,11 @@ public class ImageUtil {
                     param.setSourceRegion(rect);
                     BufferedImage image = reader.read(0, param);
 
-                    try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-                        ImageIO.write(image, "JPEG", baos);
-                        byte[] imageBytes = baos.toByteArray();
-                        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
-                        base64Images.add(base64Image);
-                    }
+                    baos.reset();
+                    ImageIO.write(image, "JPEG", baos);
+                    byte[] imageBytes = baos.toByteArray();
+                    String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+                    base64Images.add(base64Image);
                 }
             } finally {
                 reader.dispose();
