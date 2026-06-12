@@ -22,6 +22,14 @@ public class SimHash {
 
     private static final int HASH_BITS = 64; // 位数，通常64位
 
+    private static final ThreadLocal<MessageDigest> DIGEST_HOLDER = ThreadLocal.withInitial(() -> {
+        try {
+            return MessageDigest.getInstance("SHA-256");
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
+    });
+
     /**
      * <p>计算给定输入字符串的 SimHash 签名。</p>
      *
@@ -47,10 +55,10 @@ public class SimHash {
         for (Map.Entry<String, Integer> entry : wordFrequency.entrySet()) {
             String word = entry.getKey();
             int frequency = entry.getValue();
-            BigInteger hash = hash(word); // 词的哈希值
+            long hash = hash(word); // 词的哈希值
             // 对哈希值每一位进行加权叠加
             for (int i = 0; i < HASH_BITS; i++) {
-                if (hash.testBit(i)) {
+                if ((hash & (1L << i)) != 0) {
                     vector[i] += frequency;  // 词频为正数，权重大于零
                 } else {
                     vector[i] -= frequency;  // 词频为负数，权重小于零
@@ -59,7 +67,7 @@ public class SimHash {
         }
 
         // 生成SimHash签名
-        BigInteger simHash = new BigInteger("0");
+        BigInteger simHash = BigInteger.ZERO;
         for (int i = 0; i < HASH_BITS; i++) {
             if (vector[i] > 0) {
                 simHash = simHash.setBit(i);
@@ -89,18 +97,19 @@ public class SimHash {
      * @param input 要哈希处理的字符串。
      * @return 正数 64 位 {@link BigInteger} 表示。
      */
-    private static BigInteger hash(String input) {
+    private static long hash(String input) {
         try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            MessageDigest md = DIGEST_HOLDER.get();
+            md.reset();
             byte[] digest = md.digest(input.getBytes("UTF-8"));
 
-            // 截取前8个字节作为64位哈希
-            Integer length = 8;
-            byte[] first8Bytes = new byte[length];
-            System.arraycopy(digest, 0, first8Bytes, 0, length);
-
-            return new BigInteger(1, first8Bytes); // 返回正数的BigInteger
-        } catch (NoSuchAlgorithmException | java.io.UnsupportedEncodingException e) {
+            // 截取前8个字节作为64位哈希并转为 long。将加权运算和位组合改写为 long，原生位运算，消除了循环内部所有的堆内存垃圾对象分配。
+            long hashVal = 0L;
+            for (int i = 0; i < 8; i++) {
+                hashVal = (hashVal << 8) | (digest[i] & 0xFF);
+            }
+            return hashVal;
+        } catch (java.io.UnsupportedEncodingException e) {
             throw new RuntimeException("无法计算哈希值", e);
         }
     }
