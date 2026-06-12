@@ -109,4 +109,73 @@ public class DoubleArrayTrieTest {
             log.info(words.get(index));
         }
     }
+
+    @Test
+    public void explainZeroAllocationTest() throws Exception {
+        String testStr = "一举成名天下知"; // 7个字符的测试文本
+        int iterations = 1000000; // 迭代 100 万次
+
+        log.info("=========================================");
+        log.info("开始测试：零堆分配 vs 高频堆分配 (100万次迭代)");
+        log.info("测试数据：'{}'", testStr);
+
+        // ---------------- 旧写法测试 (High Allocation) ----------------
+        System.gc(); // 强制垃圾回收以获取干净的内存起点
+        Thread.sleep(100);
+        long freeMemBeforeOld = Runtime.getRuntime().freeMemory();
+        long startTimeOld = System.nanoTime();
+
+        int dummySumOld = 0;
+        for (int i = 0; i < iterations; i++) {
+            // ❌ 旧做法：每次都把 String 转换为一个新的 int[] 数组对象存放在堆上
+            int[] cps = testStr.codePoints().toArray(); 
+            dummySumOld += cps[3]; // 仅仅为了读取第3个字符
+        }
+
+        long endTimeOld = System.nanoTime();
+        long freeMemAfterOld = Runtime.getRuntime().freeMemory();
+        long garbageOld = Math.max(0, freeMemBeforeOld - freeMemAfterOld);
+
+        log.info("【❌ 旧写法 (toArray)】耗时: {} ms, 产生临时堆垃圾: {} MB", 
+                (endTimeOld - startTimeOld) / 1000000, garbageOld / (1024 * 1024));
+
+        // ---------------- 新写法测试 (Zero Heap Allocation) ----------------
+        System.gc(); // 再次重置内存起点
+        Thread.sleep(100);
+        long freeMemBeforeNew = Runtime.getRuntime().freeMemory();
+        long startTimeNew = System.nanoTime();
+
+        int dummySumNew = 0;
+        for (int i = 0; i < iterations; i++) {
+            // ✅ 新做法：直接在已有的 String 底层 char 数组上数数移动，完全不 new 新对象
+            int cp = getCodePointAt(testStr, 3); 
+            dummySumNew += cp;
+        }
+
+        long endTimeNew = System.nanoTime();
+        long freeMemAfterNew = Runtime.getRuntime().freeMemory();
+        long garbageNew = Math.max(0, freeMemBeforeNew - freeMemAfterNew);
+
+        log.info("【✅ 新写法 (codePointAt)】耗时: {} ms, 产生临时堆垃圾: {} MB (理论上接近 0)", 
+                (endTimeNew - startTimeNew) / 1000000, garbageNew / (1024 * 1024));
+        log.info("=========================================");
+
+        // 验证计算结果一致，防止 JVM 优化器把循环给空优化掉
+        org.junit.jupiter.api.Assertions.assertEquals(dummySumOld, dummySumNew);
+    }
+
+    private static int getCodePointAt(String s, int depth) {
+        int len = s.length();
+        int curDepth = 0;
+        for (int i = 0; i < len; ) {
+            int cp = s.codePointAt(i);
+            if (curDepth == depth) {
+                return cp;
+            }
+            curDepth++;
+            i += Character.charCount(cp);
+        }
+        return 0;
+    }
+
 }

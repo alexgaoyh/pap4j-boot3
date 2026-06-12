@@ -80,15 +80,17 @@ public class DoubleArrayTrie {
         int prev = 0;
 
         for (int i = parent.left; i < parent.right; i++) {
-            int[] cps = key.get(i).codePoints().toArray();
-            int currentLength = length != null ? length[i] : cps.length;
+            // 把原本频繁在堆上“新建数组对象、查完直接丢弃”的逻辑，完全替换成“在原有字符串对象上通过位移直接计算”的逻辑，从而彻底消除了堆内存分配，极大地减轻了 GC 停顿压力。
+            String s = key.get(i);
+            int currentLength = length != null ? length[i] : s.codePointCount(0, s.length());
 
             if (currentLength < parent.depth)
                 continue;
 
             int cur = 0;
-            if (currentLength != parent.depth)
-                cur = cps[parent.depth] + 1;
+            if (currentLength != parent.depth) {
+                cur = getCodePointAt(s, parent.depth) + 1;
+            }
 
             if (prev > cur) {
                 error_ = -3;
@@ -320,6 +322,23 @@ public class DoubleArrayTrie {
         key = null;
 
         return error_;
+    }
+
+    /**
+     * 在不分配堆内存的情况下获取字符串指定深度（以代码点为单位）的 Unicode 代码点。
+     */
+    private static int getCodePointAt(String s, int depth) {
+        int len = s.length();
+        int curDepth = 0;
+        for (int i = 0; i < len; ) {
+            int cp = s.codePointAt(i);
+            if (curDepth == depth) {
+                return cp;
+            }
+            curDepth++;
+            i += Character.charCount(cp);
+        }
+        return 0;
     }
 
     /**
