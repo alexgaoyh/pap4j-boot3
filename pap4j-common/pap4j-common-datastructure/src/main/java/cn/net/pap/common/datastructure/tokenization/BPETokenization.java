@@ -156,6 +156,7 @@ public class BPETokenization {
                 result.add(longest);
                 index += longest.length();
             } else {
+                // 分词器遇到了“读不懂的陌生字符”。它的业务价值是：“虽然我不认识这个字符，但我把它单独切出来，并保证程序能继续往后读，绝不卡死。”
                 result.add(String.valueOf(text.charAt(index)));
                 index++;
             }
