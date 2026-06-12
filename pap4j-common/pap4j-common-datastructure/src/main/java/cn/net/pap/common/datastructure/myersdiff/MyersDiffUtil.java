@@ -141,7 +141,7 @@ public class MyersDiffUtil {
 
             // 对角线匹配部分
             while (x > prevX && y > prevY) {
-                edits.add(0, new Edit(EditType.KEEP, a[x - 1]));
+                edits.add(new Edit(EditType.KEEP, a[x - 1]));
                 x--;
                 y--;
             }
@@ -149,13 +149,14 @@ public class MyersDiffUtil {
             if (D == 0) break;
 
             if (x == prevX) {
-                edits.add(0, new Edit(EditType.INSERT, b[y - 1]));
+                edits.add(new Edit(EditType.INSERT, b[y - 1]));
                 y--;
             } else {
-                edits.add(0, new Edit(EditType.DELETE, a[x - 1]));
+                edits.add(new Edit(EditType.DELETE, a[x - 1]));
                 x--;
             }
         }
+        java.util.Collections.reverse(edits);
         return edits;
     }
 
