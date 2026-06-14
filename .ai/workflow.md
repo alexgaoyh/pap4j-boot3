@@ -21,7 +21,7 @@
 * **验证 (Validate)**: 立即运行测试和代码检查 **`[Shell]`**。
 
 ## 2. 修改原则
-* **外科手术式修改**: 针对特定问题进行精准编辑。除非用户明确要求，否则不要进行无关的“顺带”重构。
+* **外科手术式修改**: 针对特定问题进行精准编辑。除非用户明确要求，否则不要进行无关的"顺带"重构。
 * **最小惊讶原则**: 遵循文件或模块中已有的命名约定和模式。
 * **无破坏性变更**: 确保 `pap4j-common` 中内部 API 的向后兼容性。
 
@@ -35,6 +35,11 @@
         *   ✅ 正确: `cd my-module; mvn clean test` 或者是 `mvn clean test -pl my-module`
     *   **顺序控制 (Sequential Control)**: 必须确保验证步骤在代码写入完全完成后再执行。
     *   **结果闭环 (Result Loop)**: 除非编译和测试全部通过，否则不应宣布任务完成。若验证失败，必须自动进行诊断并尝试修复。
+
+### 🔁 修复重试上限（强制）
+
+> 同一验证失败，**最多自主修复 2 次**。第 3 次仍失败时，立即停止并向用户汇报：完整错误信息、已尝试的两种思路、当前根因判断，并请求指令。严禁超过 2 次后继续盲目重试。
+
 *   **PowerShell 常用命令**:
   ```powershell
   mvn clean test -pl <module> "-Dtest=<test_class>" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true" "-DskipTests=false"

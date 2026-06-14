@@ -38,7 +38,7 @@
 * **依赖注入**: 强制使用构造器注入，严禁字段注入 (`@Autowired`)。
 * **单一职责与重构边界**:
     * 全新开发的方法，其行数若超过 50 行必须重构分拆。
-    * **【老代码保护】**：对于历史遗留方法或既有代码的微小修改/修复，必须严格遵循“外科手术式修改”原则，**绝对禁止对未涉及的历史老代码进行顺带重构**，以防引入回归风险或污染提交历史。
+    * **【老代码保护】**：对于历史遗留方法或既有代码的微小修改/修复，必须严格遵循"外科手术式修改"原则，**绝对禁止对未涉及的历史老代码进行顺带重构**，以防引入回归风险或污染提交历史。
 * **禁止魔法值**: 使用 `Enum` 或 `static final` 常量。
 * **Optional**: 仅用于返回值。严禁作为参数或字段。
 * **比较规范**: 使用 `Objects.equals(a, b)` 进行空安全比对。
@@ -54,7 +54,33 @@
 * **占位符**: 使用 `log.info("msg: {}", arg)`。禁止字符串拼接。
 * **异常日志**: 异常对象 `e` 必须作为最后一个参数传递：`log.error("Failed: ", e)`。
 
-## 7. 典型反面教材 (Anti-Patterns)
+## 7. 持久层规范（JPA/MyBatis 强约束）
+
+> 🚨 **本节规则适用于所有使用 JPA/Hibernate 或 MyBatis 的模块，违反即触发 `[Plan]` 强阻断。**
+
+### 7.1 关联注解禁令（硬性禁止）
+*   **严禁使用 JPA 关联映射注解**：禁止在任何 Entity 类中使用以下注解：
+    *   ❌ `@OneToMany` / `@ManyToOne` / `@ManyToMany` / `@OneToOne`（含任何 `fetch = FetchType.*` 变体）
+    *   ❌ `@JoinColumn` / `@JoinTable`（用于关联映射时）
+*   **原因**：上述注解会隐式触发 N+1 查询、笛卡尔积爆炸和不可控的懒加载异常（`LazyInitializationException`），且在多模块复杂场景下极难调试和优化。
+*   **替代方案**：所有跨表、跨实体的关联数据获取，**必须在业务服务层（Service）中显式完成**：
+    *   通过独立的 Repository/Mapper 分别查询，再在 Service 中手动组装 DTO（结果为 DTO/VO/record，禁止返回 `Map<String, Object>`）。
+    *   同一组装逻辑 3 处以上复用时，才允许提取为 `XxxAssembler` 静态工具类；否则写在 Service 方法内部。
+    *   复杂聚合查询使用原生 SQL（`@Query(nativeQuery=true)` 或 MyBatis XML）并直接映射为扁平 DTO，禁止直接返回 Entity。
+
+### 7.2 事务规范
+*   **事务边界在 Service 层**：`@Transactional` 只允许标注在 Service 层方法上，严禁标注在 Repository / Controller 上。
+*   **禁止默认传播行为被滥用**：明确声明传播行为（如 `@Transactional(propagation = Propagation.REQUIRES_NEW)`），不允许在长事务中嵌套大量不必要的子查询。
+*   **只读事务**：纯查询方法必须标注 `@Transactional(readOnly = true)`，减少数据库锁竞争。
+
+### 7.3 查询规范
+*   **禁止 `SELECT *`**：所有查询必须显式指定字段列表，禁止使用 `SELECT *`（无论 JPQL 还是原生 SQL）。
+*   **分页强制**：返回列表的查询接口，**必须**使用分页（`Pageable` 或 MyBatis `PageHelper`），严禁返回全表数据。
+*   **N+1 防御**：在循环中严禁调用数据库查询（即 `for` 循环内部不允许出现 Repository/Mapper 调用），应将循环改为批量 IN 查询（`WHERE id IN (...)`）。
+*   **禁止在 Entity 上直接暴露给接口层**：Controller 层严禁直接接收或返回 Entity 对象，必须通过 DTO/VO 转换。
+
+
+## 8. 典型反面教材 (Anti-Patterns)
 为了确保规则的绝对清晰，以下列出绝对禁止的写法及其对应的正确做法：
 
 *   **错误注入 (依赖注入)**
@@ -79,11 +105,14 @@
     *   ❌ 错误: 在 for/while 循环体内为每一行数据分配 `new ByteArrayOutputStream()`，并频繁调用 `toByteArray()` 拷贝小字节数组。
     *   ✅ 正确: 一次性读取数据块到大 `byte[]` 数组中，在方法间传递 `(byte[] bytes, int start, int end)` 等指针偏移量进行逻辑切片，实现零垃圾内存分配。
 
-## 8. 代码审计强制清单 (Mandatory Audit Checklist)
-在进行代码审查或执行 **`[Edit]`** 前，AI 必须对照以下清单进行深度“自检”，并在回复中列出：
+## 9. 代码审计强制清单 (Mandatory Audit Checklist)
+在进行代码审查或执行 **`[Edit]`** 前，AI 必须对照以下清单进行深度"自检"，并在回复中列出：
 1. **并发安全**: 是否存在 `new Thread()` 或未指定容量的无界 `LinkedBlockingQueue`？
 2. **日志规范**: 日志打印是否使用了 `+` 拼接字符串而非 SLF4J 占位符？
 3. **方法边界**: 单个方法逻辑是否超过 50 行？
 4. **精度安全**: 是否存在 `new BigDecimal(double)`？
 5. **生命周期**: 是否硬编码了 `addShutdownHook`？
-
+6. **持久层关联**: 是否存在 `@OneToMany` / `@ManyToOne` / `@ManyToMany` 等关联注解？
+7. **持久层 N+1**: 是否存在在循环内部调用 Repository/Mapper 的情况？
+8. **持久层事务**: `@Transactional` 是否仅标注在 Service 层？纯查询方法是否使用了 `readOnly = true`？
+9. **pap4j-common 公共 API 边界**: 本次修改是否涉及 `pap4j-common` 任意子模块下 `src/main/java` 中的 `public` 方法或 `public` 接口？若是，**无论改动大小，必须触发 `[Plan]` 强阻断**，不得跳过，因为这些方法是跨模块公共契约。
