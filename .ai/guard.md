@@ -69,9 +69,13 @@
     *   复杂聚合查询使用原生 SQL（`@Query(nativeQuery=true)` 或 MyBatis XML）并直接映射为扁平 DTO，禁止直接返回 Entity。
 
 ### 7.2 事务规范
-*   **事务边界在 Service 层**：`@Transactional` 只允许标注在 Service 层方法上，严禁标注在 Repository / Controller 上。
+*   **事务边界在 Service 层且严禁声明在类级别**：`@Transactional` 只允许标注在 Service 层的方法上，严禁标注在类级别，亦严禁标注在 Repository / Controller 上。
+*   **写操作精准声明**：仅在有增删改的方法上单独添加 `@Transactional(rollbackFor = Exception.class)`。
+*   **读操作按需精细化声明（防连接池枯竭）**：
+    *   常规 MyBatis 单表查询方法保持不加任何注解（“裸奔”），减少 AOP 代理开销。
+    *   仅在涉及**多表对账（读一致性）**、**JPA 脏检查优化**、**读写分离路由**这三种特定场景时，才精准在方法上添加 `@Transactional(readOnly = true)`。
+    *   严禁在包含远程 RPC/HTTP 接口调用或高耗时非 DB 计算的方法上标注 `@Transactional`，避免长事务导致数据库连接池（如 HikariCP）迅速枯竭。
 *   **禁止默认传播行为被滥用**：明确声明传播行为（如 `@Transactional(propagation = Propagation.REQUIRES_NEW)`），不允许在长事务中嵌套大量不必要的子查询。
-*   **只读事务**：纯查询方法必须标注 `@Transactional(readOnly = true)`，减少数据库锁竞争。
 
 ### 7.3 查询规范
 *   **禁止 `SELECT *`**：所有查询必须显式指定字段列表，禁止使用 `SELECT *`（无论 JPQL 还是原生 SQL）。
@@ -114,5 +118,5 @@
 5. **生命周期**: 是否硬编码了 `addShutdownHook`？
 6. **持久层关联**: 是否存在 `@OneToMany` / `@ManyToOne` / `@ManyToMany` 等关联注解？
 7. **持久层 N+1**: 是否存在在循环内部调用 Repository/Mapper 的情况？
-8. **持久层事务**: `@Transactional` 是否仅标注在 Service 层？纯查询方法是否使用了 `readOnly = true`？
+8. **持久层事务**: `@Transactional` 是否仅标注在 Service 方法级别（而非类级别或 Repository/Controller 上）？写操作是否添加了 `rollbackFor = Exception.class`？纯查询方法是否避免了无意义的注解（仅在对账、JPA优化或读写分离时使用 `readOnly = true`）？
 9. **pap4j-common 公共 API 边界**: 本次修改是否涉及 `pap4j-common` 任意子模块下 `src/main/java` 中的 `public` 方法或 `public` 接口？若是，**无论改动大小，必须触发 `[Plan]` 强阻断**，不得跳过，因为这些方法是跨模块公共契约。
