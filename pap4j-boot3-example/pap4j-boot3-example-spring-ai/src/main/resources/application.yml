@@ -1,10 +1,10 @@
 spring:
   ai:
     ollama:
-      base-url: https://hz-4.matpool.com:26793/
+      base-url: https://px-wj-1.matpool.com:26121/
       chat:
         options:
-          model: qwen2.5-coder:7b
+          model: Qwen3.6-27B
           temperature: 0.2
     embedding:
       transformer:

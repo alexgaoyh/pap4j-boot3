@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Spring AI 智能助手 - 增强版</title>
+    <!-- 引入 Google Fonts Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <!-- 引入 marked 用于解析 Markdown -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <!-- 引入 highlight.js (使用全量或常用语言包) -->
@@ -11,21 +15,25 @@
     <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
     <style>
         :root {
-            --bg-color: #f4f7f9;
+            --bg-color: #f8fafc;
             --chat-bg: #ffffff;
-            --primary-color: #007bff;
-            --text-color: #2c3e50;
-            --bot-bubble: #f8f9fa;
-            --user-bubble: #007bff;
+            --primary-color: #4f46e5;
+            --primary-hover: #4338ca;
+            --text-color: #0f172a;
+            --bot-bubble: #f1f5f9;
+            --user-bubble: #4f46e5;
             --user-text: #ffffff;
-            --border-color: #e9ecef;
-            --code-bg: #282c34;
+            --border-color: #e2e8f0;
+            --code-bg: #1e1e2e;
+            --code-header-bg: #181825;
+            --copy-btn-bg: rgba(255, 255, 255, 0.08);
+            --copy-btn-hover: rgba(255, 255, 255, 0.16);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
         body {
-            font-family: 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
+            font-family: 'Inter', 'PingFang SC', 'Microsoft YaHei', -apple-system, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             display: flex;
@@ -39,22 +47,24 @@
             max-width: 1000px;
             height: 95vh;
             background-color: var(--chat-bg);
-            border-radius: 16px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.04);
             display: flex;
             flex-direction: column;
             overflow: hidden;
+            border: 1px solid var(--border-color);
         }
 
         .chat-header {
-            padding: 18px 24px;
-            background: linear-gradient(135deg, #007bff, #0056b3);
+            padding: 20px 24px;
+            background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%);
             color: white;
-            font-size: 1.2rem;
-            font-weight: 600;
+            font-size: 1.25rem;
+            font-weight: 700;
             display: flex;
             align-items: center;
             gap: 12px;
+            box-shadow: 0 2px 10px rgba(79, 70, 229, 0.1);
         }
 
         .chat-messages {
@@ -66,71 +76,170 @@
             gap: 20px;
         }
 
+        .chat-messages::-webkit-scrollbar {
+            width: 6px;
+        }
+        .chat-messages::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .chat-messages::-webkit-scrollbar-thumb {
+            background-color: rgba(15, 23, 42, 0.08);
+            border-radius: 10px;
+        }
+        .chat-messages::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(15, 23, 42, 0.16);
+        }
+
         .message {
             max-width: 85%;
             padding: 14px 18px;
-            border-radius: 15px;
+            border-radius: 16px;
             line-height: 1.6;
             font-size: 0.95rem;
+            transition: all 0.3s ease;
         }
 
         .message.user {
             align-self: flex-end;
             background-color: var(--user-bubble);
             color: var(--user-text);
-            border-bottom-right-radius: 2px;
+            border-bottom-right-radius: 4px;
             white-space: pre-wrap;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
         }
 
         .message.bot {
             align-self: flex-start;
             background-color: var(--bot-bubble);
             color: var(--text-color);
-            border-bottom-left-radius: 2px;
+            border-bottom-left-radius: 4px;
             border: 1px solid var(--border-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.01);
         }
 
         /* 代码块增强 */
         .code-block-wrapper {
-            margin: 14px 0;
-            border-radius: 8px;
+            margin: 16px 0;
+            border-radius: 10px;
             background-color: var(--code-bg);
-            border: 1px solid #3e4451;
+            border: 1px solid rgba(255, 255, 255, 0.05);
             overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
 
         .code-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 14px;
-            background-color: #21252b;
-            color: #abb2bf;
-            font-size: 0.75rem;
+            padding: 10px 16px;
+            background-color: var(--code-header-bg);
+            color: #cdd6f4;
+            font-size: 0.8rem;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
         }
 
         .copy-btn {
-            background-color: rgba(255,255,255,0.1);
-            border: none;
-            color: #abb2bf;
-            padding: 3px 10px;
-            border-radius: 4px;
+            background-color: var(--copy-btn-bg);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #a6adc8;
+            padding: 4px 12px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 0.7rem;
-            transition: all 0.2s;
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
         }
 
-        .copy-btn:hover { background-color: rgba(255,255,255,0.2); color: #fff; }
+        .copy-btn:hover {
+            background-color: var(--copy-btn-hover);
+            color: #cdd6f4;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
 
         .message pre { margin: 0; padding: 14px; overflow-x: auto; }
         .message code { font-family: 'Fira Code', 'JetBrains Mono', monospace; font-size: 0.85rem; }
         .message-content :not(pre) > code {
-            background-color: rgba(0,0,0,0.05);
+            background-color: rgba(15, 23, 42, 0.06);
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: 6px;
             color: #d63384;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.85em;
+        }
+
+        /* Markdown 语义排版样式 */
+        .message-content h1, 
+        .message-content h2, 
+        .message-content h3, 
+        .message-content h4 {
+            margin-top: 18px;
+            margin-bottom: 10px;
+            font-weight: 600;
+            line-height: 1.3;
+            color: #0f172a;
+        }
+        .message-content h1 { font-size: 1.35rem; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+        .message-content h2 { font-size: 1.2rem; }
+        .message-content h3 { font-size: 1.1rem; }
+        .message-content h4 { font-size: 1.0rem; }
+
+        .message-content p {
+            margin-bottom: 12px;
+            line-height: 1.6;
+        }
+        .message-content p:last-child {
+            margin-bottom: 0;
+        }
+
+        .message-content ul, 
+        .message-content ol {
+            padding-left: 24px;
+            margin-bottom: 12px;
+        }
+        .message-content li {
+            margin-bottom: 6px;
+            line-height: 1.6;
+        }
+
+        .message-content blockquote {
+            border-left: 4px solid var(--primary-color);
+            padding: 8px 16px;
+            background-color: rgba(79, 70, 229, 0.04);
+            color: #475569;
+            margin: 14px 0;
+            border-radius: 4px;
+            font-style: italic;
+        }
+
+        .message-content {
+            overflow-x: auto;
+        }
+        .message-content table {
+            display: table;
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+            font-size: 0.9rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .message-content th, 
+        .message-content td {
+            border: 1px solid var(--border-color);
+            padding: 10px 14px;
+            text-align: left;
+        }
+        .message-content th {
+            background-color: #f8fafc;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        .message-content tr:nth-child(even) {
+            background-color: #f8fafc;
         }
 
         .chat-input-area {
@@ -148,10 +257,11 @@
             border-radius: 24px;
             font-size: 1rem;
             outline: none;
-            background-color: #f8f9fa;
+            background-color: #f8fafc;
+            transition: all 0.2s ease;
         }
 
-        #promptInput:focus { border-color: var(--primary-color); background-color: #fff; }
+        #promptInput:focus { border-color: var(--primary-color); background-color: #fff; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
 
         #sendBtn {
             width: 44px;
@@ -164,11 +274,13 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2);
         }
 
-        #sendBtn:hover { transform: scale(1.05); background-color: #0069d9; }
-        #sendBtn:disabled { background-color: #ced4da; cursor: not-allowed; }
+        #sendBtn:hover { transform: translateY(-2px); background-color: var(--primary-hover); box-shadow: 0 6px 16px rgba(79, 70, 229, 0.3); }
+        #sendBtn:active { transform: translateY(0); }
+        #sendBtn:disabled { background-color: #e2e8f0; color: #94a3b8; cursor: not-allowed; transform: none; box-shadow: none; }
 
         .cursor { display: inline-block; width: 2px; height: 1.2em; background-color: var(--primary-color); animation: blink 1s step-end infinite; vertical-align: middle; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
@@ -179,7 +291,7 @@
 <div class="chat-container">
     <div class="chat-header">🤖 Spring AI 智能助手</div>
     <div class="chat-messages" id="chatMessages">
-        <div class="message bot"><div class="message-content">你好！我支持多种编程语言的高亮展示。你可以通过 `languageAliasMap` 轻松扩展我识别的标签。</div></div>
+        <div class="message bot"><div class="message-content">你好！</div></div>
     </div>
     <div class="chat-input-area">
         <input type="text" id="promptInput" placeholder="输入问题..." autocomplete="off"/>
@@ -199,23 +311,69 @@
         'text': 'plaintext'
     };
 
+    function escapeHtml(text) {
+        return text
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    }
+
+    // Markdown 预处理器：规范换行符并在表格行（|）与上方未空行的文本块之间自动插入空行
+    function preprocessMarkdown(text) {
+        if (!text) return '';
+        // 1. 规范化所有回车换行符为 \n
+        const normalized = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        const lines = normalized.split('\n');
+        const processedLines = [];
+        
+        for (let i = 0; i < lines.length; i++) {
+            const currentLine = lines[i];
+            const trimmedCurrent = currentLine.trim();
+            
+            // 如果当前行是以 '|' 开头且前面有一行不是空行、也不以 '|' 开头，则强行加一个空行
+            if (trimmedCurrent.startsWith('|')) {
+                if (i > 0) {
+                    const prevLine = processedLines[processedLines.length - 1];
+                    const trimmedPrev = prevLine.trim();
+                    if (trimmedPrev !== '' && !trimmedPrev.startsWith('|')) {
+                        processedLines.push('');
+                    }
+                }
+            }
+            processedLines.push(currentLine);
+        }
+        return processedLines.join('\n');
+    }
+
     const renderer = new marked.Renderer();
     renderer.code = function(code, language) {
-        const targetLang = languageAliasMap[language?.toLowerCase()] || language;
-        let highlighted;
-        const validLang = !!(targetLang && hljs.getLanguage(targetLang));
+        let codeText = typeof code === 'object' ? (code.text || '') : code;
+        let codeLang = typeof code === 'object' ? (code.lang || language) : language;
 
-        try {
-            if (validLang) {
-                highlighted = hljs.highlight(code, { language: targetLang }).value;
-            } else {
-                highlighted = hljs.highlightAuto(code).value;
-            }
-        } catch (e) {
-            highlighted = code;
+        if (typeof codeText !== 'string') {
+            codeText = String(codeText || '');
         }
 
-        const displayLang = language || 'text';
+        const hasHljs = typeof window.hljs !== 'undefined';
+        const targetLang = languageAliasMap[codeLang?.toLowerCase()] || codeLang;
+        let highlighted;
+        const validLang = !!(hasHljs && targetLang && window.hljs.getLanguage(targetLang));
+
+        try {
+            if (validLang && hasHljs) {
+                highlighted = window.hljs.highlight(codeText, { language: targetLang }).value;
+            } else if (hasHljs) {
+                highlighted = window.hljs.highlightAuto(codeText).value;
+            } else {
+                highlighted = escapeHtml(codeText);
+            }
+        } catch (e) {
+            highlighted = escapeHtml(codeText);
+        }
+
+        const displayLang = codeLang || 'text';
 
         return `
             <div class="code-block-wrapper">
@@ -223,12 +381,12 @@
                     <span>${displayLang}</span>
                     <button class="copy-btn" onclick="copyCode(this)">复制</button>
                 </div>
-                <pre><code class="hljs ${validLang ? 'language-' + targetLang : ''}">${code.text}</code></pre>
+                <pre><code class="hljs ${validLang ? 'language-' + targetLang : ''}">${highlighted}</code></pre>
             </div>
         `;
     };
 
-    marked.setOptions({ renderer: renderer, breaks: true, gfm: true });
+    marked.use({ renderer: renderer, breaks: true, gfm: true });
 
     function copyCode(btn) {
         const code = btn.parentElement.nextElementSibling.innerText;
@@ -244,7 +402,7 @@
         msgDiv.className = `message ${sender}`;
         const contentDiv = document.createElement('div');
         contentDiv.className = 'message-content';
-        if (sender === 'bot') contentDiv.innerHTML = marked.parse(text);
+        if (sender === 'bot') contentDiv.innerHTML = marked.parse(preprocessMarkdown(text));
         else contentDiv.textContent = text;
         msgDiv.appendChild(contentDiv);
         chatMessages.appendChild(msgDiv);
@@ -284,58 +442,69 @@
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let buffer = '';
+            let eventLines = [];
+            let hasData = false;
 
-            // 鲁棒的 SSE 解析逻辑
+            // 完美的流式行和多行事件缓冲区解析，符合 W3C SSE 规范，确保还原 Markdown 换行与表格
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
-                const chunk = decoder.decode(value, { stream: true });
-                // SSE 以双换行分割事件块
-                const events = chunk.split('\n\n');
+                buffer += decoder.decode(value, { stream: true });
 
-                for (const event of events) {
-                    if (!event.trim()) continue;
+                let lineIndex;
+                while ((lineIndex = buffer.indexOf('\n')) !== -1) {
+                    const line = buffer.slice(0, lineIndex);
+                    buffer = buffer.slice(lineIndex + 1);
 
-                    const lines = event.split('\n');
-                    let eventData = "";
-                    let hasData = false;
-
-                    for (const line of lines) {
-                        if (line.startsWith('data:')) {
-                            hasData = true;
-                            let content = line.slice(5);
-                            if (content.startsWith(' ')) content = content.slice(1);
-                            eventData += content + (lines.length > 1 ? '\n' : '');
+                    // 兼容 Windows 系统的回车符 \r
+                    const cleanLine = line.replace(/\r$/, '');
+                    if (cleanLine.startsWith('data:')) {
+                        hasData = true;
+                        let content = cleanLine.slice(5);
+                        if (content.startsWith(' ')) {
+                            content = content.slice(1);
                         }
-                    }
-
-                    if (hasData) {
-                        // 如果是一个多行 data 事件，最后会多出一个 \n，去掉它
-                        if (lines.length > 1 && eventData.endsWith('\n')) {
-                            eventData = eventData.slice(0, -1);
-                        }
-
-                        // 【核心修复】：在 Spring AI/WebFlux 中，如果 Flux 发送的是一个换行符 token，
-                        // 表现为 data: 后面直接跟着 \n\n。
-                        // 这里我们检测如果 eventData 是空的，但确实收到了 data 标签，
-                        // 则极有可能是 AI 发送的一个换行符。
-                        if (eventData === "") {
-                            fullResponse += '\n';
-                        } else {
-                            fullResponse += eventData;
+                        eventLines.push(content);
+                    } else if (cleanLine === '') {
+                        if (hasData) {
+                            // 一个完整的 SSE 事件块结束，将其包含的行拼接加入 fullResponse
+                            fullResponse += eventLines.join('\n');
+                            eventLines = [];
+                            hasData = false;
                         }
                     }
                 }
 
-                // 实时渲染
-                botContentDiv.innerHTML = marked.parse(fullResponse) + '<span class="cursor"></span>';
+                // 实时打字机渲染（包含当前正在拼接缓冲的数据，提供流畅的打字效果）
+                const tempResponse = fullResponse + (hasData ? eventLines.join('\n') : '');
+                botContentDiv.innerHTML = marked.parse(preprocessMarkdown(tempResponse)) + '<span class="cursor"></span>';
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
+
+            // 处理流结束后的可能残余缓冲区数据
+            if (buffer.length > 0) {
+                const cleanLine = buffer.replace(/\r$/, '');
+                if (cleanLine.startsWith('data:')) {
+                    hasData = true;
+                    let content = cleanLine.slice(5);
+                    if (content.startsWith(' ')) {
+                        content = content.slice(1);
+                    }
+                    eventLines.push(content);
+                }
+            }
+            if (hasData && eventLines.length > 0) {
+                fullResponse += eventLines.join('\n');
+                eventLines = [];
+                hasData = false;
+            }
+
         } catch (error) {
             botContentDiv.innerHTML = "错误: " + error.message;
         } finally {
-            botContentDiv.innerHTML = marked.parse(fullResponse);
+            botContentDiv.innerHTML = marked.parse(preprocessMarkdown(fullResponse));
             sendBtn.disabled = false;
             promptInput.disabled = false;
             promptInput.focus();
