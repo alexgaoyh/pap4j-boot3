@@ -1,5 +1,8 @@
 package cn.net.pap.common.spider.util;
 
+import com.github.tomakehurst.wiremock.WireMockServer;
+import java.net.Proxy;
+import java.net.InetSocketAddress;
 import okhttp3.ConnectionPool;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
@@ -22,6 +25,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static com.github.tomakehurst.wiremock.client.WireMock.*;
+import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
 public class OkHttpBatchExecutorTest {
 
@@ -486,6 +491,52 @@ public class OkHttpBatchExecutorTest {
                 // 优化池保留了全部连接，第二批应该几乎 0 新增
                 assertTrue(newConnectionsInBatch2 <= 1, "优化池应该实现连接完美复用，几乎不产生新握手");
             }
+        }
+    }
+
+    /**
+     * 测试通过 WireMock 开启浏览器代理模式 (enableBrowserProxying = true)。
+     * 当 OkHttpClient 配置该代理后，发往外部任意 IP:Port 的请求（如 192.0.2.1:54321） 均会自动被代理路由至本地 WireMock，实现无需修改业务端 API 地址的物理拦截。
+     */
+    @Test
+    public void testWireMockProxyForArbitraryIpPort() throws Exception {
+        // 1. 初始化并启动配置了浏览器代理的 WireMock 实例
+        WireMockServer wireMockServer = new WireMockServer(options()
+                .dynamicPort()
+                .enableBrowserProxying(true));
+
+        wireMockServer.start();
+
+        try {
+            // 2. 为目标路由注册 Stub 定义：匹配任意 Host/IP/Port，只要请求的 Path 匹配即可返回定义的值
+            wireMockServer.stubFor(post(urlEqualTo("/api/getUser"))
+                    .willReturn(aResponse()
+                            .withStatus(200)
+                            .withHeader("Content-Type", "application/json; charset=utf-8")
+                            .withBody("{\"status\":\"success\",\"name\":\"WireMockUser\"}")));
+
+            // 3. 构建配置了 WireMock 为代理服务器的 OkHttpClient
+            Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress("127.0.0.1", wireMockServer.port()));
+            OkHttpClient clientWithProxy = new OkHttpClient.Builder()
+                    .proxy(proxy)
+                    .build();
+
+            // 4. 将配置好代理的客户端注入批处理器，发起针对外部随机 IP 和端口的请求
+            try (OkHttpBatchExecutor proxyExecutor = new OkHttpBatchExecutor(clientWithProxy, 1, 1, 5, 100)) {
+                String arbitraryExternalUrl = "http://192.0.2.1:54321/api/getUser";
+                List<String> bodies = Collections.singletonList("{\"id\":123}");
+
+                List<OkHttpBatchExecutor.BatchResult> results = proxyExecutor.executeBatch(arbitraryExternalUrl, bodies);
+
+                // 5. 校验返回结果是否符合 Mock 定义
+                assertEquals(1, results.size());
+                OkHttpBatchExecutor.BatchResult result = results.get(0);
+                assertEquals(OkHttpBatchExecutor.Status.SUCCESS, result.status());
+                assertEquals("{\"status\":\"success\",\"name\":\"WireMockUser\"}", result.data());
+            }
+        } finally {
+            // 6. 销毁并关闭本地 WireMock 服务
+            wireMockServer.stop();
         }
     }
 
