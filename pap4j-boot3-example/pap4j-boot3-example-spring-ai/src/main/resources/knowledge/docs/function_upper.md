@@ -6,20 +6,22 @@
 > - **类型**：自定义函数
 > - **关键字**：大写, uppercase, 转换
 
-
-
+### 💡 核心介绍
 UPPER 是 QLExpress 引擎中将字符串中所有字母转换为大写形式的函数。它适用于需要对字符串进行大写标准化的场景，例如将状态码、国家代码、货币代码等统一转为大写格式，确保数据规范。
 
-**函数签名**：`UPPER(s)`
+### 📝 语法签名
+`UPPER(s)`
 - 参数 s 是待转换的字符串。
 
-**使用示例**：
+### 💻 推荐代码示例
+
 ```ql
 UPPER(json.code)
 ```
 这段脚本将 code 字段的值转为全大写，例如字符串 'active' 会被转换为 'ACTIVE'，字符串 'usd' 会被转换为 'USD'。
 
-**使用建议**：在调用 UPPER 函数之前，应先使用 [ISBLANK](function_isblank.md) 函数对字符串进行空值检查，避免将 null 值传入 UPPER 导致运行时异常。推荐的防御性写法为：
+### ⚠️ 使用建议
+在调用 UPPER 函数之前，应先使用 [ISBLANK](function_isblank.md) 函数对字符串进行空值检查，避免将 null 值传入 UPPER 导致运行时异常。推荐的防御性写法为：
 ```ql
 ISBLANK(json.code) ? '' : UPPER(json.code)
 ```
