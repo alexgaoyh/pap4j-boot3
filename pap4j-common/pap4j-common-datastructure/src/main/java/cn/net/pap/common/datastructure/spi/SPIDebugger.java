@@ -57,6 +57,25 @@ public class SPIDebugger {
      */
     public static void printAllSPIs() {
 
+        log.info("=== Scanning JPMS Module Layer SPI ===");
+        try {
+            ModuleLayer.boot().modules().forEach(module -> {
+                var descriptor = module.getDescriptor();
+                if (descriptor != null) {
+                    descriptor.provides().forEach(provides -> {
+                        String serviceName = provides.service();
+                        log.info("JPMS SPI Interface : {} (provided by module: {})", serviceName, module.getName());
+                        provides.providers().forEach(impl -> {
+                            log.info("  -> Implement Class : {}", impl);
+                        });
+                    });
+                }
+            });
+        } catch (Throwable t) {
+            log.warn("Failed to scan JPMS Module Layer SPI: {}", t.getMessage());
+        }
+
+        log.info("=== Scanning Classpath META-INF/services SPI ===");
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
         log.info("ClassLoader : {}", classLoader);
 
@@ -74,15 +93,39 @@ public class SPIDebugger {
                                 String spiInterface = file.getFileName().toString();
                                 try {
                                     Class<?> service = Class.forName(spiInterface, false, classLoader);
-                                    log.info("SPI Interface : {}", service.getName());
+                                    log.info("Classpath SPI Interface : {}", service.getName());
                                     printServiceLoaderImplementations(service);
                                 } catch (Exception e) {
-                                    log.error("Can't Load SPI Interface : {}", spiInterface, e);
+                                    log.error("Can't Load Classpath SPI Interface : {}", spiInterface, e);
                                 }
                             });
                         }
                     } catch (Exception e) {
                         log.error("Can't Load SPI Dir : {}", url, e);
+                    }
+                } else if (url.getProtocol().equals("jar")) {
+                    try {
+                        java.net.JarURLConnection conn = (java.net.JarURLConnection) url.openConnection();
+                        java.util.jar.JarFile jarFile = conn.getJarFile();
+                        java.util.Enumeration<java.util.jar.JarEntry> entries = jarFile.entries();
+                        while (entries.hasMoreElements()) {
+                            java.util.jar.JarEntry entry = entries.nextElement();
+                            String name = entry.getName();
+                            if (name.startsWith("META-INF/services/") && name.length() > "META-INF/services/".length() && !entry.isDirectory()) {
+                                String spiInterface = name.substring("META-INF/services/".length());
+                                if (!spiInterface.contains("/")) {
+                                    try {
+                                        Class<?> service = Class.forName(spiInterface, false, classLoader);
+                                        log.info("Classpath SPI Interface (from JAR): {}", service.getName());
+                                        printServiceLoaderImplementations(service);
+                                    } catch (Exception e) {
+                                        log.debug("Can't Load Classpath SPI Interface from JAR : {}", spiInterface);
+                                    }
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        log.error("Can't Load JAR SPI : {}", url, e);
                     }
                 }
             }
