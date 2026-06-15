@@ -77,7 +77,6 @@ public class AiAssistantConfig {
 
         // 2. 注入到 ChatClient 中
         return builder
-                .defaultSystem("你是一个资深 Java 开发架构师。请参考提供的上下文回答用户的开发问题。如果没有找到确切答案，请基于你的知识合理推断并说明。")
                 .defaultAdvisors(memoryAdvisor)
                 .build();
     }

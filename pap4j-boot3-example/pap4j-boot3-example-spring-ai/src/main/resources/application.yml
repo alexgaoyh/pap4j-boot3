@@ -20,3 +20,5 @@ ai:
   knowledge:
     docs-location: classpath:/knowledge/docs/
     vector-store-path: ${java.io.tmpdir}/pap4j-boot3-example-spring-ai/vector
+  assistant:
+    persona: Java 开发架构师
