@@ -87,7 +87,7 @@ public class AiAssistantConfig {
     private void loadAndVectorizeKnowledge(SimpleVectorStore vectorStore) {
         try {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            Resource[] resources = resolver.getResources(docsLocation + "*.yml");
+            Resource[] resources = resolver.getResources(docsLocation + "*.md");
 
             List<Document> allDocuments = new ArrayList<>();
             for (Resource resource : resources) {
@@ -95,12 +95,9 @@ public class AiAssistantConfig {
                 allDocuments.addAll(textReader.get());
             }
 
-            // 对文本进行切块，避免超出模型的输入上下文窗口
-            TokenTextSplitter splitter = new TokenTextSplitter(true);
-            List<Document> splitDocuments = splitter.apply(allDocuments);
-
-            // 加入向量库（此时会自动调用 EmbeddingModel 将文本转为数字向量）
-            vectorStore.add(splitDocuments);
+            // 【RAG 优化】：由于每个 MD 文件均小于 1.5KB，已属于理想的独立语义单元，
+            // 绕过 TokenTextSplitter 分块器直接导入向量库，避免切分造成上下文割裂。
+            vectorStore.add(allDocuments);
 
         } catch (IOException e) {
             throw new RuntimeException("读取本地知识文档失败", e);

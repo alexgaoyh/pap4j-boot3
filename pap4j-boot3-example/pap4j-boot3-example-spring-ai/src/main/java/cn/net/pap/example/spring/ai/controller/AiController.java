@@ -12,8 +12,12 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @RestController
@@ -38,16 +42,37 @@ public class AiController {
     public Flux<String> chatStream(@RequestBody ChatRequest request) {
         String chatId = request.chatId() != null ? request.chatId() : "default-chat-id";
 
-        // 1. 手动检索知识库 (RAG)
-        List<Document> docs = vectorStore.similaritySearch(
+        // 1. 第一次检索：基于用户问题语义召回 (RAG)
+        List<Document> docs = new ArrayList<>(vectorStore.similaritySearch(
                 SearchRequest.builder()
                         .query(request.prompt())
                         .topK(3)
                         .build()
-        );
+        ));
+
+        // 2. 第二次检索：从已召回文档中提取跨文件链接，跟随链接补召关联知识
+        List<String> linkedTexts = extractMarkdownLinkTexts(docs);
+        if (!linkedTexts.isEmpty()) {
+            String linkQuery = String.join(" ", linkedTexts);
+            List<Document> extraDocs = vectorStore.similaritySearch(
+                    SearchRequest.builder()
+                            .query(linkQuery)
+                            .topK(linkedTexts.size())
+                            .build()
+            );
+            // 按文本内容去重合并
+            Set<String> seenTexts = docs.stream().map(Document::getText).collect(Collectors.toSet());
+            for (Document extra : extraDocs) {
+                if (!seenTexts.contains(extra.getText())) {
+                    docs.add(extra);
+                    seenTexts.add(extra.getText());
+                }
+            }
+        }
+
         String context = docs.stream()
                 .map(Document::getText)
-                .collect(Collectors.joining("\n\n"));
+                .collect(Collectors.joining("\n\n---\n\n"));
 
         // 2. 构造 System提示词 (SystemPromptTemplate)
         String systemTemplateText = """
@@ -86,4 +111,28 @@ public class AiController {
      * 对话请求 DTO
      */
     public record ChatRequest(String prompt, String chatId) {}
+
+    /**
+     * 从文档列表中提取所有 markdown 跨文件链接的显示文本。
+     * 例如 "详见 [DIV2 — 高精度舍入除法函数](function_div2.md)" 会提取出 "DIV2 — 高精度舍入除法函数"。
+     * 这些显示文本描述了被链接文档的核心内容，将作为二次检索的查询词，
+     * 从而把关联文档也召回到上下文中。
+     */
+    private List<String> extractMarkdownLinkTexts(List<Document> docs) {
+        Pattern pattern = Pattern.compile("\\[([^\\]]+)\\]\\(([^)]+\\.md)\\)");
+        return docs.stream()
+                .map(Document::getText)
+                .flatMap(text -> {
+                    Matcher matcher = pattern.matcher(text);
+                    List<String> texts = new ArrayList<>();
+                    while (matcher.find()) {
+                        // 取链接的显示文本作为语义查询词，比用文件路径更具语义
+                        texts.add(matcher.group(1));
+                    }
+                    return texts.stream();
+                })
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
 }
