@@ -18,6 +18,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedList;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static org.opencv.core.Core.*;
 import static org.opencv.core.CvType.CV_32F;
@@ -30,25 +32,92 @@ import static org.opencv.imgproc.Imgproc.*;
  */
 public class OpenCVUtils {
 
+    private static final Logger log = LoggerFactory.getLogger(OpenCVUtils.class);
+
     static {
+        loadOpenCV();
+    }
+
+    private static void loadOpenCV() {
         String osName = System.getProperty("os.name").toLowerCase();
+        String libName = null;
         if (osName.contains("win")) {
-            URL url = ClassLoader.getSystemResource("opencv_java401.dll");
-            if(url != null) {
-                System.load(url.getPath());
-            } else {
-                System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-            }
-        }
-        if (osName.contains("linux")) {
-            URL url = ClassLoader.getSystemResource("libopencv_java401.so");
-            if(url != null) {
-                System.load(url.getPath());
-            } else {
-                System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
-            }
+            libName = "opencv_java401.dll";
+        } else if (osName.contains("linux")) {
+            libName = "libopencv_java401.so";
         }
 
+        if (libName == null) {
+            try {
+                System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            } catch (Throwable t) {
+                log.error("Failed to load native library for unsupported OS: " + osName, t);
+            }
+            return;
+        }
+
+        // 在加载新库前，扫描并清理上一次进程由于 Windows 独占锁未删除成功的历史临时文件
+        cleanLegacyTempFiles(libName);
+
+        // 1. 优先尝试直接 System.loadLibrary
+        try {
+            System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            return;
+        } catch (UnsatisfiedLinkError e) {
+            // 说明 java.library.path 里没有，我们需要从 classpath 中提取
+        }
+
+        // 2. 从 classpath 资源中提取并保存到临时目录进行加载
+        try (java.io.InputStream in = OpenCVUtils.class.getClassLoader().getResourceAsStream(libName)) {
+            if (in == null) {
+                log.warn("Native library {} not found in classpath. Attempting fallback.", libName);
+                return;
+            }
+            java.io.File tempFile = java.io.File.createTempFile("opencv_java401_", "_" + libName);
+            tempFile.deleteOnExit();
+
+            try (java.io.FileOutputStream out = new java.io.FileOutputStream(tempFile)) {
+                byte[] buffer = new byte[8192];
+                int bytesRead;
+                while ((bytesRead = in.read(buffer)) != -1) {
+                    out.write(buffer, 0, bytesRead);
+                }
+            }
+
+            System.load(tempFile.getAbsolutePath());
+        } catch (Throwable t) {
+            log.error("Failed to load native library from classpath: " + libName, t);
+            try {
+                System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
+            } catch (Throwable ex) {
+                // 忽略兜底失败
+            }
+        }
+    }
+
+    /**
+     * 扫描临时目录，清除历史由于独占锁导致删除失败的遗留临时文件。
+     */
+    private static void cleanLegacyTempFiles(String libName) {
+        try {
+            String tempDir = System.getProperty("java.io.tmpdir");
+            java.io.File dir = new java.io.File(tempDir);
+            if (dir.exists() && dir.isDirectory()) {
+                java.io.File[] files = dir.listFiles((d, name) -> name.startsWith("opencv_java401_") && name.endsWith(libName));
+                if (files != null) {
+                    for (java.io.File f : files) {
+                        try {
+                            // 尝试删除。若文件被另一个正在运行的 JVM 独占（例如其它服务实例），Windows 会拒绝删除，从而不会产生误删
+                            // 若是已经结束的历史进程留下的，锁已释放，则会被完美清除
+                            f.delete();
+                        } catch (Exception ignored) {
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to clean legacy temporary native libraries: {}", e.getMessage());
+        }
     }
 
     /**

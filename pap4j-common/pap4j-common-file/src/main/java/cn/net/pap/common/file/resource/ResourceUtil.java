@@ -38,15 +38,40 @@ public class ResourceUtil {
             } catch (URISyntaxException e) {
                 throw new IOException(e);
             }
-        } else if ("jar".equals(resourceUrl.getProtocol())) {
-            // jar 内部
-            String jarPath = resourceUrl.getPath().substring(5, resourceUrl.getPath().indexOf("!"));
-            try (FileSystem fs = FileSystems.newFileSystem(Paths.get(jarPath), (ClassLoader) null)) {
-                Path sourcePath = fs.getPath("/" + resourceBase);
-                Files.walk(sourcePath).forEach(src -> copyOne(src, sourcePath, outputPath));
-            }
         } else {
-            throw new IOException("不支持的协议: " + resourceUrl.getProtocol());
+            // 兼容所有归档/模块化文件系统协议（如 jar、zip、nested 等）
+            try {
+                java.net.URI uri = resourceUrl.toURI();
+                try (FileSystem fs = FileSystems.newFileSystem(uri, java.util.Collections.emptyMap())) {
+                    Path sourcePath = fs.getPath("/" + resourceBase);
+                    Files.walk(sourcePath).forEach(src -> copyOne(src, sourcePath, outputPath));
+                }
+            } catch (Exception e) {
+                // Fallback 方案：处理带 ! 的复杂嵌套加载器路径（如 Spring Boot 嵌套 jar）
+                String urlStr = resourceUrl.toString();
+                if (urlStr.contains("!")) {
+                    int exIndex = urlStr.indexOf("!");
+                    String jarPathStr = urlStr.substring(0, exIndex);
+                    // 剥离各种协议前缀
+                    if (jarPathStr.startsWith("jar:file:")) {
+                        jarPathStr = jarPathStr.substring(9);
+                    } else if (jarPathStr.startsWith("file:")) {
+                        jarPathStr = jarPathStr.substring(5);
+                    } else if (jarPathStr.startsWith("jar:")) {
+                        jarPathStr = jarPathStr.substring(4);
+                    }
+                    // 规范化 Windows 下的盘符路径 (如 /D:/ 转为 D:/)
+                    if (jarPathStr.startsWith("/") && jarPathStr.contains(":") && !jarPathStr.startsWith("//")) {
+                        jarPathStr = jarPathStr.substring(1);
+                    }
+                    try (FileSystem fs = FileSystems.newFileSystem(Paths.get(jarPathStr), (ClassLoader) null)) {
+                        Path sourcePath = fs.getPath("/" + resourceBase);
+                        Files.walk(sourcePath).forEach(src -> copyOne(src, sourcePath, outputPath));
+                    }
+                } else {
+                    throw new IOException("无法解析该资源的 URL 协议: " + resourceUrl.getProtocol() + ", URL: " + resourceUrl, e);
+                }
+            }
         }
     }
 

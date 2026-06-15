@@ -57,6 +57,8 @@ public class JsoupUtil {
 
             Field[] fields = dto.getClass().getDeclaredFields();
             for (Field field : fields) {
+                // JPMS 风险提示：在 Java 9+ 模块化环境下，如果传入的 DTO 对象所在的包没有向当前模块开放（opens），此处会抛出 InaccessibleObjectException 异常。
+                // 解决方案：可在该 DTO 的 module-info.java 中进行 opens 声明；或优先考虑重构为调用 public 的 Getter 方法获取属性值。
                 field.setAccessible(true);
                 String fieldName = field.getName();
                 Object fieldValue = field.get(dto);

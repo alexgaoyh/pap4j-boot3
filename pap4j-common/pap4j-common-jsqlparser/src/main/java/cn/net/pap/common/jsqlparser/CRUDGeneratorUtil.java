@@ -45,6 +45,8 @@ public class CRUDGeneratorUtil {
         List<String> values = new ArrayList<>();
         for (Field field : fields) {
             if (field.isAnnotationPresent(JsonProperty.class)) {
+                // JPMS 风险提示：在 Java 9+ 模块化环境下，如果被反射的实体类包未向当前模块开放（opens），此处会抛出 InaccessibleObjectException 异常。
+                // 解决方案：可在外部 module-info.java 中进行 opens 声明；或优先考虑重构为调用 public 的 Getter 方法获取属性值。
                 field.setAccessible(true);
                 JsonProperty jsonProperty = field.getAnnotation(JsonProperty.class);
                 sql.append(toUnderScoreCase(jsonProperty.value())).append(", ");
@@ -71,6 +73,8 @@ public class CRUDGeneratorUtil {
         List<String> setClauses = new ArrayList<>();
         String whereClause = "";
         for (Field field : fields) {
+            // JPMS 风险提示：在 Java 9+ 模块化环境下，如果被反射的实体类包未向当前模块开放（opens），此处会抛出 InaccessibleObjectException 异常。
+            // 解决方案：可在外部 module-info.java 中进行 opens 声明；或优先考虑重构为调用 public 的 Getter 方法获取属性值。
             field.setAccessible(true);
             if (field.isAnnotationPresent(JsonProperty.class)) {
                 JsonProperty jsonProperty = field.getAnnotation(JsonProperty.class);
@@ -100,6 +104,8 @@ public class CRUDGeneratorUtil {
 
         Field[] fields = clazz.getDeclaredFields();
         for (Field field : fields) {
+            // JPMS 风险提示：在 Java 9+ 模块化环境下，如果被反射的实体类包未向当前模块开放（opens），此处会抛出 InaccessibleObjectException 异常。
+            // 解决方案：可在外部 module-info.java 中进行 opens 声明；或优先考虑重构为调用 public 的 Getter 方法获取属性值。
             field.setAccessible(true);
             if (field.isAnnotationPresent(JsonProperty.class) && field.getName().equals("id")) {
                 JsonProperty jsonProperty = field.getAnnotation(JsonProperty.class);
