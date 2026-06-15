@@ -14,6 +14,10 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import org.openqa.selenium.logging.LogEntries;
+import org.openqa.selenium.logging.LogEntry;
+import org.openqa.selenium.logging.LogType;
+import org.openqa.selenium.logging.LoggingPreferences;
 
 /**
  * <p><strong>TakeScreenshotTest</strong></p>
@@ -50,6 +54,12 @@ import java.nio.file.StandardCopyOption;
  *         因此对本类进行了优化，支持通过 System Properties 动态配置抓取 URL（{@code screenshot.url}）、窗口大小（{@code screenshot.windowSize}）等。
  *         同时，为避免在测试运行时将图片直接输出到项目 {@code target} 目录下从而污染提交历史，本类在未指定保存路径时默认使用 {@link File#createTempFile} 写入系统临时文件夹。
  *     </li>
+ *     <li>
+ *         <b>高级网络与控制台日志增强（增量功能）：</b><br>
+ *         针对包含大量异步 AJAX 网络请求的复杂动态界面，本类在原有截图逻辑之上增量集成了浏览器 {@code Console} 控制台日志和 {@code Performance} 网络日志捕获能力。
+ *         为避免引入特定版本的 Chrome DevTools Protocol（CDP）依赖而导致在不同 Selenium 4.x 环境下编译失败，本类通过 {@code goog:loggingPrefs} 激活日志输出，
+ *         并在测试尾部通过轻量级、零第三方 JSON 依赖的纯字符串过滤解析方式，优雅地捕获并输出底层的 AJAX 请求/响应详情及 JavaScript 报错，极大增强了排查动态复杂接口的可靠性。
+ *     </li>
  * </ol>
  *
  * <p><b>参数化设计说明：</b><br>
@@ -77,6 +87,10 @@ public class TakeScreenshotTest {
         String windowSize = System.getProperty("screenshot.windowSize", "1280,1024");
         int sleepMs = Integer.getInteger("screenshot.sleepMs", 1500);
 
+        LoggingPreferences logPrefs = new LoggingPreferences();
+        logPrefs.enable(LogType.BROWSER, java.util.logging.Level.ALL);
+        logPrefs.enable(LogType.PERFORMANCE, java.util.logging.Level.ALL);
+
         WebDriver driver = null;
         try {
             // 尝试初始化 Chrome Headless
@@ -84,6 +98,7 @@ public class TakeScreenshotTest {
             options.addArguments("--headless");
             options.addArguments("--window-size=" + windowSize);
             options.addArguments("--disable-gpu");
+            options.setCapability("goog:loggingPrefs", logPrefs);
             driver = new ChromeDriver(options);
         } catch (Exception e) {
             log.warn("Chrome Headless 启动失败，尝试 Edge: {}", e.getMessage());
@@ -93,6 +108,7 @@ public class TakeScreenshotTest {
                 options.addArguments("--headless");
                 options.addArguments("--window-size=" + windowSize);
                 options.addArguments("--disable-gpu");
+                options.setCapability("goog:loggingPrefs", logPrefs);
                 driver = new EdgeDriver(options);
             } catch (Exception ex) {
                 log.error("Edge Headless 启动失败: ", ex);
@@ -109,11 +125,90 @@ public class TakeScreenshotTest {
 
                 Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 log.info("截图成功！已保存至: {}", dest.getAbsolutePath());
+
+                // 1. 读取并打印浏览器控制台日志（Console Logs）
+                try {
+                    LogEntries consoleLogs = driver.manage().logs().get(LogType.BROWSER);
+                    for (LogEntry entry : consoleLogs) {
+                        log.info("[Browser Console] [{}] {}", entry.getLevel(), entry.getMessage());
+                    }
+                } catch (Exception e) {
+                    log.warn("无法获取浏览器控制台日志: {}", e.getMessage());
+                }
+
+                // 2. 读取并打印浏览器网络性能日志（Network Logs）
+                try {
+                    LogEntries perfLogs = driver.manage().logs().get(LogType.PERFORMANCE);
+                    for (LogEntry entry : perfLogs) {
+                        parseAndLogNetworkEvent(entry.getMessage());
+                    }
+                } catch (Exception e) {
+                    log.warn("无法获取浏览器网络日志: {}", e.getMessage());
+                }
+
             } finally {
                 driver.quit();
             }
         } else {
             log.error("未能初始化任何 WebDriver 实例。请确保本地安装了 Chrome 或 Edge 浏览器。");
         }
+    }
+
+    private void parseAndLogNetworkEvent(String rawMessage) {
+        try {
+            if (rawMessage.contains("Network.requestWillBeSent")) {
+                int urlIdx = rawMessage.indexOf("\"url\":\"");
+                if (urlIdx != -1) {
+                    String sub = rawMessage.substring(urlIdx + 7);
+                    String url = sub.substring(0, sub.indexOf("\""));
+                    
+                    int methodIdx = rawMessage.indexOf("\"method\":\"");
+                    String method = "GET";
+                    if (methodIdx != -1) {
+                        String methodSub = rawMessage.substring(methodIdx + 10);
+                        method = methodSub.substring(0, methodSub.indexOf("\""));
+                        if (method.equals("Network.requestWillBeSent")) {
+                            method = "REQ";
+                        }
+                    }
+                    log.info("[Network Request] {} -> {}", method, truncateUrl(url));
+                }
+            } else if (rawMessage.contains("Network.responseReceived")) {
+                int urlIdx = rawMessage.indexOf("\"url\":\"");
+                if (urlIdx != -1) {
+                    String sub = rawMessage.substring(urlIdx + 7);
+                    String url = sub.substring(0, sub.indexOf("\""));
+                    
+                    int statusIdx = rawMessage.indexOf("\"status\":");
+                    int status = 200;
+                    if (statusIdx != -1) {
+                        String statusSub = rawMessage.substring(statusIdx + 9);
+                        int endIdx = 0;
+                        while (endIdx < statusSub.length() && Character.isDigit(statusSub.charAt(endIdx))) {
+                            endIdx++;
+                        }
+                        if (endIdx > 0) {
+                            status = Integer.parseInt(statusSub.substring(0, endIdx));
+                        }
+                    }
+                    log.info("[Network Response] Status: {} -> {}", status, truncateUrl(url));
+                }
+            }
+        } catch (Exception e) {
+            log.debug("解析网络日志失败: {}", e.getMessage());
+        }
+    }
+
+    private String truncateUrl(String url) {
+        if (url == null) {
+            return "";
+        }
+        if (url.startsWith("data:")) {
+            return url.substring(0, Math.min(url.length(), 60)) + "... [Base64/Inline]";
+        }
+        if (url.length() > 150) {
+            return url.substring(0, 150) + "...";
+        }
+        return url;
     }
 }
