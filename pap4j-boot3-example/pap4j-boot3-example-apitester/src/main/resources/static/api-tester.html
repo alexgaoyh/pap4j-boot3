@@ -2,48 +2,199 @@
 <html lang="zh">
 <head>
     <meta charset="UTF-8">
-    <title>API Tester</title>
+    <title>🌐 pap4j-boot3 API Tester</title>
     <style>
-        body {
-            font-family: sans-serif;
-            margin: 30px;
-            max-width: 900px;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: #151d30;
+            --bg-tertiary: #1e293b;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: rgba(255, 255, 255, 0.08);
+            --border-focus: #3b82f6;
+            --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
         }
 
-        input, select, textarea, button {
-            padding: 6px;
-            margin: 4px 0;
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: radial-gradient(circle at top right, #1e1b4b 0%, var(--bg-primary) 65%);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* 默认 PC 双栏布局：主区 + 侧栏常驻 */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 1fr 360px;
+            min-height: 100vh;
+            transition: all 0.3s ease;
+        }
+
+        .main-container {
+            width: 100%;
+            padding: 40px 24px;
             box-sizing: border-box;
         }
 
-        button {
-            cursor: pointer;
+        .app-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 32px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
         }
 
-        .headers, .bodyEditor {
-            margin-bottom: 10px;
+        .header-info h1 {
+            margin: 0 0 6px 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #60a5fa 0%, #3b82f6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
+        .subtitle {
+            margin: 0;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        .subtitle a {
+            color: #60a5fa;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        .subtitle a:hover {
+            color: #93c5fd;
+            text-decoration: underline;
+        }
+
+        /* 卡片面板样式 */
+        .card {
+            background: rgba(21, 29, 48, 0.5);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(16px);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            margin-bottom: 24px;
+            overflow: hidden;
+            transition: border-color 0.2s;
+        }
+
+        .card:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .card-header {
+            background: rgba(30, 41, 59, 0.3);
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .card-header h3 {
+            margin: 0;
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-body {
+            padding: 20px;
+        }
+
+        /* 统一输入框与下拉选择框样式 */
+        .input-field, .select-field, .textarea-field {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        .input-field:focus, .select-field:focus, .textarea-field:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+            background: rgba(15, 23, 42, 0.9);
+        }
+
+        /* URL 地址栏样式 */
+        .url-bar {
+            display: flex;
+            gap: 12px;
+        }
+
+        .method-select {
+            flex: 1.5;
+            min-width: 110px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .url-input {
+            flex: 7;
+            font-family: 'Fira Code', monospace;
+        }
+
+        /* 请求配置网格布局 */
+        .request-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.2fr;
+            gap: 24px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .request-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Headers / Body 字段键值对布局 */
         .pair {
             display: flex;
-            gap: 8px;
-            margin-bottom: 5px;
+            gap: 10px;
+            margin-bottom: 10px;
             align-items: center;
         }
 
-        textarea {
-            width: 100%;
+        .pair input, .pair select {
+            margin: 0;
         }
 
-        pre {
-            background: #f8f8f8;
-            padding: 10px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            border: 1px solid #ddd;
-        }
-
-        /* form-data 布局优化 */
         .pair .key {
             flex: 3;
         }
@@ -56,50 +207,422 @@
             flex: 4.5;
         }
 
-        .pair button {
-            flex: 1;
+        /* 🚨 防挤压换行：确保删除按钮不会被 flex 容器挤碎成多行 */
+        .pair button, .pair .btn {
+            flex-shrink: 0 !important;
+            white-space: nowrap !important;
+        }
+
+        /* 按钮通用设计 */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            border: 1px solid transparent;
+            outline: none;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+            gap: 6px;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
+            border-radius: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            box-shadow: 0 4px 12px 0 rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px 0 rgba(59, 130, 246, 0.45);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-secondary);
+            border-color: var(--border);
+        }
+
+        .btn-outline:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.1);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.2);
+        }
+
+        .btn-danger:hover {
+            background: #ef4444;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        /* Body 编辑区域文本框 */
+        textarea {
+            width: 100%;
+            height: 160px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            outline: none;
+            resize: vertical;
+            transition: all 0.2s ease;
+            box-sizing: border-box;
+        }
+
+        textarea:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        /* Content Type 选择包裹器 */
+        .content-type-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .content-type-wrapper label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* 响应终端窗口样式 */
+        .code-window {
+            background: #090d16;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
+        }
+
+        .code-window-header {
+            background: #141b2d;
+            padding: 12px 18px;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .code-window-header .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            margin-right: 8px;
+            display: inline-block;
+        }
+
+        .code-window-header .red { background: #ef4444; }
+        .code-window-header .yellow { background: #f59e0b; }
+        .code-window-header .green { background: #10b981; }
+
+        .code-window-header .window-title {
+            margin-left: 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            font-family: 'Fira Code', monospace;
+        }
+
+        pre {
+            margin: 0;
+            padding: 20px;
+            max-height: 480px;
+            overflow-y: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            color: #38bdf8; /* 天蓝色代码文字 */
+            background: #0b0f19;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* 历史记录侧边栏 - PC 端常驻，粘性定位 */
+        .history-panel {
+            background: #111827;
+            border-left: 1px solid var(--border);
+            padding: 24px;
+            box-sizing: border-box;
+            overflow-y: auto;
+            height: 100vh;
+            position: sticky;
+            top: 0;
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 12px;
+        }
+
+        .panel-header h2 {
+            margin: 0;
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        /* 默认 PC 端不显示“历史记录”控制按钮和关闭按钮 */
+        #toggleHistoryBtn, .close-panel-btn {
+            display: none !important;
+        }
+
+        .backdrop {
+            display: none;
+        }
+
+        .history-item {
+            background: rgba(30, 41, 59, 0.3);
+            border: 1px solid var(--border);
+            padding: 14px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s ease;
+            word-break: break-all;
+        }
+
+        .history-item:hover {
+            background: rgba(30, 41, 59, 0.6);
+            border-color: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+        }
+
+        .history-item .method {
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-right: 8px;
+            display: inline-block;
+        }
+
+        .history-item .url {
+            font-size: 0.88rem;
+            color: var(--text-primary);
+        }
+
+        .history-item .time {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        .delete-btn {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: transparent;
+            color: #f87171;
+            border: none;
+            cursor: pointer;
+            font-size: 0.95rem;
+            padding: 0;
+            transition: transform 0.2s;
+        }
+
+        .delete-btn:hover {
+            color: #ef4444;
+            transform: scale(1.2);
+        }
+
+        /* 🚨 响应式媒体查询：屏幕宽度小于 1100px 时，侧边栏切换为抽屉遮罩模式 */
+        @media (max-width: 1100px) {
+            .app-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .history-panel {
+                position: fixed;
+                top: 0;
+                right: 0;
+                width: 360px;
+                z-index: 1000;
+                transform: translateX(100%);
+                transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+            }
+
+            .history-panel.open {
+                transform: translateX(0);
+            }
+
+            /* 移动端/平板端显示控制与关闭按钮 */
+            #toggleHistoryBtn {
+                display: inline-flex !important;
+            }
+
+            .close-panel-btn {
+                display: inline-block !important;
+                background: transparent;
+                border: none;
+                color: var(--text-secondary);
+                font-size: 1.8rem;
+                cursor: pointer;
+                line-height: 1;
+                padding: 0;
+                transition: color 0.2s;
+            }
+
+            .close-panel-btn:hover {
+                color: var(--text-primary);
+            }
+
+            /* 遮罩背景 */
+            .backdrop {
+                display: block;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0, 0, 0, 0.5);
+                backdrop-filter: blur(4px);
+                z-index: 999;
+                opacity: 0;
+                pointer-events: none;
+                transition: opacity 0.3s ease;
+            }
+
+            .backdrop.active {
+                opacity: 1;
+                pointer-events: auto;
+            }
         }
     </style>
 </head>
 <body>
 
-<h1>🌐 pap4j-boot3 Example API Tester</h1>
-<p style="font-size: 1rem; color: #555;">
-    Author: <a href="http://pap-docs.pap.net.cn" target="_blank" rel="noopener noreferrer">alexgaoyh</a>
-</p>
+<div id="backdrop" class="backdrop" onclick="document.getElementById('historyPanel').classList.remove('open'); document.getElementById('backdrop').classList.remove('active');"></div>
 
-<label>请求 URL</label>
-<input id="url" value="https://httpbin.org/post" style="width:100%"/>
+<div class="app-layout">
+    <div class="main-container">
+        <!-- Header 头部栏 -->
+        <header class="app-header">
+            <div class="header-info">
+                <h1>🌐 pap4j-boot3 Example API Tester</h1>
+                <p class="subtitle">
+                    Author: <a href="http://pap-docs.pap.net.cn" target="_blank" rel="noopener noreferrer">alexgaoyh</a>
+                </p>
+            </div>
+            <!-- 仅在移动端/小屏下可见的控制按钮 -->
+            <button id="toggleHistoryBtn" class="btn btn-secondary">📜 历史记录</button>
+        </header>
 
-<label>方法</label>
-<select id="method">
-    <option>GET</option>
-    <option selected>POST</option>
-    <option>PUT</option>
-    <option>DELETE</option>
-</select>
+        <!-- 请求主卡片 -->
+        <section class="card url-card">
+            <div class="card-body">
+                <div class="url-bar">
+                    <select id="method" class="select-field method-select">
+                        <option>GET</option>
+                        <option selected>POST</option>
+                        <option>PUT</option>
+                        <option>DELETE</option>
+                    </select>
+                    <input id="url" value="https://httpbin.org/post" class="input-field url-input" placeholder="输入请求 URL"/>
+                    <button class="btn btn-primary send-btn" onclick="sendRequest()">🚀 发送请求</button>
+                </div>
+            </div>
+        </section>
 
-<h3>Headers</h3>
-<div id="headers" class="headers"></div>
-<button onclick="addHeader()">➕ 添加 Header</button>
+        <!-- 参数与配置网格 -->
+        <div class="request-grid">
+            <!-- Headers Card -->
+            <section class="card config-card">
+                <div class="card-header">
+                    <h3>Headers 配置</h3>
+                </div>
+                <div class="card-body">
+                    <div id="headers" class="headers"></div>
+                    <button class="btn btn-outline btn-sm" onclick="addHeader()">➕ 添加 Header</button>
+                </div>
+            </section>
 
-<h3>Content-Type</h3>
-<select id="contentType" onchange="updateBodyEditor()">
-    <option value="">(自动检测)</option>
-    <option value="application/json">application/json</option>
-    <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
-    <option value="multipart/form-data">multipart/form-data</option>
-    <option value="text/plain">text/plain</option>
-</select>
+            <!-- Body Editor Card -->
+            <section class="card body-card">
+                <div class="card-header">
+                    <h3>请求 Body 配置</h3>
+                    <div class="content-type-wrapper">
+                        <label for="contentType">Content-Type:</label>
+                        <select id="contentType" class="select-field" onchange="updateBodyEditor()">
+                            <option value="">(自动检测)</option>
+                            <option value="application/json">application/json</option>
+                            <option value="application/x-www-form-urlencoded">application/x-www-form-urlencoded</option>
+                            <option value="multipart/form-data">multipart/form-data</option>
+                            <option value="text/plain">text/plain</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div id="bodyEditor" class="bodyEditor"></div>
+                    <button id="addFormRowBtn" class="btn btn-outline btn-sm">➕ 添加字段</button>
+                </div>
+            </section>
+        </div>
 
-<h3>请求 Body</h3>
-<div id="bodyEditor" class="bodyEditor"></div>
-<button id="addFormRowBtn">➕ 添加字段</button>
+        <!-- 响应卡片 -->
+        <section class="card response-card">
+            <div class="card-header">
+                <h3>响应结果</h3>
+            </div>
+            <div class="card-body" style="padding: 0;">
+                <div class="code-window">
+                    <div class="code-window-header">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span class="window-title">HTTP Response Console</span>
+                    </div>
+                    <pre id="response">等待发送请求...</pre>
+                </div>
+            </div>
+        </section>
+    </div>
 
-<button onclick="sendRequest()">🚀 发送请求</button>
-
-<h3>响应结果</h3>
-<pre id="response"></pre>
+    <!-- 历史记录侧边栏 -->
+    <div id="historyPanel" class="history-panel">
+        <div class="panel-header">
+            <h2>📜 请求历史</h2>
+            <button class="close-panel-btn" onclick="document.getElementById('historyPanel').classList.remove('open'); document.getElementById('backdrop').classList.remove('active');">&times;</button>
+        </div>
+        <div id="historyList"></div>
+    </div>
+</div>
 
 <script>
     const headersDiv = document.getElementById('headers');
@@ -111,9 +634,9 @@
     function addHeader(k = '', v = '') {
         const div = document.createElement('div');
         div.className = 'pair';
-        div.innerHTML = `<input placeholder="Header 名" value="${k}" style="flex:3"/>
-                         <input placeholder="Header 值" value="${v}" style="flex:6"/>
-                         <button onclick="this.parentElement.remove()">删除</button>`;
+        div.innerHTML = `<input placeholder="Header 名" value="${k}" class="input-field key" style="flex:3"/>
+                         <input placeholder="Header 值" value="${v}" class="input-field value" style="flex:6"/>
+                         <button class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">删除</button>`;
         headersDiv.appendChild(div);
     }
 
@@ -125,9 +648,10 @@
         const keyInput = document.createElement('input');
         keyInput.placeholder = '字段名';
         keyInput.value = key;
-        keyInput.className = 'key';
+        keyInput.className = 'key input-field';
 
         const typeSelect = document.createElement('select');
+        typeSelect.className = 'type select-field';
         const optText = document.createElement('option');
         optText.value = 'text';
         optText.innerText = 'Text';
@@ -137,30 +661,33 @@
         typeSelect.appendChild(optText);
         typeSelect.appendChild(optFile);
         typeSelect.value = type;
-        typeSelect.className = 'type';
 
         let valueInput = document.createElement('input');
-        if (type === 'file') valueInput.type = 'file'; else {
+        if (type === 'file') {
+            valueInput.type = 'file';
+        } else {
             valueInput.type = 'text';
             valueInput.value = value;
             valueInput.placeholder = '字段值';
         }
-        valueInput.className = 'value';
+        valueInput.className = 'value input-field';
 
         const removeBtn = document.createElement('button');
         removeBtn.innerText = '删除';
+        removeBtn.className = 'btn btn-danger btn-sm';
         removeBtn.onclick = () => bodyEditor.removeChild(div);
 
         typeSelect.onchange = () => {
             const newType = typeSelect.value;
             const newInput = document.createElement('input');
-            if (newType === 'file') newInput.type = 'file';
-            else {
+            if (newType === 'file') {
+                newInput.type = 'file';
+            } else {
                 newInput.type = 'text';
                 newInput.placeholder = '字段值';
                 newInput.value = valueInput.value;
             }
-            newInput.className = 'value';
+            newInput.className = 'value input-field';
             div.replaceChild(newInput, valueInput);
             valueInput = newInput;
         };
@@ -220,7 +747,6 @@
         return fd;
     }
 
-
     async function sendRequest() {
         const url = document.getElementById('url').value;
         const method = document.getElementById('method').value;
@@ -262,96 +788,24 @@
     addHeader('Accept', 'application/json');
     updateBodyEditor();
 </script>
-<style>
-    /* 调整原 body 布局，给右侧历史面板留出空间，完全不破坏原有的 flex 和 padding */
-    body {
-        padding-right: 340px !important;
-    }
-
-    /* 历史记录侧边栏样式 */
-    #historyPanel {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 320px;
-        height: 100vh;
-        background: #f9f9f9;
-        border-left: 1px solid #ddd;
-        padding: 20px;
-        box-sizing: border-box;
-        overflow-y: auto;
-        box-shadow: -2px 0 8px rgba(0,0,0,0.05);
-        z-index: 1000;
-    }
-
-    #historyPanel h2 {
-        margin-top: 0;
-        font-size: 1.2rem;
-        color: #333;
-    }
-
-    .history-item {
-        background: #fff;
-        border: 1px solid #eee;
-        padding: 12px;
-        margin-bottom: 12px;
-        border-radius: 6px;
-        cursor: pointer;
-        position: relative;
-        transition: box-shadow 0.2s;
-        word-break: break-all;
-    }
-
-    .history-item:hover {
-        box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-        border-color: #ccc;
-    }
-
-    .history-item .method {
-        font-weight: bold;
-        margin-right: 5px;
-    }
-
-    .history-item .url {
-        font-size: 0.9rem;
-        color: #444;
-    }
-
-    .history-item .time {
-        font-size: 0.8rem;
-        color: #888;
-        margin-top: 6px;
-    }
-
-    .delete-btn {
-        position: absolute;
-        top: 10px;
-        right: 10px;
-        background: transparent;
-        color: #ff4d4f;
-        border: none;
-        cursor: pointer;
-        font-size: 1rem;
-        padding: 0;
-    }
-
-    .delete-btn:hover {
-        color: #d9363e;
-        transform: scale(1.1);
-    }
-</style>
-
-<div id="historyPanel">
-    <h2>📜 请求历史</h2>
-    <div id="historyList"></div>
-</div>
 
 <script>
     (function initHistoryFeature() {
         const HISTORY_KEY = 'api_tester_history';
         const historyListEl = document.getElementById('historyList');
+        const historyPanel = document.getElementById('historyPanel');
+        const toggleHistoryBtn = document.getElementById('toggleHistoryBtn');
 
-        // 1. 获取和保存数据的辅助函数
+        // 1. 绑定抽屉开关事件 (在移动端/小屏下起作用)
+        if (toggleHistoryBtn && historyPanel) {
+            toggleHistoryBtn.onclick = () => {
+                historyPanel.classList.toggle('open');
+                const backdrop = document.getElementById('backdrop');
+                if (backdrop) backdrop.classList.toggle('active');
+            };
+        }
+
+        // 2. 获取和保存数据的辅助函数
         function getHistory() {
             try { return JSON.parse(localStorage.getItem(HISTORY_KEY)) || []; }
             catch (e) { return []; }
@@ -361,7 +815,7 @@
             localStorage.setItem(HISTORY_KEY, JSON.stringify(data));
         }
 
-        // 2. 提取当前表单数据并保存
+        // 3. 提取当前表单数据并保存
         function saveCurrentRequest() {
             const url = document.getElementById('url').value.trim();
             if (!url) return;
@@ -373,9 +827,11 @@
             const headers = [];
             document.getElementById('headers').querySelectorAll('.pair').forEach(div => {
                 const inputs = div.querySelectorAll('input');
-                const k = inputs[0].value.trim();
-                const v = inputs[1].value.trim();
-                if (k) headers.push({ k, v });
+                if (inputs.length >= 2) {
+                    const k = inputs[0].value.trim();
+                    const v = inputs[1].value.trim();
+                    if (k) headers.push({ k, v });
+                }
             });
 
             // 提取 Body
@@ -393,7 +849,6 @@
                         formData.push({
                             key: keyInput.value.trim(),
                             type: typeSelect.value,
-                            // 由于浏览器安全限制，无法保存并重新赋值文件路径，因此置空
                             value: typeSelect.value === 'file' ? '' : valueInput.value
                         });
                     }
@@ -401,7 +856,7 @@
             }
 
             const record = {
-                id: Date.now(), // 唯一标识
+                id: Date.now(),
                 time: new Date().toLocaleString(),
                 url,
                 method,
@@ -412,38 +867,37 @@
             };
 
             const history = getHistory();
-            history.unshift(record); // 最新记录插在最前
-            if (history.length > 50) history.pop(); // 最多保留 50 条防止炸栈
+            history.unshift(record);
+            if (history.length > 50) history.pop();
             saveHistory(history);
             renderHistory();
         }
 
-        // 3. 渲染历史列表
+        // 4. 渲染历史列表
         window.renderHistory = function() {
             const history = getHistory();
-            historyListEl.innerHTML = history.length === 0 ? '<p style="color:#888;font-size:0.9rem;">暂无历史记录</p>' : '';
+            historyListEl.innerHTML = history.length === 0 ? '<p style="color:var(--text-secondary);font-size:0.9rem;text-align:center;margin-top:20px;">暂无历史记录</p>' : '';
 
             history.forEach(item => {
                 const div = document.createElement('div');
                 div.className = 'history-item';
                 div.onclick = (e) => {
-                    // 防止点击删除按钮时触发回显
                     if(e.target.className.includes('delete-btn')) return;
                     restoreRequest(item.id);
                 };
 
-                // 为不同请求方法上色
-                let methodColor = '#333';
-                if(item.method === 'GET') methodColor = '#0070c0';
-                if(item.method === 'POST') methodColor = '#008000';
-                if(item.method === 'PUT') methodColor = '#d97706';
-                if(item.method === 'DELETE') methodColor = '#cc0000';
+                let methodBg = 'rgba(255,255,255,0.06)';
+                let methodColor = 'var(--text-primary)';
+                if(item.method === 'GET') { methodBg = 'rgba(59, 130, 246, 0.15)'; methodColor = '#60a5fa'; }
+                if(item.method === 'POST') { methodBg = 'rgba(16, 185, 129, 0.15)'; methodColor = '#34d399'; }
+                if(item.method === 'PUT') { methodBg = 'rgba(245, 158, 11, 0.15)'; methodColor = '#fbbf24'; }
+                if(item.method === 'DELETE') { methodBg = 'rgba(239, 68, 68, 0.15)'; methodColor = '#f87171'; }
 
                 div.innerHTML = `
                     <button class="delete-btn" onclick="deleteHistoryItem(${item.id})" title="删除">✖</button>
-                    <div>
-                        <span class="method" style="color:${methodColor}">${item.method}</span>
-                        <span class="url">${item.url}</span>
+                    <div style="display:flex; align-items:center; margin-right:20px; gap:8px;">
+                        <span class="method" style="background:${methodBg}; color:${methodColor}">${item.method}</span>
+                        <span class="url" style="text-overflow: ellipsis; overflow: hidden; white-space: nowrap; max-width: 180px;">${item.url}</span>
                     </div>
                     <div class="time">${item.time}</div>
                 `;
@@ -451,7 +905,7 @@
             });
         };
 
-        // 4. 删除单条记录
+        // 5. 删除单条记录
         window.deleteHistoryItem = function(id) {
             let history = getHistory();
             history = history.filter(item => item.id !== id);
@@ -459,7 +913,7 @@
             renderHistory();
         };
 
-        // 5. 回显数据到主界面
+        // 6. 回显数据到主界面
         window.restoreRequest = function(id) {
             const record = getHistory().find(item => item.id === id);
             if (!record) return;
@@ -473,36 +927,37 @@
             hdrsDiv.innerHTML = '';
             record.headers.forEach(h => window.addHeader(h.k, h.v));
 
-            // 触发你原有的更新 Body 逻辑
+            // 更新 Body 逻辑
             window.updateBodyEditor();
 
-            // 使用 setTimeout 确保 updateBodyEditor 的 DOM 渲染完成之后再赋值
             setTimeout(() => {
                 if (record.contentType === 'application/json' || record.contentType === 'text/plain' || !record.contentType) {
                     const textEl = document.getElementById('bodyText');
                     if (textEl) textEl.value = record.bodyText || '';
                 } else {
                     const bdyEdtr = document.getElementById('bodyEditor');
-                    bdyEdtr.innerHTML = ''; // 清掉 updateBodyEditor 默认增加的那个空行
+                    bdyEdtr.innerHTML = '';
                     record.formData.forEach(fd => {
                         window.addFormDataRow(fd.key, fd.type, fd.value);
                     });
                 }
             }, 0);
+
+            // 移动端回显后收回抽屉和遮罩
+            historyPanel.classList.remove('open');
+            const backdrop = document.getElementById('backdrop');
+            if (backdrop) backdrop.classList.remove('active');
         };
 
-        // 6. 核心：拦截你原有的 sendRequest 函数（AOP切面思路）
+        // 7. AOP 拦截 sendRequest
         const originalSendRequest = window.sendRequest;
         window.sendRequest = async function() {
-            // 在发请求前静默保存记录
             saveCurrentRequest();
-            // 唤起你原本的发送逻辑
             if (originalSendRequest) {
                 await originalSendRequest.apply(this, arguments);
             }
         };
 
-        // 页面加载完毕后初次渲染历史记录
         renderHistory();
     })();
 </script>
