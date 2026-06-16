@@ -28,6 +28,10 @@ import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
 
+import com.drew.imaging.ImageMetadataReader;
+import com.drew.metadata.Metadata;
+import com.drew.metadata.exif.ExifIFD0Directory;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -608,6 +612,7 @@ public class PDFUtil {
         List<String> imagePaths = Arrays.asList(new String[]{ jpgPath });
         try (PDDocument document = new PDDocument()) {
             for (String imagePath : imagePaths) {
+                File imageFile = new File(imagePath);
                 PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
                 // todo 后续根据需求，这里做一下调整，避免生成的pdf过大，未完全验证，存在不同的格式，比如 jpg ,还有各种不同压缩方式的tif 等等
 //            BufferedImage image = ImageIO.read(new File(imagePath));
@@ -616,12 +621,31 @@ public class PDFUtil {
                 float imageWidth = imageXObject.getWidth();
                 float imageHeight = imageXObject.getHeight();
 
-                PDPage page = new PDPage(new PDRectangle(imageWidth, imageHeight));
+                int orientation = getImageOrientation(imageFile);
+
+                float pageWidth = imageWidth;
+                float pageHeight = imageHeight;
+                if (orientation == 6 || orientation == 8) {
+                    pageWidth = imageHeight;
+                    pageHeight = imageWidth;
+                }
+
+                PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
                 document.addPage(page);
 
                 try (PDPageContentStream contentStream = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.OVERWRITE, true, true)) {
-                    contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
-
+                    if (orientation == 6) {
+                        contentStream.transform(new org.apache.pdfbox.util.Matrix(0, -1, 1, 0, 0, imageWidth));
+                        contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    } else if (orientation == 8) {
+                        contentStream.transform(new org.apache.pdfbox.util.Matrix(0, 1, -1, 0, imageHeight, 0));
+                        contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    } else if (orientation == 3) {
+                        contentStream.transform(new org.apache.pdfbox.util.Matrix(-1, 0, 0, -1, imageWidth, imageHeight));
+                        contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    } else {
+                        contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    }
                 }
             }
             document.save(pdfPath);
@@ -649,7 +673,7 @@ public class PDFUtil {
         PDDocument document = new PDDocument();
         try {
             for (String imagePath : imagePaths) {
-
+                File imageFile = new File(imagePath);
                 PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
                 // todo 后续根据需求，这里做一下调整，避免生成的pdf过大，未完全验证，存在不同的格式，比如 jpg ,还有各种不同压缩方式的tif 等等
 //            BufferedImage image = ImageIO.read(new File(imagePath));
@@ -662,11 +686,31 @@ public class PDFUtil {
                 imageWidth = imageWidth / DPI * 72;
                 imageHeight = imageHeight / DPI * 72;
 
-                PDPage page = new PDPage(new PDRectangle(imageWidth, imageHeight));
+                int orientation = getImageOrientation(imageFile);
+
+                float pageWidth = imageWidth;
+                float pageHeight = imageHeight;
+                if (orientation == 6 || orientation == 8) {
+                    pageWidth = imageHeight;
+                    pageHeight = imageWidth;
+                }
+
+                PDPage page = new PDPage(new PDRectangle(pageWidth, pageHeight));
                 document.addPage(page);
 
                 try (PDPageContentStream contentStream = new PDPageContentStream(document, page, PDPageContentStream.AppendMode.OVERWRITE, true, true)) {
-                    contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    if (orientation == 6) {
+                        contentStream.transform(new org.apache.pdfbox.util.Matrix(0, -1, 1, 0, 0, imageWidth));
+                        contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    } else if (orientation == 8) {
+                        contentStream.transform(new org.apache.pdfbox.util.Matrix(0, 1, -1, 0, imageHeight, 0));
+                        contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    } else if (orientation == 3) {
+                        contentStream.transform(new org.apache.pdfbox.util.Matrix(-1, 0, 0, -1, imageWidth, imageHeight));
+                        contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    } else {
+                        contentStream.drawImage(imageXObject, 0, 0, imageWidth, imageHeight);
+                    }
                 }
             }
             document.save(pdfPath);
@@ -681,6 +725,19 @@ public class PDFUtil {
                 return false;
             }
         }
+    }
+
+    private static int getImageOrientation(File imageFile) {
+        try {
+            Metadata metadata = ImageMetadataReader.readMetadata(imageFile);
+            ExifIFD0Directory directory = metadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
+            if (directory != null && directory.containsTag(ExifIFD0Directory.TAG_ORIENTATION)) {
+                return directory.getInt(ExifIFD0Directory.TAG_ORIENTATION);
+            }
+        } catch (Exception e) {
+            log.debug("Read image orientation failed: {}", e.getMessage());
+        }
+        return 1;
     }
 
     private static PDDocumentCatalog setCompliant(final PDDocument doc, final String pdfPart,

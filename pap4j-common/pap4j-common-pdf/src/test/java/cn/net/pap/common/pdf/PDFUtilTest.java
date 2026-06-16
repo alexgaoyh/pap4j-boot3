@@ -560,4 +560,59 @@ public class PDFUtilTest {
         }
     }
 
+    @Test
+    public void testImageOrientationCorrection() throws Exception {
+        String[] orientFiles = {
+            "test_orient1.tiff",
+            "test_orient3.tiff",
+            "test_orient6.tiff",
+            "test_orient8.tiff"
+        };
+        for (String filename : orientFiles) {
+            File imageFile = TestResourceUtil.getFile(filename);
+            File tempPdf = File.createTempFile("pdf_orient_test_", ".pdf");
+            try {
+                Boolean success = PDFUtil.jpg2Pdf(imageFile.getAbsolutePath(), tempPdf.getAbsolutePath());
+                org.junit.jupiter.api.Assertions.assertTrue(success, "Failed to convert " + filename + " to PDF");
+
+                // 验证 PDF 页面的宽高是否正确自适应
+                try (PDDocument document = Loader.loadPDF(tempPdf)) {
+                    org.junit.jupiter.api.Assertions.assertEquals(1, document.getNumberOfPages());
+                    PDPage page = document.getPage(0);
+                    PDRectangle mediaBox = page.getMediaBox();
+
+                    // 读取原始图片的尺寸
+                    PDDocument dummy = new PDDocument();
+                    PDImageXObject image = PDImageXObject.createFromFile(imageFile.getAbsolutePath(), dummy);
+                    float originWidth = image.getWidth();
+                    float originHeight = image.getHeight();
+                    dummy.close();
+
+                    int orientation = 1;
+                    try {
+                        com.drew.metadata.Metadata metadata = com.drew.imaging.ImageMetadataReader.readMetadata(imageFile);
+                        com.drew.metadata.exif.ExifIFD0Directory directory = metadata.getFirstDirectoryOfType(com.drew.metadata.exif.ExifIFD0Directory.class);
+                        if (directory != null && directory.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_ORIENTATION)) {
+                            orientation = directory.getInt(com.drew.metadata.exif.ExifIFD0Directory.TAG_ORIENTATION);
+                        }
+                    } catch (Exception ignored) {}
+
+                    if (orientation == 6 || orientation == 8) {
+                        // 90度或270度旋转，宽高应该交换
+                        org.junit.jupiter.api.Assertions.assertEquals(originHeight, mediaBox.getWidth(), 1.0f);
+                        org.junit.jupiter.api.Assertions.assertEquals(originWidth, mediaBox.getHeight(), 1.0f);
+                    } else {
+                        // 正常或180度，宽高应该保持一致
+                        org.junit.jupiter.api.Assertions.assertEquals(originWidth, mediaBox.getWidth(), 1.0f);
+                        org.junit.jupiter.api.Assertions.assertEquals(originHeight, mediaBox.getHeight(), 1.0f);
+                    }
+                }
+            } finally {
+                if (tempPdf.exists()) {
+                    tempPdf.delete();
+                }
+            }
+        }
+    }
+
 }
