@@ -562,6 +562,10 @@ public class PDFUtilTest {
 
     @Test
     public void testImageOrientationCorrection() throws Exception {
+        // magick 1.jpg -resize 200x200 -compress lzw -orient TopLeft test_orient1.tiff
+        // magick 1.jpg -resize 200x200 -compress lzw -rotate 180 -orient BottomRight test_orient3.tiff
+        // magick 1.jpg -resize 200x200 -compress lzw -rotate -90 -orient RightTop test_orient6.tiff
+        // magick 1.jpg -resize 200x200 -compress lzw -rotate 90 -orient LeftBottom test_orient8.tiff
         String[] orientFiles = {
             "test_orient1.tiff",
             "test_orient3.tiff",
