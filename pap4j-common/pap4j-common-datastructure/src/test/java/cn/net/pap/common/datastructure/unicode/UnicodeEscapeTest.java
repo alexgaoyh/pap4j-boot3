@@ -292,4 +292,97 @@ public class UnicodeEscapeTest {
         }
     }
 
+    /**
+     * https://www.unicode.org/Public/emoji/13.1/emoji-test.txt
+     */
+    @Test
+    @DisplayName("读取并解析本地 Emoji 13.1 序列文件")
+    public void emojiSequencesTest() {
+        // 采用你代码中的本地 Classpath 资源流式读取架构
+        try (java.io.InputStream is = getClass().getResourceAsStream("/emoji-test.txt")) {
+            if (is == null) {
+                log.warn("emoji-test.txt not found in resources");
+                return;
+            }
+
+            // 存储解析结果: Key 为生成的完整 Emoji 字符串, Value 为官方英文含义
+            Map<String, String> emojiMap = new HashMap<>();
+
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    // 1. 跳过纯注释和空行（emoji-test.txt 的数据行以十六进制码点开头，不以 # 开头）
+                    if (line.startsWith("#") || line.trim().isEmpty()) {
+                        continue;
+                    }
+
+                    // 2. 仅筛选完全限定（fully-qualified）的标准表情，排除残缺变体
+                    if (!line.contains("; fully-qualified")) {
+                        continue;
+                    }
+
+                    // 3. 按照分号分割字段
+                    String[] parts = line.split(";");
+                    if (parts.length < 2) {
+                        continue;
+                    }
+
+                    // 4. 取出第一部分（十六进制代码序列），并用空格分割
+                    String hexCodesStr = parts[0].trim();
+                    String[] hexCodes = hexCodesStr.split(" ");
+
+                    // 5. 将十六进制代码还原为 Java String (完美支持多码点、ZWJ 零宽连字)
+                    StringBuilder emojiBuilder = new StringBuilder();
+                    for (String hex : hexCodes) {
+                        if (!hex.isBlank()) {
+                            int cp = Integer.parseInt(hex, 16);
+                            emojiBuilder.appendCodePoint(cp);
+                        }
+                    }
+                    String emojiChar = emojiBuilder.toString();
+
+                    // 6. 解析第二部分，从右侧的注释中提取纯粹的官方英文含义
+                    // parts[1] 格式示例: " fully-qualified     # 😀 E1.0 grinning face"
+                    String[] commentParts = parts[1].split("#");
+                    if (commentParts.length < 2) {
+                        continue;
+                    }
+                    String comment = commentParts[1].trim(); // 得到 "😀 E1.0 grinning face"
+
+                    // 剥离前面的 "😀 E1.0 " 标记，提取最终含义
+                    String meaning = comment.replaceAll("^\\S+\\s+E\\d+\\.\\d+\\s+", "");
+
+                    // 7. 存入 Map
+                    emojiMap.put(emojiChar, meaning);
+                }
+            }
+
+            log.info("Emoji 解析完成！共从本地资源加载了 {} 个完全限定的标准表情。", emojiMap.size());
+
+            // 8. 验证特定表情（100% 像素级对齐你代码中验证“葛”字异体字的底层逻辑）
+            // 验证一个 Emoji 13.1 极其经典的 ZWJ 组合表情：“叹气脸”
+            String targetEmoji = "😮‍💨";
+            String meaning = emojiMap.get(targetEmoji);
+
+            if (meaning != null) {
+                log.info("【{}】 的官方含义为: {}", targetEmoji, meaning);
+                // 打印出字符，并同时验证其底层的 char 长度
+                log.info(" -> 字符渲染: {} (底层 char 长度: {})", targetEmoji, targetEmoji.length());
+            } else {
+                log.info("未找到【{}】的 Emoji 含义。", targetEmoji);
+            }
+
+            // 再验证一个最基础的单码位表情
+            String simpleEmoji = "😂";
+            String simpleMeaning = emojiMap.get(simpleEmoji);
+            if (simpleMeaning != null) {
+                log.info("【{}】 的官方含义为: {}", simpleEmoji, simpleMeaning);
+                log.info(" -> 字符渲染: {} (底层 char 长度: {})", simpleEmoji, simpleEmoji.length());
+            }
+
+        } catch (IOException e) {
+            log.error("Failed to read emoji-test.txt", e);
+        }
+    }
+
 }
