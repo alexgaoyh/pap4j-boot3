@@ -385,4 +385,9 @@ public class UnicodeEscapeTest {
         }
     }
 
+    // todo https://github.com/unicode-org/cldr/blob/main/common/annotations/zh.xml
+    // todo https://github.com/unicode-org/cldr/blob/main/common/annotationsDerived/zh.xml
+    // Unicode 官方在 GitHub 上维护了完整的 CLDR 仓库。针对中文（zh），你需要关注两个文件（基础表情与组合表情是分开的）：
+    // 如果你不想在 Java 里写繁琐的 XML 解析代码，Unicode 官方还专门提供了一个 cldr-json 仓库，把上面的 XML 提前转成了 JSON，这简直是后端工程师的福音：
+
 }
