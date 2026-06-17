@@ -267,6 +267,10 @@ public class KingbaseToMysqlMigrationTest {
             case Types.NUMERIC, Types.DECIMAL -> {
                 int p = precision > 0 ? precision : 20;
                 int s = scale >= 0 ? scale : 0;
+                // MySQL 的 DECIMAL 最大精度限制为 65，超过 65 需要强制截断为 65
+                if (p > 65) {
+                    p = 65;
+                }
                 yield "decimal(%d,%d)".formatted(p, s);
             }
             case Types.DATE -> "date";
