@@ -4,6 +4,12 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.mysql.cj.jdbc.JdbcStatement;
+import java.io.BufferedWriter;
+import java.io.OutputStreamWriter;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.nio.charset.StandardCharsets;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
@@ -34,7 +40,7 @@ public class KingbaseToMysqlMigrationTest {
     private static final String KINGBASE_USER = "";
     private static final String KINGBASE_PASSWORD = "";
 
-    private static final String MYSQL_URL = "jdbc:mysql://127.0.0.1:3306/test?useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&serverTimezone=Asia/Shanghai";
+    private static final String MYSQL_URL = "jdbc:mysql://127.0.0.1:3306/test?useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&serverTimezone=Asia/Shanghai&allowLoadLocalInfile=true";
 
     private static final String MYSQL_USER = "root";
     private static final String MYSQL_PASSWORD = "alexgaoyh";
@@ -61,6 +67,16 @@ public class KingbaseToMysqlMigrationTest {
 
         Class.forName(KINGBASE_DRIVER);
         Class.forName(MYSQL_DRIVER);
+
+        // 尝试动态启用 MySQL 服务端的 local_infile 参数
+        try (Connection target = DriverManager.getConnection(MYSQL_URL, MYSQL_USER, MYSQL_PASSWORD)) {
+            try (Statement st = target.createStatement()) {
+                st.execute("SET GLOBAL local_infile = 1");
+                log.info("成功动态启用 MySQL 服务端 local_infile 参数");
+            }
+        } catch (Exception e) {
+            log.warn("尝试启用 MySQL 服务端 local_infile 失败（可能缺少权限），如果服务端未手动开启，迁移可能会失败: ", e);
+        }
 
         List<String> tables;
         try (Connection source = DriverManager.getConnection(KINGBASE_URL, KINGBASE_USER, KINGBASE_PASSWORD)) {
@@ -186,52 +202,86 @@ public class KingbaseToMysqlMigrationTest {
 
 
     private void migrateTable(Connection source, Connection target, String table) throws Exception {
-        String query = "select * from %s".formatted(quote(table));
+        // 1. 动态构建字段列表，构造 LOAD DATA SQL
+        List<String> colNames = new ArrayList<>();
+        int columns = 0;
+        try (Statement st = source.createStatement();
+             ResultSet rs = st.executeQuery("select * from %s where 1=2".formatted(quote(table)))) {
+            ResultSetMetaData meta = rs.getMetaData();
+            columns = meta.getColumnCount();
+            for (int i = 1; i <= columns; i++) {
+                colNames.add(quoteMysql(meta.getColumnName(i)));
+            }
+        }
+        String colNamesCsv = String.join(",", colNames);
 
+        // 使用默认的 TSV 格式（制表符分隔，反斜杠转义）
+        String sql = "LOAD DATA LOCAL INFILE '' INTO TABLE %s FIELDS TERMINATED BY '\\t' ESCAPED BY '\\\\' LINES TERMINATED BY '\\n' (%s)"
+                .formatted(quoteMysql(table), colNamesCsv);
+
+        // 2. 创建管道流（设置 1MB 缓冲区）
+        PipedInputStream pin = new PipedInputStream(1024 * 1024);
+        PipedOutputStream pout = new PipedOutputStream(pin);
+
+        // 确保 Kingbase 连接关闭 AutoCommit，以便 setFetchSize(1000) 能够生效，进行真正的游标流式拉取
         boolean originalAutoCommit = source.getAutoCommit();
         if (originalAutoCommit) {
             source.setAutoCommit(false);
         }
+
         try {
-            try (Statement st = source.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
-                st.setFetchSize(BATCH_SIZE);
-                log.info("[{}] 正在执行 SQL 查询并准备流式拉取数据...", table);
-                try (ResultSet rs = st.executeQuery(query)) {
-                    ResultSetMetaData meta = rs.getMetaData();
-                    int columns = meta.getColumnCount();
-                    int[] columnTypes = new int[columns + 1];
-                    for (int i = 1; i <= columns; i++) {
-                        columnTypes[i] = meta.getColumnType(i);
-                    }
-                    String insert = buildInsert(table, meta);
-                    try (PreparedStatement ps = target.prepareStatement(insert)) {
+            int finalColumns = columns;
+            String query = "select * from %s".formatted(quote(table));
+
+            // 3. 异步生产者线程：读取 Kingbase ResultSet 并向管道流中写入转义后的 TSV 数据
+            CompletableFuture<Void> producerTask = CompletableFuture.runAsync(() -> {
+                try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(pout, StandardCharsets.UTF_8));
+                     Statement st = source.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
+
+                    // 宽表场景下，Fetch Size 设为 1000 较合适，平衡吞吐和内存
+                    st.setFetchSize(1000);
+                    try (ResultSet rs = st.executeQuery(query)) {
                         long current = 0;
-                        log.info("[{}] 开始从 Kingbase 流式读取并批量写入 MySQL...", table);
                         while (rs.next()) {
-                            for (int i = 1; i <= columns; i++) {
-                                if (columnTypes[i] == Types.OTHER) {
-                                    ps.setString(i, rs.getString(i));
+                            for (int i = 1; i <= finalColumns; i++) {
+                                if (i > 1) {
+                                    writer.write('\t');
+                                }
+                                Object val = rs.getObject(i);
+                                if (val == null) {
+                                    writer.write("\\N");
                                 } else {
-                                    ps.setObject(i, rs.getObject(i));
+                                    String strVal = rs.getString(i);
+                                    writer.write(escapeTsv(strVal));
                                 }
                             }
-                            ps.addBatch();
+                            writer.write('\n');
                             current++;
                             if (current % BATCH_SIZE == 0) {
-                                ps.executeBatch();
-                                target.commit();
                                 printProgress(table, current);
                             }
                         }
-                        ps.executeBatch();
-                        target.commit();
                         printProgress(table, current);
                     }
+                } catch (Exception e) {
+                    log.error("生产者转换 TSV 写入流时发生异常: ", e);
+                    throw new RuntimeException("TSV streaming generation failed", e);
                 }
+            });
+
+            // 4. 消费者：MySQL 驱动从 PipedInputStream 读取流执行 LOAD DATA
+            try (Statement st = target.createStatement()) {
+                JdbcStatement mysqlSt = st.unwrap(JdbcStatement.class);
+                mysqlSt.setLocalInfileInputStream(pin);
+
+                log.info("[{}] 开始执行流式 LOAD DATA LOCAL INFILE...", table);
+                mysqlSt.execute(sql);
+                target.commit(); // 必须显式提交事务，因为 target 连接在 migrateSingleTable 中被设置为了 autoCommit = false
+                log.info("[{}] 表 {} 流式迁移成功并已提交事务", table, table);
             }
-            if (originalAutoCommit) {
-                source.commit();
-            }
+
+            // 等待生产者线程完全结束，并捕获可能的异常
+            producerTask.join();
         } finally {
             if (originalAutoCommit) {
                 source.setAutoCommit(true);
@@ -239,17 +289,32 @@ public class KingbaseToMysqlMigrationTest {
         }
     }
 
-    private String buildInsert(String table, ResultSetMetaData meta) throws SQLException {
-
-        List<String> cols = new ArrayList<>();
-        for (int i = 1; i <= meta.getColumnCount(); i++) {
-            cols.add(quoteMysql(meta.getColumnName(i)));
+    private String escapeTsv(String value) {
+        if (value == null) {
+            return "\\N";
         }
-        String columnsStr = String.join(",", cols);
-        String placeholders = cols.stream().map(x -> "?").collect(Collectors.joining(","));
-        return "insert into %s(%s) values(%s)".formatted(quoteMysql(table), columnsStr, placeholders);
+        StringBuilder sb = new StringBuilder(value.length() + 16);
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            switch (c) {
+                case '\\':
+                    sb.append("\\\\");
+                    break;
+                case '\t':
+                    sb.append("\\t");
+                    break;
+                case '\n':
+                    sb.append("\\n");
+                    break;
+                case '\r':
+                    sb.append("\\r");
+                    break;
+                default:
+                    sb.append(c);
+            }
+        }
+        return sb.toString();
     }
-
 
     private String mapType(int jdbcType, int length, int precision, int scale) {
         return switch (jdbcType) {
