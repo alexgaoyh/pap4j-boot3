@@ -302,65 +302,8 @@ public class UnicodeEscapeTest {
     @Test
     @DisplayName("读取并解析本地 Emoji 13.1 序列文件")
     public void emojiSequencesTest() {
-        // 采用你代码中的本地 Classpath 资源流式读取架构
-        try (java.io.InputStream is = getClass().getResourceAsStream("/emoji-test.txt")) {
-            if (is == null) {
-                log.warn("emoji-test.txt not found in resources");
-                return;
-            }
-
-            // 存储解析结果: Key 为生成的完整 Emoji 字符串, Value 为官方英文含义
-            Map<String, String> emojiMap = new HashMap<>();
-
-            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    // 1. 跳过纯注释和空行（emoji-test.txt 的数据行以十六进制码点开头，不以 # 开头）
-                    if (line.startsWith("#") || line.trim().isEmpty()) {
-                        continue;
-                    }
-
-                    // 2. 仅筛选完全限定（fully-qualified）的标准表情，排除残缺变体
-                    if (!line.contains("; fully-qualified")) {
-                        continue;
-                    }
-
-                    // 3. 按照分号分割字段
-                    String[] parts = line.split(";");
-                    if (parts.length < 2) {
-                        continue;
-                    }
-
-                    // 4. 取出第一部分（十六进制代码序列），并用空格分割
-                    String hexCodesStr = parts[0].trim();
-                    String[] hexCodes = hexCodesStr.split(" ");
-
-                    // 5. 将十六进制代码还原为 Java String (完美支持多码点、ZWJ 零宽连字)
-                    StringBuilder emojiBuilder = new StringBuilder();
-                    for (String hex : hexCodes) {
-                        if (!hex.isBlank()) {
-                            int cp = Integer.parseInt(hex, 16);
-                            emojiBuilder.appendCodePoint(cp);
-                        }
-                    }
-                    String emojiChar = emojiBuilder.toString();
-
-                    // 6. 解析第二部分，从右侧的注释中提取纯粹的官方英文含义
-                    // parts[1] 格式示例: " fully-qualified     # 😀 E1.0 grinning face"
-                    String[] commentParts = parts[1].split("#");
-                    if (commentParts.length < 2) {
-                        continue;
-                    }
-                    String comment = commentParts[1].trim(); // 得到 "😀 E1.0 grinning face"
-
-                    // 剥离前面的 "😀 E1.0 " 标记，提取最终含义
-                    String meaning = comment.replaceAll("^\\S+\\s+E\\d+\\.\\d+\\s+", "");
-
-                    // 7. 存入 Map
-                    emojiMap.put(emojiChar, meaning);
-                }
-            }
-
+        try {
+            Map<String, String> emojiMap = loadEmojiSequencesMap();
             log.info("Emoji 解析完成！共从本地资源加载了 {} 个完全限定的标准表情。", emojiMap.size());
 
             // 8. 验证特定表情（100% 像素级对齐你代码中验证“葛”字异体字的底层逻辑）
@@ -395,46 +338,8 @@ public class UnicodeEscapeTest {
     @Test
     @DisplayName("读取并解析本地 annotations 文件")
     public void annotationsTest() {
-        try (java.io.InputStream is = getClass().getResourceAsStream("/annotations.json")) {
-            if (is == null) {
-                log.warn("annotations.json not found in resources");
-                return;
-            }
-
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode rootNode = mapper.readTree(is);
-            JsonNode annotationsNode = rootNode.path("annotations").path("annotations");
-
-            // 存储解析结果: Key 为生成的完整 Emoji 字符串, Value 为去重后的官方中文含义与描述集合
-            Map<String, Set<String>> annotationMap = new HashMap<>();
-
-            Iterator<Map.Entry<String, JsonNode>> fields = annotationsNode.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> field = fields.next();
-                String key = field.getKey();
-                JsonNode valueNode = field.getValue();
-
-                Set<String> values = new HashSet<>();
-
-                // 解析 default (关键词)
-                JsonNode defaultNode = valueNode.path("default");
-                if (defaultNode.isArray()) {
-                    for (JsonNode node : defaultNode) {
-                        values.add(node.asText());
-                    }
-                }
-
-                // 解析 tts (TTS 描述)
-                JsonNode ttsNode = valueNode.path("tts");
-                if (ttsNode.isArray()) {
-                    for (JsonNode node : ttsNode) {
-                        values.add(node.asText());
-                    }
-                }
-
-                annotationMap.put(key, values);
-            }
-
+        try {
+            Map<String, Set<String>> annotationMap = loadAnnotationsMap();
             log.info("Annotations 解析完成！共从本地资源加载了 {} 个注解定义。", annotationMap.size());
 
             // 验证特定表情（与 emojiSequencesTest 对齐）
@@ -464,4 +369,150 @@ public class UnicodeEscapeTest {
         }
     }
 
+    @Test
+    @DisplayName("分析 emoji-test.txt 与 annotations.json 的 Key 差集")
+    public void emojiDiffTest() {
+        try {
+            Map<String, String> emojiMap = loadEmojiSequencesMap();
+            Map<String, Set<String>> annotationMap = loadAnnotationsMap();
+
+            Set<String> emojiKeys = emojiMap.keySet();
+            Set<String> annotationKeys = annotationMap.keySet();
+
+            // 1. 在 emoji-test 中存在，但在 annotations 中不存在的 Key (Emoji 差集)
+            Set<String> onlyInEmoji = new HashSet<>(emojiKeys);
+            onlyInEmoji.removeAll(annotationKeys);
+
+            // 2. 在 annotations 中存在，但在 emoji-test 中不存在的 Key (Annotations 差集)
+            Set<String> onlyInAnnotation = new HashSet<>(annotationKeys);
+            onlyInAnnotation.removeAll(emojiKeys);
+
+            log.info("=== Emoji 键名差集对比分析 ===");
+            log.info("emoji-test.txt 总 Emoji 数: {}", emojiKeys.size());
+            log.info("annotations.json 总条目数: {}", annotationKeys.size());
+            log.info("仅在 emoji-test.txt 中存在的 Key 数量: {}", onlyInEmoji.size());
+            log.info("仅在 annotations.json 中存在的 Key 数量: {}", onlyInAnnotation.size());
+
+            // 打印部分差异样例（避免输出过多日志）
+            if (!onlyInEmoji.isEmpty()) {
+                log.info("仅在 emoji-test.txt 存在的样例 (前10个):");
+                onlyInEmoji.stream().limit(10).forEach(key -> 
+                    log.info("  - Emoji: {} -> 官方含义: {}", key, emojiMap.get(key))
+                );
+            }
+
+            if (!onlyInAnnotation.isEmpty()) {
+                log.info("仅在 annotations.json 存在的样例 (前10个):");
+                onlyInAnnotation.stream().limit(10).forEach(key -> 
+                    log.info("  - Key: {} -> 中文注解: {}", key, annotationMap.get(key))
+                );
+            }
+
+            // 简单的结构验证
+            assertFalse(emojiKeys.isEmpty(), "Emoji Key 集合不应为空");
+            assertFalse(annotationKeys.isEmpty(), "Annotation Key 集合不应为空");
+
+        } catch (IOException e) {
+            log.error("Failed to execute emojiDiffTest", e);
+        }
+    }
+
+    private Map<String, String> loadEmojiSequencesMap() throws IOException {
+        try (java.io.InputStream is = getClass().getResourceAsStream("/emoji-test.txt")) {
+            if (is == null) {
+                throw new IOException("emoji-test.txt not found in resources");
+            }
+            Map<String, String> emojiMap = new HashMap<>();
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(new java.io.InputStreamReader(is, java.nio.charset.StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    // 1. 跳过纯注释和空行（emoji-test.txt 的数据行以十六进制码点开头，不以 # 开头）
+                    if (line.startsWith("#") || line.trim().isEmpty()) {
+                        continue;
+                    }
+
+                    // 2. 仅筛选完全限定（fully-qualified）的标准表情，排除残缺变体
+                    if (!line.contains("; fully-qualified")) {
+                        continue;
+                    }
+
+                    // 3. 按照分号分割字段
+                    String[] parts = line.split(";");
+                    if (parts.length < 2) {
+                        continue;
+                    }
+
+                    // 4. 取出第一部分（十六进制代码序列），并用空格分割
+                    String hexCodesStr = parts[0].trim();
+                    String[] hexCodes = hexCodesStr.split(" ");
+
+                    // 5. 将十六进制代码还原为 Java String (完美支持多码点、ZWJ 零宽连字)
+                    StringBuilder emojiBuilder = new StringBuilder();
+                    for (String hex : hexCodes) {
+                        if (!hex.isBlank()) {
+                            int cp = Integer.parseInt(hex, 16);
+                            emojiBuilder.appendCodePoint(cp);
+                        }
+                    }
+                    String emojiChar = emojiBuilder.toString();
+
+                    // 6. 解析第二部分，从右侧的注释中提取纯粹 of 官方英文含义
+                    String[] commentParts = parts[1].split("#");
+                    if (commentParts.length < 2) {
+                        continue;
+                    }
+                    String comment = commentParts[1].trim();
+
+                    // 剥离前面的 "😀 E1.0 " 标记，提取最终含义
+                    String meaning = comment.replaceAll("^\\S+\\s+E\\d+\\.\\d+\\s+", "");
+
+                    // 7. 存入 Map
+                    emojiMap.put(emojiChar, meaning);
+                }
+            }
+            return emojiMap;
+        }
+    }
+
+    private Map<String, Set<String>> loadAnnotationsMap() throws IOException {
+        try (java.io.InputStream is = getClass().getResourceAsStream("/annotations.json")) {
+            if (is == null) {
+                throw new IOException("annotations.json not found in resources");
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(is);
+            JsonNode annotationsNode = rootNode.path("annotations").path("annotations");
+
+            Map<String, Set<String>> annotationMap = new HashMap<>();
+
+            Iterator<Map.Entry<String, JsonNode>> fields = annotationsNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                String key = field.getKey();
+                JsonNode valueNode = field.getValue();
+
+                Set<String> values = new HashSet<>();
+
+                // 解析 default (关键词)
+                JsonNode defaultNode = valueNode.path("default");
+                if (defaultNode.isArray()) {
+                    for (JsonNode node : defaultNode) {
+                        values.add(node.asText());
+                    }
+                }
+
+                // 解析 tts (TTS 描述)
+                JsonNode ttsNode = valueNode.path("tts");
+                if (ttsNode.isArray()) {
+                    for (JsonNode node : ttsNode) {
+                        values.add(node.asText());
+                    }
+                }
+
+                annotationMap.put(key, values);
+            }
+            return annotationMap;
+        }
+    }
 }
