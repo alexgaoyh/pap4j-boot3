@@ -34,7 +34,7 @@ public class KingbaseToMysqlMigrationTest {
     private static final String KINGBASE_USER = "";
     private static final String KINGBASE_PASSWORD = "";
 
-    private static final String MYSQL_URL = "jdbc:mysql://127.0.0.1:3306/test?useSSL=false&rewriteBatchedStatements=true&serverTimezone=Asia/Shanghai";
+    private static final String MYSQL_URL = "jdbc:mysql://127.0.0.1:3306/test?useSSL=false&allowPublicKeyRetrieval=true&rewriteBatchedStatements=true&serverTimezone=Asia/Shanghai";
 
     private static final String MYSQL_USER = "root";
     private static final String MYSQL_PASSWORD = "alexgaoyh";
