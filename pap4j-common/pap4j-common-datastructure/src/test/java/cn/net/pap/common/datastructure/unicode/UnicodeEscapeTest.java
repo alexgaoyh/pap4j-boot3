@@ -297,7 +297,9 @@ public class UnicodeEscapeTest {
     }
 
     /**
-     * https://www.unicode.org/Public/emoji/13.1/emoji-test.txt
+     * emoji-test.txt （Unicode 官方下载地址 https://www.unicode.org/Public/emoji/13.1/emoji-test.txt）
+     * 这是 Unicode 官方唯一一个把所有单码点 Emoji、旗帜序列、修饰符序列（肤色/性别）、以及复杂的 ZWJ 职业/家庭序列，全部汇总在一个文件里的源。
+     * 使用建议：只筛选读取标记为  ; fully-qualified （完全限定）的行，这就是系统能够正常渲染的、无损的所有标准表情符号。
      */
     @Test
     @DisplayName("读取并解析本地 Emoji 13.1 序列文件")
@@ -369,6 +371,13 @@ public class UnicodeEscapeTest {
         }
     }
 
+    /**
+     * 使用 Emoji 代替传统 Icon 时，需注意跨平台兼容性。
+     * 由于苹果（Apple Color Emoji）、谷歌（Noto Color Emoji）和微软（Segoe UI Emoji）的渲染风格大相径庭，
+     * 且较老的操作系统（如 Windows 7/10 早期版本）可能无法渲染较新版本（如 Unicode 14.0/15.0）的 Emoji（会出现豆腐块  □ ）。
+     * 如果您想确保各终端 100% 视觉一致且支持完美，可以在前端配合 Twemoji https://github.com/twitter/twemoji（Twitter 开源的 Emoji 库）或 Google Noto Emoji
+     * https://fonts.google.com/noto/specimen/Noto+Color+Emoji，将页面上的 Emoji 文本动态替换为高清晰度的 SVG 图片。
+     */
     @Test
     @DisplayName("分析 emoji-test.txt 与 annotations.json 的 Key 差集")
     public void emojiDiffTest() {

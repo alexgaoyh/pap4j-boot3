@@ -251,6 +251,18 @@ public class StringUtilIcu4jTest {
         }
     }
 
+    /**
+     * 可以直接利用  ICU4J  的  UnicodeSet  动态获取当前版本所有的 Emoji 字符汇总
+     */
+    @Test
+    public void emojiTest() {
+        UnicodeSet emojis = new UnicodeSet("[:Emoji:]");
+        System.out.println("官方收录的 Emoji 字符总数: " + emojis.size());
+        for (String emoji : emojis) {
+            log.info("{}", emoji);
+        }
+    }
+
     private List<String> segmentWithICU(String text) {
         com.ibm.icu.text.BreakIterator iterator = com.ibm.icu.text.BreakIterator.getCharacterInstance();
         iterator.setText(text);
