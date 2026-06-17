@@ -6,9 +6,13 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -385,9 +389,79 @@ public class UnicodeEscapeTest {
         }
     }
 
-    // todo https://github.com/unicode-org/cldr/blob/main/common/annotations/zh.xml
-    // todo https://github.com/unicode-org/cldr/blob/main/common/annotationsDerived/zh.xml
-    // Unicode 官方在 GitHub 上维护了完整的 CLDR 仓库。针对中文（zh），你需要关注两个文件（基础表情与组合表情是分开的）：
-    // 如果你不想在 Java 里写繁琐的 XML 解析代码，Unicode 官方还专门提供了一个 cldr-json 仓库，把上面的 XML 提前转成了 JSON，这简直是后端工程师的福音：
+    /**
+     * https://github.com/unicode-org/cldr-json/blob/39.0.0/cldr-json/cldr-annotations-full/annotations/zh/annotations.json
+     */
+    @Test
+    @DisplayName("读取并解析本地 annotations 文件")
+    public void annotationsTest() {
+        try (java.io.InputStream is = getClass().getResourceAsStream("/annotations.json")) {
+            if (is == null) {
+                log.warn("annotations.json not found in resources");
+                return;
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode = mapper.readTree(is);
+            JsonNode annotationsNode = rootNode.path("annotations").path("annotations");
+
+            // 存储解析结果: Key 为生成的完整 Emoji 字符串, Value 为去重后的官方中文含义与描述集合
+            Map<String, Set<String>> annotationMap = new HashMap<>();
+
+            Iterator<Map.Entry<String, JsonNode>> fields = annotationsNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                String key = field.getKey();
+                JsonNode valueNode = field.getValue();
+
+                Set<String> values = new HashSet<>();
+
+                // 解析 default (关键词)
+                JsonNode defaultNode = valueNode.path("default");
+                if (defaultNode.isArray()) {
+                    for (JsonNode node : defaultNode) {
+                        values.add(node.asText());
+                    }
+                }
+
+                // 解析 tts (TTS 描述)
+                JsonNode ttsNode = valueNode.path("tts");
+                if (ttsNode.isArray()) {
+                    for (JsonNode node : ttsNode) {
+                        values.add(node.asText());
+                    }
+                }
+
+                annotationMap.put(key, values);
+            }
+
+            log.info("Annotations 解析完成！共从本地资源加载了 {} 个注解定义。", annotationMap.size());
+
+            // 验证特定表情（与 emojiSequencesTest 对齐）
+            String targetEmoji = "🏻";
+            Set<String> values = annotationMap.get(targetEmoji);
+
+            if (values != null) {
+                log.info("【{}】 的官方含义与描述集合为: {}", targetEmoji, values);
+                log.info(" -> 字符渲染: {} (底层 char 长度: {})", targetEmoji, targetEmoji.length());
+            } else {
+                log.info("未找到【{}】的注解信息。", targetEmoji);
+            }
+
+            // 再验证一个较深肤色
+            String darkEmoji = "🏿";
+            Set<String> darkValues = annotationMap.get(darkEmoji);
+            if (darkValues != null) {
+                log.info("【{}】 的官方含义与描述集合为: {}", darkEmoji, darkValues);
+                log.info(" -> 字符渲染: {} (底层 char 长度: {})", darkEmoji, darkEmoji.length());
+            }
+
+            // 添加断言以保证测试有效性
+            assertFalse(annotationMap.isEmpty(), "注解 Map 不应为空");
+            assertTrue(annotationMap.containsKey(targetEmoji), "应该包含 🏻 的注解");
+        } catch (IOException e) {
+            log.error("Failed to read annotations.json", e);
+        }
+    }
 
 }
