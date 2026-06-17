@@ -20,8 +20,16 @@ import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
 public class AiAssistantConfig {
@@ -46,7 +54,7 @@ public class AiAssistantConfig {
         // 在生产环境建议改回判断 storeFile.exists() 以提升启动速度。
         log.info("正在刷新并向量化本地知识库...");
         loadAndVectorizeKnowledge(vectorStore);
-        
+        loadAndVectorizeEmojis(vectorStore);
         // 保存到本地磁盘（覆盖旧版本）
         storeFile.getParentFile().mkdirs();
         vectorStore.save(storeFile);
@@ -92,7 +100,11 @@ public class AiAssistantConfig {
             List<Document> allDocuments = new ArrayList<>();
             for (Resource resource : resources) {
                 TextReader textReader = new TextReader(resource);
-                allDocuments.addAll(textReader.get());
+                for (Document doc : textReader.get()) {
+                    java.util.Map<String, Object> metadata = new java.util.HashMap<>(doc.getMetadata());
+                    metadata.put("type", "knowledge");
+                    allDocuments.add(new Document(doc.getId(), doc.getText(), metadata));
+                }
             }
 
             // 【RAG 优化】：由于每个 MD 文件均小于 1.5KB，已属于理想的独立语义单元，
@@ -101,6 +113,70 @@ public class AiAssistantConfig {
 
         } catch (IOException e) {
             throw new RuntimeException("读取本地知识文档失败", e);
+        }
+    }
+
+    /**
+     * 私有方法：解析 annotations.json 导入到向量库中
+     */
+    private void loadAndVectorizeEmojis(SimpleVectorStore vectorStore) {
+        try {
+            org.springframework.core.io.ClassPathResource resource = new org.springframework.core.io.ClassPathResource("annotations.json");
+            if (!resource.exists()) {
+                log.warn("ClassPath 下未找到 annotations.json 资源文件，跳过 Emoji 向量化。");
+                return;
+            }
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode rootNode;
+            try (InputStream is = resource.getInputStream()) {
+                rootNode = mapper.readTree(is);
+            }
+            JsonNode annotationsNode = rootNode.path("annotations").path("annotations");
+
+            List<Document> emojiDocs = new ArrayList<>();
+            Iterator<Map.Entry<String, JsonNode>> fields = annotationsNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> field = fields.next();
+                String emojiChar = field.getKey();
+                JsonNode valueNode = field.getValue();
+
+                Set<String> keywords = new HashSet<>();
+
+                // 解析 default
+                JsonNode defaultNode = valueNode.path("default");
+                if (defaultNode.isArray()) {
+                    for (JsonNode node : defaultNode) {
+                        keywords.add(node.asText());
+                    }
+                }
+
+                // 解析 tts
+                JsonNode ttsNode = valueNode.path("tts");
+                if (ttsNode.isArray()) {
+                    for (JsonNode node : ttsNode) {
+                        keywords.add(node.asText());
+                    }
+                }
+
+                if (!keywords.isEmpty()) {
+                    String combinedText = String.join(" ", keywords);
+                    // 为 Emoji 创建专门的 Document，通过 metadata 进行类别区分
+                    Document doc = new Document(
+                            combinedText,
+                            Map.of("type", "emoji", "emoji", emojiChar)
+                    );
+                    emojiDocs.add(doc);
+                }
+            }
+
+            log.info("从 annotations.json 成功加载了 {} 个 Emoji 注解条目，正在进行向量生成与导入...", emojiDocs.size());
+            vectorStore.add(emojiDocs);
+            log.info("Emoji 向量导入完成！");
+
+        } catch (IOException e) {
+            log.error("加载 annotations.json 向量化失败", e);
+            throw new RuntimeException("读取 Emoji 字典失败", e);
         }
     }
 }

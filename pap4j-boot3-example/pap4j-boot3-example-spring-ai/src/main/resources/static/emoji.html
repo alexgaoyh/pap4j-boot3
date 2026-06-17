@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Emoji 智能语义图标库 - 基于 Spring AI 检索</title>
+    <meta name="description" content="使用 Spring AI 向量检索与提示词工程，将普通业务语境映射为最精准的系统 Emoji 表情，轻松构建免 Icon 图标库。">
+    <!-- 引入高档谷歌字体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=PingFang+SC&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-glow-1: rgba(79, 70, 229, 0.15);
+            --bg-glow-2: rgba(59, 130, 246, 0.15);
+            --card-bg: rgba(15, 23, 42, 0.65);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-color: #6366f1;
+            --accent-gradient: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%);
+            --input-focus: rgba(99, 102, 241, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', 'PingFang SC', -apple-system, sans-serif;
+            background-color: #030712;
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+            padding-bottom: 60px;
+        }
+
+        /* 背景发光球体效应 */
+        .bg-glow {
+            position: absolute;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: -1;
+            pointer-events: none;
+        }
+        .glow-1 {
+            top: -100px;
+            left: -100px;
+            background: var(--bg-glow-1);
+        }
+        .glow-2 {
+            bottom: 50px;
+            right: -100px;
+            background: var(--bg-glow-2);
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 40px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 32px;
+        }
+
+        /* 顶部导航标题 */
+        header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        header h1 {
+            font-size: 2.8rem;
+            font-weight: 700;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            letter-spacing: -0.5px;
+            margin-bottom: 12px;
+        }
+        header p {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+        }
+
+        /* 玻璃拟态主搜索卡片 */
+        .search-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 24px;
+            padding: 32px;
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .search-input-wrapper {
+            position: relative;
+            display: flex;
+            width: 100%;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 18px 24px;
+            padding-right: 120px;
+            border-radius: 16px;
+            background: rgba(17, 24, 39, 0.8);
+            border: 1px solid var(--card-border);
+            color: white;
+            font-size: 1.15rem;
+            outline: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: inherit;
+        }
+        .search-input:focus {
+            border-color: var(--accent-color);
+            box-shadow: 0 0 0 4px var(--input-focus);
+            background: rgba(17, 24, 39, 0.95);
+        }
+
+        .search-btn {
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            bottom: 8px;
+            padding: 0 24px;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent-gradient);
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            font-family: inherit;
+        }
+        .search-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        }
+        .search-btn:active {
+            transform: translateY(1px);
+        }
+
+        /* 快捷场景标签 */
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        .suggestions-title {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+        .tag-btn {
+            padding: 6px 14px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-family: inherit;
+        }
+        .tag-btn:hover {
+            background: rgba(99, 102, 241, 0.15);
+            border-color: var(--accent-color);
+            transform: scale(1.05);
+        }
+
+        /* 中间调试展示盒 */
+        .debug-box {
+            background: rgba(17, 24, 39, 0.4);
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            border-radius: 14px;
+            padding: 16px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            display: none;
+        }
+        .debug-box strong {
+            color: #818cf8;
+        }
+
+        /* 表情网格区域 */
+        .results-container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .results-header {
+            font-size: 1.3rem;
+            font-weight: 600;
+            border-left: 4px solid var(--accent-color);
+            padding-left: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .results-count {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 20px;
+            width: 100%;
+        }
+
+        /* 卡片设计 */
+        .emoji-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            padding: 24px 16px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative;
+            cursor: pointer;
+        }
+        .emoji-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 15px 30px -10px rgba(99, 102, 241, 0.2);
+            background: rgba(15, 23, 42, 0.85);
+        }
+
+        .emoji-display {
+            font-size: 3.5rem;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+        .emoji-card:hover .emoji-display {
+            transform: scale(1.2) rotate(4deg);
+        }
+
+        .emoji-score-badge {
+            font-size: 0.75rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            background: rgba(99, 102, 241, 0.12);
+            color: #818cf8;
+            font-weight: 600;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        .emoji-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            width: 100%;
+            padding: 0 8px;
+        }
+
+        .copy-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(99, 102, 241, 0.9);
+            border-radius: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .emoji-card:active .copy-overlay {
+            opacity: 1;
+        }
+
+        /* 加载动画 */
+        .loader-wrapper {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            padding: 60px 0;
+        }
+        .loader {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--card-border);
+            border-bottom-color: var(--accent-color);
+            border-radius: 50%;
+            display: inline-block;
+            animation: rotation 1s linear infinite;
+        }
+        @keyframes rotation {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 成功浮动浮窗 */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            background: #10b981;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            box-shadow: 0 10px 20px rgba(16, 185, 129, 0.3);
+            font-weight: 600;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        /* 缺省页设计 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 0;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .empty-icon {
+            font-size: 3rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="bg-glow glow-1"></div>
+    <div class="bg-glow glow-2"></div>
+
+    <div class="container">
+        <!-- 头部标题 -->
+        <header>
+            <h1>Emoji 智能语义图标库</h1>
+            <p>基于 Spring AI 向量库与提示词工程构建的免图标智能检索库</p>
+        </header>
+
+        <!-- 搜索区域 -->
+        <div class="search-card">
+            <div class="search-input-wrapper">
+                <input type="text" id="searchInput" class="search-input" placeholder="输入界面功能词，例如：'支付货款'、'用户管理'、'安全设置'..." autocomplete="off">
+                <button id="searchBtn" class="search-btn" onclick="executeSearch()">搜索</button>
+            </div>
+
+            <!-- 提示词重写调试看板 -->
+            <div id="debugBox" class="debug-box"></div>
+
+            <!-- 快捷标签推荐 -->
+            <div class="suggestions">
+                <span class="suggestions-title">推荐尝试：</span>
+                <button class="tag-btn" onclick="searchTag('设置')">⚙️ 设置</button>
+                <button class="tag-btn" onclick="searchTag('支付付款')">💳 支付付款</button>
+                <button class="tag-btn" onclick="searchTag('写邮件')">✉️ 写邮件</button>
+                <button class="tag-btn" onclick="searchTag('我的账号')">👤 我的账号</button>
+                <button class="tag-btn" onclick="searchTag('返回上一页')">⬅️ 返回上一页</button>
+                <button class="tag-btn" onclick="searchTag('删除内容')">🗑️ 删除内容</button>
+                <button class="tag-btn" onclick="searchTag('购物车')">🛒 购物车</button>
+            </div>
+        </div>
+
+        <!-- 结果区域 -->
+        <div class="results-container">
+            <div class="results-header">
+                <span>检索结果</span>
+                <span id="resultsCount" class="results-count">输入词汇开始检索</span>
+            </div>
+
+            <!-- 加载状态 -->
+            <div id="loader" class="loader-wrapper">
+                <span class="loader"></span>
+                <span>智能语义匹配中...</span>
+            </div>
+
+            <!-- 结果列表 -->
+            <div id="resultsGrid" class="results-grid">
+                <div class="empty-state" style="grid-column: 1 / -1;">
+                    <div class="empty-icon">🔍</div>
+                    <p>请输入您网站/应用的具体使用场景来搜索对应的 Emoji</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 复制成功的提示浮窗 -->
+    <div id="toast" class="toast">已成功复制 Emoji 到剪贴板！</div>
+
+    <script>
+        const searchInput = document.getElementById('searchInput');
+        const searchBtn = document.getElementById('searchBtn');
+        const resultsGrid = document.getElementById('resultsGrid');
+        const resultsCount = document.getElementById('resultsCount');
+        const loader = document.getElementById('loader');
+        const debugBox = document.getElementById('debugBox');
+        const toast = document.getElementById('toast');
+
+        // 回车键绑定
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                executeSearch();
+            }
+        });
+
+        // 标签点击搜索
+        function searchTag(tagText) {
+            searchInput.value = tagText;
+            executeSearch();
+        }
+
+        // 触发搜索
+        async function executeSearch() {
+            const prompt = searchInput.value.trim();
+            if (!prompt) return;
+
+            // 显示加载状态
+            resultsGrid.style.display = 'none';
+            loader.style.display = 'flex';
+            debugBox.style.display = 'none';
+            resultsCount.textContent = '匹配中...';
+
+            try {
+                // 请求后端语义检索接口
+                const response = await fetch('/api/ai/emoji', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt, topK: 24,
+                         chatId : 'chat-' + Math.random().toString(36).substr(2, 9) })
+                });
+
+                if (!response.ok) {
+                    throw new Error('后端检索接口响应异常');
+                }
+
+                const data = await response.json();
+                renderResults(data);
+
+            } catch (error) {
+                console.error(error);
+                resultsGrid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-icon">❌</div>
+                        <p style="color: #f87171;">检索失败：${error.message}</p>
+                    </div>
+                `;
+                resultsGrid.style.display = 'grid';
+            } finally {
+                loader.style.display = 'none';
+            }
+        }
+
+        // 渲染检索出来的 Emoji 卡片
+        function renderResults(results) {
+            resultsGrid.innerHTML = '';
+            resultsGrid.style.display = 'grid';
+
+            if (!results || results.length === 0) {
+                resultsCount.textContent = '共找到 0 个结果';
+                resultsGrid.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-icon">📭</div>
+                        <p>没有找到相关语义的表情符号，尝试换一个业务词检索吧</p>
+                    </div>
+                `;
+                return;
+            }
+
+            resultsCount.textContent = `共召回 ${results.length} 个表情`;
+
+            results.forEach(item => {
+                const card = document.createElement('div');
+                card.className = 'emoji-card';
+                card.onclick = () => copyToClipboard(item.emoji);
+
+                // 创建 Emoji 展示区
+                const emojiDiv = document.createElement('div');
+                emojiDiv.className = 'emoji-display';
+                emojiDiv.textContent = item.emoji;
+
+                // 相似度得分徽章
+                const scoreDiv = document.createElement('div');
+                scoreDiv.className = 'emoji-score-badge';
+                scoreDiv.textContent = `相似度: ${(item.score * 100).toFixed(1)}%`;
+
+                // 表情官方语义注解
+                const descDiv = document.createElement('div');
+                descDiv.className = 'emoji-desc';
+                descDiv.title = item.description;
+                descDiv.textContent = item.description;
+
+                // 覆盖物
+                const overlay = document.createElement('div');
+                overlay.className = 'copy-overlay';
+                overlay.textContent = '点击复制';
+
+                card.appendChild(emojiDiv);
+                card.appendChild(scoreDiv);
+                card.appendChild(descDiv);
+                card.appendChild(overlay);
+
+                resultsGrid.appendChild(card);
+            });
+        }
+
+        // 复制表情到剪切板
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 2000);
+            }).catch(err => {
+                console.error('复制失败: ', err);
+            });
+        }
+    </script>
+</body>
+</html>
