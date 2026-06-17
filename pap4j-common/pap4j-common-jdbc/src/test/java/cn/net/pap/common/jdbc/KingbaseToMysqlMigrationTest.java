@@ -14,6 +14,12 @@ import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
@@ -48,39 +54,89 @@ public class KingbaseToMysqlMigrationTest {
 
     @Test
     void migrateDatabase() throws Exception {
+        if (KINGBASE_URL == null || KINGBASE_URL.isBlank() || MYSQL_URL == null || MYSQL_URL.isBlank()) {
+            log.warn("数据库连接配置（KINGBASE_URL / MYSQL_URL）为空，跳过数据迁移测试。");
+            return;
+        }
 
         Class.forName(KINGBASE_DRIVER);
         Class.forName(MYSQL_DRIVER);
 
+        List<String> tables;
+        try (Connection source = DriverManager.getConnection(KINGBASE_URL, KINGBASE_USER, KINGBASE_PASSWORD)) {
+            tables = listTables(source);
+        }
+
+        log.info("发现表数量: {}", tables.size());
+        if (tables.isEmpty()) {
+            return;
+        }
+
+        long start = System.currentTimeMillis();
+        runParallelMigration(tables);
+        log.info("全部完成,耗时: {} 秒", (System.currentTimeMillis() - start) / 1000);
+    }
+
+    private void runParallelMigration(List<String> tables) throws Exception {
+        int threadCount = Math.min(4, tables.size());
+        ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                threadCount,
+                threadCount,
+                60L,
+                TimeUnit.SECONDS,
+                new LinkedBlockingQueue<>(tables.size() + 1),
+                new ThreadFactory() {
+                    private final AtomicInteger counter = new AtomicInteger(1);
+                    @Override
+                    public Thread newThread(Runnable r) {
+                        Thread t = new Thread(r, "migration-worker-" + counter.getAndIncrement());
+                        t.setDaemon(true);
+                        return t;
+                    }
+                },
+                new ThreadPoolExecutor.CallerRunsPolicy()
+        );
+
+        List<CompletableFuture<Void>> futures = new ArrayList<>();
+        int total = tables.size();
+        for (int i = 0; i < total; i++) {
+            String table = tables.get(i);
+            int index = i + 1;
+            CompletableFuture<Void> future = CompletableFuture.runAsync(
+                    () -> migrateSingleTable(table, index, total),
+                    executor
+            );
+            futures.add(future);
+        }
+
         try {
-            try (Connection source = DriverManager.getConnection(KINGBASE_URL, KINGBASE_USER, KINGBASE_PASSWORD); Connection target = DriverManager.getConnection(MYSQL_URL, MYSQL_USER, MYSQL_PASSWORD)) {
-
-                target.setAutoCommit(false);
-
-                try {
-                    execute(target, DISABLE_FOREIGN_KEY_CHECKS);
-                    List<String> tables = listTables(source);
-                    log.info("发现表数量: {}", tables.size());
-                    long start = System.currentTimeMillis();
-                    int index = 1;
-
-                    for (String table : tables) {
-                        log.info("[{}/{}] 开始迁移: {}", index++, tables.size(), table);
-                        createTable(source, target, table);
-                        migrateTable(source, target, table);
-                        log.info("完成: {}", table);
-                    }
-
-                    log.info("全部完成,耗时: {} 秒", (System.currentTimeMillis() - start) / 1000);
-                } finally {
-                    try {
-                        execute(target, ENABLE_FOREIGN_KEY_CHECKS);
-                    } catch (Exception e) {
-                    }
-                }
-            }
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
         } catch (Exception e) {
+            log.error("部分表迁移失败: ", e);
+            throw new RuntimeException("部分表迁移失败", e);
+        } finally {
+            executor.shutdown();
+            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        }
+    }
 
+    private void migrateSingleTable(String table, int index, int total) {
+        log.info("[{}/{}] [线程 {}] 开始迁移表: {}", index, total, Thread.currentThread().getName(), table);
+        try (Connection source = DriverManager.getConnection(KINGBASE_URL, KINGBASE_USER, KINGBASE_PASSWORD);
+             Connection target = DriverManager.getConnection(MYSQL_URL, MYSQL_USER, MYSQL_PASSWORD)) {
+
+            execute(target, DISABLE_FOREIGN_KEY_CHECKS);
+            target.setAutoCommit(false);
+
+            createTable(source, target, table);
+            migrateTable(source, target, table);
+
+            log.info("[{}/{}] [线程 {}] 完成表迁移: {}", index, total, Thread.currentThread().getName(), table);
+        } catch (Exception e) {
+            log.error("迁移表 {} 发生错误: ", table, e);
+            throw new RuntimeException("表 " + table + " 迁移失败", e);
         }
     }
 
@@ -139,7 +195,7 @@ public class KingbaseToMysqlMigrationTest {
         try {
             try (Statement st = source.createStatement(ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY)) {
                 st.setFetchSize(BATCH_SIZE);
-                log.info("正在执行 SQL 查询并准备流式拉取数据...");
+                log.info("[{}] 正在执行 SQL 查询并准备流式拉取数据...", table);
                 try (ResultSet rs = st.executeQuery(query)) {
                     ResultSetMetaData meta = rs.getMetaData();
                     int columns = meta.getColumnCount();
@@ -150,7 +206,7 @@ public class KingbaseToMysqlMigrationTest {
                     String insert = buildInsert(table, meta);
                     try (PreparedStatement ps = target.prepareStatement(insert)) {
                         long current = 0;
-                        log.info("开始从 Kingbase 流式读取并批量写入 MySQL...");
+                        log.info("[{}] 开始从 Kingbase 流式读取并批量写入 MySQL...", table);
                         while (rs.next()) {
                             for (int i = 1; i <= columns; i++) {
                                 if (columnTypes[i] == Types.OTHER) {
@@ -164,12 +220,12 @@ public class KingbaseToMysqlMigrationTest {
                             if (current % BATCH_SIZE == 0) {
                                 ps.executeBatch();
                                 target.commit();
-                                printProgress(current);
+                                printProgress(table, current);
                             }
                         }
                         ps.executeBatch();
                         target.commit();
-                        printProgress(current);
+                        printProgress(table, current);
                     }
                 }
             }
@@ -223,8 +279,8 @@ public class KingbaseToMysqlMigrationTest {
         };
     }
 
-    private void printProgress(long current) {
-        log.info("  - 进度: 已迁移 {} 条记录", current);
+    private void printProgress(String table, long current) {
+        log.info("表 [{}] 进度: 已迁移 {} 条记录", table, current);
     }
 
     private String quote(String name) {
