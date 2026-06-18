@@ -17,9 +17,12 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
+
+import java.util.ArrayList;
 
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
@@ -52,16 +55,20 @@ public class ProguardServiceImpl implements IProguardService {
 
     private final TransactionTemplate transactionTemplate;
 
+    private final JdbcTemplate jdbcTemplate;
+
     public ProguardServiceImpl(ProguardRepository proguardRepository,
                                ProguardIdxSeqRepository proguardIdxSeqRepository,
                                ProguardJDBCRepository proguardJDBCRepository,
                                EntityManager entityManager,
-                               TransactionTemplate transactionTemplate) {
+                               TransactionTemplate transactionTemplate,
+                               JdbcTemplate jdbcTemplate) {
         this.proguardRepository = proguardRepository;
         this.proguardIdxSeqRepository = proguardIdxSeqRepository;
         this.proguardJDBCRepository = proguardJDBCRepository;
         this.entityManager = entityManager;
         this.transactionTemplate = transactionTemplate;
+        this.jdbcTemplate = jdbcTemplate;
     }
 
     @Override
@@ -213,12 +220,17 @@ public class ProguardServiceImpl implements IProguardService {
             return session.doReturningWork(connection -> {
                 // todo 此处未处理 NULL 字段
                 try (PreparedStatement preparedStatement = connection.prepareStatement(
-                        "INSERT INTO proguard (proguard_id, tenant_id) VALUES (?, 1)")) {
+                        "INSERT INTO proguard (proguard_id, tenant_id, abstract_list, abstract_obj, ext_list, ext_map, proguard_name) VALUES (?, 1, ?, ?, ?, ?, ?)")) {
 
                     connection.setAutoCommit(false);
 
                     for (int idx = 0; idx < paramsList.size(); idx++) {
                         preparedStatement.setObject(1, paramsList.get(idx));
+                        preparedStatement.setObject(2, "[]");
+                        preparedStatement.setObject(3, "{}");
+                        preparedStatement.setObject(4, "[]");
+                        preparedStatement.setObject(5, "{}");
+                        preparedStatement.setObject(6, "alexgaoyh");
                         preparedStatement.addBatch();
                     }
                     int[] result = preparedStatement.executeBatch();
@@ -269,6 +281,20 @@ public class ProguardServiceImpl implements IProguardService {
         } catch (Exception e) {
             throw new RuntimeException("Error during batch execution", e);
         }
+    }
+
+    @Override
+    @Transactional
+    public Boolean executeNaiveSQLUpdateBatchUsingJdbcTemplate(String sql, List<List<Object>> paramsList) {
+        if (sql == null || paramsList == null || paramsList.isEmpty()) {
+            return false;
+        }
+        List<Object[]> batchArgs = new ArrayList<>(paramsList.size());
+        for (List<Object> params : paramsList) {
+            batchArgs.add(params.toArray());
+        }
+        jdbcTemplate.batchUpdate(sql, batchArgs);
+        return true;
     }
 
     @Override

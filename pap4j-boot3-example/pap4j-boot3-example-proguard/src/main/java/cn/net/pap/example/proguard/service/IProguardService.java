@@ -80,6 +80,14 @@ public interface IProguardService {
      */
     Boolean executeNaiveSQLBatchUsingJDBC(List<String> executeSQLList);
 
+    /**
+     * 使用 JdbcTemplate 批量执行 SQL 更新
+     * @param sql
+     * @param paramsList
+     * @return
+     */
+    Boolean executeNaiveSQLUpdateBatchUsingJdbcTemplate(String sql, List<List<Object>> paramsList);
+
     Boolean exceptionRandom(String input);
 
     Boolean checkDeadLock(Long id1, Long id2);
