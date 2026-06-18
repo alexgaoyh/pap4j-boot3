@@ -103,6 +103,8 @@ public class AiAssistantConfig {
                 for (Document doc : textReader.get()) {
                     java.util.Map<String, Object> metadata = new java.util.HashMap<>(doc.getMetadata());
                     metadata.put("type", "knowledge");
+                    // 写入来源文件名，用于后续关联链接的元数据精准匹配召回
+                    metadata.put("source", resource.getFilename());
                     allDocuments.add(new Document(doc.getId(), doc.getText(), metadata));
                 }
             }

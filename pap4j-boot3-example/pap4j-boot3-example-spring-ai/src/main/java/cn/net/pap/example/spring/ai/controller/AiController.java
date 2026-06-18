@@ -66,18 +66,24 @@ public class AiController {
                             .build()
             ));
 
-            // 2. 第二次检索：从已召回文档中提取跨文件链接，跟随链接补召关联知识
-            List<String> linkedTexts = extractMarkdownLinkTexts(firstDocs);
+            // 2. 第二次检索：从已召回文档中提取跨文件链接，使用元数据（Metadata）进行精确过滤召回，规避语义检索漂移
+            List<String> linkedFiles = extractMarkdownLinkFiles(firstDocs);
             List<Document> extraDocs = new ArrayList<>();
             List<Document> docs = new ArrayList<>(firstDocs);
 
-            if (!linkedTexts.isEmpty()) {
-                String linkQuery = String.join(" ", linkedTexts);
+            if (!linkedFiles.isEmpty()) {
+                // 构建多文件精准过滤表达式，如：type == 'knowledge' && (source == 'file1.md' || source == 'file2.md')
+                String fileConditions = linkedFiles.stream()
+                        .map(file -> "source == '" + file + "'")
+                        .collect(Collectors.joining(" || "));
+                String filterExpr = "type == 'knowledge' && (" + fileConditions + ")";
+
                 extraDocs.addAll(vectorStore.similaritySearch(
                         SearchRequest.builder()
-                                .query(linkQuery)
-                                .topK(linkedTexts.size())
-                                .filterExpression("type == 'knowledge'")
+                                // 因元数据已实现精确过滤，query 使用原始 Prompt 以作格式占位即可，核心由 Metadata Filter 负责硬召回
+                                .query(request.prompt())
+                                .topK(linkedFiles.size())
+                                .filterExpression(filterExpr)
                                 .build()
                 ));
 
@@ -92,7 +98,7 @@ public class AiController {
             }
 
             // 3. 记录 RAG 检索细节结构化日志
-            logRagTrace(chatId, request.prompt(), firstDocs, linkedTexts, extraDocs, docs.size());
+            logRagTrace(chatId, request.prompt(), firstDocs, linkedFiles, extraDocs, docs.size());
 
             String context = docs.stream()
                     .map(Document::getText)
@@ -272,18 +278,18 @@ public class AiController {
      * 这些显示文本描述了被链接文档的核心内容，将作为二次检索的查询词，
      * 从而把关联文档也召回到上下文中。
      */
-    private List<String> extractMarkdownLinkTexts(List<Document> docs) {
+    private List<String> extractMarkdownLinkFiles(List<Document> docs) {
         Pattern pattern = Pattern.compile("\\[([^\\]]+)\\]\\(([^)]+\\.md)\\)");
         return docs.stream()
                 .map(Document::getText)
                 .flatMap(text -> {
                     Matcher matcher = pattern.matcher(text);
-                    List<String> texts = new ArrayList<>();
+                    List<String> files = new ArrayList<>();
                     while (matcher.find()) {
-                        // 取链接的显示文本作为语义查询词，比用文件路径更具语义
-                        texts.add(matcher.group(1));
+                        // 提取链接的实际指向文件名，用于元数据精准召回
+                        files.add(matcher.group(2));
                     }
-                    return texts.stream();
+                    return files.stream();
                 })
                 .distinct()
                 .collect(Collectors.toList());
