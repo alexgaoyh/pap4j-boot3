@@ -84,6 +84,29 @@ public class OkHttpBatchExecutor implements AutoCloseable {
         }
     }
 
+    /**
+     * 创建一个忽略 SSL 证书校验的 OkHttpClient，并附加指定的多个 HTTP 请求头（支持 null 或空值）
+     *
+     * @param headers 自定义请求头键值对 Map，可以为 null 或为空
+     * @return 配置好的 OkHttpClient 实例
+     */
+    public static OkHttpClient createUnsafeOkHttpClient(java.util.Map<String, String> headers) {
+        OkHttpClient.Builder builder = createUnsafeOkHttpClientBuilder();
+        if (headers != null && !headers.isEmpty()) {
+            builder.addInterceptor(chain -> {
+                Request original = chain.request();
+                Request.Builder requestBuilder = original.newBuilder();
+                for (java.util.Map.Entry<String, String> entry : headers.entrySet()) {
+                    if (entry.getKey() != null && entry.getValue() != null) {
+                        requestBuilder.header(entry.getKey(), entry.getValue());
+                    }
+                }
+                return chain.proceed(requestBuilder.build());
+            });
+        }
+        return builder.build();
+    }
+
     private final OkHttpClient client;
     private final ThreadPoolExecutor executor;
     private final int maxBatchSize;

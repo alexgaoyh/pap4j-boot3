@@ -549,18 +549,10 @@ public class OkHttpBatchExecutorTest {
      */
     @Test
     public void testSslBypassConfiguration() throws Exception {
-        // 1. 使用 OkHttpBatchExecutor 提供的静态工厂方法构造忽略 SSL 校验的 OkHttpClient Builder 并生成客户端
-        OkHttpClient sslBypassClient = OkHttpBatchExecutor.createUnsafeOkHttpClientBuilder()
-                .addInterceptor(new Interceptor() {
-                    @Override
-                    public Response intercept(Chain chain) throws IOException {
-                        Request original = chain.request();
-                        Request request = original.newBuilder()
-                                .header("Referer", "https://pap-docs.pap.net.cn/")
-                                .build();
-                        return chain.proceed(request);
-                    }
-                }).build();
+        // 1. 使用 OkHttpBatchExecutor 静态方法传入 Map 构建忽略 SSL 校验且携带自定义 Header 的客户端
+        OkHttpClient sslBypassClient = OkHttpBatchExecutor.createUnsafeOkHttpClient(
+                java.util.Map.of("Referer", "https://pap-docs.pap.net.cn/")
+        );
 
         // 2. 将配置好的客户端注入批量执行器
         try (OkHttpBatchExecutor executor = new OkHttpBatchExecutor(sslBypassClient, 1, 1, 10, 100)) {
