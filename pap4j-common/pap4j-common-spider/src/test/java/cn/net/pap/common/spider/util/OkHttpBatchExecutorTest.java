@@ -14,6 +14,13 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Collections;
@@ -537,6 +544,50 @@ public class OkHttpBatchExecutorTest {
         } finally {
             // 6. 销毁并关闭本地 WireMock 服务
             wireMockServer.stop();
+        }
+    }
+
+    /**
+     * 技术示范：展示如何构造一个忽略 SSL 校验的 OkHttpClient 并与 OkHttpBatchExecutor 配合使用。
+     * 本方法仅做初始化与调用语法示范，不发起真实网络请求。
+     */
+    @Test
+    public void testSslBypassConfiguration() throws Exception {
+        // 1. 构造一个信任所有证书的 TrustManager
+        TrustManager[] trustAllCerts = new TrustManager[]{
+                new X509TrustManager() {
+                    @Override
+                    public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                    }
+
+                    @Override
+                    public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                    }
+
+                    @Override
+                    public X509Certificate[] getAcceptedIssuers() {
+                        return new X509Certificate[]{};
+                    }
+                }
+        };
+
+        // 2. 初始化 SSLContext 并产生 SSLSocketFactory
+        SSLContext sslContext = SSLContext.getInstance("SSL");
+        sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+        SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+
+        // 3. 将 SSL 配置及 HostnameVerifier 注入 OkHttpClient Builder
+        OkHttpClient sslBypassClient = new OkHttpClient.Builder()
+                .sslSocketFactory(sslSocketFactory, (X509TrustManager) trustAllCerts[0])
+                .hostnameVerifier((hostname, session) -> true) // 忽略域名校验不匹配问题
+                .build();
+
+        // 4. 将配置好的客户端注入批量执行器
+        try (OkHttpBatchExecutor executor = new OkHttpBatchExecutor(sslBypassClient, 1, 1, 10, 100)) {
+            // 此处即可安全发起针对自签名证书等不可信 HTTPS 站点的批量请求
+            // List<OkHttpBatchExecutor.BatchResult> results = executor.executeBatch("https://untrusted-ssl-site.com/api", List.of("{}"));
+            // 语法验证断言
+            assertTrue(true);
         }
     }
 
