@@ -13,6 +13,7 @@ import javax.net.ssl.SSLSocketFactory;
 import javax.net.ssl.TrustManager;
 import javax.net.ssl.X509TrustManager;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -105,6 +106,32 @@ public class OkHttpBatchExecutor implements AutoCloseable {
             });
         }
         return builder.build();
+    }
+
+    /**
+     * 同步发送单笔 POST 请求（JSON Body）并直接返回响应字符串内容（不创建或使用线程池）
+     *
+     * @param client   OkHttpClient 实例
+     * @param url      请求目标地址
+     * @param jsonBody 请求 JSON 内容
+     * @return 响应体字符串内容
+     * @throws IOException 请求失败或网络异常时抛出
+     */
+    public static String executePost(OkHttpClient client, String url, String jsonBody) throws IOException {
+        if (client == null) {
+            throw new IOException("OkHttpClient is null");
+        }
+        Request request = new Request.Builder()
+                .url(url)
+                .post(RequestBody.create(jsonBody, JSON_TYPE))
+                .build();
+        try (Response response = client.newCall(request).execute()) {
+            String body = response.body() != null ? response.body().string() : "";
+            if (!response.isSuccessful()) {
+                throw new IOException("HTTP " + response.code() + ": " + body);
+            }
+            return body;
+        }
     }
 
     private final OkHttpClient client;
