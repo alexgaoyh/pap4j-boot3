@@ -8,6 +8,11 @@ import okhttp3.Response;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocketFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -42,6 +47,42 @@ public class OkHttpBatchExecutor implements AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(OkHttpBatchExecutor.class);
     private static final MediaType JSON_TYPE = MediaType.get("application/json; charset=utf-8");
     private static final long DEFAULT_JOIN_TIMEOUT_MS = 30_000L;
+
+    /**
+     * 创建一个忽略 SSL 证书校验的 OkHttpClient.Builder（用于开发调试或爬虫绕过证书错误）
+     *
+     * @return OkHttpClient.Builder
+     */
+    public static OkHttpClient.Builder createUnsafeOkHttpClientBuilder() {
+        try {
+            TrustManager[] trustAllCerts = new TrustManager[]{
+                    new X509TrustManager() {
+                        @Override
+                        public void checkClientTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public void checkServerTrusted(java.security.cert.X509Certificate[] chain, String authType) {
+                        }
+
+                        @Override
+                        public java.security.cert.X509Certificate[] getAcceptedIssuers() {
+                            return new java.security.cert.X509Certificate[]{};
+                        }
+                    }
+            };
+
+            SSLContext sslContext = SSLContext.getInstance("SSL");
+            sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
+            SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
+
+            return new OkHttpClient.Builder()
+                    .sslSocketFactory(sslSocketFactory, (X509TrustManager) trustAllCerts[0])
+                    .hostnameVerifier((hostname, session) -> true);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to create unsafe OkHttpClient", e);
+        }
+    }
 
     private final OkHttpClient client;
     private final ThreadPoolExecutor executor;
@@ -223,6 +264,91 @@ public class OkHttpBatchExecutor implements AutoCloseable {
                 // 恢复中断状态，调用方可通过 Thread.currentThread().isInterrupted() 感知
                 Thread.currentThread().interrupt();
                 results.add(BatchResult.unknown(input, "Thread interrupted"));
+            }
+        }
+        return results;
+    }
+
+    /**
+     * 批量发送 POST 请求，每个 URL 对应一个请求，使用同一个 JSON Body（用于针对不同 URL 批量请求）
+     *
+     * @param urls       请求地址列表
+     * @param jsonBody   统一的 JSON 请求体内容
+     * @return 结果列表，其顺序与 urls 一致，BatchResult 中的 input 保存对应的 URL
+     */
+    public List<BatchResult> executeBatch(List<String> urls, String jsonBody) {
+        if (urls == null || urls.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // ── 1. maxBatchSize 保护 ──
+        if (maxBatchSize > 0 && urls.size() > maxBatchSize) {
+            log.warn("批量请求数量 {} 超过上限 maxBatchSize={}，全部拒绝", urls.size(), maxBatchSize);
+            List<BatchResult> results = new ArrayList<>(urls.size());
+            for (String url : urls) {
+                results.add(BatchResult.rejected(url,
+                        "Batch size " + urls.size() + " exceeds max " + maxBatchSize));
+            }
+            return results;
+        }
+
+        // ── 2. OkHttpClient 为空保护 ──
+        if (client == null) {
+            log.warn("OkHttpClient 为 null，所有请求直接返回失败");
+            List<BatchResult> results = new ArrayList<>(urls.size());
+            for (String url : urls) {
+                results.add(BatchResult.failure(url, "client null"));
+            }
+            return results;
+        }
+
+        // ── 3. 正常提交 ──
+        List<CompletableFuture<BatchResult>> futures = new ArrayList<>(urls.size());
+        for (String url : urls) {
+            final String currentUrl = url;
+            try {
+                futures.add(CompletableFuture.supplyAsync(() -> {
+                    Request request = new Request.Builder()
+                            .url(currentUrl)
+                            .post(RequestBody.create(jsonBody, JSON_TYPE))
+                            .build();
+                    try (Response response = client.newCall(request).execute()) {
+                        String body = response.body() != null ? response.body().string() : "";
+                        if (!response.isSuccessful()) {
+                            return BatchResult.failure(currentUrl, "HTTP " + response.code() + ": " + body);
+                        }
+                        return BatchResult.success(currentUrl, body);
+                    } catch (Exception e) {
+                        log.error("HTTP 请求执行失败: {}, {}", currentUrl, jsonBody, e);
+                        return BatchResult.failure(currentUrl, e.getMessage());
+                    }
+                }, executor));
+            } catch (RejectedExecutionException e) {
+                log.warn("任务提交被拒绝 (队列已满): {}", currentUrl);
+                futures.add(CompletableFuture.completedFuture(BatchResult.rejected(currentUrl, "Queue full")));
+            }
+        }
+
+        // ── 4. 收集结果（带超时） ──
+        List<BatchResult> results = new ArrayList<>(futures.size());
+        for (int i = 0; i < futures.size(); i++) {
+            CompletableFuture<BatchResult> f = futures.get(i);
+            String url = i < urls.size() ? urls.get(i) : "N/A";
+            try {
+                results.add(f.get(joinTimeoutMs, TimeUnit.MILLISECONDS));
+            } catch (TimeoutException e) {
+                f.cancel(true);
+                results.add(BatchResult.unknown(url,
+                        "Task timed out after " + joinTimeoutMs + "ms"));
+            } catch (ExecutionException e) {
+                Throwable cause = e.getCause();
+                String msg = cause != null ? cause.getMessage() : e.getMessage();
+                results.add(BatchResult.unknown(url, msg != null ? msg : "Task execution failed"));
+            } catch (CancellationException e) {
+                results.add(BatchResult.unknown(url, "Task cancelled"));
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                results.add(BatchResult.unknown(url, "Thread interrupted"));
             }
         }
         return results;

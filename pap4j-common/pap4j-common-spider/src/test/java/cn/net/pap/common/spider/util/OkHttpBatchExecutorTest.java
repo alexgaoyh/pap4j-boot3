@@ -4,8 +4,11 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import java.net.Proxy;
 import java.net.InetSocketAddress;
 import okhttp3.ConnectionPool;
+import okhttp3.Interceptor;
 import okhttp3.OkHttpClient;
 import okhttp3.Protocol;
+import okhttp3.Request;
+import okhttp3.Response;
 import okhttp3.mockwebserver.MockResponse;
 import okhttp3.mockwebserver.MockWebServer;
 import org.junit.jupiter.api.AfterEach;
@@ -13,13 +16,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLSocketFactory;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.X509TrustManager;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -553,39 +549,24 @@ public class OkHttpBatchExecutorTest {
      */
     @Test
     public void testSslBypassConfiguration() throws Exception {
-        // 1. 构造一个信任所有证书的 TrustManager
-        TrustManager[] trustAllCerts = new TrustManager[]{
-                new X509TrustManager() {
+        // 1. 使用 OkHttpBatchExecutor 提供的静态工厂方法构造忽略 SSL 校验的 OkHttpClient Builder 并生成客户端
+        OkHttpClient sslBypassClient = OkHttpBatchExecutor.createUnsafeOkHttpClientBuilder()
+                .addInterceptor(new Interceptor() {
                     @Override
-                    public void checkClientTrusted(X509Certificate[] chain, String authType) throws CertificateException {
+                    public Response intercept(Chain chain) throws IOException {
+                        Request original = chain.request();
+                        Request request = original.newBuilder()
+                                .header("Referer", "https://pap-docs.pap.net.cn/")
+                                .build();
+                        return chain.proceed(request);
                     }
+                }).build();
 
-                    @Override
-                    public void checkServerTrusted(X509Certificate[] chain, String authType) throws CertificateException {
-                    }
-
-                    @Override
-                    public X509Certificate[] getAcceptedIssuers() {
-                        return new X509Certificate[]{};
-                    }
-                }
-        };
-
-        // 2. 初始化 SSLContext 并产生 SSLSocketFactory
-        SSLContext sslContext = SSLContext.getInstance("SSL");
-        sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
-        SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
-
-        // 3. 将 SSL 配置及 HostnameVerifier 注入 OkHttpClient Builder
-        OkHttpClient sslBypassClient = new OkHttpClient.Builder()
-                .sslSocketFactory(sslSocketFactory, (X509TrustManager) trustAllCerts[0])
-                .hostnameVerifier((hostname, session) -> true) // 忽略域名校验不匹配问题
-                .build();
-
-        // 4. 将配置好的客户端注入批量执行器
+        // 2. 将配置好的客户端注入批量执行器
         try (OkHttpBatchExecutor executor = new OkHttpBatchExecutor(sslBypassClient, 1, 1, 10, 100)) {
             // 此处即可安全发起针对自签名证书等不可信 HTTPS 站点的批量请求
             // List<OkHttpBatchExecutor.BatchResult> results = executor.executeBatch("https://untrusted-ssl-site.com/api", List.of("{}"));
+            
             // 语法验证断言
             assertTrue(true);
         }
