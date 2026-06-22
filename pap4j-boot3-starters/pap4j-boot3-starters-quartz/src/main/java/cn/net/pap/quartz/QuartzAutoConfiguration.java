@@ -115,6 +115,7 @@ public class QuartzAutoConfiguration {
      */
     private DatabasePopulator databasePopulator() {
         final ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
+        // todo：此处硬编码了 addScripts 并加载 tables_h2.sql。
         populator.addScripts(schemaSql);
         populator.setSeparator(";");
         return populator;
@@ -231,6 +232,7 @@ public class QuartzAutoConfiguration {
             });
 
             try {
+                // todo：生产环境下 awaitTermination 等待时间设为 3600 秒（1小时）过长。 如果有卡住的线程会导致 JVM 迟迟无法退出，从而卡住 CI/CD 部署流水线或 Kubernetes Pod 滚动更新。
                 if (!schedulerThreadPool.getThreadPoolExecutor().awaitTermination(3600, TimeUnit.SECONDS)) {
                     logger.warn("线程池未能在规定时间内关闭，强制关闭");
                     schedulerThreadPool.getThreadPoolExecutor().shutdownNow();

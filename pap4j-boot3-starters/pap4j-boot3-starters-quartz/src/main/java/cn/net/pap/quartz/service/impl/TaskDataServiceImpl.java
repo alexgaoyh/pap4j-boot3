@@ -7,7 +7,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -22,9 +24,11 @@ public class TaskDataServiceImpl implements ITaskDataService {
     private static final Logger log = LoggerFactory.getLogger(TaskDataServiceImpl.class);
 
     private final TaskDataRepository taskDataRepository;
+    private final TransactionTemplate transactionTemplate;
 
-    public TaskDataServiceImpl(TaskDataRepository taskDataRepository) {
+    public TaskDataServiceImpl(TaskDataRepository taskDataRepository, PlatformTransactionManager transactionManager) {
         this.taskDataRepository = taskDataRepository;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     private static final int BATCH_SIZE = 10;
@@ -37,7 +41,6 @@ public class TaskDataServiceImpl implements ITaskDataService {
      * 高并发安全的批量处理方法 - 核心入口
      */
     @Override
-    @Transactional(rollbackFor = Exception.class)
     public void processBatchSafely() {
         int processedCount;
 
@@ -67,19 +70,25 @@ public class TaskDataServiceImpl implements ITaskDataService {
         // 生成唯一的处理令牌
         String processToken = UUID.randomUUID().toString();
 
-        // 核心：原子性地抢占数据所有权
-        int acquiredCount = taskDataRepository.acquireBatchForProcessing(
-                pendingIds, processToken, MAX_RETRY_ATTEMPTS);
+        // 核心：在独立事务中原子性地抢占数据所有权并查询
+        List<TaskData> acquiredData = transactionTemplate.execute(status -> {
+            int acquiredCount = taskDataRepository.acquireBatchForProcessing(
+                    pendingIds, processToken, MAX_RETRY_ATTEMPTS);
 
-        if (acquiredCount == 0) {
+            if (acquiredCount == 0) {
+                return java.util.Collections.emptyList();
+            }
+
+            // 查询刚刚被抢占的数据
+            return taskDataRepository.findByProcessToken(processToken);
+        });
+
+        if (acquiredData == null || acquiredData.isEmpty()) {
             return 0; // 没有抢到任何数据
         }
 
-        // 查询刚刚被抢占的数据
-        List<TaskData> acquiredData = taskDataRepository.findByProcessToken(processToken);
-
         // 处理抢到的数据
-        processAcquiredDataInParallel(acquiredData, processToken);
+        processAcquiredData(acquiredData, processToken);
 
         return acquiredData.size();
     }
@@ -87,28 +96,32 @@ public class TaskDataServiceImpl implements ITaskDataService {
     /**
      * 处理已抢占的数据
      */
-    private void processAcquiredDataInParallel(List<TaskData> acquiredData, String processToken) {
+    private void processAcquiredData(List<TaskData> acquiredData, String processToken) {
         acquiredData.stream().forEach(data -> {
+            // “至少一次（At-Least-Once）”消费保证：因为外部 HTTP 接口通常是不可逆且无法回滚的（例如发了短信、扣了款）。
+            // 如果 JVM 在处理到第 5 条数据时突然宕机，前 4 条由于已经单独提交了事务，状态是  SUCCESS ，不会被重复消费；只有剩下的会被恢复重新执行。
+            // 所以目前的方式，执行完一条记录就刷新数据库，容错性较好。
             processSingleDataSafely(data, processToken);
         });
     }
 
     /**
-     * 安全处理单条数据
+     * 安全处理单条数据 (核心控制流：无大事务)
      */
     private void processSingleDataSafely(TaskData data, String processToken) {
         try {
-            // 执行业务逻辑
+            // 1. 执行外部业务逻辑 (无事务，阻断连接占用)
             processBusinessLogic(data);
 
-            // 原子性地标记成功
-            int updated = taskDataRepository.markAsSuccess(data.getId(), processToken);
-            if (updated == 0) {
+            // 2. 标记处理成功 (独立小事务，立即提交)
+            boolean success = markTaskSuccessInNewTransaction(data.getId(), processToken);
+            if (!success) {
                 log.warn("标记成功失败，数据可能已被其他进程处理: {}", data.getId());
             }
 
         } catch (Exception e) {
-            handleProcessingFailure(data, processToken, e);
+            // 3. 标记处理失败 (独立小事务，立即提交)
+            markTaskFailureInNewTransaction(data, processToken, e);
         }
     }
 
@@ -149,27 +162,42 @@ public class TaskDataServiceImpl implements ITaskDataService {
     }
 
     /**
-     * 处理执行失败的情况
+     * 在独立的事务中标记成功
      */
-    private void handleProcessingFailure(TaskData data, String processToken, Exception e) {
-        // 根据异常类型和重试次数决定是标记为最终失败还是可重试失败
-        if (data.getProcessAttempts() >= MAX_RETRY_ATTEMPTS ||
-                e.getMessage().contains("不可重试")) {
-            // 超过重试次数或不可重试异常，标记为最终失败
-            int updated = taskDataRepository.markAsFailed(data.getId(), processToken, e.getMessage());
-            if (updated == 0) {
-                log.warn("标记失败时发生冲突: {}", data.getId());
-            }
-        } else {
-            // 标记为可重试失败
-            taskDataRepository.markAsRetryableFailed(data.getId(), processToken, e.getMessage());
-        }
+    private boolean markTaskSuccessInNewTransaction(Long id, String processToken) {
+        Boolean result = transactionTemplate.execute(status -> 
+            taskDataRepository.markAsSuccess(id, processToken) > 0
+        );
+        return Boolean.TRUE.equals(result);
+    }
 
+    /**
+     * 在独立的事务中标记失败
+     */
+    private void markTaskFailureInNewTransaction(TaskData data, String processToken, Exception e) {
+        try {
+            transactionTemplate.execute(status -> {
+                if (data.getProcessAttempts() >= MAX_RETRY_ATTEMPTS ||
+                        (e.getMessage() != null && e.getMessage().contains("不可重试"))) {
+                    // 超过重试次数或不可重试异常，标记为最终失败
+                    int updated = taskDataRepository.markAsFailed(data.getId(), processToken, e.getMessage());
+                    if (updated == 0) {
+                        log.warn("标记失败时发生冲突: {}", data.getId());
+                    }
+                } else {
+                    // 标记为可重试失败
+                    taskDataRepository.markAsRetryableFailed(data.getId(), processToken, e.getMessage());
+                }
+                return null;
+            });
+        } catch (Exception ex) {
+            log.error("将数据标记为失败时发生数据库异常: {}", data.getId(), ex);
+        }
         log.error("处理数据失败: {}", data.getId(), e);
     }
 
     /**
-     * 恢复卡在 PROCESSING 状态的数据（应用重启等情况）
+     * 恢复卡在 PROCESSING 状态的数据（应用重启等情况），可以考虑增加索引提升处理效率
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
