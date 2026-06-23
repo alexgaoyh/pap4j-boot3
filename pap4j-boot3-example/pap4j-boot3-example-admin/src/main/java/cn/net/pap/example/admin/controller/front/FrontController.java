@@ -81,10 +81,20 @@ public class FrontController {
     }
 
     // --- DTO 内部类 ---
-    public record UserRequest(String name) {
+    @Schema(description = "创建用户请求体")
+    public record UserRequest(
+            @Schema(description = "用户名称", example = "张三", requiredMode = Schema.RequiredMode.REQUIRED)
+            String name
+    ) {
     }
 
-    public record UserResponse(String id, String name) {
+    @Schema(description = "用户响应结构体")
+    public record UserResponse(
+            @Schema(description = "用户唯一 ID", example = "d87a412c-9a4f-4d9d-9b16-56cddfe8d8d8")
+            String id,
+            @Schema(description = "用户名称", example = "张三")
+            String name
+    ) {
     }
 
 }
