@@ -1,5 +1,7 @@
 package cn.net.pap.example.admin.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -14,10 +16,12 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@Tag(name = "ImageIO 接口", description = "提供 ImageIO 支持格式查询")
 public class ImageIOController {
 
     private static final Logger log = LoggerFactory.getLogger(ImageIOController.class);
 
+    @Operation(summary = "获取支持的图片格式", description = "获取系统内 ImageIO 支持的所有图片读取格式名称和对应的 MIME 类型服务类。")
     @GetMapping("imageio")
     public Object imageio() {
         try {

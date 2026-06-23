@@ -22,7 +22,12 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 @RestController
+@Tag(name = "异步处理测试接口", description = "演示 Spring WebAsyncTask、异步上下文传递（ThreadLocal）、异步任务启动、取消及进度查询的接口")
 public class AsyncController {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncController.class);
@@ -36,8 +41,9 @@ public class AsyncController {
         this.taskExecutor = taskExecutor;
     }
 
+    @Operation(summary = "同步阻塞测试")
     @GetMapping(value = "/direct", produces = "application/json;charset=UTF-8")
-    public String direct(@RequestParam(value = "index", required = false) String index) throws Exception {
+    public String direct(@Parameter(description = "休眠毫秒数") @RequestParam(value = "index", required = false) String index) throws Exception {
         log.info("{} : {}", Thread.currentThread().getId(), System.currentTimeMillis());
         if(StringUtils.isEmpty(index)) {
             Thread.sleep((long)(Math.random() * 10000));
@@ -62,6 +68,7 @@ public class AsyncController {
      * @return 响应字符串 "success"
      * @throws Exception 处理过程中的通用异常
      */
+    @Operation(summary = "测试异步多线程上下文传递")
     @GetMapping(value = "/async", produces = "application/json;charset=UTF-8")
     public String async() throws Exception {
         String requestParam = "cn.net.pap.example.async";
@@ -88,6 +95,7 @@ public class AsyncController {
         }
     }
 
+    @Operation(summary = "获取 CPU 密集型异步任务结果 (WebAsyncTask)")
     @GetMapping("/async-data")
     public WebAsyncTask<String> getAsyncData() {
         Callable<String> callable = () -> {
@@ -101,6 +109,7 @@ public class AsyncController {
         return new WebAsyncTask<>(3000L, taskExecutor, callable);
     }
 
+    @Operation(summary = "带超时的异步任务测试")
     @GetMapping("/async-with-timeout")
     public WebAsyncTask<String> getAsyncWithTimeout() {
         Callable<String> callable = () -> {
@@ -130,6 +139,7 @@ public class AsyncController {
      *
      * @return
      */
+    @Operation(summary = "获取多阶段组合异步任务结果")
     @GetMapping("/composite-async")
     public WebAsyncTask<String> compositeAsyncTask() {
         // 第一阶段
@@ -158,8 +168,9 @@ public class AsyncController {
      * @param taskId 任务ID
      * @return WebAsyncTask 异步任务
      */
+    @Operation(summary = "启动一个可取消且有进度的异步任务")
     @GetMapping("/start-task")
-    public WebAsyncTask<String> startTask(@RequestParam String taskId) {
+    public WebAsyncTask<String> startTask(@Parameter(description = "任务ID") @RequestParam String taskId) {
         // 初始化取消标志和进度
         AtomicBoolean cancelled = new AtomicBoolean(false);
         AtomicInteger progress = new AtomicInteger(0);
@@ -206,8 +217,9 @@ public class AsyncController {
      * @param taskId 任务ID
      * @return 取消结果
      */
+    @Operation(summary = "取消正在执行的异步任务")
     @GetMapping("/cancel-task")
-    public ResponseEntity<String> cancelTask(@RequestParam String taskId) {
+    public ResponseEntity<String> cancelTask(@Parameter(description = "任务ID") @RequestParam String taskId) {
         AtomicBoolean flag = AsyncConstant.cancellationFlags.get(taskId);
         if (flag != null) {
             flag.set(true);
@@ -223,8 +235,9 @@ public class AsyncController {
      * @param taskId 任务ID
      * @return 当前进度(0 - 100)
      */
+    @Operation(summary = "查询指定异步任务的当前进度")
     @GetMapping("/progress")
-    public ResponseEntity<Integer> getProgress(@RequestParam String taskId) {
+    public ResponseEntity<Integer> getProgress(@Parameter(description = "任务ID") @RequestParam String taskId) {
         AtomicInteger progress = AsyncConstant.taskProgress.get(taskId);
         if (progress != null) {
             return ResponseEntity.ok(progress.get());
@@ -237,6 +250,7 @@ public class AsyncController {
      *
      * @return 所有活跃任务的状态
      */
+    @Operation(summary = "获取所有活跃异步任务的当前状态")
     @GetMapping("/status")
     public ResponseEntity<Map<String, Object>> getAllTaskStatus() {
         Map<String, Object> statusMap = new HashMap<>();

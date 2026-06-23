@@ -3,6 +3,8 @@ package cn.net.pap.example.proguard.controller;
 import cn.net.pap.example.proguard.entity.AutoIncrePreKey;
 import cn.net.pap.example.proguard.service.IAutoIncrePreKeyService;
 import cn.net.pap.example.proguard.service.IDeadlockRetryDemoService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +18,7 @@ import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping("/retry")
+@Tag(name = "死锁重试与恢复测试接口", description = "演示通过 Spring Retry 实现的数据库死锁重试与兜底恢复机制")
 public class DeadLockRetryDemoController {
 
     private static final Logger log = LoggerFactory.getLogger(DeadLockRetryDemoController.class);
@@ -29,6 +32,7 @@ public class DeadLockRetryDemoController {
         this.autoIncrePreKeyService = autoIncrePreKeyService;
     }
 
+    @Operation(summary = "初始化测试数据", description = "往数据库插入两条自增主键数据作为死锁测试的基础数据。")
     @GetMapping("/insert")
     public String insert() throws InterruptedException {
         AutoIncrePreKey autoIncrePreKey1 = new AutoIncrePreKey();
@@ -48,6 +52,7 @@ public class DeadLockRetryDemoController {
      * @return
      * @throws InterruptedException
      */
+    @Operation(summary = "触发并测试死锁重试逻辑", description = "使用线程池并发以相反的顺序更新两条数据库记录，以此产生死锁，并测试 Retry 重试。")
     @GetMapping("/test")
     public String test() {
         ThreadPoolExecutor executor = new ThreadPoolExecutor(

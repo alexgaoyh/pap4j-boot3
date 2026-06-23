@@ -1,6 +1,8 @@
 package cn.net.pap.example.spring.ai.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
@@ -30,6 +32,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/ai")
+@Tag(name = "AI 助手测试接口", description = "提供基于 Spring AI 的响应式 RAG 对话检索和 Emoji 语义检索功能接口")
 public class AiController {
 
     private static final Logger log = LoggerFactory.getLogger(AiController.class);
@@ -52,6 +55,7 @@ public class AiController {
     /**
      * 响应式流式对话接口 (POST 方式)
      */
+    @Operation(summary = "响应式流式对话接口 (RAG)")
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> chatStream(@RequestBody ChatRequest request) {
         return Flux.defer(() -> {
@@ -153,6 +157,7 @@ public class AiController {
      *    - 原理：第一阶段使用向量检索（方案A或B）大范围召回候选集（如前 50 个），第二阶段使用重排模型（如 bge-reranker）将用户查询词与候选集中的 Emoji 文本描述拼接后一起输入神经网络，利用多层交叉自注意力机制强行让每个字符进行对比对齐，算出最终的对齐匹配概率并重排。
      *    - 优缺点：精准度与相关性在所有方案中最高，对细微词义差别捕捉极佳；但二阶段的模型推理会显著增加检索的整体响应延迟，适合对准确度有极致要求的场景。
      */
+    @Operation(summary = "Emoji 语义检索接口")
     @PostMapping("/emoji")
     public Mono<List<EmojiResponse>> searchEmoji(@RequestBody EmojiRequest request) {
         return Mono.fromCallable(() -> {

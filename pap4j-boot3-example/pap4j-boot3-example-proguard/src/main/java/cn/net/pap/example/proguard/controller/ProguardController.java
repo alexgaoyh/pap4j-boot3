@@ -38,8 +38,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
+@Tag(name = "混淆与 JPA 基础测试接口", description = "演示 Proguard 混淆、实体生命周期、事务控制、自定义配置属性、缓存控制及深分页测试等接口")
 public class ProguardController {
 
     private static final Logger log = LoggerFactory.getLogger(ProguardController.class);
@@ -95,16 +98,19 @@ public class ProguardController {
         return "{\"code\" : \""+resultStr+"\"}";
     }
 
+    @Operation(summary = "获取自定义 Demo 配置属性")
     @GetMapping(value = "/demoProperties", produces = "application/json;charset=UTF-8")
     public DemoProperties demoProperties() {
         return demoProperties;
     }
 
+    @Operation(summary = "获取当前系统的工作目录路径")
     @GetMapping(value = "/userDir", produces = "application/json;charset=UTF-8")
     public String userDir() {
         return Path.of(System.getProperty("user.dir")).toFile().getAbsolutePath();
     }
 
+    @Operation(summary = "限流测试与批量处理")
     @GetMapping(value = "/batch", produces = "application/json;charset=UTF-8")
     public String batch() {
         boolean acquired = false; // 记录是否成功获取许可。谁获取，谁释放；未获取，不释放。

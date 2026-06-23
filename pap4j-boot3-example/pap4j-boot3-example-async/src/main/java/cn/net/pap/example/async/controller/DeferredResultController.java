@@ -1,5 +1,8 @@
 package cn.net.pap.example.async.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -13,6 +16,7 @@ import java.util.concurrent.CompletableFuture;
  * DeferredResult
  */
 @RestController
+@Tag(name = "延迟结果测试接口", description = "演示 Spring Web 框架的 DeferredResult 实现非阻塞异步长连接与超时处理的接口")
 public class DeferredResultController {
 
     private static final Logger log = LoggerFactory.getLogger(DeferredResultController.class);
@@ -23,8 +27,11 @@ public class DeferredResultController {
      * @param processTime 模拟处理时间(秒)
      * @param timeout     超时时间(秒)
      */
+    @Operation(summary = "通过 DeferredResult 简单实现异步任务和超时回调", description = "演示将耗时请求交给自定义工作线程完成，Tomcat 线程快速回收，并能精细化控制超时。")
     @GetMapping("/deferred-result-simple1")
-    public DeferredResult<String> deferredResultSimple1(@RequestParam(defaultValue = "10") int processTime, @RequestParam(defaultValue = "15") int timeout) {
+    public DeferredResult<String> deferredResultSimple1(
+            @Parameter(description = "模拟处理时间(秒)") @RequestParam(defaultValue = "10") int processTime,
+            @Parameter(description = "请求超时时间(秒)") @RequestParam(defaultValue = "15") int timeout) {
 
         // 创建 DeferredResult，设置超时时间（毫秒）
         long timeoutMs = timeout * 1000L;

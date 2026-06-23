@@ -1,5 +1,7 @@
 package cn.net.pap.example.apitester.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -21,6 +23,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/proxy")
+@Tag(name = "代理转发测试接口", description = "提供非阻塞式的通用请求转发代理接口，支持各种 Content-Type 格式和文件上传代理。")
 public class ProxyController {
 
     private final WebClient webClient = WebClient.builder().build();
@@ -28,6 +31,7 @@ public class ProxyController {
     /**
      * 通用代理接口，支持 JSON / x-www-form-urlencoded / raw text
      */
+    @Operation(summary = "通用请求代理转发", description = "接收目标 URL、HTTP 方法、Headers 和 Body 并通过 WebClient 执行非阻塞的代理转发请求。")
     @PostMapping
     public Mono<ResponseEntity<String>> proxy(@RequestBody Map<String, Object> request) {
         String url = (String) request.get("url");
@@ -67,12 +71,13 @@ public class ProxyController {
         }
 
         return reqSpec
-                .retrieve()
-                .toEntity(String.class)
-                .onErrorResume(e -> Mono.just(ResponseEntity.badRequest()
-                        .body("Error: " + e.getMessage())));
+            .retrieve()
+            .toEntity(String.class)
+            .onErrorResume(e -> Mono.just(ResponseEntity.badRequest()
+                    .body("Error: " + e.getMessage())));
     }
 
+    @Operation(summary = "表单参数格式请求代理转发")
     @PostMapping("/form")
     public Mono<ResponseEntity<String>> proxyForm(ServerWebExchange exchange) {
         return exchange.getMultipartData().flatMap(parts -> {
@@ -114,6 +119,7 @@ public class ProxyController {
     /**
      * multipart/form-data 文件上传代理
      */
+    @Operation(summary = "多部分表单 (Multipart) 文件上传代理转发")
     @PostMapping("/multipart")
     public Mono<ResponseEntity<String>> proxyMultipart(ServerWebExchange exchange) {
         return exchange.getMultipartData().flatMap(parts -> {

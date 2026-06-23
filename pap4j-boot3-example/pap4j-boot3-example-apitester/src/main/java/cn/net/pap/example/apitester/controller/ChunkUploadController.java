@@ -1,6 +1,9 @@
 package cn.net.pap.example.apitester.controller;
 
 import cn.net.pap.example.apitester.dto.MergeRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.core.io.buffer.DataBuffer;
 import org.springframework.core.io.buffer.DataBufferUtils;
 import org.springframework.http.ResponseEntity;
@@ -26,6 +29,7 @@ import java.util.Comparator;
 
 @RestController
 @RequestMapping("/upload")
+@Tag(name = "分片上传接口", description = "提供非阻塞 WebFlux 响应式的分片上传、文件合并与分片清理接口")
 public class ChunkUploadController {
 
     private final Path uploadDir = Paths.get(System.getProperty("java.io.tmpdir"), "temp");
@@ -40,6 +44,7 @@ public class ChunkUploadController {
      * 分片上传接口 - 流式写入
      * 前端需传 headers: X-Upload-Id, X-Chunk-Index
      */
+    @Operation(summary = "上传分片 (流式写入)", description = "接收一个分片的数据流，并根据请求头中的 X-Upload-Id 和 X-Chunk-Index 写入指定的临时分片文件中。")
     @PostMapping
     public Mono<ResponseEntity<String>> uploadChunk(ServerHttpRequest request,
                                                     @RequestBody Flux<DataBuffer> body) {
@@ -70,6 +75,7 @@ public class ChunkUploadController {
      * 合并 chunk 文件
      * 前端需传 JSON: { uploadId, fileName, totalChunks }
      */
+    @Operation(summary = "合并已上传的分片文件")
     @PostMapping("/merge")
     public Mono<ResponseEntity<String>> mergeChunks(@RequestBody MergeRequest request) {
         String fileName = request.getFileName();
@@ -117,8 +123,9 @@ public class ChunkUploadController {
     /**
      * 可选：清理某个 uploadId 的所有分片（用于异常中断恢复）
      */
+    @Operation(summary = "清理某个 Upload ID 的所有分片文件")
     @DeleteMapping("/cleanup/{uploadId}")
-    public Mono<ResponseEntity<String>> cleanupChunks(@PathVariable String uploadId) {
+    public Mono<ResponseEntity<String>> cleanupChunks(@Parameter(description = "上传 ID") @PathVariable String uploadId) {
         return Mono.fromCallable(() -> {
             try (var files = Files.list(uploadDir)) {
                 files.filter(f -> f.getFileName().toString().startsWith(uploadId + "_"))
@@ -134,6 +141,7 @@ public class ChunkUploadController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    @Operation(summary = "直接多部分表单文件上传")
     @PostMapping("/direct")
     public Mono<ResponseEntity<String>> uploadDirect(ServerWebExchange exchange) {
         return exchange.getMultipartData()

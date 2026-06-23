@@ -14,6 +14,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
@@ -24,6 +27,7 @@ import java.io.InputStream;
 
 @RestController
 @RequestMapping("/ftp")
+@Tag(name = "FTP 流传输测试接口", description = "演示通过 FTP 协议进行视频断点续传流和图片流式读取与展示的接口")
 public class FtpController {
 
     private static final Logger log = LoggerFactory.getLogger(FtpController.class);
@@ -44,6 +48,7 @@ public class FtpController {
      * @param response
      * @throws IOException
      */
+    @Operation(summary = "流式读取播放 MP4 (断点续传/Range)", description = "通过读取 FTP 上的 mp4 视频文件，并支持 Range 请求实现流式播放与断点续传。已弃用，请使用 streammp42。")
     @GetMapping("/streammp4")
     @Deprecated
     public void streamMp4(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -176,6 +181,7 @@ public class FtpController {
         }
     }
 
+    @Operation(summary = "流式读取播放 MP4 版本2 (推荐)", description = "改进版 FTP mp4 视频流式读取播放，采用更健壮的连接关闭和分块读取机制。")
     @GetMapping("/streammp42")
     public void streamMp42(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
@@ -343,6 +349,7 @@ public class FtpController {
         return false;
     }
 
+    @Operation(summary = "流式读取并显示 JPG 图片")
     @GetMapping("/streamjpg")
     public void streamJpg(HttpServletRequest request, HttpServletResponse response) throws IOException {
         response.setContentType(MediaType.IMAGE_JPEG_VALUE);
@@ -433,8 +440,9 @@ public class FtpController {
      * @param picPath
      * @throws IOException
      */
+    @Operation(summary = "流式读取指定路径的 JPG 图片", description = "从 FTP 动态读取指定路径的图片资源流，并作为 jpeg 格式写回客户端响应。")
     @GetMapping("/streamdefaultjpg")
-    public void streamDefaultJpg(HttpServletRequest request, HttpServletResponse response, @RequestParam String picPath) throws IOException {
+    public void streamDefaultJpg(HttpServletRequest request, HttpServletResponse response, @Parameter(description = "图片相对路径") @RequestParam String picPath) throws IOException {
         response.setContentType(MediaType.IMAGE_JPEG_VALUE);
         AutoCloseableFTPClient client = new AutoCloseableFTPClient();
         InputStream in = null;

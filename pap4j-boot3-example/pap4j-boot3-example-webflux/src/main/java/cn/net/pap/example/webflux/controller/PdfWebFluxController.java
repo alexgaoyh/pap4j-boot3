@@ -1,5 +1,8 @@
 package cn.net.pap.example.webflux.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.core.io.PathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -17,10 +20,12 @@ import java.nio.file.Path;
 
 @RestController
 @RequestMapping("/pdf")
+@Tag(name = "PDF WebFlux 接口", description = "提供非阻塞 WebFlux 方式下的 PDF 文件流式读取与预览接口")
 public class PdfWebFluxController {
 
+    @Operation(summary = "流式获取并预览 PDF 文件", description = "流式读取临时目录下的 PDF 文件并作为应用 PDF 格式流返回预览。")
     @GetMapping("/view/{fileName}")
-    public Mono<ResponseEntity<Resource>> streamPdf(@PathVariable String fileName) {
+    public Mono<ResponseEntity<Resource>> streamPdf(@Parameter(description = "文件名") @PathVariable String fileName) {
         // 1. 定义基础目录
         Path basePath = Path.of(System.getProperty("java.io.tmpdir")).normalize();
 
@@ -43,8 +48,9 @@ public class PdfWebFluxController {
                 .body(resource));
     }
 
+    @Operation(summary = "流式获取并预览 PDF 文件版本2", description = "通过单独弹性调度线程池运行阻塞 I/O 的流式 PDF 文件预览获取。")
     @GetMapping("/view2/{fileName}")
-    public Mono<ResponseEntity<?>> streamPdf2(@PathVariable String fileName) {
+    public Mono<ResponseEntity<?>> streamPdf2(@Parameter(description = "文件名") @PathVariable String fileName) {
         return Mono.fromCallable(() -> {
             Path basePath = Path.of(System.getProperty("java.io.tmpdir")).normalize();
             // 1. 防御：防止文件名包含 .. 尝试越权

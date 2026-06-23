@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -53,6 +56,7 @@ import java.util.concurrent.ThreadFactory;
  */
 @RestController
 @RequestMapping("/api/threads")
+@Tag(name = "线程泄露与系统内存诊断接口", description = "提供模拟线程泄露、分析排查活动线程以及获取操作系统系统级内存监控指标的接口")
 public class ThreadLeakDemoController {
 
     // ------------------------------------------------------------------------
@@ -97,8 +101,9 @@ public class ThreadLeakDemoController {
      *
      * @param useCorrectPool 开关：true-使用全局正确的线程池，false-使用局部错误的线程池（默认）
      */
+    @Operation(summary = "模拟提交业务异步任务", description = "可选择使用全局健康的线程池或者每调用一次都会新建线程池导致线程泄露的错误线程池。")
     @GetMapping("/process")
-    public String processTask(@RequestParam(defaultValue = "false") boolean useCorrectPool) {
+    public String processTask(@Parameter(description = "是否使用正确健康的全局线程池") @RequestParam(defaultValue = "false") boolean useCorrectPool) {
 
         Runnable bizTask = () -> {
             try {
@@ -138,6 +143,7 @@ public class ThreadLeakDemoController {
     /**
      * 监控接口：使用 ThreadMXBean 排查并揪出泄露的线程
      */
+    @Operation(summary = "分析查找活动/泄露线程", description = "获取系统当前的活跃线程数量、总创建线程数、以及以‘bad-biz-pool-’开头的异常泄露线程列表。")
     @GetMapping("/analyze")
     public Map<String, Integer> analyzeThreadLeak() {
         ThreadMXBean threadBean = ManagementFactory.getThreadMXBean();
@@ -189,6 +195,7 @@ public class ThreadLeakDemoController {
      *
      * @return 包含系统总内存、剩余内存、利用率及当前进程虚拟内存占用的 Map
      */
+    @Operation(summary = "获取系统物理与 JVM 堆内外内存指标", description = "通过 OperatingSystemMXBean 和 MemoryMXBean 获取服务器物理内存、JVM 堆内存和堆外 Direct Buffer / Mapped Buffer 内存大小。")
     @GetMapping("/getMemorySystemInfo")
     public Map<String, Object> getMemorySystemInfo() {
         OperatingSystemMXBean osBean = (OperatingSystemMXBean) ManagementFactory.getOperatingSystemMXBean();

@@ -1,5 +1,7 @@
 package cn.net.pap.example.proguard.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -34,11 +36,13 @@ import java.util.Map;
 @RestController
 @RequestMapping("/echo")
 @CrossOrigin
+@Tag(name = "回显测试接口", description = "提供各种 HTTP 请求方式 and Content-Type 传输格式的回显测试接口")
 public class EchoController {
 
     private static final Logger log = LoggerFactory.getLogger(EchoController.class);
 
     // ---------- GET ----------
+    @Operation(summary = "GET回显测试")
     @GetMapping("/echo")
     public Map<String, Object> echoGet(@RequestParam Map<String, String> params) {
         log.info("GET /echo params: {}", params);
@@ -46,12 +50,14 @@ public class EchoController {
     }
 
     // ---------- POST ----------
+    @Operation(summary = "POST JSON回显测试")
     @PostMapping(value = "/json", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> postJson(@RequestBody Map<String, Object> body) {
         log.info("POST JSON body: {}", body);
         return Map.of("echo", "echo", "method", "POST", "contentType", "application/json", "body", body);
     }
 
+    @Operation(summary = "POST JSON回显测试（带延迟）")
     @PostMapping(value = "/jsonSleep", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> postJsonSleep(@RequestBody Map<String, Object> body) {
         log.info("POST JSON body: {}", body);
@@ -63,12 +69,14 @@ public class EchoController {
         return Map.of("echo", "echo", "method", "POST", "contentType", "application/json", "body", body);
     }
 
+    @Operation(summary = "POST 表单回显测试")
     @PostMapping(value = "/form", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Map<String, Object> postForm(@RequestParam Map<String, String> params) {
         log.info("POST FORM params: {}", params);
         return Map.of("echo", "echo", "method", "POST", "contentType", "application/x-www-form-urlencoded", "params", params);
     }
 
+    @Operation(summary = "POST 文件上传与参数回显测试")
     @PostMapping(value = "/multipart", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, Object> postMultipart(@RequestParam Map<String, String> params, @RequestParam(required = false) List<MultipartFile> files) {
         log.info("POST MULTIPART params: {}", params);
@@ -81,6 +89,7 @@ public class EchoController {
         return Map.of("echo", "echo", "method", "POST", "contentType", "multipart/form-data", "params", params, "files", fileInfos);
     }
 
+    @Operation(summary = "POST 纯文本回显测试")
     @PostMapping(value = "/text", consumes = MediaType.TEXT_PLAIN_VALUE)
     public Map<String, Object> postText(@RequestBody byte[] text) {
         String content = new String(text, StandardCharsets.UTF_8);
@@ -89,18 +98,21 @@ public class EchoController {
     }
 
     // ---------- PUT ----------
+    @Operation(summary = "PUT JSON回显测试")
     @PutMapping(value = "/json", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> putJson(@RequestBody Map<String, Object> body) {
         log.info("PUT JSON body: {}", body);
         return Map.of("echo", "echo", "method", "PUT", "contentType", "application/json", "body", body);
     }
 
+    @Operation(summary = "PUT 表单回显测试")
     @PutMapping(value = "/form", consumes = MediaType.APPLICATION_FORM_URLENCODED_VALUE)
     public Map<String, Object> putForm(@RequestParam Map<String, String> params) {
         log.info("PUT FORM params: {}", params);
         return Map.of("echo", "echo", "method", "PUT", "contentType", "application/x-www-form-urlencoded", "params", params);
     }
 
+    @Operation(summary = "PUT 纯文本回显测试")
     @PutMapping(value = "/text", consumes = MediaType.TEXT_PLAIN_VALUE)
     public Map<String, Object> putText(@RequestBody String body) {
         log.info("PUT TEXT: {}", body);
@@ -108,6 +120,7 @@ public class EchoController {
     }
 
     // ---------- DELETE ----------
+    @Operation(summary = "DELETE回显测试")
     @DeleteMapping("/echo")
     public Map<String, Object> deleteEcho(@RequestParam Map<String, String> params) {
         log.info("DELETE /echo params: {}", params);
