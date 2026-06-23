@@ -615,6 +615,7 @@ public class PDFUtil {
                 File imageFile = new File(imagePath);
                 PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
                 // todo 后续根据需求，这里做一下调整，避免生成的pdf过大，未完全验证，存在不同的格式，比如 jpg ,还有各种不同压缩方式的tif 等等
+                // todo 如果切换到下面这个的话，可以做一个判断，如果是 jpg 的图像的话，可以走下面这个，否则还是上面这个。怀疑有时候会丢失图像方向，上下颠倒，目前还没有稳定重现。
 //            BufferedImage image = ImageIO.read(new File(imagePath));
 //            PDImageXObject imageXObject = JPEGFactory.createFromImage(document, image, 0.7f); // 质量70%
 
