@@ -1,7 +1,9 @@
 package cn.net.pap.example.wechat.vo;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.io.Serializable;
 
+@Schema(description = "统一接口响应返回包装器")
 public class Result<T> implements Serializable {
 
 	private static final long serialVersionUID = 1L;
@@ -9,26 +11,31 @@ public class Result<T> implements Serializable {
 	/**
 	 * 成功标志
 	 */
+	@Schema(description = "操作是否成功标识")
 	private boolean success = true;
 
 	/**
 	 * 返回处理消息
 	 */
+	@Schema(description = "返回的提示消息或错误消息")
 	private String message = "";
 
 	/**
 	 * 返回代码
 	 */
+	@Schema(description = "业务状态码 (200为成功)")
 	private Integer code = 0;
 	
 	/**
 	 * 返回数据对象 data
 	 */
+	@Schema(description = "响应数据体")
 	private T result;
 	
 	/**
 	 * 时间戳
 	 */
+	@Schema(description = "响应生成的时间戳 (毫秒)")
 	private long timestamp = System.currentTimeMillis();
 
 	public Result() {

@@ -12,6 +12,9 @@ import com.fasterxml.jackson.annotation.JsonView;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -77,6 +80,7 @@ public class BeanController {
     }
 
     @Operation(summary = "最终结果检查", description = "返回经过漂亮排版的示例 Admin DTO JSON 数据。")
+    @ApiResponse(responseCode = "200", description = "成功返回 DTO", content = @Content(schema = @Schema(implementation = ExampleAdminDTO.class)))
     @GetMapping(value = "checkFinal", produces = "application/json;charset=UTF-8")
     public String checkFinal() throws Exception {
         try {
@@ -143,6 +147,7 @@ public class BeanController {
     }
 
     @Operation(summary = "获取漂亮排版 of Admin DTO 字符串", description = "构建 ExampleAdminDTO 实例并使用 Jackson 转换为美化排版后的 JSON 字符串。")
+    @ApiResponse(responseCode = "200", description = "成功返回 DTO", content = @Content(schema = @Schema(implementation = ExampleAdminDTO.class)))
     @GetMapping(value = "dto2", produces = "application/json;charset=UTF-8")
     public String exampleAdminDTO2() throws Exception {
         ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
@@ -174,6 +179,7 @@ public class BeanController {
     }
 
     @Operation(summary = "通过视图手动转化基础 DTO 字符串", description = "手动调用 ObjectMapper 配合 Jackson 视图 Basic 序列化 DTO 并返回 JSON 字符串。")
+    @ApiResponse(responseCode = "200", description = "成功返回 DTO", content = @Content(schema = @Schema(implementation = ExampleAdminDTO.class)))
     @GetMapping(value = "dto5", produces = "application/json;charset=UTF-8")
     public String exampleAdminDTO5() throws Exception {
         ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
@@ -185,6 +191,7 @@ public class BeanController {
     }
 
     @Operation(summary = "通过视图手动转化包含消息的 DTO 字符串", description = "手动调用 ObjectMapper 配合 Jackson 视图 BasicWithMsg 序列化 DTO 并返回 JSON 字符串。")
+    @ApiResponse(responseCode = "200", description = "成功返回 DTO", content = @Content(schema = @Schema(implementation = ExampleAdminDTO.class)))
     @GetMapping(value = "dto6", produces = "application/json;charset=UTF-8")
     public String exampleAdminDTO6() throws Exception {
         ExampleAdminDTO exampleAdminDTO = new ExampleAdminDTO();
