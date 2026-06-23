@@ -1848,10 +1848,10 @@
                             });
                         }
                     } else if (node.type === 'object') {
-                        schema.properties = {};
                         const requiredList = [];
-                        
-                        if (node.properties && node.properties.length > 0) {
+                        const hasProperties = node.properties && node.properties.length > 0;
+                        if (hasProperties) {
+                            schema.properties = {};
                             node.properties.forEach(child => {
                                 if (child.key && child.key.trim() !== '') {
                                     schema.properties[child.key] = buildJsonSchema(child);
@@ -1882,11 +1882,12 @@
                             };
                         } else if (node.itemsType === 'object') {
                             schema.items = {
-                                type: 'object',
-                                properties: {}
+                                type: 'object'
                             };
                             const itemsRequired = [];
-                            if (node.properties && node.properties.length > 0) {
+                            const hasProperties = node.properties && node.properties.length > 0;
+                            if (hasProperties) {
+                                schema.items.properties = {};
                                 node.properties.forEach(child => {
                                     if (child.key && child.key.trim() !== '') {
                                         schema.items.properties[child.key] = buildJsonSchema(child);
