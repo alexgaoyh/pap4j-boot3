@@ -457,23 +457,190 @@
                         <input type="text" class="input-text" v-model="schemaKey" placeholder="e.g. ecommerce_order">
                     </div>
                     <div class="meta-field">
-                        <label>模型描述 (Schema Description)</label>
-                        <input type="text" class="input-text" v-model="schemaName" placeholder="e.g. 电商系统标准订单对象">
+                        <label>根节点数据类型 (Root Schema Type)</label>
+                        <select class="select-type" v-model="rootNode.type" style="padding: 0.3rem 0.5rem;">
+                            <option value="object">object (复杂对象/容器)</option>
+                            <option value="array">array (数组/列表)</option>
+                            <option value="string">string (普通文本)</option>
+                            <option value="number">number (数值/双精度)</option>
+                            <option value="integer">integer (整数)</option>
+                            <option value="boolean">boolean (布尔)</option>
+                            <option value="oneOf">oneOf (oneOf 联合多态)</option>
+                        </select>
                     </div>
                 </div>
 
                 <!-- Schema Node Tree Root -->
                 <div class="tree-container">
-                    <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: 0.8rem; font-weight: 600;">对象属性树:</span>
-                        <button class="btn-primary" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" @click="addChild(rootNode)">
-                            ➕ 添加一级字段
-                        </button>
+                    <!-- If type is object, show standard property tree -->
+                    <div v-if="rootNode.type === 'object'">
+                        <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.8rem; font-weight: 600;">对象属性树:</span>
+                            <div style="display: flex; gap: 0.4rem; align-items: center;">
+                                <button class="btn-icon" :class="{ active: showRootAdvanced }" @click="showRootAdvanced = !showRootAdvanced" style="font-size: 0.8rem;">
+                                    ⚙️ 根对象约束
+                                </button>
+                                <button class="btn-primary" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" @click="addChild(rootNode)">
+                                    ➕ 添加一级字段
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Root Level object constraints -->
+                        <div class="node-advanced" v-if="showRootAdvanced" style="margin-bottom: 0.75rem;">
+                            <div class="advanced-group" style="grid-column: span 2;">
+                                <label>模型描述 (schemaName/description)</label>
+                                <input type="text" class="input-text" v-model="schemaName">
+                            </div>
+                            <div class="advanced-group" style="flex-direction: row; align-items: center; padding-top: 0.75rem;">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" v-model="rootNode.additionalProperties"> 允许未知字段 (additionalProperties)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Recursively render nodes starting from root properties -->
+                        <div v-for="(child, idx) in rootNode.properties" :key="idx" class="node-wrapper">
+                            <schema-node :node="child" :parent="rootNode" @delete-node="deleteChild(rootNode, idx)"></schema-node>
+                        </div>
                     </div>
 
-                    <!-- Recursively render nodes starting from root properties -->
-                    <div v-for="(child, idx) in rootNode.properties" :key="idx" class="node-wrapper">
-                        <schema-node :node="child" :parent="rootNode" @delete-node="deleteChild(rootNode, idx)"></schema-node>
+                    <!-- If type is array, show array layout -->
+                    <div v-else-if="rootNode.type === 'array'">
+                        <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.4rem;">
+                            <span style="font-size: 0.8rem; font-weight: 600;">根数组配置 (Root Array Config):</span>
+                            <button class="btn-icon" :class="{ active: showRootAdvanced }" @click="showRootAdvanced = !showRootAdvanced" style="font-size: 0.8rem;">
+                                ⚙️ 根数组约束
+                            </button>
+                        </div>
+
+                        <!-- Root Level array constraints -->
+                        <div class="node-advanced" v-if="showRootAdvanced" style="margin-bottom: 0.75rem;">
+                            <div class="advanced-group">
+                                <label>最小元素个数 (minItems)</label>
+                                <input type="number" class="input-text" v-model.number="rootNode.minItems">
+                            </div>
+                            <div class="advanced-group">
+                                <label>最大元素个数 (maxItems)</label>
+                                <input type="number" class="input-text" v-model.number="rootNode.maxItems">
+                            </div>
+                            <div class="advanced-group" style="flex-direction: row; align-items: center; padding-top: 1rem;">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" v-model="rootNode.uniqueItems"> 元素唯一 (uniqueItems)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style="margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; font-size: 0.8rem; background: rgba(15, 23, 42, 0.3); padding: 0.5rem; border-radius: 6px;">
+                            <span>列表子项类型 (items):</span>
+                            <select class="select-type" style="width: 150px; padding: 0.2rem;" v-model="rootNode.itemsType">
+                                <option value="string">string</option>
+                                <option value="number">number</option>
+                                <option value="integer">integer</option>
+                                <option value="boolean">boolean</option>
+                                <option value="object">object (复杂对象)</option>
+                                <option value="self_ref">递归引用自身 ($ref: "#")</option>
+                            </select>
+                            <button v-if="rootNode.itemsType === 'object'" class="btn-primary" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;" @click="addChild(rootNode)">
+                                ➕ 添加子项属性
+                            </button>
+                        </div>
+
+                        <!-- Render properties inside array if itemsType is object -->
+                        <div v-if="rootNode.itemsType === 'object'" style="margin-top: 0.4rem;">
+                            <div v-for="(child, idx) in rootNode.properties" :key="idx" class="node-wrapper">
+                                <schema-node :node="child" :parent="rootNode" @delete-node="deleteChild(rootNode, idx)"></schema-node>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- If type is oneOf, show root oneOf branches -->
+                    <div v-else-if="rootNode.type === 'oneOf'">
+                        <div style="display: flex; gap: 0.3rem; margin-bottom: 0.4rem; align-items: center; flex-wrap: wrap;">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: bold;">根多态分支 (oneOf):</span>
+                            <button 
+                                v-for="(b, idx) in rootNode.branches" 
+                                :key="idx" 
+                                class="btn-icon" 
+                                :class="{ active: activeRootBranchIdx === idx }"
+                                @click="activeRootBranchIdx = idx"
+                            >
+                                {{ b.title || '未命名分支' }}
+                            </button>
+                            <button class="btn-primary" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; background: var(--accent-success);" @click="addRootBranch">
+                                ➕ 添加选项分支
+                            </button>
+                        </div>
+
+                        <div v-if="rootNode.branches && rootNode.branches[activeRootBranchIdx]" style="background: rgba(0,0,0,0.1); border: 1px dashed var(--border-color); padding: 0.5rem; border-radius: 6px; margin-top: 0.25rem;">
+                            <div style="display: grid; grid-template-columns: 1.2fr 1fr auto; gap: 0.4rem; margin-bottom: 0.5rem; align-items: center;">
+                                <input type="text" class="input-text" v-model="rootNode.branches[activeRootBranchIdx].title" placeholder="分支描述名">
+                                <select class="select-type" v-model="rootNode.branches[activeRootBranchIdx].type">
+                                    <option value="object">object (结构对象)</option>
+                                    <option value="string">string (普通文本)</option>
+                                    <option value="integer">integer (整数)</option>
+                                </select>
+                                <button class="btn-icon delete" style="padding: 0.25rem;" @click="deleteRootBranch(activeRootBranchIdx)" :disabled="rootNode.branches.length <= 1">🗑️</button>
+                            </div>
+
+                            <div v-if="rootNode.branches[activeRootBranchIdx].type === 'object'">
+                                <div v-for="(child, idx) in rootNode.branches[activeRootBranchIdx].properties" :key="idx">
+                                    <schema-node :node="child" :parent="rootNode.branches[activeRootBranchIdx]" @delete-node="deleteChild(rootNode.branches[activeRootBranchIdx], idx)"></schema-node>
+                                </div>
+                                <button class="btn-primary" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-top: 0.4rem;" @click="addChild(rootNode.branches[activeRootBranchIdx])">
+                                    ➕ 添加分支内部属性
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- If type is basic, show basic constraints -->
+                    <div v-else>
+                        <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.4rem;">
+                            <span style="font-size: 0.8rem; font-weight: 600;">根基础类型配置 (Root Primitive Config):</span>
+                        </div>
+                        <div class="node-advanced" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem;">
+                            <!-- String constraints -->
+                            <template v-if="rootNode.type === 'string'">
+                                <div class="advanced-group">
+                                    <label>最小长度 (minLength)</label>
+                                    <input type="number" class="input-text" v-model.number="rootNode.minLength">
+                                </div>
+                                <div class="advanced-group">
+                                    <label>最大长度 (maxLength)</label>
+                                    <input type="number" class="input-text" v-model.number="rootNode.maxLength">
+                                </div>
+                                <div class="advanced-group">
+                                    <label>正则校验 (pattern)</label>
+                                    <input type="text" class="input-text" v-model="rootNode.pattern">
+                                </div>
+                                <div class="advanced-group">
+                                    <label>格式约束 (format)</label>
+                                    <select class="select-type" v-model="rootNode.format">
+                                        <option value="none">无 (none)</option>
+                                        <option value="email">email</option>
+                                        <option value="date-time">date-time</option>
+                                    </select>
+                                </div>
+                            </template>
+
+                            <!-- Number/integer constraints -->
+                            <template v-if="rootNode.type === 'number' || rootNode.type === 'integer'">
+                                <div class="advanced-group">
+                                    <label>最小值 (minimum)</label>
+                                    <input type="number" class="input-text" v-model.number="rootNode.minimum">
+                                </div>
+                                <div class="advanced-group">
+                                    <label>最大值 (maximum)</label>
+                                    <input type="number" class="input-text" v-model.number="rootNode.maximum">
+                                </div>
+                            </template>
+
+                            <!-- Boolean has no specific options -->
+                            <template v-if="rootNode.type === 'boolean'">
+                                <span style="font-size: 0.8rem; color: var(--text-secondary); grid-column: span 2;">布尔类型无额外高级约束</span>
+                            </template>
+                        </div>
                     </div>
 
                     <!-- Root Level Conditional Logic (If-Then-Else Rules Builder) -->
@@ -879,7 +1046,7 @@
     </template>
 
     <script>
-        const { createApp, ref, computed } = Vue;
+        const { createApp, ref, computed, watch } = Vue;
 
         // Custom Component for Node
         const SchemaNodeComponent = {
@@ -1335,13 +1502,63 @@
                 // Temp custom templates list
                 const customTemplates = ref([]);
 
+                // Default is Ecommerce
+                const rootNode = ref(JSON.parse(JSON.stringify(ECOMMERCE_TEMPLATE)));
+
                 // Import Schema state
                 const showImportDialog = ref(false);
                 const importText = ref('');
                 const importError = ref('');
 
-                // Default is Ecommerce
-                const rootNode = ref(JSON.parse(JSON.stringify(ECOMMERCE_TEMPLATE)));
+                // Root Node configuration refs
+                const showRootAdvanced = ref(false);
+                const activeRootBranchIdx = ref(0);
+
+                // Watch rootNode type and initialize appropriately
+                watch(() => rootNode.value.type, (newType) => {
+                    if (newType === 'object' && !Array.isArray(rootNode.value.properties)) {
+                        rootNode.value.properties = [];
+                    }
+                    if (newType === 'array') {
+                        if (!rootNode.value.itemsType) {
+                            rootNode.value.itemsType = 'string';
+                        }
+                        if (!Array.isArray(rootNode.value.properties)) {
+                            rootNode.value.properties = [];
+                        }
+                    }
+                    if (newType === 'oneOf' && !Array.isArray(rootNode.value.branches)) {
+                        rootNode.value.branches = [
+                            {
+                                title: '分支选项 1',
+                                type: 'object',
+                                properties: [],
+                                required: false
+                            }
+                        ];
+                    }
+                });
+
+                const addRootBranch = () => {
+                    if (!rootNode.value.branches) {
+                        rootNode.value.branches = [];
+                    }
+                    rootNode.value.branches.push({
+                        title: '新联合分支',
+                        type: 'object',
+                        properties: [],
+                        required: false
+                    });
+                    activeRootBranchIdx.value = rootNode.value.branches.length - 1;
+                };
+
+                const deleteRootBranch = (index) => {
+                    if (rootNode.value.branches.length <= 1) return;
+                    rootNode.value.branches.splice(index, 1);
+                    if (activeRootBranchIdx.value >= rootNode.value.branches.length) {
+                        activeRootBranchIdx.value = Math.max(0, rootNode.value.branches.length - 1);
+                    }
+                };
 
                 // Switch-Case Router Configuration Data
                 const switchKey = ref('order_type');
@@ -1849,7 +2066,11 @@
                     showImportDialog,
                     importText,
                     importError,
-                    executeImport
+                    executeImport,
+                    showRootAdvanced,
+                    activeRootBranchIdx,
+                    addRootBranch,
+                    deleteRootBranch
                 };
             }
         });
