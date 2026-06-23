@@ -1,0 +1,1860 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据治理 - JSON Schema Draft-07 可视化编辑器</title>
+    <!-- Vue 3 Localized -->
+    <script src="vue.global.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-danger: #ef4444;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-info: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            background: #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        header .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        .version-badge {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid var(--accent-primary);
+            color: #a5b4fc;
+            padding: 0.1rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1800px;
+            width: 100%;
+            margin: 0 auto;
+            align-items: start;
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .panel-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+        }
+
+        /* Tree Node Styles */
+        .tree-container {
+            max-height: 42vh;
+            overflow-y: auto;
+        }
+
+        .node {
+            margin-left: 1.5rem;
+            border-left: 1px dashed var(--border-color);
+            padding-left: 1rem;
+            position: relative;
+            margin-top: 0.4rem;
+        }
+
+        .node::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 1.15rem;
+            width: 0.75rem;
+            height: 1px;
+            border-top: 1px dashed var(--border-color);
+        }
+
+        .node-header {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.5rem 0.75rem;
+            display: grid;
+            grid-template-columns: 1.5fr 1fr 1fr auto;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .node-header.active-object {
+            border-left: 3px solid var(--accent-primary);
+        }
+
+        .node-advanced {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--border-color);
+            border-radius: 0 0 6px 6px;
+            margin-top: -1px;
+            padding: 0.75rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+            gap: 0.5rem;
+            font-size: 0.75rem;
+        }
+
+        .advanced-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .advanced-group label {
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .input-text {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            padding: 0.3rem 0.5rem;
+            font-size: 0.8rem;
+            outline: none;
+            width: 100%;
+        }
+
+        .input-text:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .select-type {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            color: var(--text-primary);
+            padding: 0.3rem 0.5rem;
+            font-size: 0.8rem;
+            outline: none;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .checkbox-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .btn-icon {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            transition: all 0.1s;
+        }
+
+        .btn-icon:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-primary);
+        }
+
+        .btn-icon.active {
+            background: rgba(99, 102, 241, 0.1);
+            color: #a5b4fc;
+        }
+
+        .btn-icon.delete:hover {
+            color: var(--accent-danger);
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 6px;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .btn-outline:hover {
+            background: rgba(255, 255, 255, 0.03);
+        }
+
+        /* Editor Output Right Side */
+        .code-container {
+            position: relative;
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #34d399;
+            overflow-x: auto;
+            max-height: 50vh;
+            min-height: 400px;
+            white-space: pre;
+        }
+
+        .btn-copy {
+            position: absolute;
+            right: 0.5rem;
+            top: 0.5rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            cursor: pointer;
+        }
+
+        /* Meta Form */
+        .meta-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            background: rgba(255, 255, 255, 0.01);
+            border: 1px solid var(--border-color);
+            padding: 0.75rem;
+            border-radius: 6px;
+        }
+
+        .meta-field {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+        }
+
+        .meta-field label {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+        }
+
+        .info-bar {
+            background: rgba(99, 102, 241, 0.05);
+            border-left: 3px solid var(--accent-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            line-height: 1.3;
+        }
+
+        /* Standard Feature Matrix Box */
+        .features-box {
+            background: rgba(245, 158, 11, 0.03);
+            border: 1px dashed rgba(245, 158, 11, 0.15);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .features-box h3 {
+            color: var(--accent-warning);
+            font-size: 0.8rem;
+        }
+
+        .features-box ul {
+            margin-left: 1rem;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.2rem;
+        }
+
+        .select-template {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .rule-row {
+            display: grid;
+            grid-template-columns: 2fr 2fr 1.5fr auto;
+            gap: 0.4rem;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+
+        .tabs-header {
+            display: flex;
+            gap: 0.4rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.35rem;
+        }
+        .tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .tab-btn.active {
+            background: rgba(99, 102, 241, 0.1);
+            color: #a5b4fc;
+        }
+        .saved-template-tag:hover {
+            background: rgba(99, 102, 241, 0.15) !important;
+            border-color: var(--accent-primary) !important;
+            color: var(--text-primary) !important;
+        }
+        .saved-template-tag.active {
+            background: rgba(99, 102, 241, 0.25) !important;
+            border-color: var(--accent-primary) !important;
+            color: #a5b4fc !important;
+        }
+        .delete-tag-btn:hover {
+            color: #ff8a8a !important;
+        }
+    </style>
+</head>
+<body>
+
+    <main id="app" style="display: contents;">
+        <header>
+            <div>
+                <h1>🧬 数据治理 · 规范定义台 <span class="version-badge">JSON Schema Draft-07</span></h1>
+                <div class="subtitle">通过高阶约束控制结构化数据规范，完全无需开发修改数据库</div>
+            </div>
+            <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">示例模版切换:</span>
+                    <select class="select-template" @change="switchTemplate($event.target.value)" v-model="selectedTemplateKey">
+                        <option disabled value="">-- 系统内置模板 --</option>
+                        <option value="ecommerce">🛒 电商订单分支模型 (包含 Switch-Case 分流 & oneOf)</option>
+                        <option value="tree">🌳 企业组织机构模型 (递归自引用)</option>
+                        
+                        <!-- Custom Saved Templates options -->
+                        <option disabled v-if="customTemplates.length > 0">-- 用户保存的临时模板 --</option>
+                        <option v-for="(t, idx) in customTemplates" :key="idx" :value="'custom_' + idx">
+                            💾 暂存: {{ t.name }} ({{ t.time }})
+                        </option>
+                    </select>
+                    <button class="btn-primary" style="background: var(--accent-success);" @click="saveCustomTemplate">💾 保存</button>
+                    <button class="btn-outline" @click="resetTemplate">重置</button>
+                </div>
+                <!-- 示例模板切换下面新增的保存交互 -->
+                <div v-if="customTemplates.length > 0" style="display: flex; gap: 0.4rem; align-items: center; justify-content: flex-end; flex-wrap: wrap; max-width: 500px;">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">已保存的临时版本:</span>
+                    <div v-for="(t, idx) in customTemplates" :key="idx" 
+                         class="saved-template-tag" 
+                         :class="{ active: selectedTemplateKey === 'custom_' + idx }"
+                         @click="switchTemplate('custom_' + idx)"
+                         style="cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem; transition: all 0.2s;">
+                        <span>💾 {{ t.name }} ({{ t.time }})</span>
+                        <span class="delete-tag-btn" @click.stop="deleteCustomTemplate(idx)" style="color: var(--accent-danger); font-weight: bold; margin-left: 0.25rem; font-size: 0.85rem; line-height: 1;">×</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <!-- Left Side: Visual Editor -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>元数据属性配置 (Visual Schema Builder)</span>
+                </div>
+
+                <!-- Form Meta Details -->
+                <div class="meta-form">
+                    <div class="meta-field">
+                        <label>模型/表单标识 (Schema Key)</label>
+                        <input type="text" class="input-text" v-model="schemaKey" placeholder="e.g. ecommerce_order">
+                    </div>
+                    <div class="meta-field">
+                        <label>模型描述 (Schema Description)</label>
+                        <input type="text" class="input-text" v-model="schemaName" placeholder="e.g. 电商系统标准订单对象">
+                    </div>
+                </div>
+
+                <!-- Schema Node Tree Root -->
+                <div class="tree-container">
+                    <div style="margin-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.8rem; font-weight: 600;">对象属性树:</span>
+                        <button class="btn-primary" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" @click="addChild(rootNode)">
+                            ➕ 添加一级字段
+                        </button>
+                    </div>
+
+                    <!-- Recursively render nodes starting from root properties -->
+                    <div v-for="(child, idx) in rootNode.properties" :key="idx" class="node-wrapper">
+                        <schema-node :node="child" :parent="rootNode" @delete-node="deleteChild(rootNode, idx)"></schema-node>
+                    </div>
+
+                    <!-- Root Level Conditional Logic (If-Then-Else Rules Builder) -->
+                    <div v-if="rootNode.properties.length > 1" style="margin-top: 1.25rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem; display: flex; flex-direction: column; gap: 0.5rem;">
+                        <div class="panel-title" style="border: none; padding: 0;">
+                            <span style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">
+                                📜 分支条件约束规则 (Conditional Branch Router)
+                            </span>
+                        </div>
+
+                        <!-- Tabs to choose between Switch-Case Router and Independent Rules -->
+                        <div class="tabs-header">
+                            <button class="tab-btn" :class="{ active: ruleMode === 'switch' }" @click="ruleMode = 'switch'">
+                                🔀 Switch-Case 路由器 (带 Fallback 兜底)
+                            </button>
+                            <button class="tab-btn" :class="{ active: ruleMode === 'independent' }" @click="ruleMode = 'independent'">
+                                ⛓️ 独立条件规则 (If-Then 组合)
+                            </button>
+                        </div>
+
+                        <!-- MODE 1: Switch-Case Router -->
+                        <div v-if="ruleMode === 'switch'" style="background: rgba(15, 23, 42, 0.3); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 6px; display: flex; flex-direction: column; gap: 0.75rem;">
+                            <!-- Pivot Selector -->
+                            <div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem;">
+                                <span style="color: var(--accent-info); font-weight: bold;">控制键 (Switch Key):</span>
+                                <select class="select-type" style="width: 180px; padding: 0.2rem;" v-model="switchKey">
+                                    <option v-for="prop in rootNode.properties" :key="prop.key" :value="prop.key">{{ prop.title || prop.key }} ({{ prop.key }})</option>
+                                </select>
+                            </div>
+
+                            <!-- Cases -->
+                            <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div v-for="(c, cIdx) in switchCases" :key="cIdx" style="border-left: 2px solid var(--accent-warning); padding-left: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;">
+                                        <div>
+                                            <span style="color: var(--accent-warning); font-weight: bold;">CASE</span> 
+                                            <select class="select-type" style="display: inline-block; width: 90px; margin: 0 0.25rem; padding: 0.1rem;" v-model="c.operator">
+                                                <option value="const">等于 (const)</option>
+                                                <option value="not">不等于 (not const)</option>
+                                                <option value="pattern">匹配正则 (pattern)</option>
+                                            </select>
+                                            <input type="text" class="input-text" style="display: inline-block; width: 120px; padding: 0.1rem;" v-model="c.value" placeholder="匹配值/正则">
+                                            <span style="margin-left: 0.25rem;">时，约束：</span>
+                                        </div>
+                                        <div style="display: flex; gap: 0.25rem;">
+                                            <button class="btn-icon add" @click="addSwitchCaseConstraint(c)">➕ 约束</button>
+                                            <button class="btn-icon delete" @click="switchCases.splice(cIdx, 1)">🗑️ 删除分支</button>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Constraints inside Case -->
+                                    <div v-for="(rule, rIdx) in c.rules" :key="rIdx" class="rule-row" style="margin-left: 0.5rem;">
+                                        <select class="select-type" style="padding: 0.1rem;" v-model="rule.property">
+                                            <option v-for="prop in rootNode.properties" :key="prop.key" :value="prop.key">{{ prop.title || prop.key }}</option>
+                                        </select>
+                                        <select class="select-type" style="padding: 0.1rem;" v-model="rule.constraint">
+                                            <option value="required">必填 (required)</option>
+                                            <option value="minimum">最小值 (minimum)</option>
+                                            <option value="maximum">最大值 (maximum)</option>
+                                            <option value="pattern">正则 (pattern)</option>
+                                            <option value="format">格式 (format)</option>
+                                            <option value="enum">枚举 (enum)</option>
+                                        </select>
+                                        <input type="text" class="input-text" style="padding: 0.1rem;" v-model="rule.value" placeholder="约束目标值">
+                                        <button class="btn-icon delete" @click="c.rules.splice(rIdx, 1)">🗑️</button>
+                                    </div>
+                                </div>
+                                <button class="btn-primary" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; align-self: start;" @click="addSwitchCase">
+                                    ➕ 添加 CASE 分支
+                                </button>
+                            </div>
+
+                            <!-- Fallback Default -->
+                            <div style="border-top: 1px dashed var(--border-color); padding-top: 0.5rem; border-left: 2px solid var(--accent-danger); padding-left: 0.5rem; display: flex; flex-direction: column; gap: 0.35rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem;">
+                                    <span style="color: var(--accent-danger); font-weight: bold;">DEFAULT (其它兜底 Fallback 约束):</span>
+                                    <button class="btn-icon add" @click="addDefaultConstraint">➕ 添加兜底约束</button>
+                                </div>
+                                <div v-for="(rule, rIdx) in switchDefaultRules" :key="rIdx" class="rule-row" style="margin-left: 0.5rem;">
+                                    <select class="select-type" style="padding: 0.15rem;" v-model="rule.property">
+                                        <option v-for="prop in rootNode.properties" :key="prop.key" :value="prop.key">{{ prop.title || prop.key }}</option>
+                                    </select>
+                                    <select class="select-type" style="padding: 0.15rem;" v-model="rule.constraint">
+                                        <option value="required">必填 (required)</option>
+                                        <option value="minimum">最小值 (minimum)</option>
+                                        <option value="maximum">最大值 (maximum)</option>
+                                        <option value="pattern">正则 (pattern)</option>
+                                        <option value="format">格式 (format)</option>
+                                        <option value="enum">枚举 (enum)</option>
+                                    </select>
+                                    <input type="text" class="input-text" style="padding: 0.15rem;" v-model="rule.value" placeholder="约束目标值">
+                                    <button class="btn-icon delete" @click="switchDefaultRules.splice(rIdx, 1)">🗑️</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- MODE 2: Independent Rules -->
+                        <div v-if="ruleMode === 'independent'" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div v-for="(rule, idx) in conditionalRules" :key="idx" style="background: rgba(15, 23, 42, 0.3); border: 1px solid var(--border-color); padding: 0.75rem; border-radius: 6px; display: flex; flex-direction: column; gap: 0.5rem;">
+                                <div style="display: grid; grid-template-columns: auto 1.5fr auto 1fr auto 1.5fr auto; gap: 0.4rem; align-items: center; font-size: 0.75rem;">
+                                    <span style="color: var(--accent-warning); font-weight: bold;">如果 (IF)</span>
+                                    <select class="select-type" style="padding: 0.2rem;" v-model="rule.ifProperty">
+                                        <option v-for="prop in rootNode.properties" :key="prop.key" :value="prop.key">{{ prop.title || prop.key }}</option>
+                                    </select>
+                                    <select class="select-type" style="padding: 0.2rem;" v-model="rule.ifOperator">
+                                        <option value="const">等于 (const)</option>
+                                        <option value="not">不等于 (not const)</option>
+                                        <option value="pattern">匹配正则 (pattern)</option>
+                                    </select>
+                                    <input type="text" class="input-text" style="padding: 0.2rem;" v-model="rule.ifValue" placeholder="条件匹配值">
+                                    <button class="btn-icon delete" @click="deleteConditionalRule(idx)">🗑️ 删除规则</button>
+                                </div>
+                                
+                                <div style="font-size: 0.75rem; display: flex; flex-direction: column; gap: 0.4rem; border-top: 1px dashed var(--border-color); padding-top: 0.4rem;">
+                                    <div>
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.2rem;">
+                                            <span style="color: var(--accent-success); font-weight: bold;">那么约束 (THEN): </span>
+                                            <button class="btn-icon add" style="font-size: 0.7rem;" @click="addThenConstraint(rule)">➕ 添加 THEN 约束</button>
+                                        </div>
+                                        <div v-for="(c, cIdx) in rule.thenRules" :key="cIdx" class="rule-row">
+                                            <select class="select-type" style="padding: 0.15rem;" v-model="c.property">
+                                                <option v-for="prop in rootNode.properties" :key="prop.key" :value="prop.key">{{ prop.title || prop.key }}</option>
+                                            </select>
+                                            <select class="select-type" style="padding: 0.15rem;" v-model="c.constraint">
+                                                <option value="required">必填 (required)</option>
+                                                <option value="minimum">最小值 (minimum)</option>
+                                                <option value="maximum">最大值 (maximum)</option>
+                                                <option value="pattern">正则 (pattern)</option>
+                                                <option value="format">格式 (format)</option>
+                                                <option value="enum">枚举 (enum)</option>
+                                            </select>
+                                            <input type="text" class="input-text" style="padding: 0.15rem;" v-model="c.value" placeholder="约束目标值">
+                                            <button class="btn-icon delete" @click="rule.thenRules.splice(cIdx, 1)">🗑️</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-primary" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; align-self: start;" @click="addConditionalRule">
+                                ➕ 添加独立条件规则
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: JSON Schema Output & Realtime Preview -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>标准 JSON Schema 预览 (Draft-07 Standard)</span>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button class="btn-outline" style="padding: 0.2rem 0.4rem; font-size: 0.75rem; border-color: var(--accent-info); color: var(--accent-info);" @click="showImportDialog = true">
+                            📥 导入并解析 Schema
+                        </button>
+                        <button class="btn-primary" style="padding: 0.2rem 0.4rem; font-size: 0.75rem;" @click="copyToClipboard">
+                            📋 复制 Schema
+                        </button>
+                    </div>
+                </div>
+
+                <div class="code-container">
+                    <button class="btn-copy" @click="copyToClipboard">Copy</button>
+                    <code>{{ jsonSchemaStr }}</code>
+                </div>
+
+                <!-- Features matrix of Draft-07 supported in this UI -->
+                <div class="features-box">
+                    <h3>Draft-07 特性地图与支持矩阵 (Draft-07 Spec Matrix)</h3>
+                    <ul>
+                        <li style="color: var(--accent-success);">✔ String: pattern & format</li>
+                        <li style="color: var(--accent-success);">✔ Number: minimum & maximum</li>
+                        <li style="color: var(--accent-success);">✔ Object: additionalProperties</li>
+                        <li style="color: var(--accent-success);">✔ Polymorphism: oneOf (联合多态选择)</li>
+                        <li style="color: var(--accent-success);">✔ Switch Router: 树状嵌套 If-Then-Else 自动生成, 支持 Default Fallback 兜底</li>
+                        <li style="color: var(--accent-success);">✔ Recursion: self_ref (树形递归 `$ref: "#"`)</li>
+                    </ul>
+                </div>
+            </div>
+        </main>
+
+        <!-- Import Schema Dialog/Modal -->
+        <div v-if="showImportDialog" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+            <div style="background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; width: 600px; max-width: 90%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <h3 style="font-size: 1.1rem; font-weight: 600; color: var(--text-primary);">📥 导入并反向解析 JSON Schema</h3>
+                    <button class="btn-icon" @click="showImportDialog = false" style="font-size: 1.25rem;">×</button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                    <label style="font-size: 0.8rem; color: var(--text-secondary);">请在下方粘贴您的 Draft-07 JSON Schema 字符串：</label>
+                    <textarea v-model="importText" placeholder='{ "$schema": "http://json-schema.org/draft-07/schema#", ... }' 
+                              style="width: 100%; height: 250px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; color: #34d399; font-family: monospace; font-size: 0.8rem; resize: vertical; outline: none;"></textarea>
+                </div>
+                <div v-if="importError" style="color: var(--accent-danger); font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 4px;">
+                    ⚠ {{ importError }}
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                    <button class="btn-outline" @click="showImportDialog = false">取消</button>
+                    <button class="btn-primary" style="background: var(--accent-info);" @click="executeImport">⚡ 开始反向解析导入</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Node Template Component -->
+    <template id="schema-node-template">
+        <div class="node">
+            <div class="node-header" :class="{ 'active-object': node.type === 'object' || node.type === 'array' || node.type === 'oneOf' }">
+                <!-- Field name key -->
+                <input type="text" class="input-text" v-model="node.key" placeholder="字段标识(Key)" title="字段Key" v-if="parent.type !== 'oneOf'">
+                <span v-else style="font-size: 0.75rem; color: var(--accent-warning); padding: 0 0.5rem;">多态分支</span>
+
+                <!-- Display name / title -->
+                <input type="text" class="input-text" v-model="node.title" placeholder="显示名称(Title)" title="显示标题">
+                
+                <!-- Field type selection -->
+                <select class="select-type" v-model="node.type">
+                    <option value="string">string (字符串)</option>
+                    <option value="number">number (双精度数字)</option>
+                    <option value="integer">integer (整数)</option>
+                    <option value="boolean">boolean (布尔)</option>
+                    <option value="object">object (对象/容器)</option>
+                    <option value="array">array (数组/列表)</option>
+                    <option value="oneOf">oneOf (oneOf 联合多态)</option>
+                </select>
+
+                <!-- Operations -->
+                <div style="display: flex; gap: 0.2,; align-items: center;">
+                    <label class="checkbox-label" title="是否必填" v-if="parent.type !== 'oneOf'">
+                        <input type="checkbox" v-model="node.required"> 必填
+                    </label>
+                    <button class="btn-icon" :class="{ active: showAdvanced }" @click="showAdvanced = !showAdvanced" v-if="node.type !== 'oneOf'">
+                        ⚙️ 约束
+                    </button>
+                    <button v-if="node.type === 'object'" class="btn-icon add" title="添加子字段" @click="addChildNode">
+                        ➕
+                    </button>
+                    <button class="btn-icon delete" title="删除字段" @click="$emit('delete-node')">
+                        🗑️
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced Constraints Section -->
+            <div class="node-advanced" v-if="showAdvanced && node.type !== 'oneOf'">
+                <!-- Description: Global info -->
+                <div class="advanced-group" style="grid-column: span 2;">
+                    <label>描述 (description)</label>
+                    <input type="text" class="input-text" v-model="node.description" placeholder="用于指导提取">
+                </div>
+
+                <!-- Default Value -->
+                <div class="advanced-group">
+                    <label>默认值 (default)</label>
+                    <input type="text" class="input-text" v-model="node.defaultValue" placeholder="如无输出的缺省值">
+                </div>
+
+                <!-- String Specific Constraints -->
+                <template v-if="node.type === 'string'">
+                    <div class="advanced-group">
+                        <label>最小长度 (minLength)</label>
+                        <input type="number" class="input-text" v-model.number="node.minLength" placeholder="无">
+                    </div>
+                    <div class="advanced-group">
+                        <label>最大长度 (maxLength)</label>
+                        <input type="number" class="input-text" v-model.number="node.maxLength" placeholder="无">
+                    </div>
+                    <div class="advanced-group">
+                        <label>正则校验 (pattern)</label>
+                        <input type="text" class="input-text" v-model="node.pattern" placeholder="e.g. ^\d{4}$">
+                    </div>
+                    <div class="advanced-group">
+                        <label>格式约束 (format)</label>
+                        <select class="select-type" v-model="node.format">
+                            <option value="none">无 (none)</option>
+                            <option value="email">email</option>
+                            <option value="date-time">date-time</option>
+                            <option value="date">date</option>
+                            <option value="time">time</option>
+                            <option value="hostname">hostname</option>
+                            <option value="ipv4">ipv4</option>
+                            <option value="ipv6">ipv6</option>
+                            <option value="uri">uri</option>
+                            <option value="uuid">uuid</option>
+                        </select>
+                    </div>
+                    <div class="advanced-group" style="grid-column: span 2;">
+                        <label>枚举列表 (enum, 英文逗号分隔)</label>
+                        <input type="text" class="input-text" v-model="node.enumList" placeholder="e.g. PENDING, PAID">
+                    </div>
+                </template>
+
+                <!-- Number / Integer Specific Constraints -->
+                <template v-if="node.type === 'number' || node.type === 'integer'">
+                    <div class="advanced-group">
+                        <label>最小值 (minimum)</label>
+                        <input type="number" step="any" class="input-text" v-model.number="node.minimum" placeholder="无">
+                    </div>
+                    <div class="advanced-group">
+                        <label>最大值 (maximum)</label>
+                        <input type="number" step="any" class="input-text" v-model.number="node.maximum" placeholder="无">
+                    </div>
+                </template>
+
+                <!-- Object / Nested configuration -->
+                <template v-if="node.type === 'object' || (node.type === 'array' && node.itemsType === 'object')">
+                    <div class="advanced-group" style="flex-direction: row; align-items: center; padding-top: 0.75rem;">
+                        <label class="checkbox-label" title="若为否，大模型不能生成定义外的字段">
+                            <input type="checkbox" v-model="node.additionalProperties"> 允许未知字段 (additionalProperties)
+                        </label>
+                    </div>
+                </template>
+
+                <!-- Array Constraints -->
+                <template v-if="node.type === 'array'">
+                    <div class="advanced-group">
+                        <label>最小个数 (minItems)</label>
+                        <input type="number" class="input-text" v-model.number="node.minItems" placeholder="无">
+                    </div>
+                    <div class="advanced-group">
+                        <label>最大个数 (maxItems)</label>
+                        <input type="number" class="input-text" v-model.number="node.maxItems" placeholder="无">
+                    </div>
+                    <div class="advanced-group" style="flex-direction: row; align-items: center; padding-top: 1rem;">
+                        <label class="checkbox-label" title="数组中的元素不能重复">
+                            <input type="checkbox" v-model="node.uniqueItems"> 元素唯一 (uniqueItems)
+                        </label>
+                    </div>
+                </template>
+            </div>
+
+            <!-- Nested properties for objects -->
+            <div v-if="node.type === 'object'" style="margin-top: 0.4rem;">
+                <div v-for="(child, idx) in node.properties" :key="idx">
+                    <schema-node :node="child" :parent="node" @delete-node="deleteChildNode(idx)"></schema-node>
+                </div>
+            </div>
+
+            <!-- oneOf Polymorphic tab interface -->
+            <div v-if="node.type === 'oneOf'" style="margin-left: 1.5rem; margin-top: 0.4rem; margin-bottom: 0.4rem;">
+                <div style="display: flex; gap: 0.3rem; margin-bottom: 0.4rem; align-items: center; flex-wrap: wrap;">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: bold;">多态分支选项 (oneOf):</span>
+                    <button 
+                        v-for="(b, idx) in node.branches" 
+                        :key="idx" 
+                        class="btn-icon" 
+                        :class="{ active: activeBranchIdx === idx }"
+                        @click="activeBranchIdx = idx"
+                    >
+                        {{ b.title || '未命名分支' }}
+                    </button>
+                    <button class="btn-primary" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; background: var(--accent-success);" @click="addBranch">
+                        ➕ 添加选项分支
+                    </button>
+                </div>
+
+                <!-- Render active branch details -->
+                <div v-if="node.branches && node.branches[activeBranchIdx]" style="background: rgba(0,0,0,0.1); border: 1px dashed var(--border-color); padding: 0.5rem; border-radius: 6px; margin-top: 0.25rem;">
+                    <div style="display: grid; grid-template-columns: 1.2fr 1fr auto; gap: 0.4rem; margin-bottom: 0.5rem; align-items: center;">
+                        <input type="text" class="input-text" v-model="node.branches[activeBranchIdx].title" placeholder="分支描述名">
+                        <select class="select-type" v-model="node.branches[activeBranchIdx].type">
+                            <option value="object">object (结构对象)</option>
+                            <option value="string">string (普通文本)</option>
+                            <option value="integer">integer (整数)</option>
+                        </select>
+                        <button class="btn-icon delete" style="padding: 0.25rem;" @click="deleteBranch(activeBranchIdx)" :disabled="node.branches.length <= 1">🗑️</button>
+                    </div>
+
+                    <!-- If the active branch is object, allow editing its sub-properties recursively -->
+                    <div v-if="node.branches[activeBranchIdx].type === 'object'">
+                        <div v-for="(child, idx) in node.branches[activeBranchIdx].properties" :key="idx">
+                            <schema-node :node="child" :parent="node.branches[activeBranchIdx]" @delete-node="deleteChild(node.branches[activeBranchIdx], idx)"></schema-node>
+                        </div>
+                        <button class="btn-primary" style="padding: 0.15rem 0.3rem; font-size: 0.7rem; margin-top: 0.4rem;" @click="addChild(node.branches[activeBranchIdx])">
+                            ➕ 添加分支内部属性
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Element configuration for array -->
+            <div v-if="node.type === 'array'">
+                <div style="margin-left: 1.5rem; margin-top: 0.4rem; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.75rem; color: var(--text-secondary);">
+                    <span>列表子项类型 (items):</span>
+                    <select class="select-type" style="width: 150px; padding: 0.2rem;" v-model="node.itemsType">
+                        <option value="string">string</option>
+                        <option value="number">number</option>
+                        <option value="integer">integer</option>
+                        <option value="boolean">boolean</option>
+                        <option value="object">object (复杂对象)</option>
+                        <option value="self_ref">递归引用自身 ($ref: "#")</option>
+                    </select>
+                    <button v-if="node.itemsType === 'object'" class="btn-primary" style="padding: 0.15rem 0.3rem; font-size: 0.7rem;" @click="addChildNode">
+                        ➕ 添加子项属性
+                    </button>
+                </div>
+                <!-- Render object properties inside array items if type is object -->
+                <div v-if="node.itemsType === 'object'">
+                    <div v-for="(child, idx) in node.properties" :key="idx">
+                        <schema-node :node="child" :parent="node" @delete-node="deleteChildNode(idx)"></schema-node>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script>
+        const { createApp, ref, computed } = Vue;
+
+        // Custom Component for Node
+        const SchemaNodeComponent = {
+            name: 'schema-node',
+            template: '#schema-node-template',
+            props: ['node', 'parent'],
+            emits: ['delete-node'],
+            setup() {
+                const showAdvanced = ref(false);
+                const activeBranchIdx = ref(0);
+                return { showAdvanced, activeBranchIdx };
+            },
+            watch: {
+                'node.type'(newType) {
+                    if (newType === 'object' && !Array.isArray(this.node.properties)) {
+                        this.node.properties = [];
+                    }
+                    if (newType === 'array') {
+                        if (!this.node.itemsType) {
+                            this.node.itemsType = 'string';
+                        }
+                        if (!Array.isArray(this.node.properties)) {
+                            this.node.properties = [];
+                        }
+                    }
+                    if (newType === 'oneOf' && !Array.isArray(this.node.branches)) {
+                        this.node.branches = [
+                            {
+                                title: '分支选项 1',
+                                type: 'object',
+                                properties: [],
+                                required: false
+                            }
+                        ];
+                    }
+                }
+            },
+            methods: {
+                addChildNode() {
+                    if (!this.node.properties) {
+                        this.node.properties = [];
+                    }
+                    this.node.properties.push({
+                        key: 'new_item_' + Math.floor(Math.random() * 1000),
+                        title: '新子属性',
+                        type: 'string',
+                        required: false,
+                        additionalProperties: false,
+                        properties: []
+                    });
+                },
+                deleteChildNode(index) {
+                    this.node.properties.splice(index, 1);
+                },
+                addBranch() {
+                    if (!this.node.branches) {
+                        this.node.branches = [];
+                    }
+                    this.node.branches.push({
+                        title: '新联合分支',
+                        type: 'object',
+                        properties: [],
+                        required: false
+                    });
+                    this.activeBranchIdx = this.node.branches.length - 1;
+                },
+                deleteBranch(index) {
+                    if (this.node.branches.length <= 1) return;
+                    this.node.branches.splice(index, 1);
+                    if (this.activeBranchIdx >= this.node.branches.length) {
+                        this.activeBranchIdx = Math.max(0, this.node.branches.length - 1);
+                    }
+                },
+                addChild(parent) {
+                    if (!parent.properties) {
+                        parent.properties = [];
+                    }
+                    parent.properties.push({
+                        key: 'branch_field_' + Math.floor(Math.random() * 100),
+                        title: '分支属性',
+                        type: 'string',
+                        required: false,
+                        properties: []
+                    });
+                },
+                deleteChild(parent, index) {
+                    parent.properties.splice(index, 1);
+                }
+            }
+        };
+
+        // Static Templates Data
+        const ECOMMERCE_TEMPLATE = {
+            key: 'root',
+            title: '订单数据模型',
+            type: 'object',
+            required: true,
+            additionalProperties: false,
+            properties: [
+                {
+                    key: 'order_id',
+                    title: '订单号',
+                    type: 'string',
+                    required: true,
+                    pattern: '^ORD-\\d{8}-\\d{6}$',
+                    description: '全局唯一订单号，格式: ORD-YYYYMMDD-HHmmss',
+                    properties: []
+                },
+                {
+                    key: 'order_type',
+                    title: '订单类型',
+                    type: 'string',
+                    required: true,
+                    enumList: 'PHYSICAL, DIGITAL',
+                    description: '实体订单(PHYSICAL) 或 虚拟邮箱点卡订单(DIGITAL)',
+                    properties: []
+                },
+                {
+                    key: 'shipping_address',
+                    title: '物流收货地址',
+                    type: 'object',
+                    required: false,
+                    additionalProperties: false,
+                    description: '仅在实体商品订单(PHYSICAL)下必填',
+                    properties: [
+                        { key: 'recipient_name', title: '收件人姓名', type: 'string', required: true, properties: [] },
+                        { key: 'phone', title: '收件人电话', type: 'string', required: true, pattern: '^1\\d{10}$', properties: [] },
+                        { key: 'address_line', title: '详细地址', type: 'string', required: true, properties: [] }
+                    ]
+                },
+                {
+                    key: 'receiver_email',
+                    title: '虚拟收件邮箱',
+                    type: 'string',
+                    required: false,
+                    format: 'email',
+                    description: '仅在虚拟商品订单(DIGITAL)下必填',
+                    properties: []
+                },
+                {
+                    key: 'total_price',
+                    title: '支付总金额',
+                    type: 'number',
+                    required: true,
+                    minimum: 0.01,
+                    description: '订单实际支付总价',
+                    properties: []
+                },
+                {
+                    key: 'payment_details',
+                    title: '支付明细',
+                    type: 'oneOf',
+                    required: true,
+                    description: '多态支付 structure',
+                    branches: [
+                        {
+                            title: '微信支付 (WeChatPay)',
+                            type: 'object',
+                            properties: [
+                                { key: 'wechat_unionid', title: '微信UnionID', type: 'string', required: true, properties: [] },
+                                { key: 'payment_time', title: '支付到账时间', type: 'string', format: 'date-time', required: true, properties: [] }
+                            ]
+                        },
+                        {
+                            title: '信用卡支付 (CreditCard)',
+                            type: 'object',
+                            properties: [
+                                { key: 'card_number', title: '信用卡卡号', type: 'string', required: true, pattern: '^\\d{16}$', properties: [] },
+                                { key: 'card_type', title: '发卡组织', type: 'string', required: true, enumList: 'VISA, MASTERCARD, AMEX', properties: [] }
+                            ]
+                        }
+                    ],
+                    properties: []
+                }
+            ]
+        };
+
+        const TREE_TEMPLATE = {
+            key: 'root',
+            title: '部门节点模型',
+            type: 'object',
+            required: true,
+            additionalProperties: false,
+            properties: [
+                {
+                    key: 'dept_id',
+                    title: '部门唯一编码',
+                    type: 'integer',
+                    required: true,
+                    minimum: 1000,
+                    description: '数字主键ID，范围在1000以上',
+                    properties: []
+                },
+                {
+                    key: 'dept_name',
+                    title: '部门名称',
+                    type: 'string',
+                    required: true,
+                    description: '部门的中文全称',
+                    properties: []
+                },
+                {
+                    key: 'leader',
+                    title: '部门主管',
+                    type: 'string',
+                    required: false,
+                    description: '当前部门负责人姓名',
+                    properties: []
+                },
+                {
+                    key: 'children',
+                    title: '下属子部门',
+                    type: 'array',
+                    itemsType: 'self_ref',
+                    required: false,
+                    description: '嵌套子部门列表，递归采用当前相同的Schema校验',
+                    properties: []
+                }
+            ]
+        };
+
+        // Helper to check if a schema has an else block recursively
+        const hasElseRecurse = (schema) => {
+            let current = schema;
+            while (current) {
+                if (current.else) return true;
+                current = current.else;
+            }
+            return false;
+        };
+
+        // Recursive function to parse standard JSON Schema node into visual node tree
+        const parseJsonSchemaNode = (schema, key = 'root', requiredList = []) => {
+            if (!schema) {
+                return {
+                    key: key,
+                    title: '',
+                    type: 'string',
+                    required: false,
+                    properties: []
+                };
+            }
+
+            // Determine type: if no type but has properties, it's an object. If has oneOf, it's oneOf.
+            let type = schema.type;
+            if (!type) {
+                if (schema.properties) {
+                    type = 'object';
+                } else if (schema.oneOf) {
+                    type = 'oneOf';
+                } else {
+                    type = 'string';
+                }
+            }
+
+            const node = {
+                key: key,
+                title: schema.title || '',
+                type: type,
+                required: requiredList.includes(key),
+                description: schema.description || '',
+                defaultValue: schema.default !== undefined ? String(schema.default) : '',
+                additionalProperties: schema.additionalProperties !== false,
+                properties: [],
+                branches: [],
+                minLength: schema.minLength !== undefined ? schema.minLength : '',
+                maxLength: schema.maxLength !== undefined ? schema.maxLength : '',
+                pattern: schema.pattern !== undefined ? schema.pattern : '',
+                format: schema.format !== undefined ? schema.format : 'none',
+                enumList: (schema.enum && Array.isArray(schema.enum)) ? schema.enum.join(', ') : '',
+                minimum: schema.minimum !== undefined ? schema.minimum : '',
+                maximum: schema.maximum !== undefined ? schema.maximum : '',
+                minItems: schema.minItems !== undefined ? schema.minItems : '',
+                maxItems: schema.maxItems !== undefined ? schema.maxItems : '',
+                uniqueItems: schema.uniqueItems !== undefined ? !!schema.uniqueItems : false,
+                itemsType: 'string'
+            };
+
+            if (type === 'oneOf' && schema.oneOf && Array.isArray(schema.oneOf)) {
+                node.branches = schema.oneOf.map((branchSchema, idx) => {
+                    return parseJsonSchemaNode(branchSchema, `branch_${idx}`);
+                });
+            } else if (type === 'object') {
+                const propertiesObj = schema.properties || {};
+                const reqs = schema.required || [];
+                node.properties = Object.keys(propertiesObj).map(childKey => {
+                    return parseJsonSchemaNode(propertiesObj[childKey], childKey, reqs);
+                });
+            } else if (type === 'array') {
+                const items = schema.items || {};
+                if (items['$ref'] === '#') {
+                    node.itemsType = 'self_ref';
+                } else if (items.type === 'object') {
+                    node.itemsType = 'object';
+                    const propertiesObj = items.properties || {};
+                    const reqs = items.required || [];
+                    node.properties = Object.keys(propertiesObj).map(childKey => {
+                        return parseJsonSchemaNode(propertiesObj[childKey], childKey, reqs);
+                    });
+                } else {
+                    node.itemsType = items.type || 'string';
+                }
+            }
+
+            return node;
+        };
+
+        const extractRules = (ruleBlock) => {
+            if (!ruleBlock) return [];
+            const extracted = [];
+            if (ruleBlock.required && Array.isArray(ruleBlock.required)) {
+                ruleBlock.required.forEach(prop => {
+                    extracted.push({ property: prop, constraint: 'required', value: '' });
+                });
+            }
+            if (ruleBlock.properties) {
+                Object.keys(ruleBlock.properties).forEach(prop => {
+                    const constraints = ruleBlock.properties[prop];
+                    Object.keys(constraints).forEach(cKey => {
+                        let val = constraints[cKey];
+                        if (Array.isArray(val)) val = val.join(', ');
+                        extracted.push({ property: prop, constraint: cKey, value: String(val) });
+                    });
+                });
+            }
+            return extracted;
+        };
+
+        // Recursive Switch-Case parser
+        const parseRecursiveSwitch = (schema) => {
+            const cases = [];
+            let defaultRules = [];
+            let switchKeyVal = '';
+
+            let current = schema;
+            while (current && current.if) {
+                const ifProp = current.if.properties || {};
+                const pivotKeys = Object.keys(ifProp);
+                if (pivotKeys.length > 0) {
+                    const pk = pivotKeys[0];
+                    switchKeyVal = pk;
+                    const condition = ifProp[pk];
+                    let operator = 'const';
+                    let val = '';
+                    if (condition.const !== undefined) {
+                        operator = 'const';
+                        val = String(condition.const);
+                    } else if (condition.not && condition.not.const !== undefined) {
+                        operator = 'not';
+                        val = String(condition.not.const);
+                    } else if (condition.pattern !== undefined) {
+                        operator = 'pattern';
+                        val = String(condition.pattern);
+                    }
+
+                    const thenRules = extractRules(current.then);
+                    cases.push({
+                        operator: operator,
+                        value: val,
+                        rules: thenRules
+                    });
+                }
+                current = current.else;
+            }
+
+            if (current) {
+                defaultRules = extractRules(current);
+            }
+
+            return { switchKeyVal, cases, defaultRules };
+        };
+
+        // Independent conditional rules parser
+        const parseIndependentRules = (schema) => {
+            const rules = [];
+
+            const parseSingleBlock = (block) => {
+                if (!block || !block.if) return null;
+                const ifProp = block.if.properties || {};
+                const pivotKeys = Object.keys(ifProp);
+                if (pivotKeys.length === 0) return null;
+                const pk = pivotKeys[0];
+                const condition = ifProp[pk];
+                let operator = 'const';
+                let val = '';
+                if (condition.const !== undefined) {
+                    operator = 'const';
+                    val = String(condition.const);
+                } else if (condition.not && condition.not.const !== undefined) {
+                    operator = 'not';
+                    val = String(condition.not.const);
+                } else if (condition.pattern !== undefined) {
+                    operator = 'pattern';
+                    val = String(condition.pattern);
+                }
+
+                const thenRules = extractRules(block.then);
+                return {
+                    ifProperty: pk,
+                    ifOperator: operator,
+                    ifValue: val,
+                    thenRules: thenRules
+                };
+            };
+
+            if (schema.if && !schema.else) {
+                const r = parseSingleBlock(schema);
+                if (r) rules.push(r);
+            } else if (schema.allOf && Array.isArray(schema.allOf)) {
+                schema.allOf.forEach(block => {
+                    const r = parseSingleBlock(block);
+                    if (r) rules.push(r);
+                });
+            }
+
+            return rules;
+        };
+
+        const inferAndParseConditionalRules = (schema) => {
+            if (schema.else || (schema.if && schema.then && !schema.else && hasElseRecurse(schema))) {
+                const res = parseRecursiveSwitch(schema);
+                return {
+                    mode: 'switch',
+                    switchKeyVal: res.switchKeyVal,
+                    cases: res.cases,
+                    defaultRules: res.defaultRules
+                };
+            } else if ((schema.if && !schema.else) || (schema.allOf && schema.allOf.some(item => item.if))) {
+                return {
+                    mode: 'independent',
+                    independentRules: parseIndependentRules(schema)
+                };
+            }
+            return {
+                mode: 'switch',
+                switchKeyVal: '',
+                cases: [],
+                defaultRules: []
+            };
+        };
+
+        // App Entry
+        const app = createApp({
+            components: {
+                'schema-node': SchemaNodeComponent
+            },
+            setup() {
+                const schemaKey = ref('ecommerce_order');
+                const schemaName = ref('电商系统标准订单实体模型');
+                const ruleMode = ref('switch'); // Modes: 'switch' (Switch-Case Router) or 'independent' (Independent If-Then)
+                const selectedTemplateKey = ref('ecommerce');
+                
+                // Temp custom templates list
+                const customTemplates = ref([]);
+
+                // Import Schema state
+                const showImportDialog = ref(false);
+                const importText = ref('');
+                const importError = ref('');
+
+                // Default is Ecommerce
+                const rootNode = ref(JSON.parse(JSON.stringify(ECOMMERCE_TEMPLATE)));
+
+                // Switch-Case Router Configuration Data
+                const switchKey = ref('order_type');
+                const switchCases = ref([
+                    {
+                        operator: 'const',
+                        value: 'PHYSICAL',
+                        rules: [
+                            { property: 'shipping_address', constraint: 'required', value: '' },
+                            { property: 'total_price', constraint: 'minimum', value: '10.0' }
+                        ]
+                    },
+                    {
+                        operator: 'const',
+                        value: 'DIGITAL',
+                        rules: [
+                            { property: 'receiver_email', constraint: 'required', value: '' },
+                            { property: 'receiver_email', constraint: 'format', value: 'email' }
+                        ]
+                    }
+                ]);
+                const switchDefaultRules = ref([
+                    { property: 'total_price', constraint: 'minimum', value: '1.0' }
+                ]);
+
+                // Fallback independent conditional rules definition
+                const conditionalRules = ref([
+                    {
+                        ifProperty: 'order_type',
+                        ifOperator: 'const',
+                        ifValue: 'PHYSICAL',
+                        thenRules: [
+                            { property: 'shipping_address', constraint: 'required', value: '' }
+                        ]
+                    }
+                ]);
+
+                const switchTemplate = (type) => {
+                    selectedTemplateKey.value = type;
+                    if (type === 'ecommerce') {
+                        schemaKey.value = 'ecommerce_order';
+                        schemaName.value = '电商系统标准订单实体模型';
+                        rootNode.value = JSON.parse(JSON.stringify(ECOMMERCE_TEMPLATE));
+                        ruleMode.value = 'switch';
+                        switchKey.value = 'order_type';
+                        switchCases.value = [
+                            {
+                                operator: 'const',
+                                value: 'PHYSICAL',
+                                rules: [
+                                    { property: 'shipping_address', constraint: 'required', value: '' },
+                                    { property: 'total_price', constraint: 'minimum', value: '10.0' }
+                                ]
+                            },
+                            {
+                                operator: 'const',
+                                value: 'DIGITAL',
+                                rules: [
+                                    { property: 'receiver_email', constraint: 'required', value: '' },
+                                    { property: 'receiver_email', constraint: 'format', value: 'email' }
+                                ]
+                            }
+                        ];
+                        switchDefaultRules.value = [
+                            { property: 'total_price', constraint: 'minimum', value: '1.0' }
+                        ];
+                    } else if (type === 'tree') {
+                        schemaKey.value = 'org_tree';
+                        schemaName.value = '企业组织机构树递归模型';
+                        rootNode.value = JSON.parse(JSON.stringify(TREE_TEMPLATE));
+                        ruleMode.value = 'switch';
+                        switchCases.value = [];
+                        switchDefaultRules.value = [];
+                    } else if (type.startsWith('custom_')) {
+                        const idx = parseInt(type.split('_')[1]);
+                        const t = customTemplates.value[idx];
+                        if (t) {
+                            schemaKey.value = t.schemaKey;
+                            schemaName.value = t.schemaName;
+                            ruleMode.value = t.ruleMode;
+                            switchKey.value = t.switchKey;
+                            rootNode.value = JSON.parse(JSON.stringify(t.rootNode));
+                            switchCases.value = JSON.parse(JSON.stringify(t.switchCases));
+                            switchDefaultRules.value = JSON.parse(JSON.stringify(t.switchDefaultRules));
+                            conditionalRules.value = JSON.parse(JSON.stringify(t.conditionalRules));
+                        }
+                    }
+                };
+
+                const resetTemplate = () => {
+                    switchTemplate(selectedTemplateKey.value);
+                };
+
+                const saveCustomTemplate = () => {
+                    const now = new Date();
+                    const timeStr = now.toTimeString().split(' ')[0]; // HH:mm:ss
+                    const templateName = schemaName.value || schemaKey.value || '未命名模型';
+                    
+                    const newTemplate = {
+                        name: templateName,
+                        time: timeStr,
+                        schemaKey: schemaKey.value,
+                        schemaName: schemaName.value,
+                        ruleMode: ruleMode.value,
+                        switchKey: switchKey.value,
+                        rootNode: JSON.parse(JSON.stringify(rootNode.value)),
+                        switchCases: JSON.parse(JSON.stringify(switchCases.value)),
+                        switchDefaultRules: JSON.parse(JSON.stringify(switchDefaultRules.value)),
+                        conditionalRules: JSON.parse(JSON.stringify(conditionalRules.value))
+                    };
+
+                    customTemplates.value.push(newTemplate);
+                    const newIdx = customTemplates.value.length - 1;
+                    
+                    // Activate newly saved template automatically
+                    switchTemplate('custom_' + newIdx);
+                };
+
+                const deleteCustomTemplate = (index) => {
+                    const key = selectedTemplateKey.value;
+                    customTemplates.value.splice(index, 1);
+                    if (key === 'custom_' + index) {
+                        switchTemplate('ecommerce');
+                    } else if (key.startsWith('custom_')) {
+                        const currentIdx = parseInt(key.split('_')[1]);
+                        if (currentIdx > index) {
+                            selectedTemplateKey.value = 'custom_' + (currentIdx - 1);
+                        }
+                    }
+                };
+
+                const executeImport = () => {
+                    importError.value = '';
+                    try {
+                        if (!importText.value.trim()) {
+                            throw new Error('请输入 JSON Schema 字符串');
+                        }
+                        const schema = JSON.parse(importText.value);
+                        if (!schema || typeof schema !== 'object') {
+                            throw new Error('格式错误：解析结果不是一个有效的 JSON 对象');
+                        }
+
+                        // 1. Parse base metadata
+                        schemaKey.value = schema.title || 'imported_schema';
+                        schemaName.value = schema.description || schema.title || '导入的数据模型';
+
+                        // 2. Parse property tree recursively
+                        const parsedRoot = parseJsonSchemaNode(schema, 'root');
+                        rootNode.value = parsedRoot;
+
+                        // 3. Parse conditional rules (if any)
+                        const condRulesInfo = inferAndParseConditionalRules(schema);
+                        ruleMode.value = condRulesInfo.mode;
+                        if (condRulesInfo.mode === 'switch') {
+                            switchKey.value = condRulesInfo.switchKeyVal || (rootNode.value.properties[0]?.key || '');
+                            switchCases.value = condRulesInfo.cases || [];
+                            switchDefaultRules.value = condRulesInfo.defaultRules || [];
+                        } else {
+                            conditionalRules.value = condRulesInfo.independentRules || [];
+                        }
+
+                        // Selected template key reset
+                        selectedTemplateKey.value = '';
+
+                        // Success, close dialog
+                        showImportDialog.value = false;
+                        importText.value = '';
+                        alert('🎉 JSON Schema 反向解析并导入成功！已自动加载至当前编辑器。');
+                    } catch (err) {
+                        importError.value = err.message || 'JSON 解析失败，请检查格式是否正确';
+                    }
+                };
+
+                const addChild = (node) => {
+                    if (!node.properties) {
+                        node.properties = [];
+                    }
+                    node.properties.push({
+                        key: 'new_field',
+                        title: '新字段',
+                        type: 'string',
+                        required: false,
+                        additionalProperties: false,
+                        properties: []
+                    });
+                };
+
+                const deleteChild = (parent, index) => {
+                    parent.properties.splice(index, 1);
+                };
+
+                // Switch-Case helper methods
+                const addSwitchCase = () => {
+                    switchCases.value.push({
+                        operator: 'const',
+                        value: '',
+                        rules: []
+                    });
+                };
+
+                const addSwitchCaseConstraint = (c) => {
+                    const defaultProp = rootNode.value.properties[0]?.key || '';
+                    c.rules.push({
+                        property: defaultProp,
+                        constraint: 'required',
+                        value: ''
+                    });
+                };
+
+                const addDefaultConstraint = () => {
+                    const defaultProp = rootNode.value.properties[0]?.key || '';
+                    switchDefaultRules.value.push({
+                        property: defaultProp,
+                        constraint: 'required',
+                        value: ''
+                    });
+                };
+
+                // Independent conditional helper methods
+                const addConditionalRule = () => {
+                    const defaultProp = rootNode.value.properties[0]?.key || '';
+                    conditionalRules.value.push({
+                        ifProperty: defaultProp,
+                        ifOperator: 'const',
+                        ifValue: '',
+                        thenRules: []
+                    });
+                };
+
+                const deleteConditionalRule = (index) => {
+                    conditionalRules.value.splice(index, 1);
+                };
+
+                const addThenConstraint = (rule) => {
+                    const defaultProp = rootNode.value.properties[0]?.key || '';
+                    rule.thenRules.push({
+                        property: defaultProp,
+                        constraint: 'required',
+                        value: ''
+                    });
+                };
+
+                // Recursive function converting visual node tree into standard JSON Schema format
+                const buildJsonSchema = (node) => {
+                    const schema = {
+                        title: node.title || node.key,
+                        type: node.type,
+                    };
+
+                    if (node.description && node.description.trim() !== '') {
+                        schema.description = node.description;
+                    }
+                    if (node.defaultValue && node.defaultValue.trim() !== '') {
+                        schema.default = node.defaultValue;
+                    }
+
+                    // Add type specific validation constraints
+                    if (node.type === 'string') {
+                        if (node.minLength !== undefined && node.minLength !== null && node.minLength !== '') {
+                            schema.minLength = parseInt(node.minLength);
+                        }
+                        if (node.maxLength !== undefined && node.maxLength !== null && node.maxLength !== '') {
+                            schema.maxLength = parseInt(node.maxLength);
+                        }
+                        if (node.pattern && node.pattern.trim() !== '') {
+                            schema.pattern = node.pattern;
+                        }
+                        if (node.format && node.format !== 'none') {
+                            schema.format = node.format;
+                        }
+                        if (node.enumList && node.enumList.trim() !== '') {
+                            schema.enum = node.enumList.split(',').map(s => s.trim()).filter(s => s !== '');
+                        }
+                    } else if (node.type === 'number' || node.type === 'integer') {
+                        if (node.minimum !== undefined && node.minimum !== null && node.minimum !== '') {
+                            schema.minimum = parseFloat(node.minimum);
+                        }
+                        if (node.maximum !== undefined && node.maximum !== null && node.maximum !== '') {
+                            schema.maximum = parseFloat(node.maximum);
+                        }
+                    } else if (node.type === 'oneOf') {
+                        // Polymorphism oneOf structure
+                        if (node.branches && node.branches.length > 0) {
+                            schema.oneOf = node.branches.map(branch => {
+                                const bSchema = buildJsonSchema(branch);
+                                return bSchema;
+                            });
+                        }
+                    } else if (node.type === 'object') {
+                        schema.properties = {};
+                        const requiredList = [];
+                        
+                        if (node.properties && node.properties.length > 0) {
+                            node.properties.forEach(child => {
+                                if (child.key && child.key.trim() !== '') {
+                                    schema.properties[child.key] = buildJsonSchema(child);
+                                    if (child.required) {
+                                        requiredList.push(child.key);
+                                    }
+                                }
+                            });
+                        }
+                        if (requiredList.length > 0) {
+                            schema.required = requiredList;
+                        }
+                        schema.additionalProperties = !!node.additionalProperties;
+                    } else if (node.type === 'array') {
+                        if (node.minItems !== undefined && node.minItems !== null && node.minItems !== '') {
+                            schema.minItems = parseInt(node.minItems);
+                        }
+                        if (node.maxItems !== undefined && node.maxItems !== null && node.maxItems !== '') {
+                            schema.maxItems = parseInt(node.maxItems);
+                        }
+                        if (node.uniqueItems) {
+                            schema.uniqueItems = true;
+                        }
+
+                        if (node.itemsType === 'self_ref') {
+                            schema.items = {
+                                "$ref": "#"
+                            };
+                        } else if (node.itemsType === 'object') {
+                            schema.items = {
+                                type: 'object',
+                                properties: {}
+                            };
+                            const itemsRequired = [];
+                            if (node.properties && node.properties.length > 0) {
+                                node.properties.forEach(child => {
+                                    if (child.key && child.key.trim() !== '') {
+                                        schema.items.properties[child.key] = buildJsonSchema(child);
+                                        if (child.required) {
+                                            itemsRequired.push(child.key);
+                                        }
+                                    }
+                                });
+                            }
+                            if (itemsRequired.length > 0) {
+                                schema.items.required = itemsRequired;
+                            }
+                            schema.items.additionalProperties = !!node.additionalProperties;
+                        } else {
+                            schema.items = {
+                                type: node.itemsType || 'string'
+                            };
+                        }
+                    }
+
+                    return schema;
+                };
+
+                const compileRuleBlock = (rulesList) => {
+                    if (!rulesList || rulesList.length === 0) return null;
+                    const block = {
+                        required: [],
+                        properties: {}
+                    };
+                    rulesList.forEach(r => {
+                        if (!r.property) return;
+                        if (r.constraint === 'required') {
+                            block.required.push(r.property);
+                        } else {
+                            if (!block.properties[r.property]) {
+                                block.properties[r.property] = {};
+                            }
+                            const fieldBlock = block.properties[r.property];
+                            if (r.constraint === 'minimum' || r.constraint === 'maximum') {
+                                fieldBlock[r.constraint] = parseFloat(r.value);
+                            } else if (r.constraint === 'enum') {
+                                fieldBlock.enum = r.value.split(',').map(s => s.trim()).filter(s => s !== '');
+                            } else {
+                                fieldBlock[r.constraint] = r.value;
+                            }
+                        }
+                    });
+
+                    // Clean empty structures
+                    if (block.required.length === 0) delete block.required;
+                    if (Object.keys(block.properties).length === 0) delete block.properties;
+                    
+                    return Object.keys(block).length > 0 ? block : null;
+                };
+
+                // Recursive Switch-Case Schema Generator
+                const generateRecursiveSwitch = (pivotKey, cases, defaultRules) => {
+                    if (cases.length === 0) {
+                        return compileRuleBlock(defaultRules);
+                    }
+
+                    const currentCase = cases[0];
+                    const remainingCases = cases.slice(1);
+
+                    // Build IF segment based on operator
+                    const ifProperties = {};
+                    if (currentCase.operator === 'const') {
+                        ifProperties[pivotKey] = { "const": currentCase.value };
+                    } else if (currentCase.operator === 'not') {
+                        ifProperties[pivotKey] = { "not": { "const": currentCase.value } };
+                    } else if (currentCase.operator === 'pattern') {
+                        ifProperties[pivotKey] = { "pattern": currentCase.value };
+                    }
+
+                    const schema = {
+                        if: {
+                            properties: ifProperties,
+                            required: [pivotKey]
+                        },
+                        then: compileRuleBlock(currentCase.rules) || {}
+                    };
+
+                    const elseBlock = generateRecursiveSwitch(pivotKey, remainingCases, defaultRules);
+                    if (elseBlock) {
+                        schema.else = elseBlock;
+                    }
+
+                    return schema;
+                };
+
+                const jsonSchemaObj = computed(() => {
+                    const baseSchema = buildJsonSchema(rootNode.value);
+                    baseSchema.$schema = "http://json-schema.org/draft-07/schema#";
+                    baseSchema.description = schemaName.value;
+
+                    // Switch Mode Router
+                    if (ruleMode.value === 'switch' && switchKey.value) {
+                        const switchSchema = generateRecursiveSwitch(switchKey.value, switchCases.value, switchDefaultRules.value);
+                        if (switchSchema) {
+                            baseSchema.if = switchSchema.if;
+                            if (switchSchema.then) baseSchema.then = switchSchema.then;
+                            if (switchSchema.else) baseSchema.else = switchSchema.else;
+                        }
+                    } 
+                    // Independent Rules Mode
+                    else if (ruleMode.value === 'independent' && conditionalRules.value && conditionalRules.value.length > 0) {
+                        const processedRules = conditionalRules.value.map(rule => {
+                            if (!rule.ifProperty) return null;
+                            
+                            const ifProperties = {};
+                            if (rule.ifOperator === 'const') {
+                                ifProperties[rule.ifProperty] = { "const": rule.ifValue };
+                            } else if (rule.ifOperator === 'not') {
+                                ifProperties[rule.ifProperty] = { "not": { "const": rule.ifValue } };
+                            } else if (rule.ifOperator === 'pattern') {
+                                ifProperties[rule.ifProperty] = { "pattern": rule.ifValue };
+                            }
+
+                            const subRule = {
+                                if: {
+                                    properties: ifProperties,
+                                    required: [rule.ifProperty]
+                                }
+                            };
+                            const thenBlock = compileRuleBlock(rule.thenRules);
+                            if (thenBlock) subRule.then = thenBlock;
+
+                            return subRule;
+                        }).filter(r => r !== null);
+
+                        if (processedRules.length === 1) {
+                            baseSchema.if = processedRules[0].if;
+                            if (processedRules[0].then) baseSchema.then = processedRules[0].then;
+                        } else if (processedRules.length > 1) {
+                            baseSchema.allOf = processedRules;
+                        }
+                    }
+                    return baseSchema;
+                });
+
+                const jsonSchemaStr = computed(() => {
+                    return JSON.stringify(jsonSchemaObj.value, null, 2);
+                });
+
+                const copyToClipboard = () => {
+                    navigator.clipboard.writeText(jsonSchemaStr.value)
+                        .then(() => alert('已成功复制 JSON Schema 到剪贴板！'))
+                        .catch(err => alert('复制失败: ' + err));
+                };
+
+                return {
+                    schemaKey,
+                    schemaName,
+                    rootNode,
+                    ruleMode,
+                    switchKey,
+                    switchCases,
+                    switchDefaultRules,
+                    conditionalRules,
+                    selectedTemplateKey,
+                    customTemplates,
+                    switchTemplate,
+                    resetTemplate,
+                    saveCustomTemplate,
+                    deleteCustomTemplate,
+                    addChild,
+                    deleteChild,
+                    addSwitchCase,
+                    addSwitchCaseConstraint,
+                    addDefaultConstraint,
+                    addConditionalRule,
+                    deleteConditionalRule,
+                    addThenConstraint,
+                    jsonSchemaStr,
+                    jsonSchemaObj,
+                    copyToClipboard,
+                    showImportDialog,
+                    importText,
+                    importError,
+                    executeImport
+                };
+            }
+        });
+
+        const vm = app.mount('#app');
+    </script>
+</body>
+</html>
