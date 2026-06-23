@@ -19,7 +19,9 @@ import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Types;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadFactory;
@@ -185,6 +187,9 @@ public class KingbaseToMysqlMigrationTest {
     private void createTable(Connection source, Connection target, String table) throws Exception {
         String sql = "select * from %s where 1=2".formatted(quote(table));
 
+        String tableComment = getTableComment(source, SCHEMA, table);
+        Map<String, String> columnComments = getColumnComments(source, SCHEMA, table);
+
         try (Statement st = source.createStatement(); ResultSet rs = st.executeQuery(sql)) {
             ResultSetMetaData meta = rs.getMetaData();
             StringBuilder ddl = new StringBuilder();
@@ -193,11 +198,74 @@ public class KingbaseToMysqlMigrationTest {
                 if (i > 1) {
                     ddl.append(",");
                 }
-                ddl.append(quoteMysql(meta.getColumnName(i))).append(" ").append(mapType(meta.getColumnType(i), meta.getColumnDisplaySize(i), meta.getPrecision(i), meta.getScale(i)));
+                String columnName = meta.getColumnName(i);
+                ddl.append(quoteMysql(columnName))
+                   .append(" ")
+                   .append(mapType(meta.getColumnType(i), meta.getColumnDisplaySize(i), meta.getPrecision(i), meta.getScale(i)));
+
+                String colComment = columnComments.get(columnName);
+                if (colComment != null) {
+                    ddl.append(" comment '").append(colComment.replace("'", "''")).append("'");
+                }
             }
             ddl.append(")");
+
+            if (tableComment != null) {
+                ddl.append(" comment='").append(tableComment.replace("'", "''")).append("'");
+            }
+
             execute(target, ddl.toString());
         }
+    }
+
+    private String getTableComment(Connection conn, String schema, String table) {
+        String sql = """
+                SELECT d.description 
+                FROM pg_description d
+                JOIN pg_class c ON d.objoid = c.oid
+                JOIN pg_namespace n ON c.relnamespace = n.oid
+                WHERE n.nspname = ? AND c.relname = ? AND d.objsubid = 0
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getString(1);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取表 {} 注释失败: ", table, e);
+        }
+        return null;
+    }
+
+    private Map<String, String> getColumnComments(Connection conn, String schema, String table) {
+        Map<String, String> comments = new HashMap<>();
+        String sql = """
+                SELECT a.attname AS column_name, d.description AS column_comment
+                FROM pg_attribute a
+                JOIN pg_class c ON a.attrelid = c.oid
+                JOIN pg_namespace n ON c.relnamespace = n.oid
+                LEFT JOIN pg_description d ON d.objoid = c.oid AND d.objsubid = a.attnum
+                WHERE n.nspname = ? AND c.relname = ? AND a.attnum > 0 AND NOT a.attisdropped
+                """;
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, schema);
+            ps.setString(2, table);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    String colName = rs.getString("column_name");
+                    String comment = rs.getString("column_comment");
+                    if (comment != null && !comment.isBlank()) {
+                        comments.put(colName, comment);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("获取表 {} 字段注释失败: ", table, e);
+        }
+        return comments;
     }
 
 
