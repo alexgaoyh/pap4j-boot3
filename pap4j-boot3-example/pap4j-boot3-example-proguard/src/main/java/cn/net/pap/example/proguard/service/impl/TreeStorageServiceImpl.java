@@ -11,6 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 树形存储服务实现类
@@ -21,6 +23,13 @@ public class TreeStorageServiceImpl implements ITreeStorageService {
     private static final Logger log = LoggerFactory.getLogger(TreeStorageServiceImpl.class);
 
     private final TreeStorageRepository treeStorageRepository;
+
+    // 内存计数缓冲区：Key 为 id，Value 包含计数与上次更新时间戳
+    private final Map<Long, PvCounter> pvBuffer = new ConcurrentHashMap<>();
+
+    // 双重阈值定义
+    private static final long FLUSH_COUNT_THRESHOLD = 50;                   // 数量阈值：50 次
+    private static final long FLUSH_TIME_THRESHOLD_MS = 10 * 1000;          // 时间阈值：10 秒
 
     public TreeStorageServiceImpl(TreeStorageRepository treeStorageRepository) {
         this.treeStorageRepository = treeStorageRepository;
@@ -69,4 +78,48 @@ public class TreeStorageServiceImpl implements ITreeStorageService {
         
         log.info("成功批量导入 {} 条树形数据", inputData.size());
     }
+
+    @Override
+    public void recordClick(Long id) {
+        PvCounter counter = pvBuffer.computeIfAbsent(id, k -> new PvCounter());
+
+        // 1. 原子自增计数
+        long currentCount = counter.count.incrementAndGet();
+        long now = System.currentTimeMillis();
+        long elapsed = now - counter.lastFlushTime.get();
+
+        // 2. 双重条件判定：数量满足阈值，或者时间间隔满足阈值
+        if (currentCount >= FLUSH_COUNT_THRESHOLD || elapsed >= FLUSH_TIME_THRESHOLD_MS) {
+            synchronized (counter) {
+                long toFlush = counter.count.get();
+                long currentElapsed = now - counter.lastFlushTime.get();
+
+                // 双重校验锁
+                if (toFlush >= FLUSH_COUNT_THRESHOLD || currentElapsed >= FLUSH_TIME_THRESHOLD_MS) {
+                    if (toFlush > 0) {
+                        counter.count.addAndGet(-toFlush);
+                        counter.lastFlushTime.set(now);
+
+                        // 3. 执行数据库自增更新
+                        treeStorageRepository.incrementSequence(id, (int) toFlush);
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public long getMemoryCount(Long id) {
+        PvCounter counter = pvBuffer.get(id);
+        return counter != null ? counter.count.get() : 0L;
+    }
+
+    /**
+     * 内部计数包装类，封装计数器与上次刷写时间戳
+     */
+    private static class PvCounter {
+        final AtomicLong count = new AtomicLong(0);
+        final AtomicLong lastFlushTime = new AtomicLong(System.currentTimeMillis());
+    }
+
 }

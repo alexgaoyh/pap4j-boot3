@@ -68,4 +68,53 @@ public class TreeStorageTest {
         item.put("attr1", attr);
         return item;
     }
+ 
+    @Test
+    public void testPvStressConcurrency() throws InterruptedException {
+        // 1. 初始化一条测试数据 (sequence 初始为 0)
+        TreeStorage initial = new TreeStorage(0, null, "stress-test");
+        TreeStorage saved = treeStorageRepository.saveAndFlush(initial);
+        Long targetId = saved.getId();
+ 
+        int numThreads = 10;
+        int clicksPerThread = 100;
+        int expectedTotalClicks = numThreads * clicksPerThread; // 共 1000 次点击
+ 
+        // 2. 线程池配置并发压测
+        java.util.concurrent.ThreadPoolExecutor executor = new java.util.concurrent.ThreadPoolExecutor(
+                numThreads,
+                numThreads,
+                0L, java.util.concurrent.TimeUnit.MILLISECONDS,
+                new java.util.concurrent.LinkedBlockingQueue<>(1),
+                r -> new Thread(r, "pv-stress-thread"),
+                new java.util.concurrent.ThreadPoolExecutor.AbortPolicy()
+        );
+ 
+        java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(numThreads);
+ 
+        for (int i = 0; i < numThreads; i++) {
+            executor.submit(() -> {
+                try {
+                    for (int j = 0; j < clicksPerThread; j++) {
+                        treeStorageService.recordClick(targetId);
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+ 
+        latch.await();
+        executor.shutdown();
+        executor.awaitTermination(5, java.util.concurrent.TimeUnit.SECONDS);
+ 
+        // 3. 校验总量一致性
+        long dbVal = treeStorageRepository.findById(targetId).orElseThrow().getSequence();
+        long memVal = treeStorageService.getMemoryCount(targetId);
+ 
+        // 无论如何，数据库里的计数加上当前内存滞留的计数，必须等于总期望点击数 1000
+        assertEquals(expectedTotalClicks, dbVal + memVal, "数据库计数加上内存中尚未触发阈值的余留计数应当等于总点击数");
+        log.info("高并发一致性校验成功！数据库PV数: {}, 内存滞留数: {}, 总合规数: {}", dbVal, memVal, dbVal + memVal);
+    }
+
 }
