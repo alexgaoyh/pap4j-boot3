@@ -103,6 +103,16 @@ public class TreeStorageServiceImpl implements ITreeStorageService {
                         // 3. 执行数据库自增更新
                         treeStorageRepository.incrementSequence(id, (int) toFlush);
                     }
+ 
+                    // 4. 将计数已归零的 ID 从 Map 中移除，防止内存无限膨胀
+                    if (counter.count.get() == 0) {
+                        pvBuffer.computeIfPresent(id, (k, val) -> {
+                            if (val.count.get() == 0) {
+                                return null; // 返回 null 即可在 Map 中原子删除该 Key
+                            }
+                            return val;
+                        });
+                    }
                 }
             }
         }
