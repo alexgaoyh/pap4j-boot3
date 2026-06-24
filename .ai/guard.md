@@ -31,7 +31,7 @@
 ## 4. 异常处理与安全
 * **禁止生吞异常**: 严禁 catch 块为空或仅使用 `e.printStackTrace()`。
 * **状态安全**: 使用 `volatile` 保证可见性。在可能的情况下，优先使用原子 API（`AtomicReference`, `compute`）而非手动加锁。
-* **防内存泄漏**: 任何内存缓存/注册表必须有清理机制（Caffeine, 定时任务）。
+* **防内存泄漏**: 任何内存缓存、缓冲队列或注册表必须实现主动或自动的清理机制（Caffeine, 定时任务）（如设置 TTL、基于容量淘汰，或在数据被同步完成后从容器中移除）。严禁无限期保存已处理、过期或无效的 Key，以防随业务主键 (如用户 ID、商品 ID 等) 的持续增长而导致容器膨胀引发内存泄漏 (OOM)。
 * **BigDecimal**: 使用 `String` 构造函数或 `BigDecimal.valueOf(double)`。严禁使用 `new BigDecimal(double)`。值比对必须使用 `compareTo()`，严禁使用 `equals()`。
 
 ## 5. 代码整洁与 OOP
@@ -107,7 +107,10 @@
     *   ✅ 正确: 纯 CPU 计算任务使用 `ForkJoinPool.commonPool().invoke(task)`；含有阻塞型 I/O 的任务使用自定义的、配置了有界队列和饱和策略的 `ThreadPoolExecutor`。
 *   **高频循环产生海量垃圾对象 (GC 压力)**
     *   ❌ 错误: 在 for/while 循环体内为每一行数据分配 `new ByteArrayOutputStream()`，并频繁调用 `toByteArray()` 拷贝小字节数组。
-    *   ✅ 正确: 一次性读取数据块到大 `byte[]` 数组中，在方法间传递 `(byte[] bytes, int start, int end)` 等指针偏移量进行逻辑切片，实现零垃圾内存分配。
+*   **内存累加缓冲与内存泄露 (容器键持续积压)**
+    *   ❌ 错误: 仅对 Map/Set 中特定 Key 对应的计数值/状态进行置空或重置，但从未从容器中将 Key 本身移除，导致容器大小随业务 ID 的不断累积而无限增长。
+    *   ✅ 正确: 在确认数据已同步落库、计数值归零或状态失效后，通过线程安全的方式（如 Map 的 `computeIfPresent` 移除机制）将 Key 彻底从容器中移除，或使用带有淘汰策略的本地缓存库（如 Caffeine）来管理容器的生命周期。
+
 
 ## 9. 代码审计强制清单 (Mandatory Audit Checklist)
 在进行代码审查或执行 **`[Edit]`** 前，AI 必须对照以下清单进行深度"自检"，并在回复中列出：
