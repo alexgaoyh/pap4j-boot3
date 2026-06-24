@@ -32,6 +32,7 @@
 * **禁止生吞异常**: 严禁 catch 块为空或仅使用 `e.printStackTrace()`。
 * **状态安全**: 使用 `volatile` 保证可见性。在可能的情况下，优先使用原子 API（`AtomicReference`, `compute`）而非手动加锁。
 * **防内存泄漏**: 任何内存缓存、缓冲队列或注册表必须实现主动或自动的清理机制（Caffeine, 定时任务）（如设置 TTL、基于容量淘汰，或在数据被同步完成后从容器中移除）。严禁无限期保存已处理、过期或无效的 Key，以防随业务主键 (如用户 ID、商品 ID 等) 的持续增长而导致容器膨胀引发内存泄漏 (OOM)。
+* **动态资源生灭安全**: Map 中动态创销锁、连接等资源时，严禁直接执行 `remove(key)`（防并发竞态击穿），也严禁只增不删（防 OOM）。必须使用原子操作（如 `compute`/`computeIfPresent`）配合引用计数在计数归零时安全移除。
 * **BigDecimal**: 使用 `String` 构造函数或 `BigDecimal.valueOf(double)`。严禁使用 `new BigDecimal(double)`。值比对必须使用 `compareTo()`，严禁使用 `equals()`。
 
 ## 5. 代码整洁与 OOP
