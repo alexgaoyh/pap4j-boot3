@@ -22,7 +22,14 @@ public class JsonConverter implements AttributeConverter<Object, String> {
     @Override
     public Object convertToEntityAttribute(String dbData) {
         try {
-            return dbData == null ? null : MAPPER.readValue(dbData, Object.class);
+            if (dbData == null) {
+                return null;
+            }
+            com.fasterxml.jackson.databind.JsonNode node = MAPPER.readTree(dbData);
+            if (node.isTextual()) {
+                return MAPPER.readTree(node.asText());
+            }
+            return node;
         } catch (Exception e) {
             throw new IllegalArgumentException("JSON deserialize error", e);
         }
