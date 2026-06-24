@@ -30,17 +30,39 @@ sudo vim /etc/default/locale
 ```
 
 ```shell
-# windows
-jpackage --input . --name example-javafx-0.0.1 --main-jar pap4j-boot3-example-javafx-0.0.1.jar --module-path "D:\.jdks\jdk-17.0.16+8\bin\jmods" --add-modules java.base,java.desktop,java.rmi,java.scripting,java.sql,java.naming,java.xml,jdk.unsupported --java-options "--add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED" --java-options "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED" --java-options "--add-opens=java.base/java.io=ALL-UNNAMED" --java-options "--add-opens=java.base/java.util=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.prism=ALL-UNNAMED" --java-options "-Dfile.encoding=UTF-8" --win-dir-chooser --win-menu --win-shortcut
+# ==========================================
+# Windows 极致精简打包步骤 (PowerShell/CMD 适用)
+# ==========================================
 
-# windows 依赖调整
-jpackage --input . --name example-javafx-0.0.1 --main-jar pap4j-boot3-example-javafx-0.0.1.jar --runtime-image "D:\.jdks\jdk-17.0.16+8" --java-options "--add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED" --java-options "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED" --java-options "--add-opens=java.base/java.io=ALL-UNNAMED" --java-options "--add-opens=java.base/java.util=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.prism=ALL-UNNAMED" --java-options "-Dfile.encoding=UTF-8" --win-dir-chooser --win-menu --win-shortcut
+# 步骤 1：清理并编译出干净的主 Jar 包
+mvn clean package -DskipTests=true
 
-# 在 Windows 下配置 WiX 3 环境变量 从 GitHub 下载：https://github.com/wixtoolset/wix3/releases 下载 wix3xx-binaries.zip 并解压，之后配置环境变量 PATH 部分，增加此文件夹
+# 步骤 2：创建独立发布目录，并导出所有运行时依赖 JAR 包 (避免 NoClassDefFoundError 或 Missing JavaFX application class 错误)
+mkdir target/dist
+copy target/pap4j-boot3-example-javafx-*.jar target/dist/
+# 使用 Maven 将所有运行时依赖包拷贝到 target/dist 目录下，这样 jpackage 才能将它们一同打包并自动配置 Classpath
+mvn dependency:copy-dependencies -DoutputDirectory=target/dist -DincludeScope=runtime "-Dfile.encoding=UTF-8"
 
-# windows 下在测试的时候，打包的时候可以增加一下 --win-console， 然后会在启动前给一个黑框，如果这个黑框一闪而过，可以找到这个exe文件所在的位置，在cmd下启动.
+# 步骤 3：使用 jdeps 静态分析最小 JDK 依赖模块 (必须使用带 JavaFX 的 zulu JDK 中的 jdeps 运行)
+# 请根据实际安装的 JDK 路径替换 jmods 路径与 bin/jdeps 路径
+D:\.jdks\zulu17.62.17-ca-fx-jdk17.0.17-win_x64\bin\jdeps.exe --module-path "D:\.jdks\zulu17.62.17-ca-fx-jdk17.0.17-win_x64\jmods" --add-modules javafx.controls,javafx.fxml,javafx.swing --print-module-deps --ignore-missing-deps --multi-release 17 target/dist/pap4j-boot3-example-javafx-*.jar
+# 【使用说明】：上述命令会检测并输出当前 Jar 包依赖的 JDK 平台模块列表（例如：java.base,java.scripting,java.sql,javafx.graphics,jdk.unsupported.desktop）。
+# 我们需要将这个输出结果，同我们显式要求的 JavaFX 核心模块（javafx.controls,javafx.fxml,javafx.swing）合并（以逗号分隔，并去重），作为步骤 4 中 --add-modules 的参数。
 
-# windows 在添加了一系列功能之后，打包的时候增加了额外的配置来做支持
-jpackage --input . --name example-javafx-0.0.1 --main-jar pap4j-boot3-example-javafx-0.0.1.jar --module-path "D:\.jdks\zulu17.62.17-ca-fx-jdk17.0.17-win_x64\jmods" --add-modules java.base,java.desktop,java.rmi,java.scripting,java.sql,java.naming,java.xml,jdk.unsupported,javafx.base,javafx.graphics,javafx.controls,javafx.fxml,javafx.media,javafx.web --java-options "--add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED" --java-options "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED" --java-options "--add-opens=java.base/java.io=ALL-UNNAMED" --java-options "--add-opens=java.base/java.util=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.prism=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.util=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.css=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.geom=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.text=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/javafx.scene=ALL-UNNAMED" --java-options "--add-opens=javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED" --java-options "--add-opens=javafx.controls/javafx.scene.control.skin=ALL-UNNAMED" --java-options "--add-opens=javafx.fxml/javafx.fxml=ALL-UNNAMED" --java-options "-Dfile.encoding=UTF-8" --win-dir-chooser --win-menu --win-shortcut --win-console
+# 步骤 4：使用 jlink 组装极致压缩的自定义 JRE (必须使用 zulu JDK 中的 jlink)
+# 下方命令已填入合并后的最优模块列表：java.base,java.scripting,java.sql,javafx.graphics,jdk.unsupported.desktop,javafx.controls,javafx.fxml,javafx.swing
+# (注：jlink 会自动解析模块之间的间接/传递依赖，例如 java.desktop 和 java.xml 等，无需在列表中手动冗余列出)
+D:\.jdks\zulu17.62.17-ca-fx-jdk17.0.17-win_x64\bin\jlink.exe --module-path "D:\.jdks\zulu17.62.17-ca-fx-jdk17.0.17-win_x64\jmods" --add-modules java.base,java.scripting,java.sql,javafx.graphics,jdk.unsupported.desktop,javafx.controls,javafx.fxml,javafx.swing --strip-debug --no-header-files --no-man-pages --compress=2 --output target/custom-runtime
+
+# 步骤 5：使用 jpackage 包装为独立的 EXE (必须使用 zulu JDK 中的 jpackage)
+# --input 指向刚才建好的 target/dist (里面只有单个 jar)，--runtime-image 指向极致精简的 custom-runtime，同时显式指定主类入口 --main-class
+D:\.jdks\zulu17.62.17-ca-fx-jdk17.0.17-win_x64\bin\jpackage.exe --type exe --input target/dist --name example-javafx-0.0.1 --main-jar pap4j-boot3-example-javafx-0.0.3.jar --main-class cn.net.pap.example.javafx.MainApp --runtime-image target/custom-runtime --java-options "--add-exports=jdk.unsupported/sun.misc=ALL-UNNAMED" --java-options "--add-exports=java.base/sun.nio.ch=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang=ALL-UNNAMED" --java-options "--add-opens=java.base/java.lang.reflect=ALL-UNNAMED" --java-options "--add-opens=java.base/java.io=ALL-UNNAMED" --java-options "--add-opens=java.base/java.util=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.application=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.prism=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.util=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.css=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.scene=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.tk=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.stage=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.geom=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/com.sun.javafx.text=ALL-UNNAMED" --java-options "--add-opens=javafx.graphics/javafx.scene=ALL-UNNAMED" --java-options "--add-opens=javafx.controls/com.sun.javafx.scene.control=ALL-UNNAMED" --java-options "--add-opens=javafx.controls/javafx.scene.control.skin=ALL-UNNAMED" --java-options "--add-opens=javafx.fxml/javafx.fxml=ALL-UNNAMED" --java-options "-Dfile.encoding=UTF-8" --win-dir-chooser --win-menu --win-shortcut --win-console
+
+# -----------------
+# 附加说明：
+# 1. 在 Windows 下构建完整的 EXE 安装包需要配置 WiX 3 环境：
+#    从 GitHub 下载：https://github.com/wixtoolset/wix3/releases 并解压，将其文件夹配置进系统环境变量 PATH 中。
+# 2. 如果打包测试时需要看到报错，可加上 --win-console 参数。如需隐藏命令行黑框，移除 --win-console 即可。
+# -----------------
 
 ```
