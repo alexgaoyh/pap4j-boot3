@@ -4,6 +4,7 @@ import cn.net.pap.example.proguard.dto.ProguardDTO;
 import cn.net.pap.example.proguard.entity.Proguard;
 import cn.net.pap.example.proguard.repository.ProguardRepository;
 import cn.net.pap.example.proguard.service.IProguardService;
+import cn.net.pap.example.proguard.util.SQLUtil;
 import cn.net.pap.example.proguard.util.SearchUtil;
 import cn.net.pap.example.proguard.util.SpringUtils;
 import cn.net.pap.example.proguard.util.dto.SearchConditionDTO;
@@ -667,6 +668,59 @@ public class ProguardTest {
         // logging.level.com.zaxxer.hikari.pool.ProxyLeakTask: WARN
         Proguard sleep = proguardService.sleep(9000L);
         assertEquals(sleep, null);
+    }
+
+    @Test
+    public void jsonInsertTest() throws Exception {
+        String jsonInput = """
+                {
+                    "proguardId": 888888,
+                    "proguardName": "json_insert_name",
+                    "proguardIdx": 88,
+                    "extMap": {"timeswap": 123456789, "info": "nested 'quote' test"},
+                    "extList": ["item1", "item2"],
+                    "abstractList": [{"key": "val1"}, {"key": "val2"}],
+                    "abstractObj": {"nested": {"key": "value"}},
+                    "jsonSchema": "schema_content",
+                    "jsonData": {"test": "data"},
+                    "tenantId": "default"
+                }
+                """;
+
+        String insertSql = SQLUtil.generateInsertSqlFromJson("proguard", jsonInput);
+        log.info("Generated SQL: {}", insertSql);
+
+        // Execute raw insert statement directly
+        entityManager.createNativeQuery(insertSql).executeUpdate();
+
+        // Flush and clear persistence context to ensure we fetch directly from DB
+        entityManager.flush();
+        entityManager.clear();
+
+        // Query and verify
+        Proguard dbRecord = proguardRepository.getProguardByProguardId(888888L);
+        assertNotNull(dbRecord);
+        assertEquals("json_insert_name", dbRecord.getProguardName());
+        assertEquals(88, dbRecord.getProguardIdx());
+        assertEquals("default", dbRecord.getTenantId());
+        
+        assertNotNull(dbRecord.getExtMap());
+        assertEquals(123456789L, ((Number) dbRecord.getExtMap().get("timeswap")).longValue());
+        assertEquals("nested 'quote' test", dbRecord.getExtMap().get("info"));
+        
+        assertNotNull(dbRecord.getExtList());
+        assertEquals(Arrays.asList("item1", "item2"), dbRecord.getExtList());
+        
+        assertNotNull(dbRecord.getAbstractList());
+        assertEquals(2, dbRecord.getAbstractList().size());
+        
+        assertNotNull(dbRecord.getAbstractObj());
+        assertEquals("value", dbRecord.getAbstractObj().path("nested").path("key").asText());
+        
+        assertNotNull(dbRecord.getJsonData());
+        assertEquals("data", dbRecord.getJsonData().path("test").asText());
+        
+        assertEquals("schema_content", dbRecord.getJsonSchema());
     }
 
 }
