@@ -6,7 +6,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * TreeStorage 仓库接口
@@ -22,7 +21,6 @@ public interface TreeStorageRepository extends JpaRepository<TreeStorage, Long> 
      * @return 受影响的行数
      */
     @Modifying
-    @Transactional(rollbackFor = Exception.class)
     @Query(value = "UPDATE tree_storage SET sequence = sequence + :increment WHERE id = :id", nativeQuery = true)
     int incrementSequence(@Param("id") Long id, @Param("increment") int increment);
 

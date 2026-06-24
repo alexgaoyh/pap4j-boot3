@@ -19,12 +19,12 @@ public class NumberSegmentService {
         this.numberSegmentRepository = numberSegmentRepository;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void save(NumberSegment numberSegment) {
         numberSegmentRepository.save(numberSegment);
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void loadSegments(String segmentName, Queue<String> queue) {
         NumberSegment updatedSegment = getUpdatedSegment(segmentName);
         int startValue = updatedSegment.getCurrentValue() - CACHE_SIZE + 1;
@@ -35,7 +35,7 @@ public class NumberSegmentService {
         }
     }
 
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(propagation = Propagation.REQUIRES_NEW, rollbackFor = Exception.class)
     public NumberSegment getUpdatedSegment(String segmentName) {
         numberSegmentRepository.updateCurrentValue(segmentName, CACHE_SIZE);
         return numberSegmentRepository.findByName(segmentName).get();

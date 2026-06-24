@@ -80,6 +80,7 @@ public class TreeStorageServiceImpl implements ITreeStorageService {
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public void recordClick(Long id) {
         PvCounter counter = pvBuffer.computeIfAbsent(id, k -> new PvCounter());
 

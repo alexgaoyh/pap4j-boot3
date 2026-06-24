@@ -320,6 +320,7 @@ public class ProguardServiceImpl implements IProguardService {
         try {
             Thread.sleep(100);
         } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
         }
 
         Proguard to = proguardRepository.getProguardByProguardIdForUpdate(id2);
@@ -336,6 +337,7 @@ public class ProguardServiceImpl implements IProguardService {
         try {
             Thread.sleep(timeMS);
         } catch (InterruptedException ignored) {
+            Thread.currentThread().interrupt();
         }
         return null;
     }

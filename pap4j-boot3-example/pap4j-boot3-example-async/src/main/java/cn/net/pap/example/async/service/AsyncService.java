@@ -32,6 +32,7 @@ public class AsyncService {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
         return param.toUpperCase();
@@ -41,6 +42,7 @@ public class AsyncService {
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
         return param.toLowerCase();
@@ -50,6 +52,7 @@ public class AsyncService {
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
         return param + ":" + System.currentTimeMillis();

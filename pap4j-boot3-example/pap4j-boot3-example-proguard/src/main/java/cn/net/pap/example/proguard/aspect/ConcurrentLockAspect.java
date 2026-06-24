@@ -15,14 +15,20 @@ import org.springframework.stereotype.Component;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Aspect
 @Component
 public class ConcurrentLockAspect {
 
-    // 使用ConcurrentHashMap存储所有锁对象
-    private static final Map<String, ReentrantLock> LOCK_MAP = new ConcurrentHashMap<>();
+    // 使用ConcurrentHashMap存储所有包含计数器的包装锁对象
+    private static final Map<String, LockWrapper> LOCK_MAP = new ConcurrentHashMap<>();
+
+    private static class LockWrapper {
+        final ReentrantLock lock = new ReentrantLock();
+        final AtomicInteger refCount = new AtomicInteger(1);
+    }
 
     // SpEL表达式解析器
     private final ExpressionParser parser = new SpelExpressionParser();
@@ -32,8 +38,16 @@ public class ConcurrentLockAspect {
         // 1. 解析锁key
         String lockKey = resolveLockKey(joinPoint, concurrentLock.value());
 
-        // 2. 获取或创建锁对象
-        ReentrantLock lock = LOCK_MAP.computeIfAbsent(lockKey, k -> new ReentrantLock());
+        // 2. 获取或创建锁包装对象，并原子增加引用计数
+        LockWrapper wrapper = LOCK_MAP.compute(lockKey, (k, v) -> {
+            if (v == null) {
+                return new LockWrapper();
+            } else {
+                v.refCount.incrementAndGet();
+                return v;
+            }
+        });
+        ReentrantLock lock = wrapper.lock;
 
         boolean acquired = false;
         try {
@@ -54,6 +68,13 @@ public class ConcurrentLockAspect {
             if (acquired && lock.isHeldByCurrentThread()) {
                 lock.unlock();
             }
+            // 6. 原子减少引用计数，并在计数归零时安全地从 Map 中移出以防止内存泄漏
+            LOCK_MAP.computeIfPresent(lockKey, (k, v) -> {
+                if (v.refCount.decrementAndGet() == 0) {
+                    return null;
+                }
+                return v;
+            });
         }
     }
 
@@ -91,6 +112,12 @@ public class ConcurrentLockAspect {
      * 用定时任务或异步线程周期性清理, 比如 @Scheduled 周期性的调用当前方法。
      */
     public static void cleanUnusedLocks() {
-        LOCK_MAP.entrySet().removeIf(entry -> !entry.getValue().isLocked() && entry.getValue().getQueueLength() == 0);
+        LOCK_MAP.entrySet().removeIf(entry -> {
+            LockWrapper wrapper = entry.getValue();
+            // 只有当引用计数为 0，且锁确实没有被任何人持有、没有线程在等待时，才安全移除
+            return wrapper.refCount.get() <= 0
+                   && !wrapper.lock.isLocked()
+                   && !wrapper.lock.hasQueuedThreads();
+        });
     }
 }
