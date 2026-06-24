@@ -18,7 +18,15 @@ public class H2ServerManager {
 
     private static int webPort = 8082;
 
-    private static String dbPath = "jdbc:h2:file:./h2db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE";
+    private static String dbPath;
+    static {
+        String userHome = System.getProperty("user.home");
+        java.io.File dbDir = new java.io.File(userHome, ".pap4j-boot3");
+        if (!dbDir.exists()) {
+            dbDir.mkdirs();
+        }
+        dbPath = "jdbc:h2:file:" + dbDir.getAbsolutePath().replace("\\", "/") + "/h2db;DB_CLOSE_ON_EXIT=FALSE;AUTO_RECONNECT=TRUE";
+    }
 
     private static String user = "sa";
 
