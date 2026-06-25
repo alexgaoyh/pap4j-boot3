@@ -1,15 +1,11 @@
 package cn.net.pap.example.dynamic.form.entity;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
@@ -32,14 +28,20 @@ public class DynamicRelation {
     @Schema(description = "关系ID")
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "source_record_id")
-    @Schema(description = "源记录 (父级)")
+    @Column(name = "source_record_id", nullable = false)
+    @Schema(description = "源记录ID (父级)")
+    private Long sourceRecordId;
+
+    @jakarta.persistence.Transient
+    @Schema(description = "源记录 (非 JPA 关联映射)")
     private DynamicRecord sourceRecord;
 
-    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    @JoinColumn(name = "target_record_id")
-    @Schema(description = "目标记录 (子级)")
+    @Column(name = "target_record_id", nullable = false)
+    @Schema(description = "目标记录ID (子级)")
+    private Long targetRecordId;
+
+    @jakarta.persistence.Transient
+    @Schema(description = "目标记录 (非 JPA 关联映射)")
     private DynamicRecord targetRecord;
 
     @Column(name = "relation_code")

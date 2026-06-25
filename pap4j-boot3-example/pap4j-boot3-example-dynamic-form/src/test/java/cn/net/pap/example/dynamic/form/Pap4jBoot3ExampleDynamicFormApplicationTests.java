@@ -91,6 +91,37 @@ class Pap4jBoot3ExampleDynamicFormApplicationTests {
         assertEquals(1.0, laptop.get("qty"));
     }
 
+    @Test
+    @Transactional
+    void testVariousFieldValueTypesAndListRecords() {
+        // 1. 构造包含长文本 (>255)、时间 (LocalDateTime) 的各种属性值
+        java.time.LocalDateTime testTime = java.time.LocalDateTime.of(2026, 6, 25, 9, 0);
+        String longText = "a".repeat(300); // 触发 text_value 存储
+
+        Map<String, Object> payload = Map.of(
+                "shortText", "hello",
+                "longText", longText,
+                "numVal", 99.9,
+                "dateVal", testTime
+        );
+
+        // 2. 保存并验证
+        Long id = recordService.saveComplexRecord("all_types", payload);
+        assertNotNull(id);
+
+        // 3. 验证单条记录读取 (覆盖各类值的还原逻辑)
+        Map<String, Object> result = recordService.getRecord(id);
+        assertEquals("hello", result.get("shortText"));
+        assertEquals(longText, result.get("longText"));
+        assertEquals(99.9, result.get("numVal"));
+        assertEquals(testTime, result.get("dateVal"));
+
+        // 4. 验证列表查询 (覆盖 listRecords 方法)
+        List<Map<String, Object>> list = recordService.listRecords("all_types");
+        assertEquals(1, list.size());
+        assertEquals("hello", list.get(0).get("shortText"));
+    }
+
     /**
      * <p>
      * 验证<b>级联删除</b>逻辑。

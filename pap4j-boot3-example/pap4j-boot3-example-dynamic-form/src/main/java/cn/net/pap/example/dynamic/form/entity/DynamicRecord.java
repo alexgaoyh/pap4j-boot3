@@ -1,13 +1,11 @@
 package cn.net.pap.example.dynamic.form.entity;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.OneToMany;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.Getter;
@@ -49,12 +47,12 @@ public class DynamicRecord {
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
 
-    @OneToMany(mappedBy = "record", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Schema(description = "动态属性值列表")
+    @jakarta.persistence.Transient
+    @Schema(description = "动态属性值列表 (内存缓存，非 JPA 关联映射)")
     private List<DynamicFieldValue> fieldValues = new ArrayList<>();
 
-    @OneToMany(mappedBy = "sourceRecord", cascade = CascadeType.ALL, orphanRemoval = true)
-    @Schema(description = "动态关系列表")
+    @jakarta.persistence.Transient
+    @Schema(description = "动态关系列表 (内存缓存，非 JPA 关联映射)")
     private List<DynamicRelation> relations = new ArrayList<>();
 
     @PrePersist
@@ -63,7 +61,7 @@ public class DynamicRecord {
     }
 
     /**
-     * 添加属性值并维护双向关联
+     * 添加属性值并维护双向关联 (仅限内存级)
      *
      * @param value 属性值对象
      */
@@ -73,7 +71,7 @@ public class DynamicRecord {
     }
 
     /**
-     * 添加关系并维护双向关联
+     * 添加关系并维护双向关联 (仅限内存级)
      *
      * @param relation 关系对象
      */

@@ -3,7 +3,9 @@ package cn.net.pap.example.dynamic.form.service;
 import cn.net.pap.example.dynamic.form.entity.DynamicFieldValue;
 import cn.net.pap.example.dynamic.form.entity.DynamicRecord;
 import cn.net.pap.example.dynamic.form.entity.DynamicRelation;
+import cn.net.pap.example.dynamic.form.repository.DynamicFieldValueRepository;
 import cn.net.pap.example.dynamic.form.repository.DynamicRecordRepository;
+import cn.net.pap.example.dynamic.form.repository.DynamicRelationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,10 @@ public class DynamicRecordService {
 
     private final DynamicRecordRepository recordRepository;
 
+    private final DynamicFieldValueRepository fieldValueRepository;
+
+    private final DynamicRelationRepository relationRepository;
+
     /**
      * 保存复杂嵌套记录
      *
@@ -41,10 +47,31 @@ public class DynamicRecordService {
      * @param payload  JSON 数据载体
      * @return 生成的根记录 ID
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Long saveComplexRecord(String formCode, Map<String, Object> payload) {
         DynamicRecord rootRecord = createRecordRecursive(formCode, payload);
-        return recordRepository.save(rootRecord).getId();
+        saveRecordRecursive(rootRecord);
+        return rootRecord.getId();
+    }
+
+    private void saveRecordRecursive(DynamicRecord record) {
+        recordRepository.save(record);
+        Long recordId = record.getId();
+
+        for (DynamicFieldValue fv : record.getFieldValues()) {
+            fv.setRecordId(recordId);
+            fieldValueRepository.save(fv);
+        }
+
+        for (DynamicRelation rel : record.getRelations()) {
+            rel.setSourceRecordId(recordId);
+            DynamicRecord targetRec = rel.getTargetRecord();
+            if (targetRec != null) {
+                saveRecordRecursive(targetRec);
+                rel.setTargetRecordId(targetRec.getId());
+            }
+            relationRepository.save(rel);
+        }
     }
 
     /**
@@ -114,7 +141,10 @@ public class DynamicRecordService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> listRecords(String formCode) {
         return recordRepository.findByFormCode(formCode).stream()
-                .map(this::reconstructRecord)
+                .map(record -> {
+                    populateRecord(record);
+                    return reconstructRecord(record);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -127,7 +157,10 @@ public class DynamicRecordService {
     @Transactional(readOnly = true)
     public Map<String, Object> getRecord(Long id) {
         return recordRepository.findById(id)
-                .map(this::reconstructRecord)
+                .map(record -> {
+                    populateRecord(record);
+                    return reconstructRecord(record);
+                })
                 .orElseThrow(() -> new RuntimeException("Record not found: " + id));
     }
 
@@ -136,9 +169,40 @@ public class DynamicRecordService {
      *
      * @param id 记录 ID
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteRecord(Long id) {
+        // 1. 递归删除嵌套的关系与记录
+        List<DynamicRelation> rels = relationRepository.findBySourceRecordId(id);
+        for (DynamicRelation rel : rels) {
+            if (rel.getTargetRecordId() != null) {
+                deleteRecord(rel.getTargetRecordId());
+            }
+            relationRepository.delete(rel);
+        }
+
+        // 2. 删除当前记录关联的字段值
+        fieldValueRepository.deleteByRecordId(id);
+
+        // 3. 删除记录本体
         recordRepository.deleteById(id);
+    }
+
+    private void populateRecord(DynamicRecord record) {
+        if (record == null) return;
+        List<DynamicFieldValue> fvs = fieldValueRepository.findByRecordId(record.getId());
+        record.setFieldValues(fvs);
+
+        List<DynamicRelation> rels = relationRepository.findBySourceRecordId(record.getId());
+        for (DynamicRelation rel : rels) {
+            if (rel.getTargetRecordId() != null) {
+                DynamicRecord targetRecord = recordRepository.findById(rel.getTargetRecordId()).orElse(null);
+                if (targetRecord != null) {
+                    populateRecord(targetRecord);
+                    rel.setTargetRecord(targetRecord);
+                }
+            }
+        }
+        record.setRelations(rels);
     }
 
     /**
