@@ -16,7 +16,7 @@ import java.util.Optional;
 
 public interface ProguardRepository extends JpaRepository<Proguard,Long>, JpaSpecificationExecutor<Proguard> {
 
-    List<Proguard> searchAllByProguardName(@Param("proguardName") String proguardName);
+    Page<Proguard> searchAllByProguardName(@Param("proguardName") String proguardName, Pageable pageable);
 
     Proguard getProguardByProguardId(@Param("proguardId") Long proguardId);
 

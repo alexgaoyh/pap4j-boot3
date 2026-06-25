@@ -9,6 +9,9 @@ import cn.net.pap.example.dynamic.form.repository.DynamicRelationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -139,12 +142,13 @@ public class DynamicRecordService {
      * @return 还原后的 Map 列表
      */
     @Transactional(readOnly = true)
-    public List<Map<String, Object>> listRecords(String formCode) {
-        List<DynamicRecord> records = recordRepository.findByFormCode(formCode);
-        populateRecordsBatch(records);
-        return records.stream()
+    public Page<Map<String, Object>> listRecords(String formCode, Pageable pageable) {
+        Page<DynamicRecord> records = recordRepository.findByFormCode(formCode, pageable);
+        populateRecordsBatch(records.getContent());
+        List<Map<String, Object>> list = records.getContent().stream()
                 .map(this::reconstructRecord)
                 .collect(Collectors.toList());
+        return new PageImpl<>(list, pageable, records.getTotalElements());
     }
 
     /**

@@ -293,19 +293,22 @@ public class ProguardController {
     }
 
     @GetMapping("/searchAllByProguardName")
-    public List<Proguard> searchAllByProguardName(@RequestParam(name = "proguardName") String proguardName) {
-        return proguardService.searchAllByProguardName(proguardName);
+    public Page<Proguard> searchAllByProguardName(@RequestParam(name = "proguardName") String proguardName,
+                                                  @RequestParam(name = "page", defaultValue = "0") int page,
+                                                  @RequestParam(name = "size", defaultValue = "10") int size) {
+        return proguardService.searchAllByProguardName(proguardName, PageRequest.of(page, size));
     }
 
     @GetMapping("/findAll")
-    public List<Proguard> findAll() {
-        return proguardService.findAll();
+    public Page<Proguard> findAll(@RequestParam(name = "page", defaultValue = "0") int page,
+                                  @RequestParam(name = "size", defaultValue = "10") int size) {
+        return proguardService.findAll(PageRequest.of(page, size));
     }
 
     @GetMapping("/findNaive")
     public Page<Proguard> findNaive() {
         Pageable pageable = PageRequest.of(0, 10);
-        Page<Proguard> proguardsPageable = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable);
+        Page<Proguard> proguardsPageable = proguardService.searchAllByNaiveSQL("select proguard_id, proguard_name, proguard_idx, ext_map, ext_list, abstract_list, abstract_obj, json_schema, json_data, tenant_id from proguard order by proguard_id desc", pageable);
         return proguardsPageable;
     }
 

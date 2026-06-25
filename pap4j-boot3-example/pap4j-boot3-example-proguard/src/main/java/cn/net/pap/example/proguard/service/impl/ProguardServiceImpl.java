@@ -72,14 +72,13 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    public List<Proguard> searchAllByProguardName(String proguardName) {
-        List<Proguard> proguards = proguardRepository.searchAllByProguardName(proguardName);
-        return proguards;
+    public Page<Proguard> searchAllByProguardName(String proguardName, Pageable pageable) {
+        return proguardRepository.searchAllByProguardName(proguardName, pageable);
     }
 
     @Override
-    public List<Proguard> findAll() {
-        return proguardRepository.findAll();
+    public Page<Proguard> findAll(Pageable pageable) {
+        return proguardRepository.findAll(pageable);
     }
 
     @Override

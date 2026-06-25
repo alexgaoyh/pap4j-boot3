@@ -9,9 +9,9 @@ import java.util.Map;
 
 public interface IProguardService {
 
-    List<Proguard> searchAllByProguardName(String proguardName);
+    Page<Proguard> searchAllByProguardName(String proguardName, Pageable pageable);
 
-    List<Proguard> findAll();
+    Page<Proguard> findAll(Pageable pageable);
 
     Proguard saveAndFlush(Proguard entity);
 

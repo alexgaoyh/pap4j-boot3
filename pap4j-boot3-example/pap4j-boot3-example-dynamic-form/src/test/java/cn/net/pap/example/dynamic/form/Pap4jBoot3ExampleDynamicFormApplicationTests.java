@@ -1,6 +1,8 @@
 package cn.net.pap.example.dynamic.form;
 
 import cn.net.pap.example.dynamic.form.service.DynamicRecordService;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestConstructor;
@@ -117,7 +119,8 @@ class Pap4jBoot3ExampleDynamicFormApplicationTests {
         assertEquals(testTime, result.get("dateVal"));
 
         // 4. 验证列表查询 (覆盖 listRecords 方法)
-        List<Map<String, Object>> list = recordService.listRecords("all_types");
+        Page<Map<String, Object>> listPage = recordService.listRecords("all_types", PageRequest.of(0, 10));
+        List<Map<String, Object>> list = listPage.getContent();
         assertEquals(1, list.size());
         assertEquals("hello", list.get(0).get("shortText"));
     }

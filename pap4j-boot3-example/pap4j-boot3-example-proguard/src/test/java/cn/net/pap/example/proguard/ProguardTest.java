@@ -26,6 +26,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.TestConstructor;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.ArrayList;
@@ -171,11 +172,11 @@ public class ProguardTest {
         proguardRepository.saveAndFlush(proguard4);
 
         Pageable pageable = PageRequest.of(0, 3);
-        Page<Proguard> proguardsPageable = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable);
+        Page<Proguard> proguardsPageable = proguardService.searchAllByNaiveSQL("select proguard_id, proguard_name, proguard_idx, ext_map, ext_list, abstract_list, abstract_obj, json_schema, json_data, tenant_id from proguard order by proguard_id desc", pageable);
         log.info("{}", proguardsPageable);
 
         Pageable pageable2 = PageRequest.of(1, 3);
-        Page<Proguard> proguardsPageable2 = proguardService.searchAllByNaiveSQL("select * from proguard order by proguard_id desc", pageable2);
+        Page<Proguard> proguardsPageable2 = proguardService.searchAllByNaiveSQL("select proguard_id, proguard_name, proguard_idx, ext_map, ext_list, abstract_list, abstract_obj, json_schema, json_data, tenant_id from proguard order by proguard_id desc", pageable2);
         log.info("{}", proguardsPageable2);
 
         Pageable pageable3 = PageRequest.of(1, 3);
@@ -671,6 +672,7 @@ public class ProguardTest {
     }
 
     @Test
+    @Transactional
     public void jsonInsertTest() throws Exception {
         String jsonInput = """
                 {

@@ -12,6 +12,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.util.Map;
@@ -54,9 +56,10 @@ public class GenericCrudController {
      */
     @GetMapping("/list")
     @Operation(summary = "查询指定类型的记录列表")
-    public List<Map<String, Object>> list(
-            @Parameter(description = "表单编码") @PathVariable String formCode) {
-        return recordService.listRecords(formCode);
+    public Page<Map<String, Object>> list(
+            @Parameter(description = "表单编码") @PathVariable String formCode,
+            Pageable pageable) {
+        return recordService.listRecords(formCode, pageable);
     }
 
     /**
