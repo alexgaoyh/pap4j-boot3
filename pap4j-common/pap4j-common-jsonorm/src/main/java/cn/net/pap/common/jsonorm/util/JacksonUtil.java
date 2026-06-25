@@ -2,6 +2,7 @@ package cn.net.pap.common.jsonorm.util;
 
 import com.fasterxml.jackson.core.JsonFactory;
 import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonStreamContext;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.BeanDescription;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -197,6 +198,84 @@ public class JacksonUtil {
                 log.info("Total processed: {} records", totalCount);
             }
         }
+    }
+
+    /**
+     * 根据指定 Path 路径定位超大 JSON 数组并进行分批解析，防止内存溢出。
+     *
+     * @param filePath       JSON 文件路径
+     * @param targetPath     目标数组的路径，用点号 "." 分隔，例如 "data.list"
+     * @param batchProcessor 分批处理器
+     * @throws IOException   IO异常
+     */
+    public static void parseLargeJsonInBatches(String filePath, String targetPath, Consumer<List<Map<String, Object>>> batchProcessor) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonFactory factory = mapper.getFactory();
+
+        try (JsonParser parser = factory.createParser(new File(filePath))) {
+            boolean foundTargetArray = false;
+
+            // 1. 扫描定位目标数组
+            while (parser.nextToken() != null) {
+                JsonToken token = parser.getCurrentToken();
+
+                // 当遇到数组开始标记时，检查路径是否匹配
+                if (token == JsonToken.START_ARRAY) {
+                    String currentPath = getCurrentPath(parser);
+                    if (targetPath.equals(currentPath)) {
+                        foundTargetArray = true;
+                        break; // 找到目标数组，跳出定位循环
+                    }
+                }
+            }
+
+            if (!foundTargetArray) {
+                throw new IllegalArgumentException("未能在 JSON 中找到指定的数组路径: " + targetPath);
+            }
+
+            // 2. 开始流式解析目标数组元素
+            List<Map<String, Object>> currentBatch = new ArrayList<>(BATCH_SIZE);
+            int totalCount = 0;
+
+            while (parser.nextToken() != JsonToken.END_ARRAY) {
+                Map<String, Object> map = parseObjectToMap(parser);
+                if (map != null) {
+                    currentBatch.add(map);
+                    totalCount++;
+
+                    // 达到批次大小时进行回调处理并清空缓存
+                    if (currentBatch.size() >= BATCH_SIZE) {
+                        batchProcessor.accept(currentBatch);
+                        currentBatch = new ArrayList<>(BATCH_SIZE);
+                        log.info("Processed {} records", totalCount);
+                    }
+                }
+            }
+
+            // 处理最后一批遗留数据
+            if (!currentBatch.isEmpty()) {
+                batchProcessor.accept(currentBatch);
+                log.info("Total processed: {} records", totalCount);
+            }
+        }
+    }
+
+    /**
+     * 辅助方法：获取当前解析器在 JSON 树中的完整属性路径（点分隔）
+     */
+    private static String getCurrentPath(JsonParser parser) {
+        List<String> segments = new ArrayList<>();
+        JsonStreamContext context = parser.getParsingContext();
+
+        // 向上遍历 Context 直到根节点
+        while (context != null && !context.inRoot()) {
+            String name = context.getCurrentName();
+            if (name != null) {
+                segments.add(0, name); // 头部插入，保证顺序是从根到叶子
+            }
+            context = context.getParent();
+        }
+        return String.join(".", segments);
     }
 
     private static Map<String, Object> parseObjectToMap(JsonParser parser) throws IOException {

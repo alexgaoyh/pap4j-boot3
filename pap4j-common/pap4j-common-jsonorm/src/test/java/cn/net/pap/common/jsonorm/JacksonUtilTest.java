@@ -263,6 +263,38 @@ public class JacksonUtilTest {
     }
 
     @Test
+    public void jsonParserTest5() throws Exception {
+        Path tempFile = Files.createTempFile("test_nested_data_", ".json");
+        try {
+            String jsonContent = """
+                {
+                  "code": 200,
+                  "config": ["a", "b"],
+                  "data": {
+                    "list": [
+                      {"id": "1001", "name": "foo"},
+                      {"id": "1002", "name": "bar"}
+                    ]
+                  }
+                }
+                """;
+            Files.writeString(tempFile, jsonContent);
+
+            List<Map<String, Object>> result = new ArrayList<>();
+            JacksonUtil.parseLargeJsonInBatches(tempFile.toString(), "data.list", result::addAll);
+
+            assertEquals(2, result.size());
+            assertEquals("1001", result.get(0).get("id"));
+            assertEquals("foo", result.get(0).get("name"));
+            assertEquals("1002", result.get(1).get("id"));
+            assertEquals("bar", result.get(1).get("name"));
+        } finally {
+            Files.deleteIfExists(tempFile);
+        }
+    }
+
+
+    @Test
     public void sumJsonArrayFieldTest() throws Exception {
         Path tempFile = Files.createTempFile("test_data_", ".json");
         try {
