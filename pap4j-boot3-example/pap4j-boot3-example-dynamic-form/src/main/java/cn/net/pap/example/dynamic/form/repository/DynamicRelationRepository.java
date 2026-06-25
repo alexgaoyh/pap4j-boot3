@@ -9,6 +9,8 @@ public interface DynamicRelationRepository extends JpaRepository<DynamicRelation
 
     List<DynamicRelation> findBySourceRecordId(Long sourceRecordId);
 
+    List<DynamicRelation> findBySourceRecordIdIn(List<Long> sourceRecordIds);
+
     void deleteBySourceRecordId(Long sourceRecordId);
 
 }

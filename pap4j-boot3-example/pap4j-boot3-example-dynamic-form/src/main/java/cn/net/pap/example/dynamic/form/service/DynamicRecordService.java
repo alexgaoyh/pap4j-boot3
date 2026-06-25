@@ -140,11 +140,10 @@ public class DynamicRecordService {
      */
     @Transactional(readOnly = true)
     public List<Map<String, Object>> listRecords(String formCode) {
-        return recordRepository.findByFormCode(formCode).stream()
-                .map(record -> {
-                    populateRecord(record);
-                    return reconstructRecord(record);
-                })
+        List<DynamicRecord> records = recordRepository.findByFormCode(formCode);
+        populateRecordsBatch(records);
+        return records.stream()
+                .map(this::reconstructRecord)
                 .collect(Collectors.toList());
     }
 
@@ -203,6 +202,53 @@ public class DynamicRecordService {
             }
         }
         record.setRelations(rels);
+    }
+
+    private void populateRecordsBatch(List<DynamicRecord> records) {
+        if (records == null || records.isEmpty()) {
+            return;
+        }
+
+        List<Long> recordIds = records.stream()
+                .map(DynamicRecord::getId)
+                .collect(Collectors.toList());
+
+        // 1. 批量查询所有字段值
+        List<DynamicFieldValue> allFieldValues = fieldValueRepository.findByRecordIdIn(recordIds);
+        Map<Long, List<DynamicFieldValue>> fvMap = allFieldValues.stream()
+                .collect(Collectors.groupingBy(DynamicFieldValue::getRecordId));
+
+        // 2. 批量查询所有关系
+        List<DynamicRelation> allRelations = relationRepository.findBySourceRecordIdIn(recordIds);
+        Map<Long, List<DynamicRelation>> relMap = allRelations.stream()
+                .collect(Collectors.groupingBy(DynamicRelation::getSourceRecordId));
+
+        // 3. 提取所有关系中的目标记录 ID，批量读取并递归填充
+        List<Long> childRecordIds = allRelations.stream()
+                .map(DynamicRelation::getTargetRecordId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toList());
+
+        Map<Long, DynamicRecord> childRecordMap = new java.util.HashMap<>();
+        if (!childRecordIds.isEmpty()) {
+            List<DynamicRecord> childRecords = recordRepository.findAllById(childRecordIds);
+            populateRecordsBatch(childRecords);
+            childRecordMap = childRecords.stream()
+                    .collect(Collectors.toMap(DynamicRecord::getId, r -> r));
+        }
+
+        // 4. 组装数据回填实体
+        for (DynamicRecord record : records) {
+            record.setFieldValues(fvMap.getOrDefault(record.getId(), new ArrayList<>()));
+
+            List<DynamicRelation> rels = relMap.getOrDefault(record.getId(), new ArrayList<>());
+            for (DynamicRelation rel : rels) {
+                if (rel.getTargetRecordId() != null) {
+                    rel.setTargetRecord(childRecordMap.get(rel.getTargetRecordId()));
+                }
+            }
+            record.setRelations(rels);
+        }
     }
 
     /**

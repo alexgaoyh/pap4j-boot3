@@ -9,6 +9,8 @@ public interface DynamicFieldValueRepository extends JpaRepository<DynamicFieldV
 
     List<DynamicFieldValue> findByRecordId(Long recordId);
 
+    List<DynamicFieldValue> findByRecordIdIn(List<Long> recordIds);
+
     void deleteByRecordId(Long recordId);
 
 }
