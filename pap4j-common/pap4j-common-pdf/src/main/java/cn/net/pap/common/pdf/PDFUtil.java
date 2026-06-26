@@ -19,6 +19,7 @@ import org.apache.pdfbox.pdmodel.encryption.AccessPermission;
 import org.apache.pdfbox.pdmodel.encryption.StandardProtectionPolicy;
 import org.apache.pdfbox.pdmodel.font.PDType0Font;
 import org.apache.pdfbox.pdmodel.graphics.color.PDOutputIntent;
+import org.apache.pdfbox.pdmodel.graphics.image.CCITTFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.JPEGFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.LosslessFactory;
 import org.apache.pdfbox.pdmodel.graphics.image.PDImageXObject;
@@ -36,6 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import java.awt.image.BufferedImage;
 import java.io.*;
 import java.nio.charset.Charset;
@@ -613,6 +616,7 @@ public class PDFUtil {
         try (PDDocument document = new PDDocument()) {
             for (String imagePath : imagePaths) {
                 File imageFile = new File(imagePath);
+                // todo 可以根据情况，这里选择使用下方的 createPageImage(File imageFile, PDDocument doc)  函数
                 PDImageXObject imageXObject = PDImageXObject.createFromFile(imagePath, document);
                 // todo 后续根据需求，这里做一下调整，避免生成的pdf过大，未完全验证，存在不同的格式，比如 jpg ,还有各种不同压缩方式的tif 等等
                 // todo 如果切换到下面这个的话，可以做一个判断，如果是 jpg 的图像的话，可以走下面这个，否则还是上面这个。怀疑有时候会丢失图像方向，上下颠倒，目前还没有稳定重现。
@@ -654,6 +658,115 @@ public class PDFUtil {
         } catch (Exception e) {
             log.warn("jpg2Pdf error for", e);
             return false;
+        }
+    }
+
+    /**
+     * 根据图片文件的真实格式，在 PDF 中创建并返回对应的页面图像对象（PDImageXObject）。
+     * 支持自适应选择最适合的 PDF 图像编码工厂（如 CCITT/JPEG/Flate）。
+     *
+     * @param imageFile 源图片文件
+     * @param doc       目标 PDF 文档对象
+     * @return 转换后的 PDF 图像对象
+     * @throws IOException 如果图片解析或 PDF 图像对象创建失败
+     */
+    public static PDImageXObject createPageImage(File imageFile, PDDocument doc) throws IOException {
+        String formatName = getImageFormat(imageFile).toLowerCase();
+
+        // 1. 处理 TIFF 格式（包含黑白、彩色、灰度等所有情况）
+        if ("tiff".equals(formatName) || "tif".equals(formatName)) {
+            return createTiffImage(doc, imageFile);
+        }
+
+        // 2. 如果是原生 JPEG/JPG 格式
+        if ("jpeg".equals(formatName) || "jpg".equals(formatName)) {
+            BufferedImage bImage = ImageIO.read(imageFile);
+            return JPEGFactory.createFromImage(doc, bImage);
+        }
+
+        // 3. 其他任意常规格式（如 PNG, BMP, GIF 等）
+        BufferedImage bImage = ImageIO.read(imageFile);
+        if (bImage == null) {
+            throw new IOException("无法解析该图片格式: " + imageFile.getName() + "，请检查 ImageIO 插件是否完整。");
+        }
+        return LosslessFactory.createFromImage(doc, bImage);
+    }
+
+    /**
+     * 针对 TIFF 格式图像的定制转换方法。
+     * 1. 优先尝试提取 1-bit 二值黑白图的原始 CCITT G3/G4 编码，实现无解压对拷；
+     * 2. 若非黑白二值图，则读取其元数据探测内部压缩算法。如果是 JPEG 压缩，则使用 JPEGFactory
+     *    保留其有损压缩（DCTDecode）格式，避免文件体积膨胀；如果是 LZW/ZIP 等无损压缩，则使用
+     *    LosslessFactory 进行 Flate 无损转换。
+     *
+     * @param doc       目标 PDF 文档对象
+     * @param imageFile 源 TIFF 格式图片文件
+     * @return 转换后的 PDF 图像对象
+     * @throws IOException 如果 TIFF 解析或 PDF 图像对象创建失败
+     */
+    private static PDImageXObject createTiffImage(PDDocument doc, File imageFile) throws IOException {
+        try {
+            // 优先尝试用 CCITTFactory 加载（如果是 1-bit 黑白二值图，这里效率最高且保持原生 CCITT 格式）
+            PDImageXObject img = CCITTFactory.createFromFile(doc, imageFile);
+            img.getCOSObject().setString(COSName.getPDFName("OriginalFormat"), "TIFF");
+            return img;
+        } catch (Exception e) {
+            log.info("该TIFF非黑白二值图，正在分析其内部压缩格式: {}", imageFile.getName());
+
+            BufferedImage bImage = ImageIO.read(imageFile);
+            if (bImage == null) {
+                throw new IOException("无法解析该图片: " + imageFile.getName());
+            }
+
+            PDImageXObject img;
+            // 检测 TIFF 原生的压缩格式 (JPEG 压缩代码为 6 或 7)
+            int compression = getTiffCompression(imageFile);
+            if (compression == 6 || compression == 7) {
+                log.info("检测到 TIFF 采用 JPEG 压缩格式，转换为 PDF 时保留 DCTDecode (JPEG) 压缩: {}", imageFile.getName());
+                img = JPEGFactory.createFromImage(doc, bImage);
+            } else {
+                log.info("检测到 TIFF 采用无损/其他压缩（如 LZW/ZIP/未压缩，代码: {}），转换为 PDF 时使用无损 Flate 编码: {}", compression, imageFile.getName());
+                img = LosslessFactory.createFromImage(doc, bImage);
+            }
+
+            img.getCOSObject().setString(COSName.getPDFName("OriginalFormat"), "TIFF");
+            return img;
+        }
+    }
+
+    /**
+     * 从 TIFF 图片元数据中读取压缩类型标记（Tag 259）。
+     * 用于精确推断其内部编码格式（例如 LZW 为 5，JPEG 为 6 或 7，Deflate 为 8 等）。
+     *
+     * @param file 源 TIFF 图像文件
+     * @return 压缩类型值（若读取失败或无压缩标记则返回 -1）
+     */
+    private static int getTiffCompression(File file) {
+        try {
+            com.drew.metadata.Metadata metadata = com.drew.imaging.ImageMetadataReader.readMetadata(file);
+            for (com.drew.metadata.Directory directory : metadata.getDirectories()) {
+                if (directory.containsTag(259)) { // 259 is the TIFF Compression tag ID
+                    return directory.getInt(259);
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return -1;
+    }
+
+    /**
+     * 探测图像的真实文件格式（通过魔数/文件头探测）
+     */
+    private static String getImageFormat(File file) throws IOException {
+        try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
+            Iterator<ImageReader> iter = ImageIO.getImageReaders(iis);
+            if (!iter.hasNext()) {
+                throw new IOException("未找到能够解码该文件的 ImageIO Reader: " + file.getName());
+            }
+            ImageReader reader = iter.next();
+            String format = reader.getFormatName();
+            reader.dispose();
+            return format;
         }
     }
 
