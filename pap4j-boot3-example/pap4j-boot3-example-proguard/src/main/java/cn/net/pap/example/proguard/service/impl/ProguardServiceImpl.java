@@ -88,7 +88,7 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean saveAndFlush2(Proguard... entitys) {
         for (Proguard proguard : entitys) {
             proguardRepository.saveAndFlush(proguard);
@@ -187,7 +187,7 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean executeNaiveSQLBatch(List<String> naiveSQLList, List<List<Object>> paramsList) {
         if (naiveSQLList != null && paramsList != null && naiveSQLList.size() == paramsList.size()) {
             for (int naiveIdx = 0; naiveIdx < naiveSQLList.size(); naiveIdx++) {
@@ -312,7 +312,7 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean checkDeadLock(Long id1, Long id2) {
         Proguard from = proguardRepository.getProguardByProguardIdForUpdate(id1);
 
@@ -331,7 +331,7 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Proguard sleep(Long timeMS) {
         try {
             Thread.sleep(timeMS);
@@ -398,7 +398,7 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Proguard saveProguardWithIdxSeq(Proguard proguard) {
         ProguardIdxSeq proguardIdxSeq = proguardIdxSeqRepository.findById(proguard.getProguardName())
                 .orElseGet(() -> {

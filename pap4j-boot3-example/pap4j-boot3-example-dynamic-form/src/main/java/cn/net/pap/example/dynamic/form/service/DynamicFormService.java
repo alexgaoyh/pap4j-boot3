@@ -22,7 +22,7 @@ public class DynamicFormService {
      *
      * @param dto 表单定义传输对象
      */
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void saveForm(DynamicFormDTO dto) {
         DynamicForm form = formRepository.findByFormCode(dto.getFormCode())
                 .orElse(new DynamicForm());

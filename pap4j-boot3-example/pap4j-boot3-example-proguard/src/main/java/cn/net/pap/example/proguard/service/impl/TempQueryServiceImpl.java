@@ -24,7 +24,7 @@ public class TempQueryServiceImpl implements ITempQueryService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void batchInsert(String bizType, Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return;
@@ -83,7 +83,7 @@ public class TempQueryServiceImpl implements ITempQueryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int deleteByBizType(String bizType) {
         return tempQueryRepository.deleteByBizType(bizType);
     }
@@ -99,7 +99,7 @@ public class TempQueryServiceImpl implements ITempQueryService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public <T> T executeWithTempQuery(String bizType, Collection<Long> ids, TempQueryCallback<T> callback) {
         try {
             batchInsert(bizType, ids);

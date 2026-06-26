@@ -48,7 +48,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
      * @return
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AutoIncrePreKey saveAndFlush(AutoIncrePreKey entity) {
         AutoIncrePreKey autoIncrePreKey = autoIncrePreKeyRepository.saveAndFlush(entity);
         elasticsearchDomainEventPublisher.publish(entity, ElasticSearchSyncEvent.SyncType.UPDATE);
@@ -56,7 +56,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public List<AutoIncrePreKey> saveAndFlushBatch(List<AutoIncrePreKey> list) {
         List<AutoIncrePreKey> autoIncrePreKeys = autoIncrePreKeyRepository.saveAll(list);
         elasticsearchDomainEventPublisher.publish(list, ElasticSearchSyncEvent.SyncType.UPDATE);
@@ -64,7 +64,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AutoIncrePreKey saveAndFlushThrowRuntimeException(AutoIncrePreKey entity) throws RuntimeException {
         try {
             AutoIncrePreKey autoIncrePreKey = autoIncrePreKeyRepository.saveAndFlush(entity);
