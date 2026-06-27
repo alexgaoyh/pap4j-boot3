@@ -66,7 +66,7 @@ public class CpuInfoUtil {
                 return (int) (threadId % Runtime.getRuntime().availableProcessors());
             }
         } catch (Exception e) {
-            log.error(e.getMessage());
+            log.error("Failed to get current CPU core", e);
         }
 
         return -1;

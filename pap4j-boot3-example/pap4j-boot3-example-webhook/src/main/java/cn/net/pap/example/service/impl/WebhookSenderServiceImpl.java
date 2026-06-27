@@ -99,8 +99,7 @@ public class WebhookSenderServiceImpl implements IWebhookSenderService {
                 }
                 executeWithRetry(subscription, event, retryCount);
             } else {
-                logger.error("Webhook 最终发送失败: {} -> {}",
-                        subscription.getCallbackUrl(), e.getMessage());
+                logger.error("Webhook 最终发送失败: {}", subscription.getCallbackUrl(), e);
                 saveWebhookDeliveryLog(subscription, event, "FAILED", e.getMessage());
             }
         }

@@ -219,7 +219,7 @@ public class BoofcvUtil {
 
             bos.close();
         } catch (IOException e) {
-            log.error("Error: {}", e.getMessage());
+            log.error("Failed to convert image to Base64", e);
         }
         return imageString;
     }

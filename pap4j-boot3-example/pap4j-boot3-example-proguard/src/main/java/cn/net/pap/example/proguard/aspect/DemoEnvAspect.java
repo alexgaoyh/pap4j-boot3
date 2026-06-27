@@ -114,7 +114,7 @@ public class DemoEnvAspect {
             return buildSuccessResponse(joinPoint);
 
         } catch (Exception e) {
-            log.error("生成演示响应失败: {}", e.getMessage());
+            log.error("生成演示响应失败", e);
             return null;
         }
     }
@@ -160,7 +160,7 @@ public class DemoEnvAspect {
         } catch (NoSuchMethodException ignored) {
             // 没有该方法则忽略
         } catch (Exception e) {
-            log.error("标记演示数据失败: {}", e.getMessage());
+            log.error("标记演示数据失败", e);
         }
     }
 

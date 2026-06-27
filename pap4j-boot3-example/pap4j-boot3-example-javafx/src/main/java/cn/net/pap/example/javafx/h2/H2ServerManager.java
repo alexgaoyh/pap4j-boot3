@@ -58,7 +58,7 @@ public class H2ServerManager {
             stmt.execute("SELECT 1 FROM DUAL");
             log.info("数据库连接测试成功，数据库文件已创建");
         } catch (SQLException e) {
-            log.error("数据库连接测试失败: {}", e.getMessage());
+            log.error("数据库连接测试失败, dbPath: {}", dbPath, e);
         }
     }
 

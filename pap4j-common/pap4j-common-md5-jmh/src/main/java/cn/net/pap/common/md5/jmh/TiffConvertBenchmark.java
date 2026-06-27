@@ -300,7 +300,7 @@ public class TiffConvertBenchmark {
             return "success";
 
         } catch (Exception e) {
-            logger.error(e.getMessage());
+            logger.error("Failed to convert TIFF: {}", inputFilePath, e);
             return inputFilePath + " : " + e.getMessage();
         } finally {
             try {
@@ -308,21 +308,21 @@ public class TiffConvertBenchmark {
                     writer.dispose();
                 }
             } catch (Exception e) {
-                logger.error("Error closing writer: " + e.getMessage());
+                logger.error("Error closing writer", e);
             }
             try {
                 if (ios != null) {
                     ios.close();
                 }
             } catch (Exception e) {
-                logger.error("Error closing ImageOutputStream: " + e.getMessage());
+                logger.error("Error closing ImageOutputStream", e);
             }
             try {
                 if (iis != null) {
                     iis.close();
                 }
             } catch (Exception e) {
-                logger.error("Error closing ImageInputStream: " + e.getMessage());
+                logger.error("Error closing ImageInputStream", e);
             }
         }
     }

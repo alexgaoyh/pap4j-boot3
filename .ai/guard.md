@@ -54,6 +54,9 @@
 * **禁止标准输出**: 使用 `org.slf4j.Logger`。严禁使用 `System.out` 或 `System.err`。
 * **占位符**: 使用 `log.info("msg: {}", arg)`。禁止字符串拼接。
 * **异常日志**: 异常对象 `e` 必须作为最后一个参数传递：`log.error("Failed: ", e)`。
+* ⚠️ **严禁吞噬异常堆栈 (Swallowing Exception Stack Trace)**:
+    * ❌ 错误: `log.error("Failed: {}", e.getMessage());` 或 `log.error("Failed: " + e.getMessage());`（只会打印错误消息，生产排查极难）。
+    * ✅ 正确: `log.error("Failed to execute task: ", e);` 或者 `log.error("Failed to execute task: {}", someParam, e);`（将异常实例本身作为最后一个参数传入，SLF4J 会自动输出完整堆栈）。
 
 ## 7. 持久层规范（JPA/MyBatis 强约束）
 

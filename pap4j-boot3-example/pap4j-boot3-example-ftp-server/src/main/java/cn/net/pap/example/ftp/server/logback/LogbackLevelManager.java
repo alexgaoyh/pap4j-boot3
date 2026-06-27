@@ -95,7 +95,7 @@ public class LogbackLevelManager {
 
             return level != null ? level.levelStr : null;
         } catch (Exception e) {
-            log.error("Failed to get logger level: {}", e.getMessage());
+            log.error("Failed to get logger level for {}", loggerName, e);
             return null;
         }
     }
@@ -120,7 +120,7 @@ public class LogbackLevelManager {
             Level effectiveLevel = logger.getEffectiveLevel();
             return effectiveLevel != null ? effectiveLevel.levelStr : null;
         } catch (Exception e) {
-            log.error("Failed to get effective logger level: {}", e.getMessage());
+            log.error("Failed to get effective logger level for {}", loggerName, e);
             return null;
         }
     }
@@ -159,7 +159,7 @@ public class LogbackLevelManager {
                 }
             }
         } catch (Exception e) {
-            log.error("Failed to list loggers: {}", e.getMessage());
+            log.error("Failed to list loggers", e);
         }
     }
 
