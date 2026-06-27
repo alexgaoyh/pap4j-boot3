@@ -28,6 +28,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
 
@@ -561,6 +563,143 @@ public class OkHttpBatchExecutorTest {
             
             // 语法验证断言
             assertTrue(true);
+        }
+    }
+
+    /**
+     * 在本地开发/单测阶段，如何拦截原本要请求外部不可联调环境的网络请求，
+     * 并使用 Interceptor 伪造对应的 Mock 响应，以支持整体业务逻辑（Service 层）的本地开发联调。
+     * 演示：
+     * 1. 针对精准目标 URL 的多分支路由拦截
+     * 2. 使用 Jackson 解析请求体 (Request Body JSON) 并根据请求参数做差异化 Mock 响应
+     * 3. 模拟异常场景（例如：抛出网络连接异常 SocketTimeoutException，或者返回 HTTP 500 错误码）
+     */
+    @Test
+    public void testMockInterceptorForExternalService() throws Exception {
+        String targetUserUrl = "https://api.external-service.com/user/query";
+        String targetOrderUrl = "https://api.external-service.com/order/create";
+        String expectedUserMockJson = """
+                {"code":200,"message":"success","data":{"userId":"10001","userName":"MockUser_DevLocal"}}""";
+
+        OkHttpClient mockedClient = new OkHttpClient.Builder()
+                .addInterceptor(new ComplexMockInterceptor(targetUserUrl, targetOrderUrl, expectedUserMockJson))
+                .build();
+
+        // 4.1 校验场景 C：正常请求
+        String responseBodyNormal = OkHttpBatchExecutor.executePost(mockedClient, targetUserUrl, "{\"id\":123}");
+        log.info("正常调用校验成功: {}", responseBodyNormal);
+        assertEquals(expectedUserMockJson, responseBodyNormal);
+
+        // 4.2 校验多 URL 拦截：订单创建接口
+        String responseBodyOrder = OkHttpBatchExecutor.executePost(mockedClient, targetOrderUrl, "{\"amount\":100}");
+        log.info("多URL拦截校验成功: {}", responseBodyOrder);
+        assertTrue(responseBodyOrder.contains("ORD_2026_06_27"));
+
+        // 4.3 校验场景 A：模拟服务器 500 异常
+        try {
+            OkHttpBatchExecutor.executePost(mockedClient, targetUserUrl, "{\"id\":999}");
+            org.junit.jupiter.api.Assertions.fail("应该抛出 IOException 异常以响应 500 错误");
+        } catch (IOException e) {
+            log.info("预期内的 500 响应拦截抛异常捕获成功: {}", e.getMessage());
+            assertTrue(e.getMessage().contains("500"));
+        }
+
+        // 4.4 校验场景 B：模拟网络异常 SocketTimeoutException
+        try {
+            OkHttpBatchExecutor.executePost(mockedClient, targetUserUrl, "{\"id\":998}");
+            org.junit.jupiter.api.Assertions.fail("应该抛出 SocketTimeoutException 异常");
+        } catch (java.net.SocketTimeoutException e) {
+            log.info("预期内的 SocketTimeoutException 拦截捕获成功: {}", e.getMessage());
+            assertEquals("Simulated connection timeout", e.getMessage());
+        }
+    }
+
+    private static class ComplexMockInterceptor implements Interceptor {
+        private final ObjectMapper objectMapper = new ObjectMapper();
+        private final String targetUserUrl;
+        private final String targetOrderUrl;
+        private final String expectedUserMockJson;
+
+        public ComplexMockInterceptor(String targetUserUrl, String targetOrderUrl, String expectedUserMockJson) {
+            this.targetUserUrl = targetUserUrl;
+            this.targetOrderUrl = targetOrderUrl;
+            this.expectedUserMockJson = expectedUserMockJson;
+        }
+
+        @Override
+        public Response intercept(Chain chain) throws IOException {
+            Request request = chain.request();
+            String requestUrl = request.url().toString();
+
+            // 1. 精准匹配用户查询接口
+            if (targetUserUrl.equals(requestUrl)) {
+                String requestBodyStr = "";
+                if (request.body() != null) {
+                    okio.Buffer buffer = new okio.Buffer();
+                    request.body().writeTo(buffer);
+                    requestBodyStr = buffer.readUtf8();
+                }
+
+                int id = -1;
+                if (!requestBodyStr.isEmpty()) {
+                    try {
+                        JsonNode jsonNode = objectMapper.readTree(requestBodyStr);
+                        if (jsonNode.has("id")) {
+                            id = jsonNode.get("id").asInt();
+                        }
+                    } catch (Exception e) {
+                        log.warn("解析请求 JSON 失败", e);
+                    }
+                }
+
+                if (id == 999) {
+                    log.info("拦截到特定用户请求 (id=999)，模拟服务器 500 内部异常");
+                    return new Response.Builder()
+                            .request(request)
+                            .protocol(Protocol.HTTP_1_1)
+                            .code(500)
+                            .message("Internal Server Error")
+                            .body(okhttp3.ResponseBody.create(
+                                    okhttp3.MediaType.get("application/json; charset=utf-8"),
+                                    """
+                                    {"error":"Database connection failed"}"""
+                            ))
+                            .build();
+                } else if (id == 998) {
+                    log.info("拦截到特定用户请求 (id=998)，抛出网络连接超时异常 SocketTimeoutException");
+                    throw new java.net.SocketTimeoutException("Simulated connection timeout");
+                } else {
+                    log.info("拦截到正常用户请求 (id={})，返回成功 Mock 响应", id);
+                    return new Response.Builder()
+                            .request(request)
+                            .protocol(Protocol.HTTP_1_1)
+                            .code(200)
+                            .message("OK")
+                            .body(okhttp3.ResponseBody.create(
+                                    okhttp3.MediaType.get("application/json; charset=utf-8"),
+                                    expectedUserMockJson
+                            ))
+                            .build();
+                }
+            }
+
+            // 2. 精准匹配订单创建接口
+            if (targetOrderUrl.equals(requestUrl)) {
+                log.info("拦截到订单创建请求，返回订单模块 Mock 响应");
+                return new Response.Builder()
+                        .request(request)
+                        .protocol(Protocol.HTTP_1_1)
+                        .code(200)
+                        .message("OK")
+                        .body(okhttp3.ResponseBody.create(
+                                okhttp3.MediaType.get("application/json; charset=utf-8"),
+                                """
+                                {"code":200,"message":"success","orderId":"ORD_2026_06_27"}"""
+                        ))
+                        .build();
+            }
+
+            return chain.proceed(request);
         }
     }
 

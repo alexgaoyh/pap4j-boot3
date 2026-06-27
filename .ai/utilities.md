@@ -24,6 +24,7 @@
 ## 🌐 爬虫与诊断
 *   [TakeScreenshotTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/html/TakeScreenshotTest.java): Headless 截图及 Console/Network 日志获取。
 *   [OkHttpBatchExecutor](../pap4j-common/pap4j-common-spider/src/main/java/cn/net/pap/common/spider/util/OkHttpBatchExecutor.java): OkHttp 安全批处理并发执行器。
+*   [OkHttpBatchExecutorTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/util/OkHttpBatchExecutorTest.java): 演示通过 Interceptor 拦截外部不可达 API，并支持基于 JSON 请求体参数路由分发 Mock 数据、或直接触发 SocketTimeoutException 异常，支持本地业务离线联调测试。
 
 ## 👁️ 图像与 OCR
 *   [OpenCVUtils](../pap4j-common/pap4j-common-opencv/src/main/java/cn/net/pap/common/opencv/OpenCVUtils.java): OpenCV 加载与初始化。
