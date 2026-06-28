@@ -99,7 +99,7 @@ public class PapLogbackLoggerFactory {
 
         PatternLayoutEncoder fileEncoder = new PatternLayoutEncoder();
         fileEncoder.setContext(context);
-        fileEncoder.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{20} - [%method,%line] - %msg%n");
+        fileEncoder.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n");
         fileEncoder.start();
 
         rollingFileAppender.setEncoder(fileEncoder);
@@ -127,7 +127,7 @@ public class PapLogbackLoggerFactory {
 
         PatternLayoutEncoder consoleEncoder = new PatternLayoutEncoder();
         consoleEncoder.setContext(context);
-        consoleEncoder.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{20} - [%method,%line] - %msg%n");
+        consoleEncoder.setPattern("%d{HH:mm:ss.SSS} [%thread] %-5level %logger{20} - %msg%n");
         consoleEncoder.start();
 
         consoleAppender.setEncoder(consoleEncoder);
