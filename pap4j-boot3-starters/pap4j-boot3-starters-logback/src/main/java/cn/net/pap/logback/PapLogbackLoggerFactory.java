@@ -13,6 +13,7 @@ import org.slf4j.LoggerFactory;
 
 import ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy;
 import ch.qos.logback.core.util.FileSize;
+import ch.qos.logback.core.util.OptionHelper;
 
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
@@ -79,10 +80,22 @@ public class PapLogbackLoggerFactory {
     }
 
     private static RollingFileAppender<ILoggingEvent> buildRollingFileAppender(LoggerContext context, String loggerName) {
+        String logHome = context.getProperty("LOG_HOME");
+        if (logHome != null) {
+            try {
+                logHome = OptionHelper.substVars(logHome, context);
+            } catch (Exception e) {
+                // Ignore and fall back to unresolved logHome if substitution fails
+            }
+        }
+        if (logHome == null || logHome.trim().isEmpty()) {
+            logHome = "logs";
+        }
+
         RollingFileAppender<ILoggingEvent> rollingFileAppender = new RollingFileAppender<>();
         rollingFileAppender.setContext(context);
         rollingFileAppender.setName("rollingFile_" + loggerName);
-        rollingFileAppender.setFile("logs/" + loggerName + ".log");
+        rollingFileAppender.setFile(logHome + "/" + loggerName + ".log");
 
         PatternLayoutEncoder fileEncoder = new PatternLayoutEncoder();
         fileEncoder.setContext(context);
@@ -95,7 +108,7 @@ public class PapLogbackLoggerFactory {
         SizeAndTimeBasedRollingPolicy<ILoggingEvent> rollingPolicy = new SizeAndTimeBasedRollingPolicy<>();
         rollingPolicy.setContext(context);
         rollingPolicy.setParent(rollingFileAppender);
-        rollingPolicy.setFileNamePattern("logs/" + loggerName + ".%d{yyyy-MM-dd}.%i.log");
+        rollingPolicy.setFileNamePattern(logHome + "/" + loggerName + ".%d{yyyy-MM-dd}.%i.log");
         rollingPolicy.setMaxFileSize(FileSize.valueOf("10MB")); // 限制单个文件大小
         rollingPolicy.setMaxHistory(60);
         rollingPolicy.setTotalSizeCap(FileSize.valueOf("1GB"));
