@@ -57,6 +57,9 @@
 * ⚠️ **严禁吞噬异常堆栈 (Swallowing Exception Stack Trace)**:
     * ❌ 错误: `log.error("Failed: {}", e.getMessage());` 或 `log.error("Failed: " + e.getMessage());`（只会打印错误消息，生产排查极难）。
     * ✅ 正确: `log.error("Failed to execute task: ", e);` 或者 `log.error("Failed to execute task: {}", someParam, e);`（将异常实例本身作为最后一个参数传入，SLF4J 会自动输出完整堆栈）。
+* **无行号溯源约束**: 生产环境关闭堆栈收集时（行号输出为 `?`），日志必须具备唯一识别性：
+    * **文本去雷同**: 严禁在同类中编写完全一致的静态文本（如多处 `log.info("success")`）。
+    * **带唯一标识**: 必须使用特定场景/动作前缀（如 `[Order-Save]`）并携带业务主键（订单号、TraceId 等），确保通过全局搜索日志文本即可精准溯源到代码中的唯一行。
 
 ## 7. 持久层规范（JPA/MyBatis 强约束）
 
@@ -100,6 +103,9 @@
 *   **错误日志 (异常处理)**
     *   ❌ 错误: `log.error("发生错误：" + e.getMessage());`
     *   ✅ 正确: `log.error("发生错误：", e);` （不要拼接字符串，将异常对象独立作为最后的参数传入）。
+*   **错误日志 (无行号歧义)**
+    *   ❌ 错误: 多处编写无差别日志 `log.info("done");`
+    *   ✅ 正确: 携带场景与业务主键 `log.info("[Import-Done] Task complete, batchNo: {}", batchNo);`
 *   **错误判断 (对象比对)**
     *   ❌ 错误: `if (userId == 1000L) { ... }` (Long 超过 127 的缓存池)
     *   ✅ 正确: `if (Long.valueOf(1000L).equals(userId)) { ... }`
