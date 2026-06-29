@@ -71,8 +71,28 @@ public class JSONAPIController {
         }
 
         String method = request.getMethod().toUpperCase();
+        Map<String, String> headers = getRequestHeaders(request);
+        String rawQuery = request.getQueryString();
+        String requestBody = getRequestBody(request, method);
 
-        // 1. 提取所有请求头并转换为小写键
+        Optional<MockApi> mockApiOpt = mockApiService.matchRequest(mockPath, method, headers, rawQuery, requestBody);
+        if (mockApiOpt.isPresent()) {
+            MockApi mockApi = mockApiOpt.get();
+            return ResponseEntity.status(mockApi.getResponseStatus())
+                    .contentType(MediaType.parseMediaType(mockApi.getContentType()))
+                    .body(mockApi.getResponseBody());
+        }
+
+        String errorMsg = String.format(
+                "{\"error\": \"Mock API 匹配失败，未在 SQLite 中找到符合条件的匹配规则。\", \"path\": \"%s\", \"method\": \"%s\", \"query\": \"%s\", \"body_length\": %d}",
+                mockPath, method, rawQuery != null ? rawQuery : "", requestBody.length()
+        );
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(errorMsg);
+    }
+
+    private Map<String, String> getRequestHeaders(HttpServletRequest request) {
         Map<String, String> headers = new HashMap<>();
         Enumeration<String> headerNames = request.getHeaderNames();
         if (headerNames != null) {
@@ -81,37 +101,18 @@ public class JSONAPIController {
                 headers.put(headerName.toLowerCase(), request.getHeader(headerName));
             }
         }
+        return headers;
+    }
 
-        // 2. 提取原始 Query 字符串
-        String rawQuery = request.getQueryString();
-
-        // 3. 提取请求 Body
-        String requestBody = "";
-        if ("POST".equals(method) || "PUT".equals(method) || "PATCH".equals(method) || "DELETE".equals(method)) {
-            try (BufferedReader reader = request.getReader()) {
-                requestBody = reader.lines().collect(Collectors.joining(System.lineSeparator()));
-            } catch (Exception e) {
-                log.error("[Mock-Controller] 读取请求 Body 发生异常: ", e);
-            }
+    private String getRequestBody(HttpServletRequest request, String method) {
+        if (!("POST".equals(method) || "PUT".equals(method) || "PATCH".equals(method) || "DELETE".equals(method))) {
+            return "";
         }
-
-        // 4. 调用业务引擎进行高精度匹配
-        Optional<MockApi> mockApiOpt = mockApiService.matchRequest(mockPath, method, headers, rawQuery, requestBody);
-
-        if (mockApiOpt.isPresent()) {
-            MockApi mockApi = mockApiOpt.get();
-            return ResponseEntity.status(mockApi.getResponseStatus())
-                    .contentType(MediaType.parseMediaType(mockApi.getContentType()))
-                    .body(mockApi.getResponseBody());
+        try (BufferedReader reader = request.getReader()) {
+            return reader.lines().collect(Collectors.joining(System.lineSeparator()));
+        } catch (Exception e) {
+            log.error("[Mock-Controller] 读取请求 Body 发生异常: ", e);
+            return "";
         }
-
-        // 5. 匹配失败返回 404
-        String errorMsg = String.format(
-                "{\"error\": \"Mock API 匹配失败，未在 SQLite 中找到符合条件的匹配规则。\", \"path\": \"%s\", \"method\": \"%s\", \"query\": \"%s\", \"body_length\": %d}",
-                mockPath, method, rawQuery != null ? rawQuery : "", requestBody.length()
-        );
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(errorMsg);
     }
 }
