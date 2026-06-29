@@ -6,6 +6,13 @@ import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Enumeration;
+import java.util.Collection;
+import java.util.List;
+import java.util.ArrayList;
+import java.util.regex.Pattern;
+import java.util.concurrent.ThreadLocalRandom;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import cn.net.pap.logback.PapLogbackLoggerFactory;
 import org.slf4j.Logger;
@@ -56,6 +63,25 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
 
     private static final int MAX_BODY_SIZE = 10240; // 10KB 限制
 
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final Pattern PASSWORD_JSON_PATTERN = Pattern.compile("\"password\"\\s*:\\s*\"[^\"]+\"");
+
+    private static final Pattern PASSWORD_FORM_PATTERN = Pattern.compile("(?i)(password=)[^&]+");
+
+    private final boolean enableLogReqRes;
+
+    private final boolean enableBugRecorder;
+
+    public ReqResLoggerHttpFilter() {
+        this(true, true);
+    }
+
+    public ReqResLoggerHttpFilter(boolean enableLogReqRes, boolean enableBugRecorder) {
+        this.enableLogReqRes = enableLogReqRes;
+        this.enableBugRecorder = enableBugRecorder;
+    }
+
     @Override
     protected void doFilter(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
         boolean skipAll = shouldSkip(request);
@@ -78,12 +104,26 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
             }
         }
 
+        Throwable exception = null;
         try {
             chain.doFilter(requestToUse, responseToUse);
-            if (!skipAll) {
-                logReqRes(requestToUse, responseWrapper);
-            }
+        } catch (Throwable t) {
+            exception = t;
+            throw t;
         } finally {
+            if (!skipAll) {
+                try {
+                    int status = responseWrapper != null ? responseWrapper.getStatus() : 200;
+                    if (enableBugRecorder && (exception != null || status >= 400)) {
+                        recordBugSnapshot(requestToUse, responseWrapper, exception);
+                    }
+                    if (enableLogReqRes) {
+                        logReqRes(requestToUse, responseWrapper);
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to process logs or recorded bugs", e);
+                }
+            }
             if (responseWrapper != null) {
                 try {
                     responseWrapper.copyBodyToResponse();
@@ -120,46 +160,80 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
                 reqMethod, reqUri, queryString, maskSensitiveData(reqContent), resStatus, maskSensitiveData(resStr));
     }
 
+    private static boolean containsIgnoreCase(String str, String searchStr) {
+        if (str == null || searchStr == null) {
+            return false;
+        }
+        int len = searchStr.length();
+        int max = str.length() - len;
+        for (int i = 0; i <= max; i++) {
+            if (str.regionMatches(true, i, searchStr, 0, len)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean endsWithIgnoreCase(String str, String suffix) {
+        if (str == null || suffix == null) {
+            return false;
+        }
+        int suffixLen = suffix.length();
+        int strLen = str.length();
+        if (suffixLen > strLen) {
+            return false;
+        }
+        return str.regionMatches(true, strLen - suffixLen, suffix, 0, suffixLen);
+    }
+
+    private static boolean startsWithIgnoreCase(String str, String prefix) {
+        if (str == null || prefix == null) {
+            return false;
+        }
+        int prefixLen = prefix.length();
+        if (prefixLen > str.length()) {
+            return false;
+        }
+        return str.regionMatches(true, 0, prefix, 0, prefixLen);
+    }
+
     private String maskSensitiveData(String content) {
         if (content == null || content.isEmpty()) return content;
         // 支持 JSON 格式及常规 Form 表单参数中 password 字段的脱敏
-        String masked = content.replaceAll("\"password\"\\s*:\\s*\"[^\"]+\"", "\"password\":\"******\"");
-        masked = masked.replaceAll("(?i)(password=)[^&]+", "$1******");
-        return masked;
+        String masked = PASSWORD_JSON_PATTERN.matcher(content).replaceAll("\"password\":\"******\"");
+        return PASSWORD_FORM_PATTERN.matcher(masked).replaceAll("$1******");
     }
 
     private boolean isMultipartRequest(HttpServletRequest request) {
         String contentType = request.getContentType();
-        return contentType != null && contentType.toLowerCase().startsWith("multipart/");
+        return startsWithIgnoreCase(contentType, "multipart/");
     }
 
     private boolean isEventStreamRequest(HttpServletRequest request) {
         String accept = request.getHeader("Accept");
         if (accept == null) return false;
-        accept = accept.toLowerCase();
-        return accept.contains("text/event-stream") 
-            || accept.contains("application/x-ndjson")
-            || accept.contains("application/stream+json");
+        return containsIgnoreCase(accept, "text/event-stream") 
+            || containsIgnoreCase(accept, "application/x-ndjson")
+            || containsIgnoreCase(accept, "application/stream+json");
     }
 
     private boolean isLoggableResponse(HttpServletResponse response) {
         String contentType = response.getContentType();
         if (contentType == null) return true;
-        contentType = contentType.toLowerCase();
         
         // 排除流式及二进制输出
-        if (contentType.contains("text/event-stream") 
-            || contentType.contains("application/octet-stream")
-            || contentType.contains("application/x-ndjson")
-            || contentType.contains("application/stream+json")
-            || contentType.contains("multipart/")) {
+        if (containsIgnoreCase(contentType, "text/event-stream") 
+            || containsIgnoreCase(contentType, "application/octet-stream")
+            || containsIgnoreCase(contentType, "application/x-ndjson")
+            || containsIgnoreCase(contentType, "application/stream+json")
+            || containsIgnoreCase(contentType, "multipart/")) {
             return false;
         }
         
-        return contentType.contains("application/json") 
-            || contentType.contains("application/xml")
-            || contentType.contains("text/plain")
-            || contentType.contains("text/html");
+        return containsIgnoreCase(contentType, "application/json") 
+            || containsIgnoreCase(contentType, "application/xml")
+            || containsIgnoreCase(contentType, "text/plain")
+            || containsIgnoreCase(contentType, "text/html");
     }
 
     /**
@@ -168,29 +242,30 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
      * @return
      */
     private boolean shouldSkip (HttpServletRequest request) {
-        String uri = request.getRequestURI().toLowerCase();
-        return uri.contains("/upload") || 
-               uri.contains("/download") || 
-               uri.contains("/static/") || 
-               uri.endsWith(".ico") ||
-               uri.endsWith(".png") ||
-               uri.endsWith(".jpg") ||
-               uri.endsWith(".pdf");
+        String uri = request.getRequestURI();
+        if (uri == null) return true;
+        return containsIgnoreCase(uri, "/upload") || 
+               containsIgnoreCase(uri, "/download") || 
+               containsIgnoreCase(uri, "/static/") || 
+               endsWithIgnoreCase(uri, ".ico") ||
+               endsWithIgnoreCase(uri, ".png") ||
+               endsWithIgnoreCase(uri, ".jpg") ||
+               endsWithIgnoreCase(uri, ".pdf");
     }
 
     private String getRequestContent(HttpServletRequest request) {
         String contentType = request.getContentType();
         if (request instanceof ContentCachingRequestWrapper) {
             ContentCachingRequestWrapper wrapper = (ContentCachingRequestWrapper) request;
-            if (contentType != null && contentType.contains("application/json")) {
+            if (contentType != null && containsIgnoreCase(contentType, "application/json")) {
                 return new String(wrapper.getContentAsByteArray(), StandardCharsets.UTF_8);
             }
         }
         
         // 针对 application/x-www-form-urlencoded 和 multipart/form-data 格式，直接从 ParameterMap 获取文本属性
-        if (contentType != null && (contentType.contains("application/x-www-form-urlencoded") || contentType.contains("multipart/form-data"))) {
+        if (contentType != null && (containsIgnoreCase(contentType, "application/x-www-form-urlencoded") || containsIgnoreCase(contentType, "multipart/form-data"))) {
             Map<String, String[]> parameterMap = request.getParameterMap();
-            Map<String, String> parameters = new HashMap<>();
+            Map<String, String> parameters = new HashMap<>(Math.max((int) (parameterMap.size() / 0.75f) + 1, 16));
             for (Map.Entry<String, String[]> entry : parameterMap.entrySet()) {
                 String[] values = entry.getValue();
                 if (values != null && values.length > 0) {
@@ -200,6 +275,128 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
             return parameters.toString();
         }
         return "";
+    }
+
+    private static volatile String targetDir;
+
+    private static String getTargetDir() {
+        String dir = targetDir;
+        if (dir == null) {
+            synchronized (ReqResLoggerHttpFilter.class) {
+                dir = targetDir;
+                if (dir == null) {
+                    String logHome = null;
+                    if (org.slf4j.LoggerFactory.getILoggerFactory() instanceof ch.qos.logback.classic.LoggerContext context) {
+                        logHome = context.getProperty("LOG_HOME");
+                        if (logHome != null) {
+                            try {
+                                logHome = ch.qos.logback.core.util.OptionHelper.substVars(logHome, context);
+                            } catch (Exception e) {
+                                // Ignore
+                            }
+                        }
+                    }
+                    if (logHome == null || logHome.trim().isEmpty()) {
+                        logHome = "logs";
+                    }
+                    dir = logHome + "/recorded-bugs";
+                    targetDir = dir;
+                }
+            }
+        }
+        return dir;
+    }
+
+    /**
+     * 自动向 LOG_HOME/recorded-bugs/ 写入异常接口快照
+     */
+    private void recordBugSnapshot(HttpServletRequest request, SafeContentCachingResponseWrapper responseWrapper, Throwable ex) {
+        try {
+            Map<String, Object> snapshot = new HashMap<>(4);
+            
+            // 1. 请求上下文
+            Map<String, Object> reqInfo = new HashMap<>(8);
+            reqInfo.put("method", request.getMethod());
+            reqInfo.put("uri", request.getRequestURI());
+            reqInfo.put("queryString", request.getQueryString());
+            reqInfo.put("contentType", request.getContentType());
+            reqInfo.put("headers", getHeadersMap(request));
+            reqInfo.put("body", getRequestContent(request));
+            snapshot.put("request", reqInfo);
+            
+            // 2. 响应上下文
+            Map<String, Object> resInfo = new HashMap<>(4);
+            int status = responseWrapper != null ? responseWrapper.getStatus() : 500;
+            resInfo.put("status", status);
+            if (responseWrapper != null) {
+                resInfo.put("contentType", responseWrapper.getContentType());
+                resInfo.put("headers", getHeadersMap(responseWrapper));
+                if (!responseWrapper.isCachingDisabled() && isLoggableResponse(responseWrapper)) {
+                    resInfo.put("body", new String(responseWrapper.getContentAsByteArray(), StandardCharsets.UTF_8));
+                } else {
+                    resInfo.put("body", "[Payload non-loggable or too large]");
+                }
+            }
+            snapshot.put("response", resInfo);
+            
+            // 3. 异常调用栈
+            if (ex != null) {
+                Map<String, Object> exInfo = new HashMap<>(4);
+                exInfo.put("className", ex.getClass().getName());
+                exInfo.put("message", ex.getMessage());
+                
+                StackTraceElement[] trace = ex.getStackTrace();
+                if (trace != null && trace.length > 0) {
+                    int traceLen = Math.min(trace.length, 15);
+                    List<String> traceList = new ArrayList<>(traceLen);
+                    for (int i = 0; i < traceLen; i++) {
+                        traceList.add(trace[i].toString());
+                    }
+                    exInfo.put("stackTrace", traceList);
+                }
+                snapshot.put("exception", exInfo);
+            }
+            
+            snapshot.put("timestamp", System.currentTimeMillis());
+            
+            String targetPath = getTargetDir();
+            java.io.File dir = new java.io.File(targetPath);
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            
+            String fileName = String.format("bug_%d_%d.json", System.currentTimeMillis(), ThreadLocalRandom.current().nextInt(1000));
+            java.io.File file = new java.io.File(dir, fileName);
+            
+            OBJECT_MAPPER.writerWithDefaultPrettyPrinter().writeValue(file, snapshot);
+            
+            logger.error("ReqResLoggerHttpFilter: Error detected (status={}), snapshot written to: {}", status, file.getAbsolutePath());
+        } catch (Exception e) {
+            logger.warn("Failed to write bug snapshot", e);
+        }
+    }
+
+    private Map<String, String> getHeadersMap(HttpServletRequest request) {
+        Map<String, String> map = new HashMap<>(16);
+        Enumeration<String> headerNames = request.getHeaderNames();
+        if (headerNames != null) {
+            while (headerNames.hasMoreElements()) {
+                String name = headerNames.nextElement();
+                map.put(name, request.getHeader(name));
+            }
+        }
+        return map;
+    }
+
+    private Map<String, String> getHeadersMap(HttpServletResponse response) {
+        Map<String, String> map = new HashMap<>(16);
+        Collection<String> headerNames = response.getHeaderNames();
+        if (headerNames != null) {
+            for (String name : headerNames) {
+                map.put(name, response.getHeader(name));
+            }
+        }
+        return map;
     }
 
     /**
@@ -221,12 +418,11 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
 
         private boolean isStreamOrBinaryType(String type) {
             if (type == null) return false;
-            type = type.toLowerCase();
-            return type.contains("text/event-stream") 
-                || type.contains("application/octet-stream") 
-                || type.contains("application/x-ndjson")
-                || type.contains("application/stream+json")
-                || type.contains("multipart/");
+            return containsIgnoreCase(type, "text/event-stream") 
+                || containsIgnoreCase(type, "application/octet-stream") 
+                || containsIgnoreCase(type, "application/x-ndjson")
+                || containsIgnoreCase(type, "application/stream+json")
+                || containsIgnoreCase(type, "multipart/");
         }
 
         @Override
