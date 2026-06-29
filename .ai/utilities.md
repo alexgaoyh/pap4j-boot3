@@ -26,7 +26,7 @@
 *   [SQLCheckerUtil](../pap4j-common/pap4j-common-jsqlparser/src/main/java/cn/net/pap/common/jsqlparser/SQLCheckerUtil.java): SQL 语法验证与动态改写。
 
 ## 🌐 爬虫与诊断
-*   [TakeScreenshotTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/html/TakeScreenshotTest.java): Headless 截图及 Console/Network 日志获取。
+*   [TakeScreenshotTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/html/TakeScreenshotTest.java): Headless 截图及 Console/Network 日志获取。支持前端页面渲染、交互与网络日志诊断，为 AI 协同在无图控制台环境下提供“视觉之眼”调试工具。
 *   [OkHttpBatchExecutor](../pap4j-common/pap4j-common-spider/src/main/java/cn/net/pap/common/spider/util/OkHttpBatchExecutor.java): OkHttp 安全批处理并发执行器。
 *   [OkHttpBatchExecutorTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/util/OkHttpBatchExecutorTest.java): 演示通过 Interceptor 拦截外部不可达 API，并支持基于 JSON 请求体参数路由分发 Mock 数据、或直接触发 SocketTimeoutException 异常，支持本地业务离线联调测试。
 *   [HttpClientBatchExecutor](../pap4j-common/pap4j-common-spider/src/main/java/cn/net/pap/common/spider/util/HttpClientBatchExecutor.java): Apache HttpClient 5 安全批处理并发执行器（满足对 HttpClient 依赖场景下的统一实现）。

@@ -18,6 +18,7 @@ import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
+import org.openqa.selenium.By;
 
 /**
  * <p><strong>TakeScreenshotTest</strong></p>
@@ -210,5 +211,137 @@ public class TakeScreenshotTest {
             return url.substring(0, 150) + "...";
         }
         return url;
+    }
+
+    /**
+     * <p><b>testBaiduSearch — AI 协同的“视觉之眼”最佳实践演示</b></p>
+     * <p>
+     * 本方法不仅验证了百度的搜索交互，更作为一个标准的技术底座，作为 AI 协同在无图形化控制台沙箱环境下的<b>“眼睛”</b>。<br>
+     * 后续 AI 编码助手在遇到前端 UI 遮挡、样式挤压、动态 AJAX 异步接口报错时，可以直接调用此测试能力：
+     * </p>
+     * <ul>
+     *     <li>通过 Headless 浏览器进行页面截图以供多模态视觉模型（Vision Model）诊断；</li>
+     *     <li>收集并回放控制台 Console Logs 捕获 JS 运行期报错；</li>
+     *     <li>分析 Network Performance 性能事件以追踪 AJAX 异步请求/响应的完整数据流。</li>
+     * </ul>
+     * <p>
+     * AI 助手在后续的迭代和修复过程中，应主动识别并使用此测试技能来确保前端渲染与网络状态的正确性。
+     * </p>
+     */
+    @Test
+    public void testBaiduSearch() throws Exception {
+        String testUrl = System.getProperty("screenshot.url", "http://www.baidu.com");
+        String searchQuery = System.getProperty("screenshot.searchQuery", "alexgaoyh");
+        String windowSize = System.getProperty("screenshot.windowSize", "1280,1024");
+        int sleepMs = Integer.getInteger("screenshot.sleepMs", 3000);
+
+        LoggingPreferences logPrefs = new LoggingPreferences();
+        logPrefs.enable(LogType.BROWSER, java.util.logging.Level.ALL);
+        logPrefs.enable(LogType.PERFORMANCE, java.util.logging.Level.ALL);
+
+        WebDriver driver = initWebDriver(windowSize, logPrefs);
+        if (driver != null) {
+            try {
+                driver.get(testUrl);
+                Thread.sleep(1500);
+
+                performSearch(driver, searchQuery);
+                Thread.sleep(sleepMs);
+
+                File src = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+                File dest = File.createTempFile("baidu_search_screenshot_", ".png");
+                Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                log.info("搜索测试成功并截图！已保存至: {}", dest.getAbsolutePath());
+
+                printBrowserLogs(driver);
+            } finally {
+                driver.quit();
+            }
+        } else {
+            log.error("未能初始化任何 WebDriver 实例。请确保本地安装了 Chrome 或 Edge 浏览器。");
+        }
+    }
+
+    private void performSearch(WebDriver driver, String searchQuery) throws Exception {
+        org.openqa.selenium.WebElement searchInput = null;
+        try {
+            searchInput = driver.findElement(By.id("chat-textarea"));
+            if (!searchInput.isDisplayed()) {
+                searchInput = driver.findElement(By.id("kw"));
+            }
+        } catch (Exception e) {
+            searchInput = driver.findElement(By.id("kw"));
+        }
+
+        searchInput.sendKeys(searchQuery);
+
+        org.openqa.selenium.WebElement searchButton = null;
+        try {
+            java.util.List<org.openqa.selenium.WebElement> btnList = driver.findElements(By.xpath("//*[contains(text(), '百度一下')]"));
+            for (org.openqa.selenium.WebElement btn : btnList) {
+                if (btn.isDisplayed()) {
+                    searchButton = btn;
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("查找'百度一下'按钮文本失败: {}", e.getMessage());
+        }
+
+        if (searchButton == null) {
+            searchButton = driver.findElement(By.id("su"));
+        }
+
+        try {
+            searchButton.click();
+        } catch (Exception clickEx) {
+            log.warn("普通点击失败，尝试 JavaScript 点击: {}", clickEx.getMessage());
+            ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", searchButton);
+        }
+    }
+
+    private WebDriver initWebDriver(String windowSize, LoggingPreferences logPrefs) {
+        WebDriver driver = null;
+        try {
+            ChromeOptions options = new ChromeOptions();
+            options.addArguments("--headless");
+            options.addArguments("--window-size=" + windowSize);
+            options.addArguments("--disable-gpu");
+            options.setCapability("goog:loggingPrefs", logPrefs);
+            driver = new ChromeDriver(options);
+        } catch (Exception e) {
+            log.warn("Chrome Headless 启动失败，尝试 Edge: {}", e.getMessage());
+            try {
+                EdgeOptions options = new EdgeOptions();
+                options.addArguments("--headless");
+                options.addArguments("--window-size=" + windowSize);
+                options.addArguments("--disable-gpu");
+                options.setCapability("goog:loggingPrefs", logPrefs);
+                driver = new EdgeDriver(options);
+            } catch (Exception ex) {
+                log.error("Edge Headless 启动失败: ", ex);
+            }
+        }
+        return driver;
+    }
+
+    private void printBrowserLogs(WebDriver driver) {
+        try {
+            LogEntries consoleLogs = driver.manage().logs().get(LogType.BROWSER);
+            for (LogEntry entry : consoleLogs) {
+                log.info("[Browser Console] [{}] {}", entry.getLevel(), entry.getMessage());
+            }
+        } catch (Exception e) {
+            log.warn("无法获取浏览器控制台日志: {}", e.getMessage());
+        }
+
+        try {
+            LogEntries perfLogs = driver.manage().logs().get(LogType.PERFORMANCE);
+            for (LogEntry entry : perfLogs) {
+                parseAndLogNetworkEvent(entry.getMessage());
+            }
+        } catch (Exception e) {
+            log.warn("无法获取浏览器网络日志: {}", e.getMessage());
+        }
     }
 }
