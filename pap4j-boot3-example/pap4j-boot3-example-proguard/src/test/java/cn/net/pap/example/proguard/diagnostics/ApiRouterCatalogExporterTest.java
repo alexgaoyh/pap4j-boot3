@@ -21,7 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 本类作为 Java Web 接口契约的“自动导出器”，在单元测试阶段直接导出标准的 OpenAPI JSON 契约文件至系统临时目录，为 AI 编码助手提供“API 契约活地图”。
  * </p>
  */
-@SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+@SpringBootTest(
+    classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class},
+    properties = "spring.datasource.url=jdbc:h2:mem:${random.uuid};DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1"
+)
 @AutoConfigureMockMvc
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class ApiRouterCatalogExporterTest {

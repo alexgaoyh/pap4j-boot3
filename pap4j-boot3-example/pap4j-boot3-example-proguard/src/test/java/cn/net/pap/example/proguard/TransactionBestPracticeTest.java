@@ -27,7 +27,8 @@ import static org.junit.jupiter.api.Assertions.*;
     classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class},
     properties = {
         "spring.datasource.hikari.maximum-pool-size=2",
-        "spring.datasource.hikari.connection-timeout=1000"
+        "spring.datasource.hikari.connection-timeout=1000",
+        "spring.datasource.url=jdbc:h2:mem:${random.uuid};DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1"
     }
 )
 @Import(TransactionBestPracticeTest.TestService.class)

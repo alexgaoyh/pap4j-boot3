@@ -51,18 +51,18 @@ public class ProguardTest {
     private final ProguardRepository proguardRepository;
     private final IProguardService proguardService;
     private final EntityManager entityManager;
+    private final org.springframework.transaction.PlatformTransactionManager transactionManager;
 
-    public ProguardTest(ProguardRepository proguardRepository, IProguardService proguardService, EntityManager entityManager) {
+    public ProguardTest(ProguardRepository proguardRepository, IProguardService proguardService, EntityManager entityManager, org.springframework.transaction.PlatformTransactionManager transactionManager) {
         this.proguardRepository = proguardRepository;
         this.proguardService = proguardService;
         this.entityManager = entityManager;
+        this.transactionManager = transactionManager;
     }
 
     @Test
     public void transTest() {
         Long proguardId = System.currentTimeMillis();
-
-        PlatformTransactionManager transactionManager = SpringUtils.getBean(PlatformTransactionManager.class);
 
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.execute(status -> {
