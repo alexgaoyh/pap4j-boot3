@@ -54,6 +54,12 @@
         </dependency>
 
         <dependency>
+            <groupId>cn.net.pap</groupId>
+            <artifactId>pap4j-boot3-starters-logback</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>commons-net</groupId>
             <artifactId>commons-net</artifactId>
             <version>3.12.0</version>
