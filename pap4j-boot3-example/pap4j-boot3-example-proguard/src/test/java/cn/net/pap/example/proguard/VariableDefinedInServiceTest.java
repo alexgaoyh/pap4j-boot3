@@ -15,7 +15,8 @@ import java.util.stream.IntStream;
 @SpringBootTest(classes =
         {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class,
                 VariableDefinedInServiceTest.TestConfig.class
-        }
+        },
+        properties = "spring.datasource.url=jdbc:h2:mem:${random.uuid};DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1"
 )
 @TestPropertySource("classpath:application.properties")
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
