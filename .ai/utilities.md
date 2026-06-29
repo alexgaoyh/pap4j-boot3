@@ -85,6 +85,7 @@
 *   [WebClientUtil](../pap4j-boot3-starters/pap4j-boot3-starters-task/src/main/java/cn/net/pap/task/webclient/WebClientUtil.java): 响应式 Spring WebClient 的底层超时及自动重试封装。
 *   [LogbackConfigurationUtil](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/main/java/cn/net/pap/logback/util/LogbackConfigurationUtil.java): 运行时 Logback 日志上下文属性的动态重载与配置工具。
 *   [LoggerLevelUtil](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/main/java/cn/net/pap/logback/util/LoggerLevelUtil.java): 在线运行时动态查询及设置 Logback 中指定包/类日志级别的管理工具。
+*   [ReqResLoggerReplayTest](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/test/java/cn/net/pap/logback/filter/ReqResLoggerReplayTest.java): 日志录制与回放单测最佳实践用例，演示了如何通过 [ReqResLoggerHttpFilter](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/main/java/cn/net/pap/logback/filter/ReqResLoggerHttpFilter.java)（集成了 OOM 防护、安全内容裁剪、二进制及 SSE 直通的全局过滤器）自动录制 400/500 异常 JSON 快照，并在不启动 Tomcat 端口的情况下直接通过 MockMvc 100% 重现与测试回放。
 *   [QuartzUtils](../pap4j-boot3-starters/pap4j-boot3-starters-quartz/src/main/java/cn/net/pap/quartz/util/QuartzUtils.java): 快速注册与调配 Quartz 任务触发器及作业的控制工具。
 *   [GetThreadsWithFullStackTraceUtil](../pap4j-boot3-starters/pap4j-boot3-starters-quartz/src/main/java/cn/net/pap/quartz/util/GetThreadsWithFullStackTraceUtil.java): JVM 活跃线程级堆栈深层诊断分析工具。
 
