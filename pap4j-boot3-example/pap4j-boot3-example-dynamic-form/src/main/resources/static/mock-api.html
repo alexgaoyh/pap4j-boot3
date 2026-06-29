@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>在线 API Mock 维护终端 (cURL 强匹配版)</title>
+    <!-- Vue 3 Localized -->
+    <script src="vue.global.js"></script>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --border-color: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-primary: #6366f1;
+            --accent-hover: #4f46e5;
+            --accent-danger: #ef4444;
+            --accent-danger-hover: #dc2626;
+            --accent-success: #10b981;
+            --accent-warning: #f59e0b;
+            --accent-info: #06b6d4;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+        }
+
+        header {
+            padding: 1.25rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            background: #1e293b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        header .subtitle {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            margin-top: 0.2rem;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .version-badge {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid var(--accent-primary);
+            color: #a5b4fc;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .nav-link {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.2s;
+            border: 1px solid var(--border-color);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+        }
+
+        .nav-link:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 0.95fr 1.05fr;
+            gap: 1.5rem;
+            padding: 1.5rem;
+            max-width: 1800px;
+            width: 100%;
+            margin: 0 auto;
+            align-items: start;
+        }
+
+        @media (max-width: 1100px) {
+            main {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -4px rgba(0, 0, 0, 0.3);
+        }
+
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.75rem;
+        }
+
+        .panel-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .form-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        .form-item.full-width {
+            grid-column: span 2;
+        }
+
+        .section-divider {
+            grid-column: span 2;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--accent-primary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-top: 0.5rem;
+            padding-bottom: 0.25rem;
+            border-bottom: 1px dashed var(--border-color);
+        }
+
+        label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.6rem 0.8rem;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.6rem 1.2rem;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            color: var(--text-primary);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-danger {
+            background: var(--accent-danger);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: var(--accent-danger-hover);
+        }
+
+        .btn-sm {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.75rem;
+            border-radius: 4px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 0.75rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1rem;
+            margin-top: 0.5rem;
+        }
+
+        /* Mock List Styles */
+        .api-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            max-height: 800px;
+            overflow-y: auto;
+            padding-right: 0.25rem;
+        }
+
+        /* Custom Scrollbar */
+        .api-list::-webkit-scrollbar {
+            width: 6px;
+        }
+        .api-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .api-list::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 3px;
+        }
+
+        .api-card {
+            background: rgba(15, 23, 42, 0.4);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.6rem;
+            transition: border-color 0.2s, background-color 0.2s;
+        }
+
+        .api-card:hover {
+            border-color: #475569;
+            background: rgba(15, 23, 42, 0.6);
+        }
+
+        .api-card.active-edit {
+            border-color: var(--accent-primary);
+            background: rgba(99, 102, 241, 0.05);
+        }
+
+        .api-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .api-method-path {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            font-weight: 600;
+        }
+
+        .badge-method {
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+            text-transform: uppercase;
+        }
+
+        .badge-method.get { background: var(--accent-success); }
+        .badge-method.post { background: var(--accent-primary); }
+        .badge-method.put { background: var(--accent-warning); }
+        .badge-method.delete { background: var(--accent-danger); }
+        .badge-method.patch { background: var(--accent-info); }
+        .badge-method.any, .badge-method.wildcard { background: #64748b; }
+
+        .api-path {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            font-family: monospace;
+        }
+
+        .api-card-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            border-top: 1px dashed rgba(255,255,255,0.03);
+            padding-top: 0.4rem;
+        }
+
+        .api-meta-row {
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            flex-wrap: wrap;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.3rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.success { background: var(--accent-success); }
+        .status-dot.warn { background: var(--accent-warning); }
+        .status-dot.error { background: var(--accent-danger); }
+
+        .api-card-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem 1rem;
+            color: var(--text-secondary);
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+
+        /* Tester Section */
+        .tester-input {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .tester-input input {
+            flex: 1;
+        }
+
+        .tester-headers-params {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .test-result-panel {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-top: 0.75rem;
+            font-family: monospace;
+            font-size: 0.8rem;
+            max-height: 250px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            color: #38bdf8;
+        }
+
+        .test-result-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            border-bottom: 1px solid rgba(255,255,255,0.05);
+            padding-bottom: 0.25rem;
+        }
+
+        /* Notifications */
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            background: #1e293b;
+            border-left: 4px solid var(--accent-success);
+            padding: 1rem 1.5rem;
+            border-radius: 4px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            z-index: 1000;
+            transition: opacity 0.3s, transform 0.3s;
+            transform: translateY(0);
+        }
+
+        .toast.error {
+            border-left-color: var(--accent-danger);
+        }
+
+        .toast-content {
+            font-size: 0.85rem;
+            color: var(--text-primary);
+        }
+
+        /* Fade transitions */
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <header>
+            <div>
+                <h1>
+                    <span>🔌 在线 API Mock 维护终端</span>
+                    <span class="version-badge">极严格特征匹配版</span>
+                </h1>
+                <div class="subtitle">强校验：Path 必须完全相等，参数与请求体严格去空白比对（顺序必须完全一致）</div>
+            </div>
+            <div class="header-actions">
+                <a href="schema-editor.html" class="nav-link">⬅ 返回元数据表单设计</a>
+            </div>
+        </header>
+
+        <main>
+            <!-- 左侧：Mock 规则列表 -->
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">
+                        <span>📋 已配置接口列表 ({{ mockList.length }})</span>
+                    </h2>
+                    <button class="btn btn-secondary btn-sm" @click="fetchList">🔄 刷新列表</button>
+                </div>
+
+                <div class="api-list">
+                    <div v-if="mockList.length === 0" class="empty-state">
+                        暂无配置的 Mock API 接口。请在右侧导入或填写配置。
+                    </div>
+                    <div 
+                        v-else 
+                        v-for="item in mockList" 
+                        :key="item.id" 
+                        class="api-card"
+                        :class="{ 'active-edit': form.id === item.id }"
+                    >
+                        <div class="api-card-header">
+                            <div class="api-method-path">
+                                <span :class="['badge-method', getMethodClass(item.method)]">{{ item.method }}</span>
+                                <span class="api-path">{{ item.url }}</span>
+                            </div>
+                            <div class="api-card-actions">
+                                <button class="btn btn-secondary btn-sm" @click="editItem(item)">✏️ 编辑</button>
+                                <button class="btn btn-danger btn-sm" @click="deleteItem(item.id)">🗑️ 删除</button>
+                            </div>
+                        </div>
+                        <div class="api-card-details">
+                            <div class="api-meta-row">
+                                <div class="status-indicator">
+                                    <span :class="['status-dot', getStatusClass(item.responseStatus)]"></span>
+                                    <span>Status: {{ item.responseStatus }}</span>
+                                </div>
+                                <div>•</div>
+                                <div>Content-Type: {{ item.contentType.split(';')[0] }}</div>
+                            </div>
+                            <div v-if="hasConstraints(item)" style="margin-top: 0.2rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                                <span v-if="item.requestHeaders && item.requestHeaders !== '{}'" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.65rem; color: #a5b4fc;">
+                                    📌 Headers: {{ Object.keys(JSON.parse(item.requestHeaders)).length }} 个
+                                </span>
+                                <span v-if="item.requestParams" style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.65rem; color: #a7f3d0; font-family: monospace;">
+                                    🔍 Query: ?{{ item.requestParams }}
+                                </span>
+                                <span v-if="item.requestBody" style="background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.65rem; color: #c5f2f7;">
+                                    📝 Body 强匹配
+                                </span>
+                            </div>
+                            <div style="font-family: monospace; color: var(--text-secondary); margin-top: 0.2rem;">
+                                响应数据: {{ truncateText(item.responseBody) }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 右侧：配置编辑与快速调试 -->
+            <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                
+                <!-- cURL 快速导入面板 -->
+                <div class="panel" style="border: 1px solid var(--accent-primary);">
+                    <div class="panel-header" style="border-bottom-color: rgba(99,102,241,0.25);">
+                        <h2 class="panel-title" style="color: #a5b4fc;">
+                            <span>🚀 cURL 极速解析导入</span>
+                        </h2>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.6rem;">
+                        <textarea 
+                            v-model="curlInput" 
+                            placeholder="粘贴 Chrome DevTools 复制的 cURL 命令于此..." 
+                            style="min-height: 70px; border-color: rgba(99,102,241,0.4);"
+                        ></textarea>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">解析出特征将严格保留原始 Query 与 Body 顺序</span>
+                            <button class="btn btn-primary btn-sm" style="background: var(--accent-primary);" @click="parseInputCurl">⚡ 解析并装填</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 配置编辑器 -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">
+                            <span>🛠️ {{ form.id ? '编辑 Mock API 配置' : '新建 Mock API 接口' }}</span>
+                        </h2>
+                        <button v-if="form.id" class="btn btn-secondary btn-sm" @click="resetForm">取消编辑</button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="section-divider">1. 匹配条件配置 (Request Match Constraints)</div>
+                        
+                        <div class="form-item">
+                            <label for="method">请求方式 (Method) *</label>
+                            <select id="method" v-model="form.method">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                                <option value="PATCH">PATCH</option>
+                                <option value="ANY">ANY (通配任意请求)</option>
+                            </select>
+                        </div>
+                        <div class="form-item">
+                            <label for="url">请求路径 (URL) *</label>
+                            <input 
+                                id="url" 
+                                type="text" 
+                                v-model="form.url" 
+                                placeholder="例如: /api/v1/users (须以 / 开头)" 
+                                required
+                            >
+                        </div>
+                        <div class="form-item full-width">
+                            <label for="requestParams">期望 Query 参数字串 (例如: a=1&b=2)</label>
+                            <input 
+                                id="requestParams" 
+                                type="text" 
+                                v-model="form.requestParams" 
+                                placeholder="按原串顺序比对，匹配时会过滤所有空白符进行全等比对"
+                            >
+                        </div>
+                        <div class="form-item full-width">
+                            <label for="requestHeaders">期望请求头 (Request Headers JSON)</label>
+                            <textarea 
+                                id="requestHeaders" 
+                                v-model="form.requestHeaders" 
+                                placeholder='示例: {"Authorization": "Bearer token123"}'
+                                style="min-height: 80px;"
+                            ></textarea>
+                        </div>
+                        <div class="form-item full-width">
+                            <label for="requestBody">期望请求体 (Request Body)</label>
+                            <textarea 
+                                id="requestBody" 
+                                v-model="form.requestBody" 
+                                placeholder="匹配时会过滤所有空白符进行严格全等比对，包含 JSON 的 Key 顺序"
+                                style="min-height: 80px;"
+                            ></textarea>
+                        </div>
+
+                        <div class="section-divider">2. 预设响应配置 (Response Data)</div>
+
+                        <div class="form-item">
+                            <label for="status">HTTP 状态码 *</label>
+                            <input id="status" type="number" v-model.number="form.responseStatus" placeholder="200" required>
+                        </div>
+                        <div class="form-item">
+                            <label for="contentType">响应媒体类型 (Content-Type) *</label>
+                            <select id="contentType" v-model="form.contentType">
+                                <option value="application/json;charset=UTF-8">application/json (JSON 数据)</option>
+                                <option value="text/plain;charset=UTF-8">text/plain (纯文本)</option>
+                                <option value="text/html;charset=UTF-8">text/html (HTML 页面)</option>
+                                <option value="application/xml;charset=UTF-8">application/xml (XML)</option>
+                            </select>
+                        </div>
+                        <div class="form-item full-width">
+                            <label for="responseBody">响应正文 (Response Body)</label>
+                            <textarea 
+                                id="responseBody" 
+                                v-model="form.responseBody" 
+                                placeholder="写入要返回的的响应正文内容"
+                                style="min-height: 120px;"
+                            ></textarea>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button class="btn btn-secondary" @click="resetForm">重置</button>
+                        <button class="btn btn-primary" @click="saveForm">💾 保存配置</button>
+                    </div>
+                </div>
+
+                <!-- 快速调试终端 -->
+                <div class="panel">
+                    <div class="panel-header">
+                        <h2 class="panel-title">
+                            <span>⚡ 模拟接口高精度调试终端</span>
+                        </h2>
+                    </div>
+                    <div>
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                            拦截前缀为 <code style="color: var(--accent-primary); font-family: monospace;">/api/mock</code>。支持在 URL 后拼接 query 参数进行顺序全等测试。
+                        </div>
+                        <div class="tester-input">
+                            <select v-model="testConfig.method" style="flex-shrink: 0;">
+                                <option value="GET">GET</option>
+                                <option value="POST">POST</option>
+                                <option value="PUT">PUT</option>
+                                <option value="DELETE">DELETE</option>
+                                <option value="PATCH">PATCH</option>
+                            </select>
+                            <div style="display: flex; align-items: center; background: #0f172a; border: 1px solid var(--border-color); border-radius: 6px; padding-left: 0.8rem; flex: 1;">
+                                <span style="color: var(--text-secondary); font-family: monospace; font-size: 0.9rem; user-select: none;">/api/mock</span>
+                                <input 
+                                    type="text" 
+                                    v-model="testConfig.path" 
+                                    placeholder="/users/list?a=1&b=2" 
+                                    style="border: none; background: transparent; padding: 0.6rem 0.4rem; width: 100%; box-shadow: none;"
+                                >
+                            </div>
+                            <button class="btn btn-primary" @click="runTest">🚀 发送请求</button>
+                        </div>
+
+                        <div class="tester-headers-params">
+                            <div class="form-item">
+                                <label style="font-size: 0.75rem;">调试 Headers (JSON)</label>
+                                <textarea v-model="testConfig.headers" placeholder='{"Authorization": "Bearer token123"}' style="min-height: 60px; font-size: 0.8rem;"></textarea>
+                            </div>
+                            <div class="form-item">
+                                <label style="font-size: 0.75rem;">调试 Body 内容</label>
+                                <textarea v-model="testConfig.body" placeholder="POST 请求携带的 Body" style="min-height: 60px; font-size: 0.8rem;"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- 调试响应面板 -->
+                        <div v-if="testResult" class="test-result-panel">
+                            <div class="test-result-header">
+                                <span>STATUS: {{ testResult.status }} {{ testResult.statusText }}</span>
+                                <span>TIME: {{ testResult.time }}ms</span>
+                            </div>
+                            <div style="color: var(--text-secondary); margin-bottom: 0.4rem; font-size: 0.75rem;">
+                                Headers: {{ JSON.stringify(testResult.headers, null, 2) }}
+                            </div>
+                            <div>{{ testResult.body }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Toast 提示框 -->
+        <transition name="fade">
+            <div v-if="toast.show" :class="['toast', { 'error': toast.isError }]">
+                <div class="toast-content">
+                    {{ toast.message }}
+                </div>
+            </div>
+        </transition>
+    </div>
+
+    <script>
+        const { createApp, ref, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const mockList = ref([]);
+                const curlInput = ref('');
+                const form = ref({
+                    id: null,
+                    url: '',
+                    method: 'GET',
+                    responseBody: '',
+                    responseStatus: 200,
+                    contentType: 'application/json;charset=UTF-8',
+                    requestHeaders: '',
+                    requestParams: '',
+                    requestBody: '',
+                    curlCommand: ''
+                });
+
+                const testConfig = ref({
+                    method: 'GET',
+                    path: '',
+                    headers: '',
+                    body: ''
+                });
+
+                const testResult = ref(null);
+
+                const toast = ref({
+                    show: false,
+                    message: '',
+                    isError: false,
+                    timer: null
+                });
+
+                const showMessage = (msg, isErr = false) => {
+                    if (toast.value.timer) {
+                        clearTimeout(toast.value.timer);
+                    }
+                    toast.value.message = msg;
+                    toast.value.isError = isErr;
+                    toast.value.show = true;
+                    toast.value.timer = setTimeout(() => {
+                        toast.value.show = false;
+                    }, 3000);
+                };
+
+                const fetchList = async () => {
+                    try {
+                        const res = await fetch('/api/mock-config/list');
+                        if (res.ok) {
+                            mockList.value = await res.json();
+                        } else {
+                            showMessage('加载配置列表失败', true);
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        showMessage('连接服务器失败', true);
+                    }
+                };
+
+                const parseInputCurl = () => {
+                    const curl = curlInput.value.trim();
+                    if (!curl) {
+                        showMessage('请先粘贴 cURL 命令行', true);
+                        return;
+                    }
+                    try {
+                        const tokens = [];
+                        let currentToken = '';
+                        let inSingleQuote = false;
+                        let inDoubleQuote = false;
+                        let escaped = false;
+
+                        for (let i = 0; i < curl.length; i++) {
+                            const c = curl[i];
+                            if (escaped) {
+                                currentToken += c;
+                                escaped = false;
+                            } else if (c === '\\') {
+                                escaped = true;
+                            } else if (c === "'" && !inDoubleQuote) {
+                                inSingleQuote = !inSingleQuote;
+                            } else if (c === '"' && !inSingleQuote) {
+                                inDoubleQuote = !inDoubleQuote;
+                            } else if (/\s/.test(c) && !inSingleQuote && !inDoubleQuote) {
+                                if (currentToken) {
+                                    tokens.push(currentToken);
+                                    currentToken = '';
+                                }
+                            } else {
+                                currentToken += c;
+                            }
+                        }
+                        if (currentToken) tokens.push(currentToken);
+
+                        const IGNORED_HEADERS = new Set([
+                             "host", "connection", "content-length", "accept", "user-agent",
+                             "sec-ch-ua", "sec-ch-ua-mobile", "sec-ch-ua-platform", "origin",
+                             "sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest", "referer",
+                             "accept-encoding", "accept-language", "cookie", "dnt",
+                             "cache-control", "pragma", "if-none-match", "if-modified-since",
+                             "upgrade-insecure-requests", "postman-token"
+                         ]);
+
+                        let method = 'GET';
+                        let url = '';
+                        const headers = {};
+                        let body = '';
+                        let hasBody = false;
+
+                        for (let i = 0; i < tokens.length; i++) {
+                            const t = tokens[i];
+                            if (t === '-X' || t === '--request') {
+                                if (i + 1 < tokens.length) method = tokens[++i].toUpperCase();
+                            } else if (t === '-H' || t === '--header') {
+                                if (i + 1 < tokens.length) {
+                                    const h = tokens[++i];
+                                    const colon = h.indexOf(':');
+                                    if (colon > 0) {
+                                        const k = h.substring(0, colon).trim();
+                                        const v = h.substring(colon + 1).trim();
+                                        if (!IGNORED_HEADERS.has(k.toLowerCase())) {
+                                            headers[k] = v;
+                                        }
+                                    }
+                                }
+                            } else if (t === '-d' || t === '--data' || t === '--data-raw' || t === '--data-binary') {
+                                hasBody = true;
+                                if (i + 1 < tokens.length) body = tokens[++i];
+                            } else if ((t.startsWith('http://') || t.startsWith('https://') || t.includes('/')) && t.toLowerCase() !== 'curl' && !t.startsWith('-')) {
+                                url = t;
+                            }
+                        }
+
+                        if (method === 'GET' && hasBody) method = 'POST';
+
+                        let cleanUrl = url.trim();
+                        let query = '';
+                        const qIdx = cleanUrl.indexOf('?');
+                        if (qIdx >= 0) {
+                            query = cleanUrl.substring(qIdx + 1);
+                            cleanUrl = cleanUrl.substring(0, qIdx);
+                        }
+
+                        if (cleanUrl.startsWith('http://')) cleanUrl = cleanUrl.substring(7);
+                        else if (cleanUrl.startsWith('https://')) cleanUrl = cleanUrl.substring(8);
+
+                        let path = '/';
+                        if (cleanUrl.startsWith('/')) {
+                            path = cleanUrl;
+                        } else {
+                            const firstSlash = cleanUrl.indexOf('/');
+                            if (firstSlash >= 0) path = cleanUrl.substring(firstSlash);
+                        }
+
+                        // 直接填入表单中
+                        form.value.method = method;
+                        form.value.url = path;
+                        form.value.requestHeaders = JSON.stringify(headers, null, 2);
+                        form.value.requestParams = query; // 直接原样保存 query 串，保证顺序
+                        form.value.requestBody = body;
+                        form.value.curlCommand = curl;
+
+                        showMessage('cURL 命令行成功解析并装填，请在表单中确认后保存！');
+                    } catch (e) {
+                        showMessage('cURL 解析失败，请检查命令行格式: ' + e.message, true);
+                    }
+                };
+
+                const saveForm = async () => {
+                    if (!form.value.url) {
+                        showMessage('请填写请求路径 (URL)', true);
+                        return;
+                    }
+                    if (!form.value.url.startsWith('/')) {
+                        showMessage('请求路径必须以 / 开头', true);
+                        return;
+                    }
+
+                    // 验证 JSON 格式
+                    if (form.value.requestHeaders.trim()) {
+                        try {
+                            JSON.parse(form.value.requestHeaders);
+                        } catch (e) {
+                            showMessage('期望请求头不是有效的 JSON 格式', true);
+                            return;
+                        }
+                    }
+
+                    try {
+                        const res = await fetch('/api/mock-config/save', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(form.value)
+                        });
+
+                        if (res.ok) {
+                            showMessage(form.value.id ? '更新 Mock 配置成功！' : '保存 Mock 配置成功！');
+                            resetForm();
+                            curlInput.value = '';
+                            fetchList();
+                        } else {
+                            const errText = await res.text();
+                            showMessage('保存失败: ' + errText, true);
+                        }
+                    } catch (err) {
+                        showMessage('保存配置请求失败', true);
+                    }
+                };
+
+                const deleteItem = async (id) => {
+                    if (!confirm('确定要删除此条 Mock 配置吗？')) return;
+                    try {
+                        const res = await fetch(`/api/mock-config/${id}`, {
+                            method: 'DELETE'
+                        });
+                        if (res.ok) {
+                            showMessage('删除成功');
+                            if (form.value.id === id) {
+                                resetForm();
+                            }
+                            fetchList();
+                        } else {
+                            showMessage('删除失败', true);
+                        }
+                    } catch (err) {
+                        showMessage('发送删除请求失败', true);
+                    }
+                };
+
+                const editItem = (item) => {
+                    form.value = { ...item };
+                    // 格式化 JSON 显示
+                    if (item.requestHeaders && item.requestHeaders !== '{}') {
+                        form.value.requestHeaders = JSON.stringify(JSON.parse(item.requestHeaders), null, 2);
+                    }
+                    
+                    // 自动配置测试面板
+                    testConfig.value.method = item.method === 'ANY' ? 'GET' : item.method;
+                    
+                    let testPath = item.url;
+                    if (item.requestParams) {
+                        testPath += '?' + item.requestParams;
+                    }
+                    testConfig.value.path = testPath;
+                    
+                    if (item.requestHeaders && item.requestHeaders !== '{}') {
+                        testConfig.value.headers = JSON.stringify(JSON.parse(item.requestHeaders), null, 2);
+                    } else {
+                        testConfig.value.headers = '';
+                    }
+
+                    testConfig.value.body = item.requestBody || '';
+                };
+
+                const resetForm = () => {
+                    form.value = {
+                        id: null,
+                        url: '',
+                        method: 'GET',
+                        responseBody: '',
+                        responseStatus: 200,
+                        contentType: 'application/json;charset=UTF-8',
+                        requestHeaders: '',
+                        requestParams: '',
+                        requestBody: '',
+                        curlCommand: ''
+                    };
+                };
+
+                const runTest = async () => {
+                    let path = testConfig.value.path.trim();
+                    if (!path.startsWith('/')) {
+                        path = '/' + path;
+                    }
+                    const fullTestUrl = `/api/mock${path}`;
+                    const start = Date.now();
+
+                    try {
+                        const options = {
+                            method: testConfig.value.method,
+                            headers: {}
+                        };
+
+                        if (testConfig.value.headers.trim()) {
+                            try {
+                                options.headers = JSON.parse(testConfig.value.headers);
+                            } catch (e) {
+                                showMessage('调试 Headers JSON 格式不正确', true);
+                                return;
+                            }
+                        }
+
+                        if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(testConfig.value.method) && testConfig.value.body) {
+                            options.body = testConfig.value.body;
+                        }
+                        
+                        const res = await fetch(fullTestUrl, options);
+                        const duration = Date.now() - start;
+                        
+                        const headersObj = {};
+                        res.headers.forEach((val, key) => {
+                            headersObj[key] = val;
+                        });
+
+                        const bodyText = await res.text();
+                        let formattedBody = bodyText;
+                        try {
+                            const json = JSON.parse(bodyText);
+                            formattedBody = JSON.stringify(json, null, 2);
+                        } catch (e) {
+                            // 保持原样
+                        }
+
+                        testResult.value = {
+                            status: res.status,
+                            statusText: res.statusText,
+                            headers: headersObj,
+                            body: formattedBody,
+                            time: duration
+                        };
+                    } catch (err) {
+                        testResult.value = {
+                            status: 'ERROR',
+                            statusText: '请求发送失败',
+                            headers: {},
+                            body: err.message,
+                            time: Date.now() - start
+                        };
+                    }
+                };
+
+                const truncateText = (text) => {
+                    if (!text) return '无';
+                    const cleaned = text.replace(/\s+/g, ' ').trim();
+                    return cleaned.length > 50 ? cleaned.substring(0, 50) + '...' : cleaned;
+                };
+
+                const getStatusClass = (status) => {
+                    if (status >= 200 && status < 300) return 'success';
+                    if (status >= 300 && status < 400) return 'warn';
+                    return 'error';
+                };
+
+                const getMethodClass = (method) => {
+                    if (['GET', 'POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
+                        return method.toLowerCase();
+                    }
+                    return 'any';
+                };
+
+                const hasConstraints = (item) => {
+                    return (item.requestHeaders && item.requestHeaders !== '{}') || 
+                           (item.requestParams && item.requestParams.trim() !== '') || 
+                           (item.requestBody && item.requestBody.trim() !== '');
+                };
+
+                onMounted(() => {
+                    fetchList();
+                });
+
+                return {
+                    mockList,
+                    curlInput,
+                    form,
+                    testConfig,
+                    testResult,
+                    toast,
+                    fetchList,
+                    parseInputCurl,
+                    saveForm,
+                    deleteItem,
+                    editItem,
+                    resetForm,
+                    runTest,
+                    truncateText,
+                    getStatusClass,
+                    getMethodClass,
+                    hasConstraints
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
