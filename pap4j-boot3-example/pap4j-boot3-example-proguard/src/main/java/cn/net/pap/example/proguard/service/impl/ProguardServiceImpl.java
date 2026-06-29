@@ -212,7 +212,7 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean executeNaiveSQLInsertBatchUsingJDBC(List<String> paramsList) {
         try {
             Session session = entityManager.unwrap(Session.class);
@@ -252,7 +252,7 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean executeNaiveSQLBatchUsingJDBC(List<String> executeSQLList) {
         try {
             Session session = entityManager.unwrap(Session.class);
@@ -283,7 +283,7 @@ public class ProguardServiceImpl implements IProguardService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public Boolean executeNaiveSQLUpdateBatchUsingJdbcTemplate(String sql, List<List<Object>> paramsList) {
         if (sql == null || paramsList == null || paramsList.isEmpty()) {
             return false;

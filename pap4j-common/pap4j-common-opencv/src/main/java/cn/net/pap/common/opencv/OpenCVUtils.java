@@ -51,7 +51,7 @@ public class OpenCVUtils {
             try {
                 System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
             } catch (Throwable t) {
-                log.error("Failed to load native library for unsupported OS: " + osName, t);
+                log.error("Failed to load native library for unsupported OS: {}", osName, t);
             }
             return;
         }
@@ -86,7 +86,7 @@ public class OpenCVUtils {
 
             System.load(tempFile.getAbsolutePath());
         } catch (Throwable t) {
-            log.error("Failed to load native library from classpath: " + libName, t);
+            log.error("Failed to load native library from classpath: {}", libName, t);
             try {
                 System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
             } catch (Throwable ex) {

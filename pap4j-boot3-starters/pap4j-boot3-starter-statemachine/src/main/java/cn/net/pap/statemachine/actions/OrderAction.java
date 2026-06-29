@@ -27,6 +27,6 @@ public class OrderAction implements Action<OrderStates, OrderEvents> {
 
     @Override
     public void execute(StateContext<OrderStates, OrderEvents> context) {
-        log.info("{}", orderRepository + " : " + context);
+        log.info("{} : {}", orderRepository, context);
     }
 }

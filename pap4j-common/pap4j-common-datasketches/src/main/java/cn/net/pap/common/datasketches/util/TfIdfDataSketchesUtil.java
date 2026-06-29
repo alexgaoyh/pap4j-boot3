@@ -221,16 +221,16 @@ public class TfIdfDataSketchesUtil {
 
     public void printStatistics() {
         log.info("=== TF-IDF Statistics ===");
-        log.info("{}", "Total documents: " + getTotalDocuments());
-        log.info("{}", "Vocabulary size: " + getVocabularySize());
-        log.info("{}", "Maximum error: " + getMaximumError());
+        log.info("Total documents: {}", getTotalDocuments());
+        log.info("Vocabulary size: {}", getVocabularySize());
+        log.info("Maximum error: {}", getMaximumError());
 
         // 显示前10个高频词
         List<String> topWords = getFrequentWords(10);
-        log.info("\nTop 10 frequent words:");
+        log.info("Top 10 frequent words:");
         for (String word : topWords) {
             long freq = dfSketch.getEstimate(word);
-            log.info(String.format("  %s: %d documents%n", word, freq));
+            log.info("  {}: {} documents", word, freq);
         }
     }
 

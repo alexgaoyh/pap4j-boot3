@@ -12,6 +12,6 @@ public class ErrorAction implements Action<OrderStates, OrderEvents> {
     @Override
     public void execute(StateContext<OrderStates, OrderEvents> context) {
         String orderId = context.getMessage().getHeaders().get("ORDER_ID_HEADER", String.class);
-        log.info("Error occurred while processing order id - " + orderId);
+        log.info("Error occurred while processing order id - {}", orderId);
     }
 }
