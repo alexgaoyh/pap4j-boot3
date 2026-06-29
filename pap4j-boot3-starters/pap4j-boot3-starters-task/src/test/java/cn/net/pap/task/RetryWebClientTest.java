@@ -58,7 +58,7 @@ public class RetryWebClientTest {
 
             log.info("{}", result);
         } catch (Exception e) {
-            log.error("Failed: {}", e.getMessage());
+            log.error("Failed: ", e);
         }
     }
 

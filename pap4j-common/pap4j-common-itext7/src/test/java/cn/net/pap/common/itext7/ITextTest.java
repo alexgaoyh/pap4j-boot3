@@ -48,7 +48,7 @@ public class ITextTest {
             String resultText = strategy.getResultantText();
             log.info("{}", resultText);
         } catch (Exception e) {
-            log.error("{}", e);
+            log.error("Error processing page content: ", e);
         }
 
     }
@@ -146,7 +146,7 @@ public class ITextTest {
                 }
 
             } catch (Exception e) {
-                log.error("{}", e);
+                log.error("Error retrieving image metadata: ", e);
             }
         }
 
@@ -295,7 +295,7 @@ public class ITextTest {
                 return image;
 
             } catch (IOException e) {
-                log.error("{}", e);
+                log.error("Failed to read buffered image: ", e);
                 return null;
             }
         }

@@ -70,7 +70,7 @@ public class WebDavTest {
             if(e instanceof org.apache.http.conn.HttpHostConnectException) {
                 log.info("{}", "请先启动 webdav");
             } else {
-                log.error("{}", e);
+                log.error("WebDAV exception: ", e);
             }
         } finally {
             if (uploadFile != null && uploadFile.exists()) {

@@ -103,7 +103,7 @@ public class DtoTest {
             log.info("{} 没有toString方法，跳过测试", clazz.getSimpleName());
         } catch (Exception e) {
             // 其他异常（如调用失败）也只打印日志，不中断测试
-            log.error("{} toString方法调用失败: {}", clazz.getSimpleName(), e.getMessage());
+            log.error("{} toString方法调用失败: ", clazz.getSimpleName(), e);
         }
     }
 

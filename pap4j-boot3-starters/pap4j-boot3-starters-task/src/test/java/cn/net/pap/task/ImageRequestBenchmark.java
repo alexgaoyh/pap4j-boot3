@@ -44,7 +44,7 @@ public class ImageRequestBenchmark {
                 log.info("第 {} 次请求 - 状态码: {}, 响应时间: {} ms, 图像大小: {} KB", i, response.statusCode(), duration, response.body().length / 1024);
 
             } catch (Exception e) {
-                log.error("第 {} 次请求失败: {}", i, e.getMessage());
+                log.error("第 {} 次请求失败: ", i, e);
                 responseTimes.add(-1L); // 用-1表示失败
             }
         }

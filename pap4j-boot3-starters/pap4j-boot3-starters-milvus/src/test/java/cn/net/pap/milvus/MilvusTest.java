@@ -65,10 +65,10 @@ public class MilvusTest {
             assertTrue(true == checkHealthResponseR.getData().getIsHealthy());
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed during test1: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Milvus test1 execution failed: ", e);
             }
         }
     }
@@ -96,10 +96,10 @@ public class MilvusTest {
             }
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed during test2: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Milvus test2 execution failed: ", e);
             }
         }
     }
@@ -152,10 +152,10 @@ public class MilvusTest {
             assertTrue(response.getStatus() == 0);
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed during test3: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Milvus test3 execution failed: ", e);
             }
         }
     }
@@ -186,10 +186,10 @@ public class MilvusTest {
             assertTrue(ageResponse.getStatus() == 0);
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed during test4: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Milvus test4 execution failed: ", e);
             }
         }
     }
@@ -210,10 +210,10 @@ public class MilvusTest {
             }
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed during test5: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Milvus test5 execution failed: ", e);
             }
         }
     }
@@ -231,10 +231,10 @@ public class MilvusTest {
 
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed during test6: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Milvus test6 execution failed: ", e);
             }
         }
     }
@@ -263,10 +263,10 @@ public class MilvusTest {
             }
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed during test7_insertRows: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Milvus test7_insertRows execution failed: ", e);
             }
         }
     }
@@ -310,10 +310,10 @@ public class MilvusTest {
             }
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed during test7_search: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Milvus test7_search execution failed: ", e);
             }
         }
     }
@@ -365,7 +365,7 @@ public class MilvusTest {
                 }
             }
         } catch (Exception e) {
-            log.error("{}", e);
+            log.error("Error inserting rows: ", e);
         } finally {
             if (tempDir != null) {
                 deleteDirectoryRecursively(tempDir);
@@ -391,7 +391,7 @@ public class MilvusTest {
             }
 
         } catch (Exception e) {
-            log.error("{}", e);
+            log.error("Error loading Taylor Swift vector: ", e);
         } finally {
             if (tempDir != null) {
                 deleteDirectoryRecursively(tempDir);

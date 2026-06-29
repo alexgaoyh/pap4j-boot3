@@ -38,9 +38,9 @@ public class MinioUtilTest {
 
         } catch (Exception e) {
             if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+                log.warn("Minio connect exception: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Minio exception: ", e);
             }
         } finally {
             if (file != null && file.exists()) {

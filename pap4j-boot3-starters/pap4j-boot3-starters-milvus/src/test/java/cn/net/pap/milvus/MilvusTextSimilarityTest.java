@@ -128,10 +128,10 @@ public class MilvusTextSimilarityTest {
 
             milvusClient.close();
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Failed to insert records: ", e);
             }
         }
     }
@@ -167,10 +167,10 @@ public class MilvusTextSimilarityTest {
                 log.info("{}", wrapper.getFieldData("name", i));
             }
         } catch (Exception e) {
-            if(e instanceof java.net.ConnectException) {
-                log.warn("{}", e);
+            if (e instanceof java.net.ConnectException) {
+                log.warn("Milvus connection failed: ", e);
             } else {
-                log.error("{}", e);
+                log.error("Search failed: ", e);
             }
         }
     }
@@ -203,7 +203,7 @@ public class MilvusTextSimilarityTest {
             }
 
         } catch (Exception e) {
-            log.error("{}", e);
+            log.error("Error inserting rows: ", e);
         }
         return rowsData;
     }
@@ -218,7 +218,7 @@ public class MilvusTextSimilarityTest {
                 floatList.add(value);
             }
         } catch (Exception e) {
-            log.error("{}", e);
+            log.error("Error retrieving search vector: ", e);
         } finally {
             if (file != null && file.exists()) {
                 file.delete();

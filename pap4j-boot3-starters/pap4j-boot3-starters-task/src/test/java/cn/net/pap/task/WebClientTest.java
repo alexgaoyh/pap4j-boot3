@@ -98,20 +98,20 @@ public class WebClientTest {
                             .map(b -> "Status: " + response.statusCode() + ", Body: " + b);
                 })
                 .doOnError(e -> {
-                    log.error("异常: {}", e.getMessage());
+                    log.error("异常: ", e);
                 })
                 .doFinally(s -> {
                     log.info("异步流程全部结束: {}", s);
                     latch.countDown();
                 })
                 .subscribe(
-                        result -> {
-                            log.info("成功: {}", result);
-                        },
-                        error -> {
-                            // 显式错误处理
-                            log.error("订阅时发生错误: {}", error.getMessage());
-                        }
+                    result -> {
+                        log.info("成功: {}", result);
+                    },
+                    error -> {
+                        // 显式错误处理
+                        log.error("订阅时发生错误: ", error);
+                    }
                 );
         log.info("主线程执行中!");
         boolean await = latch.await(10, TimeUnit.SECONDS);

@@ -40,7 +40,7 @@ public class AutoIncrePreKeyTest {
         try {
             autoIncrePreKeyService.saveAndFlush(autoIncrePreKey2);
         } catch (Exception e) {
-            log.info("{}", e.getMessage());
+            log.info("Expected save failure: ", e);
         }
         autoIncrePreKeyService.saveAndFlush(autoIncrePreKey3);
 

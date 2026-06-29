@@ -99,7 +99,7 @@ public class ItextExtractPathsTest {
                 graphicsState = getGraphicsState(renderInfo);
             } catch (NoSuchFieldException | SecurityException | IllegalArgumentException |
                      IllegalAccessException e) {
-                log.error(e.getMessage());
+                log.error("Failed to get graphics state: ", e);
                 return null;
             }
 

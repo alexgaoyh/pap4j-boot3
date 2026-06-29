@@ -130,7 +130,7 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
                             filePath, result.getExitCode(), result.getStdout()); // 请根据你 ExecResult 类的实际 getter 方法名进行调整
                 }
             } catch (Exception e) {
-                log.warn("Warning: Failed to set executable permission: {}", e.getMessage());
+                log.warn("Warning: Failed to set executable permission: ", e);
             }
         }
 

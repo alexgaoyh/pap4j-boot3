@@ -41,8 +41,7 @@ public class OKHttpTest {
             log.info("第二次读取成功: {}", businessData);
 
         } catch (Exception e) {
-            log.error("最外层捕获到异常的信息: {}", e.getMessage());
-            log.error("详细错误堆栈: ", e);
+            log.error("最外层捕获到异常: ", e);
         }
     }
 

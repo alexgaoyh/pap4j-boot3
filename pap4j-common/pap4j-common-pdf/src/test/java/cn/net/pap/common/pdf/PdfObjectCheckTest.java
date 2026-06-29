@@ -192,8 +192,7 @@ public class PdfObjectCheckTest {
                 String text = PdfTextExtractor.getTextFromPage(reader, i);
                 log.info("提取文本成功，前100字符: {}", (text.length() > 100 ? text.substring(0, 100) + "..." : text));
             } catch (Exception e) {
-                log.info("提取文本时报错: {}", e.getMessage());
-                log.error("Error extracting text: ", e);
+                log.error("提取文本时报错: ", e);
                 log.info("再次打印页面字体资源详细信息，协助定位问题：");
                 checkPageFontResourcesDetailed(reader, i);
             }
@@ -374,8 +373,7 @@ public class PdfObjectCheckTest {
             }
 
         } catch (Exception e) {
-            log.info("加载 PDF 时异常: {}", e.getMessage());
-            log.error("Exception: ", e);
+            log.error("加载 PDF 时异常: ", e);
         } finally {
             if (reader != null) {
                 reader.close();

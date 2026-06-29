@@ -849,7 +849,7 @@ public class PDFUtil {
                 return directory.getInt(ExifIFD0Directory.TAG_ORIENTATION);
             }
         } catch (Exception e) {
-            log.debug("Read image orientation failed: {}", e.getMessage());
+            log.debug("Read image orientation failed: ", e);
         }
         return 1;
     }
