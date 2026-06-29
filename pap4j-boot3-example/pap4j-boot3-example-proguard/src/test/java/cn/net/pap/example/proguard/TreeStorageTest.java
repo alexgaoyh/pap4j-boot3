@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.TestConstructor;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -20,7 +21,11 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 /**
  * 验证树形结构数据在 Service 层的处理逻辑
  */
-@SpringBootTest
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "spring.datasource.url=jdbc:h2:mem:${random.uuid};DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1"
+)
+@TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class TreeStorageTest {
 
     private static final Logger log = LoggerFactory.getLogger(TreeStorageTest.class);
