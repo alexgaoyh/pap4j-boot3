@@ -18,7 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * <p><b>ApiRouterCatalogExporterTest</b></p>
  * <p>
- * 本类作为 Java Web 接口契约的“自动导出器”，在单元测试阶段直接导出标准的 OpenAPI JSON 契约文件至系统临时目录，为 AI 编码助手提供“API 契约活地图”。
+ * 本类作为 Java Web 接口契约的“自动导出器”，在单元测试阶段直接导出标准的 OpenAPI JSON 契约文件至项目根目录的 .ai/openapi 目录下（以当前子模块名称命名），为 AI 编码助手提供“API 契约活地图”。
  * </p>
  */
 @SpringBootTest(
@@ -45,8 +45,48 @@ public class ApiRouterCatalogExporterTest {
                 .getResponse()
                 .getContentAsString();
 
-        File targetFile = File.createTempFile("openapi_", ".json");
-        Files.writeString(targetFile.toPath(), responseContent, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
-        log.info("OpenAPI JSON 契约文件已成功导出至临时文件: {}", targetFile.getAbsolutePath());
+        File rootDir = findProjectRoot();
+        if (rootDir != null) {
+            File openapiDir = new File(rootDir, ".ai/openapi");
+            if (!openapiDir.exists()) {
+                openapiDir.mkdirs();
+            }
+            String moduleName = getModuleName();
+            File targetFile = new File(openapiDir, moduleName + ".json");
+            if (targetFile.exists()) {
+                targetFile.delete();
+            }
+            Files.writeString(targetFile.toPath(), responseContent, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+            log.info("OpenAPI JSON 契约文件已成功导出至: {}", targetFile.getAbsolutePath());
+        } else {
+            log.warn("未找到包含 .ai 目录的项目根路径，API 契约导出失败");
+        }
+    }
+
+    private File findProjectRoot() {
+        File currentDir = new File(".").getAbsoluteFile();
+        while (currentDir != null) {
+            if (new File(currentDir, ".ai").isDirectory() || new File(currentDir, ".agent").isDirectory()) {
+                return currentDir;
+            }
+            currentDir = currentDir.getParentFile();
+        }
+        return null;
+    }
+
+    private String getModuleName() {
+        try {
+            java.net.URL url = ApiRouterCatalogExporterTest.class.getProtectionDomain().getCodeSource().getLocation();
+            File path = new File(url.toURI());
+            while (path != null) {
+                if (new File(path, "pom.xml").isFile()) {
+                    return path.getName();
+                }
+                path = path.getParentFile();
+            }
+        } catch (Exception e) {
+            // fallback
+        }
+        return new File(".").getAbsoluteFile().getName();
     }
 }
