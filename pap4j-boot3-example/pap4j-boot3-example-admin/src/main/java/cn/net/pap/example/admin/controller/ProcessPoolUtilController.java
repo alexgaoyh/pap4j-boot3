@@ -4,6 +4,7 @@ import cn.net.pap.example.admin.dto.ProcessResult;
 import cn.net.pap.example.admin.util.ProcessPoolUtil;
 import cn.net.pap.example.admin.util.ProcessPoolUtilExample;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,6 +22,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
+@Tag(name = "进程池与异步任务演示接口", description = "提供非阻塞式的进程执行与结果缓存管理接口")
 @RestController
 @RequestMapping("/processPoolUtil")
 public class ProcessPoolUtilController {
