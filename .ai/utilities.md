@@ -26,8 +26,7 @@
 *   [SQLCheckerUtil](../pap4j-common/pap4j-common-jsqlparser/src/main/java/cn/net/pap/common/jsqlparser/SQLCheckerUtil.java): SQL 语法验证与动态改写。
 
 ## 🌐 爬虫与诊断
-*   [TakeScreenshotTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/html/TakeScreenshotTest.java): Headless 截图及 Console/Network 日志获取。支持前端页面渲染、交互与网络日志诊断，为 AI 协同在无图控制台环境下提供“视觉之眼”调试工具。
-*   [OkHttpBatchExecutor](../pap4j-common/pap4j-common-spider/src/main/java/cn/net/pap/common/spider/util/OkHttpBatchExecutor.java): OkHttp 安全批处理并发执行器。
+*   [OkHttpBatchExecutor](../pap4j-common/pap4j-common-spider/src/main/java/cn/net/pap/common/spider/util/OkHttpBatchExecutor.java): OkHttp 安全批处理并发执行器.
 *   [OkHttpBatchExecutorTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/util/OkHttpBatchExecutorTest.java): 演示通过 Interceptor 拦截外部不可达 API，并支持基于 JSON 请求体参数路由分发 Mock 数据、或直接触发 SocketTimeoutException 异常，支持本地业务离线联调测试。
 *   [HttpClientBatchExecutor](../pap4j-common/pap4j-common-spider/src/main/java/cn/net/pap/common/spider/util/HttpClientBatchExecutor.java): Apache HttpClient 5 安全批处理并发执行器（满足对 HttpClient 依赖场景下的统一实现）。
 *   [HttpClientBatchExecutorTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/util/HttpClientBatchExecutorTest.java): 演示通过 ExecChainHandler (拦截器) 拦截 Apache HttpClient 5 请求，解析 JSON 请求体参数路由分发 Mock 数据、或直接触发 SocketTimeoutException 异常，支持本地业务离线联调测试。
@@ -87,12 +86,15 @@
 *   [LoggerLevelUtil](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/main/java/cn/net/pap/logback/util/LoggerLevelUtil.java): 在线运行时动态查询及设置 Logback 中指定包/类日志级别的管理工具。
 *   [ReqResLoggerReplayTest](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/test/java/cn/net/pap/logback/filter/ReqResLoggerReplayTest.java): 日志录制与回放单测最佳实践用例，演示了如何通过 [ReqResLoggerHttpFilter](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/main/java/cn/net/pap/logback/filter/ReqResLoggerHttpFilter.java)（集成了 OOM 防护、安全内容裁剪、二进制及 SSE 直通的全局过滤器）自动录制 400/500 异常 JSON 快照，并在不启动 Tomcat 端口的情况下直接通过 MockMvc 100% 重现与测试回放。
 *   [QuartzUtils](../pap4j-boot3-starters/pap4j-boot3-starters-quartz/src/main/java/cn/net/pap/quartz/util/QuartzUtils.java): 快速注册与调配 Quartz 任务触发器及作业的控制工具。
-*   [GetThreadsWithFullStackTraceUtil](../pap4j-boot3-starters/pap4j-boot3-starters-quartz/src/main/java/cn/net/pap/quartz/util/GetThreadsWithFullStackTraceUtil.java): JVM 活跃线程级堆栈深层诊断分析工具。
 
 ## 💡 业务与最佳实践工具 (Example Utilities)
 *   [SimpleRateLimiter](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/main/java/cn/net/pap/example/proguard/util/SimpleRateLimiter.java): 内存滑动窗口的高并发速率限制器（限流组件）。
 *   [SpringUtils](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/main/java/cn/net/pap/example/proguard/util/SpringUtils.java): 静态直接存取与调用 Spring ApplicationContext 及其 Bean 的全局门面类。
 *   [NumberSegmentUtil](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/main/java/cn/net/pap/example/proguard/util/NumberSegmentUtil.java): 高级号段步长式分布式 ID 发号发牌规则处理类。
 *   [SearchUtil](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/main/java/cn/net/pap/example/proguard/util/SearchUtil.java): JPA 动态复杂 Criteria 多条件聚合解析与通用拼装器。
-*   [ApiRouterCatalogExporterTest](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/test/java/cn/net/pap/example/proguard/diagnostics/ApiRouterCatalogExporterTest.java): Springdoc OpenAPI 接口契约自动生成器。在单元测试编译阶段自动导出最新的 OpenAPI 标准 JSON 文件，为 AI 编码助手或外部集成工具在无图沙箱环境下提供“API 契约活地图”。
-*   [JSONAPIController](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/main/java/cn/net/pap/example/dynamic/form/controller/JSONAPIController.java): 具备自定义的 Mock 转发控制器。配合 [mock-api.html](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/main/resources/static/mock-api.html) 支持 cURL 导入，便于外部接口离线业务联调。
+
+## 👁️ AI 协同与运行时诊断 (AI & Run-time Diagnostics)
+*   [TakeScreenshotTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/html/TakeScreenshotTest.java): Headless 截图及 Console/Network 日志获取工具。支持前端页面渲染、交互与网络日志诊断，在无图沙箱环境下为 AI 提供“视觉之眼”。
+*   [JSONAPIController](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/main/java/cn/net/pap/example/dynamic/form/controller/JSONAPIController.java): 高精度语义匹配 Mock 转发控制器。支持 JSON/Query 无序比对、二进制流模拟、状态码与延时自定义；配合 [mock-api.html](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/main/resources/static/mock-api.html) 支持 cURL 导入实现离线业务联调。使用用例见 [MockApiServiceTests](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/test/java/cn/net/pap/example/dynamic/form/MockApiServiceTests.java)。
+*   [ApiRouterCatalogExporterTest](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/test/java/cn/net/pap/example/proguard/diagnostics/ApiRouterCatalogExporterTest.java): Springdoc OpenAPI 接口契约自动生成器。单测编译时自动导出最新 OpenAPI 标准 JSON，在无图沙箱环境下为 AI 提供“API 契约活地图”。
+*   [GetThreadsWithFullStackTraceUtil](../pap4j-boot3-starters/pap4j-boot3-starters-quartz/src/main/java/cn/net/pap/quartz/util/GetThreadsWithFullStackTraceUtil.java): JVM 活跃线程级堆栈深层诊断分析工具。在排查死锁或高 CPU 耗时线程时为 AI 提供深层堆栈视图。
