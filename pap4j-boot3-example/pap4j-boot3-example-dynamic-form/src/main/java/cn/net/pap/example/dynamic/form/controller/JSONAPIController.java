@@ -4,6 +4,7 @@ import cn.net.pap.example.dynamic.form.dto.MockApiDTO;
 import cn.net.pap.example.dynamic.form.entity.MockApi;
 import cn.net.pap.example.dynamic.form.service.MockApiService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -26,6 +27,9 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 /**
  * 在线 API Mock 转发控制与配置管理类。
@@ -34,6 +38,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 @Slf4j
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "API Mock 管理与代理接口", description = "支持在线 API 规则配置、管理、模拟转发与二进制文件测试")
 public class JSONAPIController {
 
     private final MockApiService mockApiService;
@@ -44,17 +49,20 @@ public class JSONAPIController {
     // ==========================================
 
     @GetMapping("/api/mock-config/list")
+    @Operation(summary = "获取所有 Mock API 规则列表")
     public List<MockApiDTO> listConfig() {
         return mockApiService.listAll();
     }
 
     @PostMapping("/api/mock-config/save")
+    @Operation(summary = "保存或更新 Mock API 配置规则")
     public MockApiDTO saveConfig(@RequestBody MockApiDTO dto) {
         return mockApiService.save(dto);
     }
 
     @DeleteMapping("/api/mock-config/{id}")
-    public void deleteConfig(@PathVariable Long id) {
+    @Operation(summary = "删除指定的 Mock API 配置规则")
+    public void deleteConfig(@Parameter(description = "配置规则ID") @PathVariable Long id) {
         mockApiService.delete(id);
     }
 
@@ -63,6 +71,7 @@ public class JSONAPIController {
     // ==========================================
 
     @RequestMapping("/api/mock/**")
+    @Operation(summary = "Mock 请求动态代理转发端点", description = "拦截 /api/mock/** 的所有请求，根据配置规则进行高精度特征匹配并返回预设响应")
     public ResponseEntity<String> handleMock(HttpServletRequest request) {
         String fullPath = request.getRequestURI();
         String contextPath = request.getContextPath();
@@ -143,6 +152,94 @@ public class JSONAPIController {
         } catch (Exception e) {
             log.error("[Mock-Controller] 读取请求 Body 发生异常: ", e);
             return "";
+        }
+    }
+
+    @GetMapping("/api/mock/binary")
+    @Operation(summary = "统一文件与二进制 Mock 测试端点", description = "支持模拟生成文本、图片、PDF、Excel等文件流，支持浏览器直接预览或强制另存下载")
+    public void handleBinaryMock(
+            @Parameter(description = "资源文件类型: txt, png, pdf, xlsx", example = "txt")
+            @org.springframework.web.bind.annotation.RequestParam(value = "type", defaultValue = "txt") String type,
+            @Parameter(description = "浏览器处置行为: attachment (强制下载), inline (内联渲染/预览)", example = "attachment")
+            @org.springframework.web.bind.annotation.RequestParam(value = "disposition", defaultValue = "attachment") String disposition,
+            @Parameter(description = "下载文件的默认名称", example = "test.xlsx")
+            @org.springframework.web.bind.annotation.RequestParam(value = "filename", required = false) String filename,
+            @Parameter(description = "动态生成指定大小的测试文件空字节流（字节数）", example = "1024")
+            @org.springframework.web.bind.annotation.RequestParam(value = "size", required = false) Integer size,
+            HttpServletResponse response) {
+        
+        String resourcePath = "mock-files/test." + type.toLowerCase();
+        org.springframework.core.io.ClassPathResource resource = new org.springframework.core.io.ClassPathResource(resourcePath);
+
+        String mimeType;
+        switch (type.toLowerCase()) {
+            case "png":
+                mimeType = "image/png";
+                break;
+            case "pdf":
+                mimeType = "application/pdf";
+                break;
+            case "xlsx":
+                mimeType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                break;
+            case "txt":
+            default:
+                mimeType = "text/plain;charset=UTF-8";
+                break;
+        }
+
+        response.setContentType(mimeType);
+
+        String finalFilename = (filename != null && !filename.trim().isEmpty())
+                ? filename.trim()
+                : "mock-file." + type.toLowerCase();
+
+        if ("attachment".equalsIgnoreCase(disposition)) {
+            response.setHeader("Content-Disposition", "attachment; filename=\"" + finalFilename + "\"");
+        } else {
+            response.setHeader("Content-Disposition", "inline; filename=\"" + finalFilename + "\"");
+        }
+
+        // 支持通过 size 参数输出指定大小的空二进制流（测试大文件传输）
+        if (size != null && size > 0) {
+            response.setContentLength(size);
+            try (java.io.OutputStream os = response.getOutputStream()) {
+                byte[] buffer = new byte[Math.min(size, 8192)];
+                int remaining = size;
+                while (remaining > 0) {
+                    int toWrite = Math.min(remaining, buffer.length);
+                    os.write(buffer, 0, toWrite);
+                    remaining -= toWrite;
+                }
+                os.flush();
+            } catch (Exception e) {
+                log.error("[Mock-Controller] 输出指定大小二进制字节流失败: ", e);
+            }
+            return;
+        }
+
+        if (!resource.exists()) {
+            response.setStatus(HttpStatus.NOT_FOUND.value());
+            response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+            try {
+                response.getWriter().write("{\"error\": \"未找到对应类型的 Mock 资源文件: " + type + "\"}");
+            } catch (Exception e) {
+                log.error("[Mock-Controller] 输出 404 错误详情失败: ", e);
+            }
+            return;
+        }
+
+        try (java.io.InputStream is = resource.getInputStream();
+             java.io.OutputStream os = response.getOutputStream()) {
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = is.read(buffer)) != -1) {
+                os.write(buffer, 0, read);
+            }
+            os.flush();
+        } catch (Exception e) {
+            log.error("[Mock-Controller] 读取并输出 mock 资源文件发生异常: ", e);
+            response.setStatus(HttpStatus.INTERNAL_SERVER_ERROR.value());
         }
     }
 }
