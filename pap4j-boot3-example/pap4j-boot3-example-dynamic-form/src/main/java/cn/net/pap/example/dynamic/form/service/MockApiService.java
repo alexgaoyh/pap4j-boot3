@@ -6,12 +6,14 @@ import cn.net.pap.example.dynamic.form.repository.MockApiRepository;
 import cn.net.pap.example.dynamic.form.util.CurlParser;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -94,16 +96,16 @@ public class MockApiService {
                 continue;
             }
 
-            // 2. 比对 Query 串参数约束 (若配置了 Query 约束才进行严格去空白全等比对，包含参数顺序)
+            // 2. 比对 Query 串参数约束 (语义化比对，与顺序无关)
             if (candidate.getRequestParams() != null && !candidate.getRequestParams().trim().isEmpty()) {
-                if (!matchStringIgnoreWhitespace(candidate.getRequestParams(), actualQueryStr)) {
+                if (!matchQueryParams(candidate.getRequestParams(), actualQueryStr)) {
                     continue;
                 }
             }
 
-            // 3. 比对 Request Body 约束 (若配置了 Body 约束才进行严格去空白全等比对，包含顺序)
+            // 3. 比对 Request Body 约束 (语义化比对，与顺序无关)
             if (candidate.getRequestBody() != null && !candidate.getRequestBody().trim().isEmpty()) {
-                if (!matchStringIgnoreWhitespace(candidate.getRequestBody(), actualBody)) {
+                if (!matchBodySemantic(candidate.getRequestBody(), actualBody)) {
                     continue;
                 }
             }
@@ -191,6 +193,72 @@ public class MockApiService {
         }
         // 去除 ASCII/Unicode 的各类空格、制表符、垂直制表符、换行、回车等空白符，以及单双引号和反引号
         return str.replaceAll("[\\s\\h\\v\\u00A0\\u2007\\u202F\\u3000'\"`]", "");
+    }
+
+    private boolean matchQueryParams(String expectedQuery, String actualQuery) {
+        if (expectedQuery == null || expectedQuery.trim().isEmpty()) {
+            return actualQuery == null || actualQuery.trim().isEmpty();
+        }
+        Map<String, List<String>> expectedMap = parseQueryParams(expectedQuery);
+        Map<String, List<String>> actualMap = parseQueryParams(actualQuery);
+        return Objects.equals(expectedMap, actualMap);
+    }
+
+    private Map<String, List<String>> parseQueryParams(String queryStr) {
+        if (queryStr == null || queryStr.trim().isEmpty()) {
+            return java.util.Collections.emptyMap();
+        }
+        String cleanQuery = queryStr.trim();
+        if (cleanQuery.startsWith("?")) {
+            cleanQuery = cleanQuery.substring(1);
+        }
+        Map<String, List<String>> params = new HashMap<>();
+        String[] pairs = cleanQuery.split("&");
+        for (String pair : pairs) {
+            if (pair.isEmpty()) {
+                continue;
+            }
+            int idx = pair.indexOf("=");
+            String key;
+            String value;
+            try {
+                if (idx > 0) {
+                    key = java.net.URLDecoder.decode(pair.substring(0, idx), "UTF-8");
+                    value = java.net.URLDecoder.decode(pair.substring(idx + 1), "UTF-8");
+                } else {
+                    key = java.net.URLDecoder.decode(pair, "UTF-8");
+                    value = "";
+                }
+                params.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
+            } catch (Exception e) {
+                log.warn("[Mock-Service] URL 解码 Query 键值对发生异常: {}", pair, e);
+                if (idx > 0) {
+                    key = pair.substring(0, idx);
+                    value = pair.substring(idx + 1);
+                } else {
+                    key = pair;
+                    value = "";
+                }
+                params.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
+            }
+        }
+        for (List<String> values : params.values()) {
+            java.util.Collections.sort(values);
+        }
+        return params;
+    }
+
+    private boolean matchBodySemantic(String expectedBody, String actualBody) {
+        if (expectedBody == null || expectedBody.trim().isEmpty()) {
+            return actualBody == null || actualBody.trim().isEmpty();
+        }
+        try {
+            JsonNode expectedNode = objectMapper.readTree(expectedBody);
+            JsonNode actualNode = objectMapper.readTree(actualBody);
+            return expectedNode.equals(actualNode);
+        } catch (Exception e) {
+            return matchStringIgnoreWhitespace(expectedBody, actualBody);
+        }
     }
 
     private MockApiDTO toDTO(MockApi entity) {
