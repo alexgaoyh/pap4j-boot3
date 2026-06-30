@@ -20,6 +20,32 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * <p>
  * 本类作为 Java Web 接口契约的“自动导出器”，在单元测试阶段直接导出标准的 OpenAPI JSON 契约文件至项目根目录的 .ai/openapi 目录下（以当前子模块名称命名），为 AI 编码助手提供“API 契约活地图”。
  * </p>
+ *
+ * <p><b>思路储备：如何在 Maven 构建时自动刷新 openapi.json</b></p>
+ * <p>
+ * 如果期望将契约刷新与 Maven 构建生命周期绑定，可以在 <code>pom.xml</code> 中配置 <code>maven-surefire-plugin</code> 的专属 execution，绑定到指定阶段（如 <code>package</code> 或 <code>process-test-classes</code>）执行该单测类：
+ * </p>
+ * <pre>{@code
+ * <plugin>
+ *     <groupId>org.apache.maven.plugins</groupId>
+ *     <artifactId>maven-surefire-plugin</artifactId>
+ *     <executions>
+ *         <execution>
+ *             <id>auto-generate-openapi-json</id>
+ *             <phase>package</phase>
+ *             <goals>
+ *                 <goal>test</goal>
+ *             </goals>
+ *             <configuration>
+ *                 <includes>
+ *                     <include>cn/net/pap/example/proguard/diagnostics/ApiRouterCatalogExporterTest.java</include>
+ *                 </includes>
+ *                 <skipTests>false</skipTests>
+ *             </configuration>
+ *         </execution>
+ *     </executions>
+ * </plugin>
+ * }</pre>
  */
 @SpringBootTest(
     classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class},
