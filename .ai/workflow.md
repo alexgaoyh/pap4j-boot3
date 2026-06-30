@@ -44,6 +44,7 @@
 
 *   **PowerShell 常用命令**:
   ```powershell
+  .\.agent\agent-test.cmd -pl <module> "-Dtest=<test_class>" test
   mvn clean test -pl <module> "-Dtest=<test_class>" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true" "-DskipTests=false"
   Get-ChildItem -Path . -Filter *Test.java -Recurse | Select-String -Pattern "Autowired"
   ```

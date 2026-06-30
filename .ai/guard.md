@@ -10,7 +10,7 @@
     * ⚠️ **PowerShell 下的 Maven 执行约束**:
         * 优先使用 `mvn`，若不存在则使用项目自带的包装器 `.\mvnw`。
         * **参数包裹规则**: 在 PowerShell 中传递复杂的 Maven 参数（如测试类名、多模块指定等）时，**必须使用双引号 `"` 包裹参数**（例如 `"-Dtest=..."`），严禁使用单引号，防止参数被 PowerShell 引擎解析截断。
-        * **文件编码与插件跳过强制**: 运行任何构建、编译或测试验证命令时，**必须**同时显式附加 `"-Dfile.encoding=UTF-8"` 以及 `"-Dmaven.gitcommitid.skip=true"` 参数，以防止 Windows 默认的 GBK 环境导致控制台乱码，并严防因为 `git-commit-id-maven-plugin` 插件的重复扫描拖慢自动化验证流程。
+        * **文件编码与插件跳过强制**: 运行任何构建、编译或测试验证命令时，应优先调用 `.agent/` 目录下的专属脚本以自动注入参数；若直接使用 maven 命令行，必须同时显式附加 `"-Dfile.encoding=UTF-8"` 以及 `"-Dmaven.gitcommitid.skip=true"` 参数，以防止 Windows 默认的 GBK 环境导致控制台乱码，并严防冗余校验拖慢流程。
 * **命名空间**: 仅使用 `jakarta.*`。严禁使用 `javax.*`。
 
 ## 2. Java 17 现代模式
@@ -135,3 +135,13 @@
 8. **持久层事务**: `@Transactional` 是否仅标注在 Service 方法级别（而非类级别或 Repository/Controller 上）？写操作是否添加了 `rollbackFor = Exception.class`？纯查询方法是否避免了无意义的注解（仅在对账、JPA优化或读写分离时使用 `readOnly = true`）？
 9. **pap4j-common 公共 API 边界**: 本次修改是否涉及 `pap4j-common` 任意子模块下 `src/main/java` 中的 `public` 方法或 `public` 接口？若是，**无论改动大小，必须触发 `[Plan]` 强阻断**，不得跳过，因为这些方法是跨模块公共契约。
 10. **Swagger 注解**: 模块含 `springdoc-openapi` 时，新增接口/参数是否已补齐 Swagger 注解？
+
+## 10. AI 自我纠错指导原则 (AI Self-Correction Principles)
+* **本地单元测试执行规范**:
+  * 运行单元测试时，为避免复杂的命令行转义错误以及自动激活 `agent` 调试 Profile，**必须**调用 `.agent/` 目录下的专属脚本：
+    * **Windows (PowerShell)**: 使用 `.\.agent\agent-test.cmd -pl <module-name> test`（例如：`.\.agent\agent-test.cmd -pl pap4j-boot3-example/pap4j-boot3-example-dynamic-form test`）。
+    * **Linux / macOS**: 使用 `./.agent/agent-test.sh -pl <module-name> test`。
+* **低噪音精准定位报错**:
+  * 若测试执行失败，AI **必须优先且直接读取**项目根目录下的 `.ai/diagnostics/test_failures.md` 文件。该文件包含了剔除杂音后的精炼失败堆栈信息，禁止盲目在庞杂的 Maven 控制台日志中遍历检索，以节约上下文窗口与 Token 消耗。
+
+
