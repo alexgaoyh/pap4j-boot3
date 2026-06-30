@@ -13,6 +13,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * 验证 Mock API 语义化无序匹配 (JSON Key 顺序无关、Query 参数顺序无关)。
+ * <p>
+ * 特殊说明：单测方法上标注的 {@link org.springframework.transaction.annotation.Transactional} 
+ * 仅用于在单元测试运行完毕后自动回滚数据库状态以进行测试数据隔离，此用法属于测试框架特性，不违反生产代码中“@Transactional 仅限标注在 Service 层方法上”的事务设计红线。
  */
 @SpringBootTest(properties = "spring.datasource.url=jdbc:sqlite::memory:")
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)

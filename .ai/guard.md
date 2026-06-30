@@ -138,9 +138,8 @@
 
 ## 10. AI 自我纠错指导原则 (AI Self-Correction Principles)
 * **本地单元测试执行规范**:
-  * 运行单元测试时，为避免复杂的命令行转义错误以及自动激活 `agent` 调试 Profile，**必须**调用 `.agent/` 目录下的专属脚本：
-    * **Windows (PowerShell)**: 使用 `.\.agent\agent-test.cmd -pl <module-name> test`（例如：`.\.agent\agent-test.cmd -pl pap4j-boot3-example/pap4j-boot3-example-dynamic-form test`）。
-    * **Linux / macOS**: 使用 `./.agent/agent-test.sh -pl <module-name> test`。
+  * 运行单元测试时，为避免复杂的命令行转义错误以及自动激活 `agent` 调试 Profile，**优先**使用 `.agent/` 目录下的专属脚本。若因特殊情况无法使用脚本，则退而使用原生 Maven 命令行（必须附带 `"-Dfile.encoding=UTF-8"` 与 `"-Dmaven.gitcommitid.skip=true"`）：
+    * **Windows (PowerShell)**: 优先使用 `.\.agent\agent-test.cmd -pl <module-name> test`（例如：`.\.agent\agent-test.cmd -pl pap4j-boot3-example/pap4j-boot3-example-dynamic-form test`）。
 * **低噪音精准定位报错**:
   * 若测试执行失败，AI **必须优先且直接读取**项目根目录下的 `.ai/diagnostics/test_failures.md` 文件。该文件包含了剔除杂音后的精炼失败堆栈信息，禁止盲目在庞杂的 Maven 控制台日志中遍历检索，以节约上下文窗口与 Token 消耗。
 
