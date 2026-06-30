@@ -49,6 +49,7 @@
     * 返回 `Collections.emptyList()` 而非 `new ArrayList<>()`。
     * 包装类 (Long/Integer) 的等值判断必须使用 `.equals()`。
 * **海量数据高频解析防抖**: 在海量文本、大文件或字节流的高频循环解析场景中，严禁在循环内部重复创建 `ByteArrayOutputStream` 等缓冲流或调用 `toByteArray()` 产生海量临时数组。应优先使用字节指针偏移量（Slice Reference）在主字节数组上进行逻辑切片，直接传递 `(byte[] bytes, int start, int end)` 等区间参数，将垃圾对象产生和 GC 暂停时间降至最低。
+* **Swagger 注解规范**: 若模块含 `springdoc-openapi` 依赖，新增的 Controller 接口及参数必须标注 Swagger 注解（如 `@Tag`、`@Operation`、`@Parameter`），便于 AI 更好理解项目契约。
 
 ## 6. 日志规范 (SLF4J)
 * **禁止标准输出**: 使用 `org.slf4j.Logger`。严禁使用 `System.out` 或 `System.err`。
@@ -133,3 +134,4 @@
 7. **持久层 N+1**: 是否存在在循环内部调用 Repository/Mapper 的情况？
 8. **持久层事务**: `@Transactional` 是否仅标注在 Service 方法级别（而非类级别或 Repository/Controller 上）？写操作是否添加了 `rollbackFor = Exception.class`？纯查询方法是否避免了无意义的注解（仅在对账、JPA优化或读写分离时使用 `readOnly = true`）？
 9. **pap4j-common 公共 API 边界**: 本次修改是否涉及 `pap4j-common` 任意子模块下 `src/main/java` 中的 `public` 方法或 `public` 接口？若是，**无论改动大小，必须触发 `[Plan]` 强阻断**，不得跳过，因为这些方法是跨模块公共契约。
+10. **Swagger 注解**: 模块含 `springdoc-openapi` 时，新增接口/参数是否已补齐 Swagger 注解？
