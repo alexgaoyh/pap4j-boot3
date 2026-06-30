@@ -95,3 +95,4 @@
 *   [NumberSegmentUtil](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/main/java/cn/net/pap/example/proguard/util/NumberSegmentUtil.java): 高级号段步长式分布式 ID 发号发牌规则处理类。
 *   [SearchUtil](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/main/java/cn/net/pap/example/proguard/util/SearchUtil.java): JPA 动态复杂 Criteria 多条件聚合解析与通用拼装器。
 *   [ApiRouterCatalogExporterTest](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/test/java/cn/net/pap/example/proguard/diagnostics/ApiRouterCatalogExporterTest.java): Springdoc OpenAPI 接口契约自动生成器。在单元测试编译阶段自动导出最新的 OpenAPI 标准 JSON 文件，为 AI 编码助手或外部集成工具在无图沙箱环境下提供“API 契约活地图”。
+*   [JSONAPIController](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/main/java/cn/net/pap/example/dynamic/form/controller/JSONAPIController.java): 具备自定义的 Mock 转发控制器。配合 [mock-api.html](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/main/resources/static/mock-api.html) 支持 cURL 导入，便于外部接口离线业务联调。
