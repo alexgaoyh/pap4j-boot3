@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 
 /**
  * 在线 API Mock 转发控制与配置管理类。
@@ -35,6 +37,7 @@ import java.util.stream.Collectors;
 public class JSONAPIController {
 
     private final MockApiService mockApiService;
+    private final ObjectMapper objectMapper;
 
     // ==========================================
     // 1. Mock 配置管理 API (DTO 隔离)
@@ -78,9 +81,36 @@ public class JSONAPIController {
         Optional<MockApi> mockApiOpt = mockApiService.matchRequest(mockPath, method, headers, rawQuery, requestBody);
         if (mockApiOpt.isPresent()) {
             MockApi mockApi = mockApiOpt.get();
-            return ResponseEntity.status(mockApi.getResponseStatus())
-                    .contentType(MediaType.parseMediaType(mockApi.getContentType()))
-                    .body(mockApi.getResponseBody());
+
+            // 1. 模拟网络延迟
+            if (mockApi.getDelayMs() != null && mockApi.getDelayMs() > 0) {
+                try {
+                    Thread.sleep(mockApi.getDelayMs());
+                } catch (InterruptedException e) {
+                    log.warn("[Mock-Controller] 延时响应被中断: ", e);
+                    Thread.currentThread().interrupt();
+                }
+            }
+
+            // 2. 构建响应，装配自定义响应头
+            ResponseEntity.BodyBuilder builder = ResponseEntity.status(mockApi.getResponseStatus())
+                    .contentType(MediaType.parseMediaType(mockApi.getContentType()));
+
+            String responseHeadersJson = mockApi.getResponseHeaders();
+            if (responseHeadersJson != null && !responseHeadersJson.trim().isEmpty()) {
+                try {
+                    Map<String, String> responseHeadersMap = objectMapper.readValue(responseHeadersJson, new TypeReference<Map<String, String>>() {});
+                    if (responseHeadersMap != null) {
+                        for (Map.Entry<String, String> entry : responseHeadersMap.entrySet()) {
+                            builder.header(entry.getKey(), entry.getValue());
+                        }
+                    }
+                } catch (Exception e) {
+                    log.error("[Mock-Controller] 解析自定义响应头 JSON 失败: ", e);
+                }
+            }
+
+            return builder.body(mockApi.getResponseBody());
         }
 
         String errorMsg = String.format(

@@ -13,5 +13,7 @@ public record MockApiDTO(
         String requestHeaders,
         String requestParams,
         String requestBody,
+        String responseHeaders,
+        Integer delayMs,
         String curlCommand
 ) {}

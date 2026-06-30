@@ -511,12 +511,16 @@
                                     <span :class="['status-dot', getStatusClass(item.responseStatus)]"></span>
                                     <span>Status: {{ item.responseStatus }}</span>
                                 </div>
+                                <div v-if="item.delayMs && item.delayMs > 0">• 延迟: {{ item.delayMs }}ms</div>
                                 <div>•</div>
                                 <div>Content-Type: {{ item.contentType.split(';')[0] }}</div>
                             </div>
-                            <div v-if="hasConstraints(item)" style="margin-top: 0.2rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">
+                            <div v-if="hasConstraints(item) || (item.responseHeaders && item.responseHeaders !== '{}')" style="margin-top: 0.2rem; display: flex; gap: 0.4rem; flex-wrap: wrap;">
                                 <span v-if="item.requestHeaders && item.requestHeaders !== '{}'" style="background: rgba(99,102,241,0.15); border: 1px solid rgba(99,102,241,0.3); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.65rem; color: #a5b4fc;">
                                     📌 Headers: {{ Object.keys(JSON.parse(item.requestHeaders)).length }} 个
+                                </span>
+                                <span v-if="item.responseHeaders && item.responseHeaders !== '{}'" style="background: rgba(165,180,252,0.15); border: 1px solid rgba(165,180,252,0.3); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.65rem; color: #c7d2fe;">
+                                    📤 响应头: {{ Object.keys(JSON.parse(item.responseHeaders)).length }} 个
                                 </span>
                                 <span v-if="item.requestParams" style="background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); padding: 0.1rem 0.3rem; border-radius: 4px; font-size: 0.65rem; color: #a7f3d0; font-family: monospace;">
                                     🔍 Query: ?{{ item.requestParams }}
@@ -621,9 +625,31 @@
 
                         <div class="form-item">
                             <label for="status">HTTP 状态码 *</label>
-                            <input id="status" type="number" v-model.number="form.responseStatus" placeholder="200" required>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <select @change="onStatusSelectChange" style="flex: 1; min-width: 90px; background: #0f172a; border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; padding: 0.3rem;">
+                                    <option value="200">200 OK</option>
+                                    <option value="201">201 Created</option>
+                                    <option value="204">204 No Content</option>
+                                    <option value="301">301 Moved</option>
+                                    <option value="302">302 Found</option>
+                                    <option value="400">400 Bad Request</option>
+                                    <option value="401">401 Unauthorized</option>
+                                    <option value="403">403 Forbidden</option>
+                                    <option value="404">404 Not Found</option>
+                                    <option value="405">405 Method Allowed</option>
+                                    <option value="500">500 Server Error</option>
+                                    <option value="502">502 Bad Gateway</option>
+                                    <option value="503">503 Service Unavail</option>
+                                    <option value="custom">自定义...</option>
+                                </select>
+                                <input id="status" type="number" v-model.number="form.responseStatus" placeholder="200" required style="width: 80px; flex-shrink: 0;">
+                            </div>
                         </div>
                         <div class="form-item">
+                            <label for="delayMs">响应延迟 (毫秒)</label>
+                            <input id="delayMs" type="number" v-model.number="form.delayMs" placeholder="0" min="0" max="10000">
+                        </div>
+                        <div class="form-item full-width">
                             <label for="contentType">响应媒体类型 (Content-Type) *</label>
                             <select id="contentType" v-model="form.contentType">
                                 <option value="application/json;charset=UTF-8">application/json (JSON 数据)</option>
@@ -631,6 +657,15 @@
                                 <option value="text/html;charset=UTF-8">text/html (HTML 页面)</option>
                                 <option value="application/xml;charset=UTF-8">application/xml (XML)</option>
                             </select>
+                        </div>
+                        <div class="form-item full-width">
+                            <label for="responseHeaders">预设响应头 (Response Headers JSON)</label>
+                            <textarea 
+                                id="responseHeaders" 
+                                v-model="form.responseHeaders" 
+                                placeholder='示例: {"Cache-Control": "no-cache", "X-Custom-Header": "value"}'
+                                style="min-height: 80px;"
+                            ></textarea>
                         </div>
                         <div class="form-item full-width">
                             <label for="responseBody">响应正文 (Response Body)</label>
@@ -734,8 +769,17 @@
                     requestHeaders: '',
                     requestParams: '',
                     requestBody: '',
+                    responseHeaders: '',
+                    delayMs: 0,
                     curlCommand: ''
                 });
+
+                const onStatusSelectChange = (event) => {
+                    const val = event.target.value;
+                    if (val !== 'custom') {
+                        form.value.responseStatus = parseInt(val, 10);
+                    }
+                };
 
                 const testConfig = ref({
                     method: 'GET',
@@ -899,11 +943,19 @@
                     }
 
                     // 验证 JSON 格式
-                    if (form.value.requestHeaders.trim()) {
+                    if (form.value.requestHeaders && form.value.requestHeaders.trim()) {
                         try {
                             JSON.parse(form.value.requestHeaders);
                         } catch (e) {
                             showMessage('期望请求头不是有效的 JSON 格式', true);
+                            return;
+                        }
+                    }
+                    if (form.value.responseHeaders && form.value.responseHeaders.trim()) {
+                        try {
+                            JSON.parse(form.value.responseHeaders);
+                        } catch (e) {
+                            showMessage('预设响应头不是有效的 JSON 格式', true);
                             return;
                         }
                     }
@@ -954,6 +1006,13 @@
                     // 格式化 JSON 显示
                     if (item.requestHeaders && item.requestHeaders !== '{}') {
                         form.value.requestHeaders = JSON.stringify(JSON.parse(item.requestHeaders), null, 2);
+                    } else {
+                        form.value.requestHeaders = '';
+                    }
+                    if (item.responseHeaders && item.responseHeaders !== '{}') {
+                        form.value.responseHeaders = JSON.stringify(JSON.parse(item.responseHeaders), null, 2);
+                    } else {
+                        form.value.responseHeaders = '';
                     }
                     
                     // 自动配置测试面板
@@ -985,6 +1044,8 @@
                         requestHeaders: '',
                         requestParams: '',
                         requestBody: '',
+                        responseHeaders: '',
+                        delayMs: 0,
                         curlCommand: ''
                     };
                 };
@@ -1097,7 +1158,8 @@
                     truncateText,
                     getStatusClass,
                     getMethodClass,
-                    hasConstraints
+                    hasConstraints,
+                    onStatusSelectChange
                 };
             }
         }).mount('#app');

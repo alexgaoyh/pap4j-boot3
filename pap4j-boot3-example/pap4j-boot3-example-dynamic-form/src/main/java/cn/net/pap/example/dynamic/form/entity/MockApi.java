@@ -48,5 +48,11 @@ public class MockApi {
     private String requestBody; // 期望请求体
 
     @Column(columnDefinition = "TEXT")
+    private String responseHeaders; // 预设响应头 (JSON Map)
+
+    @Column(nullable = false)
+    private Integer delayMs = 0; // 延时时间 (毫秒)
+
+    @Column(columnDefinition = "TEXT")
     private String curlCommand; // 原始 cURL 命令行
 }

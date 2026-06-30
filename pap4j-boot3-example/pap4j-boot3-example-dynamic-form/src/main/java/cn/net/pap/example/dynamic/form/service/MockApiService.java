@@ -54,6 +54,8 @@ public class MockApiService {
         mockApi.setResponseStatus(dto.responseStatus() != null ? dto.responseStatus() : 200);
         mockApi.setContentType(dto.contentType() != null ? dto.contentType() : "application/json;charset=UTF-8");
         mockApi.setResponseBody(dto.responseBody());
+        mockApi.setResponseHeaders(formatResponseHeaders(dto.responseHeaders()));
+        mockApi.setDelayMs(dto.delayMs() != null ? dto.delayMs() : 0);
 
         if (dto.curlCommand() != null && !dto.curlCommand().trim().isEmpty()) {
             parseAndPopulateFromCurl(dto.curlCommand(), mockApi);
@@ -144,6 +146,18 @@ public class MockApiService {
         }
     }
 
+    private String formatResponseHeaders(String jsonStr) {
+        if (jsonStr == null || jsonStr.trim().isEmpty()) {
+            return "{}";
+        }
+        try {
+            Map<String, String> map = objectMapper.readValue(jsonStr, new TypeReference<Map<String, String>>() {});
+            return objectMapper.writeValueAsString(map);
+        } catch (Exception e) {
+            throw new RuntimeException("非法的响应头 JSON Map 格式: " + e.getMessage());
+        }
+    }
+
     private boolean matchHeaders(String expectedHeadersJson, Map<String, String> actualHeaders) {
         if (expectedHeadersJson == null || expectedHeadersJson.trim().isEmpty() || "{}".equals(expectedHeadersJson.trim())) {
             return true;
@@ -190,6 +204,8 @@ public class MockApiService {
                 entity.getRequestHeaders(),
                 entity.getRequestParams(),
                 entity.getRequestBody(),
+                entity.getResponseHeaders(),
+                entity.getDelayMs(),
                 entity.getCurlCommand()
         );
     }
