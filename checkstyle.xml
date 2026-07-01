@@ -34,5 +34,11 @@
             <property name="message" value="禁止使用 Executors.newSingleThreadExecutor，建议使用 ThreadPoolExecutor 自定义线程池参数以避免 OOM 风险。"/>
             <property name="ignoreComments" value="true"/>
         </module>
+        <!-- 禁止单独定义 AutoCloseableFTPClient 变量。为了确保资源正常关闭，必须使用 try-with-resources 语法，例如: try (AutoCloseableFTPClient ftp = new AutoCloseableFTPClient()) -->
+        <module name="MatchXpath">
+            <property name="id" value="AutoCloseableFTPClient-Must-Use-With-Try"/>
+            <property name="query" value="//VARIABLE_DEF[./TYPE/IDENT[@text='AutoCloseableFTPClient'] and not(ancestor::RESOURCE)]"/>
+            <message key="matchxpath.match" value="禁止单独定义 AutoCloseableFTPClient 变量。为了确保资源正常关闭，必须使用 try-with-resources 语法，例如: try (AutoCloseableFTPClient ftp = new AutoCloseableFTPClient())"/>
+        </module>
     </module>
 </module>
