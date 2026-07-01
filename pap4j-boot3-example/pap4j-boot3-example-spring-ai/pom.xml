@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.net.pap.example</groupId>
         <artifactId>pap4j-boot3-example</artifactId>
-        <version>0.0.3</version>
+        <version>${revision}</version>
     </parent>
 
     <artifactId>pap4j-boot3-example-spring-ai</artifactId>
