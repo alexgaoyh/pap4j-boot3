@@ -135,16 +135,11 @@ public class SimpleTriple<T1, T2, T3> implements Serializable {
      * @throws Exception
      */
     public void write2TripleFile(String fileNameAbsolutePath, List<SimpleTriple<T1, T2, T3>> simpleTripleList) throws Exception {
-        FileOutputStream fos = new FileOutputStream(new File(fileNameAbsolutePath));
-        OutputStreamWriter osw = new OutputStreamWriter(fos, "UTF-8");
-        BufferedWriter bw = new BufferedWriter(osw);
-
-        for (SimpleTriple simpleTriple : simpleTripleList) {
-            bw.write(simpleTriple.toTriple() + "\t\n");
+        try (BufferedWriter bw = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(new File(fileNameAbsolutePath)), "UTF-8"))) {
+            for (SimpleTriple<T1, T2, T3> simpleTriple : simpleTripleList) {
+                bw.write(simpleTriple.toTriple() + "\t\n");
+            }
         }
-        bw.close();
-        osw.close();
-        fos.close();
     }
 
 }

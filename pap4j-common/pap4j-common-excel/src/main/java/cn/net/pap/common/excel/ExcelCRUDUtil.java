@@ -25,13 +25,10 @@ public class ExcelCRUDUtil {
 
     public static void createXlsx(String path, String sheetName) {
         new File(path).delete();
-        XSSFWorkbook workbook = new XSSFWorkbook();
-        Sheet sheet = workbook.createSheet(sheetName);
-        try {
-            FileOutputStream fileOut = new FileOutputStream(path);
+        try (XSSFWorkbook workbook = new XSSFWorkbook();
+             FileOutputStream fileOut = new FileOutputStream(path)) {
+            workbook.createSheet(sheetName);
             workbook.write(fileOut);
-            fileOut.close();
-            workbook.close();
         } catch (IOException e) {
             log.error("createXlsx", e);
         }
@@ -66,19 +63,19 @@ public class ExcelCRUDUtil {
     }
 
     public static void delete(int rowIndex, String path, String sheets) throws IOException {
-        XSSFWorkbook workbook = getExcelByPath(path);
-        XSSFSheet sheet = workbook.getSheet(sheets);
-        int lastRowNum = sheet.getLastRowNum();
-        if (rowIndex >= 0 && rowIndex < lastRowNum)
-            sheet.shiftRows(rowIndex + 1, lastRowNum, -1);// 将行号为rowIndex+1一直到行号为lastRowNum的单元格全部上移一行，以便删除rowIndex行
-        if (rowIndex == lastRowNum) {
-            XSSFRow removingRow = sheet.getRow(rowIndex);
-            if (removingRow != null)
-                sheet.removeRow(removingRow);
+        try (XSSFWorkbook workbook = getExcelByPath(path);
+             FileOutputStream out = new FileOutputStream(path)) {
+            XSSFSheet sheet = workbook.getSheet(sheets);
+            int lastRowNum = sheet.getLastRowNum();
+            if (rowIndex >= 0 && rowIndex < lastRowNum)
+                sheet.shiftRows(rowIndex + 1, lastRowNum, -1);// 将行号为rowIndex+1一直到行号为lastRowNum的单元格全部上移一行，以便删除rowIndex行
+            if (rowIndex == lastRowNum) {
+                XSSFRow removingRow = sheet.getRow(rowIndex);
+                if (removingRow != null)
+                    sheet.removeRow(removingRow);
+            }
+            workbook.write(out);
         }
-        FileOutputStream out = new FileOutputStream(path);
-        workbook.write(out);
-        out.close();
     }
 
     /**
@@ -90,18 +87,18 @@ public class ExcelCRUDUtil {
      * @throws IOException
      */
     public static void update(int rowNum, int colNum, String value, String path, String sheets) throws IOException {
-        XSSFWorkbook workbook = getExcelByPath(path);
-        XSSFSheet sheet = workbook.getSheet(sheets);
-        XSSFRow row = sheet.getRow(rowNum);
-        XSSFCell cell = row.getCell(colNum);
-        if (cell == null) {
-            row.createCell(colNum).setCellValue(value);
-        } else {
-            row.getCell(colNum).setCellValue(value);
+        try (XSSFWorkbook workbook = getExcelByPath(path);
+             FileOutputStream out = new FileOutputStream(path)) {
+            XSSFSheet sheet = workbook.getSheet(sheets);
+            XSSFRow row = sheet.getRow(rowNum);
+            XSSFCell cell = row.getCell(colNum);
+            if (cell == null) {
+                row.createCell(colNum).setCellValue(value);
+            } else {
+                row.getCell(colNum).setCellValue(value);
+            }
+            workbook.write(out);
         }
-        FileOutputStream out = new FileOutputStream(path);
-        workbook.write(out);
-        out.close();
     }
 
     public static List<PageData> vttInit(String path, String sheets) {

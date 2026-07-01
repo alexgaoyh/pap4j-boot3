@@ -22,38 +22,31 @@ public class ExcelCopyUtil {
      * @param destRowNum 0      目标 xlsx 的行号
      */
     public static void copyRowWithStyle(String sourceFilePath, String destFilePath, String targetSheetName, int sourceRowNum, int destRowNum) {
-        try {
-            FileInputStream fis = new FileInputStream(sourceFilePath);
-            Workbook sourceWorkbook = WorkbookFactory.create(fis);
-            Sheet sourceSheet = sourceWorkbook.getSheetAt(0);
+        try (FileInputStream fis = new FileInputStream(sourceFilePath);
+             FileOutputStream fos = new FileOutputStream(destFilePath)) {
+            try (Workbook sourceWorkbook = WorkbookFactory.create(fis);
+                 Workbook destWorkbook = WorkbookFactory.create(true)) {
+                Sheet sourceSheet = sourceWorkbook.getSheetAt(0);
+                Sheet destSheet = destWorkbook.createSheet(targetSheetName);
 
-            Workbook destWorkbook = WorkbookFactory.create(true);
-            Sheet destSheet = destWorkbook.createSheet(targetSheetName);
+                Row sourceRow = sourceSheet.getRow(sourceRowNum);
+                Row destRow = destSheet.createRow(destRowNum);
+                copyRowHeight(sourceRow, destRow);
 
-            Row sourceRow = sourceSheet.getRow(sourceRowNum);
-            Row destRow = destSheet.createRow(destRowNum);
-            copyRowHeight(sourceRow, destRow);
+                if (sourceRow != null) {
+                    for (int i = 0; i < sourceRow.getLastCellNum(); i++) {
+                        Cell sourceCell = sourceRow.getCell(i);
+                        Cell destCell = destRow.createCell(i);
 
-            if (sourceRow != null) {
-                for (int i = 0; i < sourceRow.getLastCellNum(); i++) {
-                    Cell sourceCell = sourceRow.getCell(i);
-                    Cell destCell = destRow.createCell(i);
-
-                    copyCellValue(sourceCell, destCell);
-                    copyCellStyle(sourceCell, destCell, destWorkbook);
-                    copyColumnWidth(sourceSheet, destSheet, i);
+                        copyCellValue(sourceCell, destCell);
+                        copyCellStyle(sourceCell, destCell, destWorkbook);
+                        copyColumnWidth(sourceSheet, destSheet, i);
+                    }
                 }
+
+                copyMergedRegions(sourceSheet, destSheet, sourceRowNum, destRowNum);
+                destWorkbook.write(fos);
             }
-
-            copyMergedRegions(sourceSheet, destSheet, sourceRowNum, destRowNum);
-
-            FileOutputStream fos = new FileOutputStream(destFilePath);
-            destWorkbook.write(fos);
-
-            fis.close();
-            fos.close();
-            sourceWorkbook.close();
-            destWorkbook.close();
         } catch (IOException e) {
             log.error("copyRowWithStyle", e);
         }
@@ -69,40 +62,16 @@ public class ExcelCopyUtil {
      * @param numberOfGroup 2
      */
     public static void copyRowWithStyleInGroup(String sourceFilePath, String destFilePath, String targetSheetName, int offset, int withinGroupLength, int numberOfGroup) {
-        try {
-            FileInputStream fis = new FileInputStream(sourceFilePath);
-            Workbook sourceWorkbook = WorkbookFactory.create(fis);
-            Sheet sourceSheet = sourceWorkbook.getSheetAt(0);
+        try (FileInputStream fis = new FileInputStream(sourceFilePath);
+             FileOutputStream fos = new FileOutputStream(destFilePath)) {
+            try (Workbook sourceWorkbook = WorkbookFactory.create(fis);
+                 Workbook destWorkbook = WorkbookFactory.create(true)) {
+                Sheet sourceSheet = sourceWorkbook.getSheetAt(0);
+                Sheet destSheet = destWorkbook.createSheet(targetSheetName);
 
-            Workbook destWorkbook = WorkbookFactory.create(true);
-            Sheet destSheet = destWorkbook.createSheet(targetSheetName);
-
-            for(int offsetIdx = 0; offsetIdx < offset; offsetIdx++) {
-                Row sourceRow = sourceSheet.getRow(offsetIdx);
-                Row destRow = destSheet.createRow(offsetIdx);
-                copyRowHeight(sourceRow, destRow);
-
-                if (sourceRow != null) {
-                    for (int i = 0; i < sourceRow.getLastCellNum(); i++) {
-                        Cell sourceCell = sourceRow.getCell(i);
-                        Cell destCell = destRow.createCell(i);
-
-                        copyCellValue(sourceCell, destCell);
-                        copyCellStyle(sourceCell, destCell, destWorkbook);
-                        copyColumnWidth(sourceSheet, destSheet, i);
-                    }
-                }
-
-                copyMergedRegions(sourceSheet, destSheet, offsetIdx, offsetIdx);
-            }
-
-            for(int numberOfGroupIdx = 1; numberOfGroupIdx <= numberOfGroup; numberOfGroupIdx++) {
-                for(int withinGroupLengthIdx = 0; withinGroupLengthIdx < withinGroupLength; withinGroupLengthIdx++) {
-                    int sourceRowIdx = offset + withinGroupLengthIdx;
-                    int targetRowIdx = (offset) + (numberOfGroupIdx - 1) * withinGroupLength + withinGroupLengthIdx;
-
-                    Row sourceRow = sourceSheet.getRow(sourceRowIdx);
-                    Row destRow = destSheet.createRow(targetRowIdx);
+                for (int offsetIdx = 0; offsetIdx < offset; offsetIdx++) {
+                    Row sourceRow = sourceSheet.getRow(offsetIdx);
+                    Row destRow = destSheet.createRow(offsetIdx);
                     copyRowHeight(sourceRow, destRow);
 
                     if (sourceRow != null) {
@@ -110,24 +79,41 @@ public class ExcelCopyUtil {
                             Cell sourceCell = sourceRow.getCell(i);
                             Cell destCell = destRow.createCell(i);
 
-                            copyCellValue2(sourceCell, destCell, numberOfGroupIdx);
+                            copyCellValue(sourceCell, destCell);
                             copyCellStyle(sourceCell, destCell, destWorkbook);
                             copyColumnWidth(sourceSheet, destSheet, i);
                         }
                     }
 
-                    copyMergedRegions(sourceSheet, destSheet, sourceRowIdx, targetRowIdx);
+                    copyMergedRegions(sourceSheet, destSheet, offsetIdx, offsetIdx);
                 }
+
+                for (int numberOfGroupIdx = 1; numberOfGroupIdx <= numberOfGroup; numberOfGroupIdx++) {
+                    for (int withinGroupLengthIdx = 0; withinGroupLengthIdx < withinGroupLength; withinGroupLengthIdx++) {
+                        int sourceRowIdx = offset + withinGroupLengthIdx;
+                        int targetRowIdx = (offset) + (numberOfGroupIdx - 1) * withinGroupLength + withinGroupLengthIdx;
+
+                        Row sourceRow = sourceSheet.getRow(sourceRowIdx);
+                        Row destRow = destSheet.createRow(targetRowIdx);
+                        copyRowHeight(sourceRow, destRow);
+
+                        if (sourceRow != null) {
+                            for (int i = 0; i < sourceRow.getLastCellNum(); i++) {
+                                Cell sourceCell = sourceRow.getCell(i);
+                                Cell destCell = destRow.createCell(i);
+
+                                copyCellValue2(sourceCell, destCell, numberOfGroupIdx);
+                                copyCellStyle(sourceCell, destCell, destWorkbook);
+                                copyColumnWidth(sourceSheet, destSheet, i);
+                            }
+                        }
+
+                        copyMergedRegions(sourceSheet, destSheet, sourceRowIdx, targetRowIdx);
+                    }
+                }
+
+                destWorkbook.write(fos);
             }
-
-
-            FileOutputStream fos = new FileOutputStream(destFilePath);
-            destWorkbook.write(fos);
-
-            fis.close();
-            fos.close();
-            sourceWorkbook.close();
-            destWorkbook.close();
         } catch (IOException e) {
             log.error("copyRowWithStyleInGroup", e);
         }

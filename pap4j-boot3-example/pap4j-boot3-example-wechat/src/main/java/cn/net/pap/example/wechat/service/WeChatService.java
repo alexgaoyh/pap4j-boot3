@@ -211,7 +211,6 @@ public class WeChatService {
     public static String sendGet(String url, String param, String contentType)
     {
         StringBuilder result = new StringBuilder();
-        BufferedReader in = null;
         try
         {
             String urlNameString = !StringUtils.isEmpty(param) ? url + "?" + param : url;
@@ -222,11 +221,12 @@ public class WeChatService {
             connection.setRequestProperty("connection", "Keep-Alive");
             connection.setRequestProperty("user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
             connection.connect();
-            in = new BufferedReader(new InputStreamReader(connection.getInputStream(), contentType));
-            String line;
-            while ((line = in.readLine()) != null)
-            {
-                result.append(line);
+            try (BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream(), contentType))) {
+                String line;
+                while ((line = in.readLine()) != null)
+                {
+                    result.append(line);
+                }
             }
             log.info("recv - {}", result);
         }
@@ -245,20 +245,6 @@ public class WeChatService {
         catch (Exception e)
         {
             log.error("调用HttpsUtil.sendGet Exception, url={}, param={}", url, param, e);
-        }
-        finally
-        {
-            try
-            {
-                if (in != null)
-                {
-                    in.close();
-                }
-            }
-            catch (Exception ex)
-            {
-                log.error("调用in.close Exception, url={}, param={}", url, param, ex);
-            }
         }
         return result.toString();
     }

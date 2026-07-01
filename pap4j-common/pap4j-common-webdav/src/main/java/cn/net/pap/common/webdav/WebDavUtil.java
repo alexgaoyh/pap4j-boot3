@@ -180,16 +180,13 @@ public class WebDavUtil {
     }
 
     public void transStream2File(InputStream is, String fileName) throws IOException {
-        BufferedInputStream in = null;
-        BufferedOutputStream out = null;
-        in = new BufferedInputStream(is);
-        out = new BufferedOutputStream(new FileOutputStream(fileName));
-        int len = -1;
-        byte[] b = new byte[1024];
-        while ((len = in.read(b)) != -1) {
-            out.write(b, 0, len);
+        try (BufferedInputStream in = new BufferedInputStream(is);
+             BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(fileName))) {
+            int len = -1;
+            byte[] b = new byte[1024];
+            while ((len = in.read(b)) != -1) {
+                out.write(b, 0, len);
+            }
         }
-        in.close();
-        out.close();
     }
 }

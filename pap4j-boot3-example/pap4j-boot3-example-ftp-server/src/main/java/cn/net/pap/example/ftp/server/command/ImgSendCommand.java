@@ -165,37 +165,14 @@ public class ImgSendCommand extends AbstractCommand {
 
             try {
                 ImageThumbnailDTO imageThumbnailDTO = this.convertOriginJPG(session.getUser().getHomeDirectory() + File.separator + fileName, 141);
-                InputStream is = imageThumbnailDTO.getInputStream();
-                Throwable var14 = null;
-
-                try {
+                try (InputStream is = imageThumbnailDTO.getInputStream()) {
                     transSz = dataConnection.transferToClient(session.getFtpletSession(), is);
-                    if (is != null) {
-                        is.close();
-                    }
-
                     this.LOG.info("File downloaded {}", fileName);
                     ServerFtpStatistics ftpStat = (ServerFtpStatistics)context.getFtpStatistics();
                     if (ftpStat != null) {
                         ftpStat.setDownload(session, file, transSz);
                     }
                     session.write(new DefaultFtpReply(150, imageThumbnailDTO.getWidth() + ":" + imageThumbnailDTO.getHeight()));
-                } catch (Throwable var38) {
-                    var14 = var38;
-                    throw var38;
-                } finally {
-                    if (is != null) {
-                        if (var14 != null) {
-                            try {
-                                is.close();
-                            } catch (Throwable var37) {
-                                var14.addSuppressed(var37);
-                            }
-                        } else {
-                            is.close();
-                        }
-                    }
-
                 }
             } catch (SocketException var41) {
                 SocketException ex = var41;

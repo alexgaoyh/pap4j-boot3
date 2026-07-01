@@ -23,41 +23,21 @@ public class Html2DocxUtils {
     private static final StringBuffer htmlFotter = new StringBuffer("</body></html>");
 
     public static boolean html2docx2UsingPOI(StringBuffer html, String docxAbsPath) {
-        FileOutputStream outputStream = null;
-        ByteArrayInputStream bais = null;
+        StringBuffer all = new StringBuffer().append(htmlHeader).append(html).append(htmlFotter);
         try {
-            outputStream = new FileOutputStream(docxAbsPath);
-
-            StringBuffer all = new StringBuffer().append(htmlHeader).append(html).append(htmlFotter);
             String converted = image2Base64Convert(all.toString());
-
             byte[] b = converted.getBytes();
-            bais = new ByteArrayInputStream(b);
-            POIFSFileSystem poifs = new POIFSFileSystem();
-            DirectoryEntry directory = poifs.getRoot();
-            //WordDocument名称不允许修改
-            directory.createDocument("WordDocument", bais);
-
-            poifs.writeFilesystem(outputStream);
-
-            return true;
+            try (FileOutputStream outputStream = new FileOutputStream(docxAbsPath);
+                 ByteArrayInputStream bais = new ByteArrayInputStream(b);
+                 POIFSFileSystem poifs = new POIFSFileSystem()) {
+                DirectoryEntry directory = poifs.getRoot();
+                //WordDocument名称不允许修改
+                directory.createDocument("WordDocument", bais);
+                poifs.writeFilesystem(outputStream);
+                return true;
+            }
         } catch (Exception e) {
             log.error("html2docx2UsingPOI", e);
-        } finally {
-            if (outputStream != null) {
-                try {
-                    outputStream.close();
-                } catch (IOException e) {
-                    log.error("html2docx2UsingPOI", e);
-                }
-            }
-            if (bais != null) {
-                try {
-                    bais.close();
-                } catch (IOException e) {
-                    log.error("html2docx2UsingPOI", e);
-                }
-            }
         }
         return false;
     }
