@@ -46,6 +46,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *     </executions>
  * </plugin>
  * }</pre>
+ *
+ * <p><b>如何手动触发多模块 OpenAPI JSON 导出</b></p>
+ * <p>
+ * 如果在多个子模块下均存在同名的 <code>ApiRouterCatalogExporterTest</code> 类，可从根项目目录下执行以下 Maven 命令，同步触发所有匹配模块的单测并生成对应的 openapi.json：
+ * </p>
+ * <pre>{@code
+ * # 适用于 PowerShell 终端环境（需对参数加引号，防止其中的点号被解析为对象属性）
+ * mvn clean test "-Dtest=ApiRouterCatalogExporterTest" "-Dsurefire.failIfNoSpecifiedTests=false"
+ * }</pre>
+ * <p>
+ * </p>
  */
 @SpringBootTest(
     classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class},
