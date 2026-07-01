@@ -40,5 +40,11 @@
             <property name="query" value="//VARIABLE_DEF[./TYPE/IDENT[@text='AutoCloseableFTPClient'] and not(ancestor::RESOURCE)]"/>
             <message key="matchxpath.match" value="禁止单独定义 AutoCloseableFTPClient 变量。为了确保资源正常关闭，必须使用 try-with-resources 语法，例如: try (AutoCloseableFTPClient ftp = new AutoCloseableFTPClient())"/>
         </module>
+        <!-- 强力防御：常见 I/O 及数据库资源必须使用 try-with-resources 声明 -->
+        <module name="MatchXpath">
+            <property name="id" value="Common-Closeable-Resources-Must-Use-With-Try"/>
+            <property name="query" value="//VARIABLE_DEF[ancestor::SLIST and ./TYPE/IDENT[@text='InputStream' or @text='OutputStream' or @text='FileInputStream' or @text='FileOutputStream' or @text='BufferedInputStream' or @text='BufferedOutputStream' or @text='Reader' or @text='Writer' or @text='BufferedReader' or @text='BufferedWriter' or @text='FileReader' or @text='FileWriter' or @text='Connection' or @text='PreparedStatement' or @text='Statement' or @text='ResultSet' or @text='Socket' or @text='ServerSocket'] and not(ancestor::RESOURCE)]"/>
+            <message key="matchxpath.match" value="资源对象变量必须使用 try-with-resources 语法声明以确保安全自动关闭（例如：try (InputStream in = ... )）。禁止单独定义后手动关闭。"/>
+        </module>
     </module>
 </module>

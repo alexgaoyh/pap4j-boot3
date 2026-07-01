@@ -120,7 +120,6 @@ public class FtpController {
 
         // 4. 同步读取 FTP 文件并写入输出流
         FTPClient client = new FTPClient();
-        InputStream in = null;
 
         try {
             client.connect(FTP_HOST, FTP_PORT);
@@ -129,17 +128,19 @@ public class FtpController {
             client.setFileType(FTP.BINARY_FILE_TYPE);
 
             client.setRestartOffset(start);
-            in = client.retrieveFileStream(VIDEO_PATH);
+            try (InputStream in = client.retrieveFileStream(VIDEO_PATH)) {
+                if (in != null) {
+                    byte[] buffer = new byte[BUFFER_SIZE];
+                    long remaining = contentLength;
+                    int read;
 
-            byte[] buffer = new byte[BUFFER_SIZE];
-            long remaining = contentLength;
-            int read;
-
-            while (remaining > 0 && (read = in.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
-                response.getOutputStream().write(buffer, 0, read);
-                remaining -= read;
+                    while (remaining > 0 && (read = in.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
+                        response.getOutputStream().write(buffer, 0, read);
+                        remaining -= read;
+                    }
+                    response.flushBuffer();
+                }
             }
-            response.flushBuffer();
 
         } catch (Exception e) {
             if (!isClientAbort(e)) {
@@ -147,15 +148,6 @@ public class FtpController {
                 response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
             }
         } finally {
-            // 必须先关闭数据输入流 (InputStream)
-            if (in != null) {
-                try {
-                    in.close();
-                } catch (IOException ignored) {
-                    log.warn("Failed to close FTP InputStream", ignored);
-                }
-            }
-
             // 流关闭后，再调用 completePendingCommand 接收 226 响应
             if (client.isConnected()) {
                 try {
@@ -186,7 +178,6 @@ public class FtpController {
     public void streamMp42(HttpServletRequest request, HttpServletResponse response) throws IOException {
 
         FTPClient client = new FTPClient();
-        InputStream in = null;
         boolean isNormalCompletion = false;
 
         try {
@@ -255,29 +246,29 @@ public class FtpController {
 
             // 5. 设置起始偏移量并获取数据流
             client.setRestartOffset(start);
-            in = client.retrieveFileStream(VIDEO_PATH);
-
-            if (in == null) {
-                log.warn("从 FTP 获取文件流失败: {}", VIDEO_PATH);
-                if (!response.isCommitted()) {
-                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+            try (InputStream in = client.retrieveFileStream(VIDEO_PATH)) {
+                if (in == null) {
+                    log.warn("从 FTP 获取文件流失败: {}", VIDEO_PATH);
+                    if (!response.isCommitted()) {
+                        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                    }
+                    return;
                 }
-                return;
+
+                // 6. 流式输出到客户端
+                byte[] buffer = new byte[1024 * 64]; // 使用 64KB 缓冲区 (或替换为你的 BUFFER_SIZE)
+                long remaining = contentLength;
+                int read;
+                java.io.OutputStream out = response.getOutputStream();
+
+                while (remaining > 0 && (read = in.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
+                    out.write(buffer, 0, read);
+                    remaining -= read;
+                }
+                response.flushBuffer();
+
+                isNormalCompletion = true;
             }
-
-            // 6. 流式输出到客户端
-            byte[] buffer = new byte[1024 * 64]; // 使用 64KB 缓冲区 (或替换为你的 BUFFER_SIZE)
-            long remaining = contentLength;
-            int read;
-            java.io.OutputStream out = response.getOutputStream();
-
-            while (remaining > 0 && (read = in.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
-                out.write(buffer, 0, read);
-                remaining -= read;
-            }
-            response.flushBuffer();
-
-            isNormalCompletion = true;
 
         } catch (Exception e) {
             if (!isClientAbort(e)) {
@@ -290,26 +281,13 @@ public class FtpController {
             // 7. 安全资源释放逻辑 (修复关闭浏览器后文件被占用的问题)
             try {
                 if (isNormalCompletion) {
-                    if (in != null) {
-                        try { in.close(); } catch (Exception ignored) {}
-                    }
                     if (client.isConnected()) {
                         try { client.completePendingCommand(); } catch (Exception ignored) {}
                     }
                 } else {
-                    // 【核心修复】：如果是用户取消请求，必须先 close 切断数据链路，再 abort
-                    if (in != null) {
-                        try {
-                            // 1. 先强行关闭数据流。这会导致底层 Socket 立即关闭。
-                            // FTP 服务器试图继续发送数据时会触发 Broken Pipe 异常，从而释放文件锁。
-                            in.close();
-                        } catch (Exception ignored) {
-                            log.debug("强制关闭 FTP 数据流: {}", ignored.getMessage());
-                        }
-                    }
                     if (client.isConnected()) {
                         try {
-                            // 2. 数据链路切断后，服务器的主线程恢复，此时再发 ABOR 命令就不会被阻塞了。
+                            // 数据链路切断后，服务器的主线程恢复，此时再发 ABOR 命令就不会被阻塞了。
                             client.abort();
                         } catch (Exception ignored) {
                             log.debug("发送 FTP ABOR 命令: {}", ignored.getMessage());
