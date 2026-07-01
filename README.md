@@ -140,13 +140,13 @@
 mvn clean install -Dfile.encoding=UTF-8
 ```
 
-**2. 中央仓库依赖 (Version 0.0.3)**
+**2. 中央仓库依赖 (Version 0.0.4)**
 项目核心组件已发布至 Maven 中央仓库，可直接引入：
 ```xml
 <dependency>
     <groupId>cn.net.pap</groupId>
     <artifactId>pap4j-boot3-starters-cache</artifactId>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
 </dependency>
 ```
 
