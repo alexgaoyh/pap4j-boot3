@@ -452,6 +452,9 @@ public class OkHttpBatchExecutorTest {
                 execA.executeBatch(serverA.url("/").toString(), bodies);
                 int connectionsAfterBatch1 = connectCountA.get();
 
+                // 给 OkHttp 连接池的后台清理线程（asynchronous cleanup thread）留出足够的时间来清理/淘汰超过默认上限（5个）的空闲连接，避免因执行过快直接复用了尚未被清理的超额连接
+                Thread.sleep(200);
+
                 // 第二批：无延迟执行
                 for (int i = 0; i < 10; i++) {
                     serverA.enqueue(new MockResponse().setBody("OK"));
