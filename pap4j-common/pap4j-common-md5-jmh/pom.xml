@@ -68,6 +68,13 @@
             <artifactId>slf4j-api</artifactId>
         </dependency>
 
+        <!-- 引入新实现的 JNA libvips 模块 -->
+        <dependency>
+            <groupId>cn.net.pap</groupId>
+            <artifactId>pap4j-common-vips</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -25,44 +25,60 @@ import java.util.concurrent.TimeUnit;
 /**
  * <h3>TIFF 转换基准测试结果与分析</h3>
  * <p>本基准测试对比了在完整尺寸（1:1）下将 TIFF 转换为 JPG 的几种方案：
- * TwelveMonkeys, Apache Commons Imaging, ImageMagick 和 libvips。</p>
- * 
- * <h4>压测结果 (Average Time)</h4>
+ * TwelveMonkeys, Apache Commons Imaging, ImageMagick, libvips (命令行进程) 以及 libvips (JNA 进程内绑定)。</p>
+ *
+ * <h4>最新压测结果 (Throughput &amp; Average Time)</h4>
  * <table border="1" cellpadding="5" cellspacing="0">
  *   <tr>
  *     <th>测试方法</th>
  *     <th>底层实现</th>
+ *     <th>吞吐量 (ops/ms)</th>
  *     <th>平均耗时 (ms/op)</th>
  *     <th>性能排行</th>
  *   </tr>
  *   <tr>
+ *     <td><code>convert_VipsJna</code></td>
+ *     <td>libvips (JNA 进程内调用)</td>
+ *     <td><b>0.051 &plusmn; 0.020</b></td>
+ *     <td><b>20.710 &plusmn; 8.258</b></td>
+ *     <td><b>1</b> (绝对领先)</td>
+ *   </tr>
+ *   <tr>
  *     <td><code>convert_Vips</code></td>
- *     <td>libvips (外部进程)</td>
- *     <td>174.409 &plusmn; 29.156</td>
- *     <td><b>1</b> (最快)</td>
+ *     <td>libvips (外部命令行进程)</td>
+ *     <td>0.006 &plusmn; 0.001</td>
+ *     <td>152.765 &plusmn; 13.919</td>
+ *     <td><b>2</b></td>
  *   </tr>
  *   <tr>
  *     <td><code>convert_ImageMagick</code></td>
- *     <td>ImageMagick (外部进程)</td>
- *     <td>296.897 &plusmn; 15.991</td>
- *     <td><b>2</b></td>
+ *     <td>ImageMagick (外部命令行进程)</td>
+ *     <td>0.003 &plusmn; 0.001</td>
+ *     <td>285.505 &plusmn; 24.029</td>
+ *     <td><b>3</b></td>
  *   </tr>
  *   <tr>
  *     <td><code>convert_Imaging</code></td>
  *     <td>Apache Commons Imaging (纯Java)</td>
- *     <td>374.457 &plusmn; 110.919</td>
- *     <td><b>3</b> (误差较大)</td>
+ *     <td>0.003 &plusmn; 0.001</td>
+ *     <td>322.008 &plusmn; 111.304</td>
+ *     <td><b>4</b> (误差较大)</td>
  *   </tr>
  *   <tr>
  *     <td><code>convert_TwelveMonkeys</code></td>
  *     <td>TwelveMonkeys ImageIO (纯Java)</td>
- *     <td>409.358 &plusmn; 34.247</td>
- *     <td><b>4</b> (最慢)</td>
+ *     <td>0.002 &plusmn; 0.001</td>
+ *     <td>532.603 &plusmn; 761.185</td>
+ *     <td><b>5</b> (最慢/抖动极剧烈)</td>
  *   </tr>
  * </table>
  *
  * <h4>数据总结与技术建议</h4>
  * <ul>
+ *   <li><b>JNA 进程内调用的质变优势（增量结论）</b>：<code>convert_VipsJna</code> 展现出了极其恐怖的性能（约 20.7ms），
+ *   相较于命令行版本的 <code>convert_Vips</code>（~152.7ms）快了将近 7.5 倍。这有力地证明了在高并发/低延迟场景下，
+ *   <b>彻底消除每次拉起外部进程（Fork/Exec）的系统级开销以及进程间管道/文件 I/O 损耗</b>，能让底层 C 库（libvips）的按需流式处理性能释放到极致。</li>
+ *
  *   <li><b>外部原生工具的绝对优势</b>：即使算上在 Windows/Linux 环境下每次拉起外部进程（Fork/Exec）高达 30ms-80ms 的固定系统开销，
  *   <code>libvips</code> 和 <code>ImageMagick</code> 的综合执行时间依然碾压了所有纯 Java 的解决方案。这得益于它们底层由高度优化的 C/C++ (如 libjpeg-turbo, libtiff) 编写，
  *   在内存管理和 CPU 向量化指令（SIMD）利用上远超 JVM。</li>
@@ -71,13 +87,14 @@ import java.util.concurrent.TimeUnit;
  *   其处理速度比同为外部原生工具的 ImageMagick 快了近 40%。如果生产环境对吞吐量和内存有极高要求，推荐首选 libvips。</li>
  *   
  *   <li><b>纯 Java 方案的局限性</b>：<code>TwelveMonkeys</code> 和 <code>Commons Imaging</code> 在处理大型 TIFF 图像时，必须将像素数据
- *   解码到 JVM 堆内存的 <code>BufferedImage</code> 中。这不仅造成了巨大的垃圾回收（GC）压力，也增加了大量的内存复制开销。在测试中 <code>convert_Imaging</code> 
- *   的极高误差（&plusmn; 110 ms）侧面印证了在转换过程中发生了停顿（很可能是 GC 抖动）。</li>
- *   
+ *   解码到 JVM 堆内存的 <code>BufferedImage</code> 中。这不仅造成了巨大的垃圾回收（GC）压力，也增加了大量的内存复制开销。在测试中 <code>convert_Imaging</code>
+ *   和 <code>TwelveMonkeys</code> 极高的误差（后者甚至达到 &plusmn; 761 ms）侧面印证了在转换过程中发生了严重的 GC 停顿与堆抖动。</li>
+ *
  *   <li><b>架构选型结论</b>：
  *     <ol>
- *       <li>对于高频、大尺寸的图像转换基建，应尽早接入 <b>libvips</b>。</li>
- *       <li>如果受限于运维环境无法部署外部动态库，纯 Java 方案中可以酌情选择 <b>Commons Imaging</b>（速度略快）或 <b>TwelveMonkeys</b>（对生僻 TIFF 编码兼容性更好）。</li>
+ *       <li>对于高频、大尺寸的图像转换基建，<b>最优先推荐通过 JNA/JNI 接入 libvips (VipsJna)</b>，兼顾无进程损耗的超低延迟与原生 C 级高吞吐。</li>
+ *       <li>若 JNA 动态库环境配制复杂，可降级采用 <b>libvips 命令行工具</b>。</li>
+ *       <li>如果受限于运维环境无法部署任何外部动态库，纯 Java 方案中可以酌情选择 <b>Commons Imaging</b>（速度略快）或 <b>TwelveMonkeys</b>（对生僻 TIFF 编码兼容性更好）。</li>
  *       <li>注意纯 Java 方案处理大图极易引发 OOM，必须谨慎分配堆内存或配合子采样（Subsampling）使用。</li>
  *     </ol>
  *   </li>
@@ -104,6 +121,9 @@ public class TiffConvertBenchmark {
         // 关闭 ImageIO 的默认磁盘缓存，强制使用内存，拉平与 ImageMagick 在处理小文件时的 I/O 模型
         ImageIO.setUseCache(false);
 
+        // 初始化 JNA vips 库
+        cn.net.pap.common.vips.VipsImageProcessor.ensureInitialized();
+
         // 1. 获取资源文件并写入临时文件
         Path tempTiff = Files.createTempFile("benchmark_input", ".tiff");
         try (InputStream is = TiffConvertBenchmark.class.getResourceAsStream("/input.tiff")) {
@@ -125,6 +145,7 @@ public class TiffConvertBenchmark {
             convertFullSizeToDisk(tiffFilePath, tempJpgFileJava);
             String cmd = String.format("magick \"%s\" -quality 75 \"%s\"", tiffFilePath, tempJpgFile.getAbsolutePath());
             ProcessExecUtils.execWithShell(cmd, null, null, 20000);
+            cn.net.pap.common.vips.VipsImageProcessor.convertFormat(tiffFilePath, tempJpgFile.getAbsolutePath());
         } catch (Exception e) {
             // ignore init errors
         }
@@ -135,6 +156,9 @@ public class TiffConvertBenchmark {
         new File(tiffFilePath).delete();
         tempJpgFile.delete();
         tempJpgFileJava.delete();
+        
+        // 关闭 JNA vips 库以防堆外泄露
+        cn.net.pap.common.vips.VipsImageProcessor.shutdown();
     }
 
     @Benchmark
@@ -170,6 +194,12 @@ public class TiffConvertBenchmark {
         if (!result.isSuccess()) {
             throw new RuntimeException("ImageMagick conversion failed: " + result.getStderr());
         }
+        return tempJpgFile.length();
+    }
+
+    @Benchmark
+    public long convert_VipsJna() throws IOException {
+        cn.net.pap.common.vips.VipsImageProcessor.convertFormat(tiffFilePath, tempJpgFile.getAbsolutePath());
         return tempJpgFile.length();
     }
 
