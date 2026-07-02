@@ -41,9 +41,35 @@
             <message key="matchxpath.match" value="禁止单独定义 AutoCloseableFTPClient 变量。为了确保资源正常关闭，必须使用 try-with-resources 语法，例如: try (AutoCloseableFTPClient ftp = new AutoCloseableFTPClient())"/>
         </module>
         <!-- 强力防御：常见 I/O 及数据库资源必须使用 try-with-resources 声明 -->
+        <!-- 特殊说明：对于某些需要手动释放的场景（如由 Spring TransactionManager 托管的连接），可通过声明全限定类名（例如 java.sql.Connection ）合法绕过检测。 -->
         <module name="MatchXpath">
             <property name="id" value="Common-Closeable-Resources-Must-Use-With-Try"/>
-            <property name="query" value="//VARIABLE_DEF[ancestor::SLIST and ./TYPE/IDENT[@text='InputStream' or @text='OutputStream' or @text='FileInputStream' or @text='FileOutputStream' or @text='BufferedInputStream' or @text='BufferedOutputStream' or @text='Reader' or @text='Writer' or @text='BufferedReader' or @text='BufferedWriter' or @text='FileReader' or @text='FileWriter' or @text='Connection' or @text='PreparedStatement' or @text='Statement' or @text='ResultSet' or @text='Socket' or @text='ServerSocket'] and not(ancestor::RESOURCE)]"/>
+            <property name="query" value="
+                //VARIABLE_DEF[
+                    ancestor::SLIST
+                    and not(ancestor::RESOURCE)
+                    and (
+                        ./TYPE/IDENT[
+                            @text='InputStream' or @text='OutputStream' or
+                            @text='FileInputStream' or @text='FileOutputStream' or
+                            @text='BufferedInputStream' or @text='BufferedOutputStream' or
+                            @text='Reader' or @text='Writer' or
+                            @text='BufferedReader' or @text='BufferedWriter' or
+                            @text='FileReader' or @text='FileWriter' or
+                            @text='PreparedStatement' or @text='ResultSet' or
+                            @text='Socket' or @text='ServerSocket'
+                        ]
+                        or (
+                            ./TYPE/IDENT[@text='Connection']
+                            and not(ancestor::COMPILATION_UNIT/IMPORT/DOT[./IDENT[@text='Connection'] and .//IDENT[@text='jsoup']])
+                        )
+                        or (
+                            ./TYPE/IDENT[@text='Statement']
+                            and not(ancestor::COMPILATION_UNIT/IMPORT/DOT[./IDENT[@text='Statement'] and (.//IDENT[@text='jsqlparser'] or .//IDENT[@text='jena'])])
+                        )
+                    )
+                ]
+            "/>
             <message key="matchxpath.match" value="资源对象变量必须使用 try-with-resources 语法声明以确保安全自动关闭（例如：try (InputStream in = ... )）。禁止单独定义后手动关闭。"/>
         </module>
     </module>

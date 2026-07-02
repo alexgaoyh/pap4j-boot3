@@ -287,29 +287,34 @@ public class BeanController {
     public void streamStringsAPI(HttpServletResponse response) throws IOException {
         response.setContentType("text/event-stream;charset=UTF-8");
         response.setCharacterEncoding("UTF-8");
-        try {
-            RestTemplate restTemplate = new RestTemplate();
-            ClientHttpResponse clientHttpResponse = restTemplate.execute(
+
+        RestTemplate restTemplate = new RestTemplate();
+
+        try (java.io.OutputStream outputStream = response.getOutputStream()) {
+            restTemplate.execute(
                     "http://localhost:8080/stream-strings",
                     HttpMethod.GET,
                     null,
                     responseExtractor -> {
-                        InputStream inputStream = responseExtractor.getBody();
-                        OutputStream outputStream = response.getOutputStream();
-                        byte[] buffer = new byte[1024];
-                        int bytesRead;
-                        while ((bytesRead = inputStream.read(buffer)) != -1) {
-                            outputStream.write(buffer, 0, bytesRead);
-                            outputStream.flush();
+                        try (InputStream inputStream = responseExtractor.getBody()) {
+                            byte[] buffer = new byte[1024];
+                            int bytesRead;
+                            while ((bytesRead = inputStream.read(buffer)) != -1) {
+                                outputStream.write(buffer, 0, bytesRead);
+                                outputStream.flush();
+                            }
+                        } catch (IOException e) {
+                            log.error("Error streaming data", e);
+                            throw new RuntimeException("Streaming failed", e);
                         }
                         return null;
                     }
             );
         } catch (ResourceAccessException e) {
             // 处理可能的网络异常
-            log.error("streamStringsAPI", e);
-        } finally {
-            response.getWriter().close(); // 关闭输出流，从而关闭连接
+            log.error("streamStringsAPI - network error", e);
+        } catch (IOException e) {
+            log.error("streamStringsAPI - IO error", e);
         }
     }
 

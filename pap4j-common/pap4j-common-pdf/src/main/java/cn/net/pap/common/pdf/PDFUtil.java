@@ -368,12 +368,9 @@ public class PDFUtil {
             }
             //  PDType0Font.load 第三个参数默认为 true,  表示字体是子集嵌入（只嵌入用了的字符集） 通常子集会比完整字体小很多
             String loc = ChineseFont.getLocation(chineseFont.getFontName());
-            InputStream rawStream = PDFUtil.class.getClassLoader().getResourceAsStream(loc);
-            if(rawStream == null) {
-                rawStream = PDFUtil.class.getClassLoader().getResourceAsStream(loc.substring(1));
-            }
-            if(rawStream != null) {
-                try (InputStream resourceAsStream = rawStream) {
+            String activeLoc = PDFUtil.class.getClassLoader().getResource(loc) != null ? loc : (loc.startsWith("/") ? loc.substring(1) : "/" + loc);
+            try (InputStream resourceAsStream = PDFUtil.class.getClassLoader().getResourceAsStream(activeLoc)) {
+                if (resourceAsStream != null) {
                     // 使用正确的 document 加载字体，保证能够成功进行子集嵌入并满足 PDF/A 标准
                     PDType0Font tmp = PDType0Font.load(document, resourceAsStream);
                     Map<String, Object> tmpFontMap = new HashMap<>();
@@ -383,9 +380,9 @@ public class PDFUtil {
                     if(tmp.getStringWidth(String.valueOf(text)) > 0) {
                         return tmp;
                     }
-                } catch (Exception e) {
-                    log.warn("Error loading or checking font: {}", chineseFont.getFontName(), e);
                 }
+            } catch (Exception e) {
+                log.warn("Error loading or checking font: {}", chineseFont.getFontName(), e);
             }
 
         }
