@@ -41,6 +41,7 @@
         <module>pap4j-common-jdbc</module>
         <module>pap4j-common-md5-jmh</module>
         <module>pap4j-common-test</module>
+        <module>pap4j-common-vips</module>
     </modules>
 
     <properties>
