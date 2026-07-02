@@ -8,7 +8,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.imageio.ImageIO;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -17,6 +18,7 @@ import java.lang.management.MemoryMXBean;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Future;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -127,12 +129,13 @@ public class VipsImageProcessorTest {
         log.info("初始 JVM 堆内存占用: {} MB", String.format("%.2f", initialUsedHeap / (1024.0 * 1024.0)));
 
         // 严格遵循项目线程池规范 (guard.md)，显式使用 ThreadPoolExecutor 声明有界队列与拒绝策略
+        AtomicInteger threadCounter = new AtomicInteger(0);
         ThreadPoolExecutor executor = new ThreadPoolExecutor(
                 CONCURRENT_THREADS,
                 CONCURRENT_THREADS,
                 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(TOTAL_REQUESTS),
-                r -> new Thread(r, "stress-test-worker"),
+                r -> new Thread(r, "stress-test-worker-" + threadCounter.getAndIncrement()),
                 new ThreadPoolExecutor.AbortPolicy()
         );
 

@@ -18,19 +18,30 @@ public class VipsImageProcessor {
     private static final Logger log = LoggerFactory.getLogger(VipsImageProcessor.class);
 
     private static volatile boolean initialized = false;
+    private static volatile boolean shuttingDown = false;
 
     /**
      * 确保 libvips 库已初始化。
      * 在使用任何 libvips 函数前，必须先调用 vips_init。
      */
-    public static synchronized void ensureInitialized() {
-        if (!initialized) {
-            int result = LibVips.INSTANCE.vips_init("pap4j-common-vips");
-            if (result != 0) {
-                throw new RuntimeException("无法初始化 libvips，错误码: " + result);
+    public static void ensureInitialized() {
+        if (initialized) {
+            return;
+        }
+        synchronized (VipsImageProcessor.class) {
+            if (shuttingDown) {
+                throw new IllegalStateException(
+                        "[Vips-Init] libvips 已关闭，在同一 JVM 进程中无法再次初始化");
             }
-            initialized = true;
-            log.info("成功初始化 libvips");
+            if (!initialized) {
+                int result = LibVips.INSTANCE.vips_init("pap4j-common-vips");
+                if (result != 0) {
+                    throw new RuntimeException(
+                            "[Vips-Init] 无法初始化 libvips，错误码: " + result);
+                }
+                initialized = true;
+                log.info("[Vips-Init] 成功初始化 libvips");
+            }
         }
     }
 
@@ -50,12 +61,13 @@ public class VipsImageProcessor {
      */
     public static synchronized void shutdown() {
         if (initialized) {
+            shuttingDown = true;
             try {
                 LibVips.INSTANCE.vips_shutdown();
                 initialized = false;
-                log.info("成功关闭 libvips");
+                log.info("[Vips-Shutdown] 成功关闭 libvips");
             } catch (Throwable t) {
-                log.error("关闭 libvips 时发生错误: ", t);
+                log.error("[Vips-Shutdown] 关闭 libvips 时发生错误: ", t);
             }
         }
     }

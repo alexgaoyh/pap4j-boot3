@@ -8,19 +8,18 @@ public interface LibVips extends Library {
     LibVips INSTANCE = loadVipsLibrary();
 
     static LibVips loadVipsLibrary() {
-        try {
-            return Native.load("vips", LibVips.class);
-        } catch (UnsatisfiedLinkError e) {
+        String[] libNames = {"vips", "libvips-42", "vips-42"};
+        UnsatisfiedLinkError lastError = null;
+        for (String name : libNames) {
             try {
-                return Native.load("libvips-42", LibVips.class);
-            } catch (UnsatisfiedLinkError e2) {
-                try {
-                    return Native.load("vips-42", LibVips.class);
-                } catch (UnsatisfiedLinkError e3) {
-                    throw new UnsatisfiedLinkError("无法加载 libvips 本地动态链接库。请确保系统已安装 libvips 且已将其 bin 目录配置到 PATH 或 LD_LIBRARY_PATH 环境变量中。详情: " + e3.getMessage());
-                }
+                return Native.load(name, LibVips.class);
+            } catch (UnsatisfiedLinkError e) {
+                lastError = e;
             }
         }
+        throw new UnsatisfiedLinkError(
+                "无法加载 libvips 本地动态链接库。请确保系统已安装 libvips 且已将其 bin 目录配置到 PATH 或 LD_LIBRARY_PATH 环境变量中。详情: "
+                        + (lastError != null ? lastError.getMessage() : "未知错误"));
     }
 
     /**
