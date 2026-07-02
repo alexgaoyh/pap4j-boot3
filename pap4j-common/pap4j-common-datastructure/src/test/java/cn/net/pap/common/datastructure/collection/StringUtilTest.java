@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StringUtilTest {
@@ -348,6 +349,13 @@ public class StringUtilTest {
         log.info("----------------------------------------");
         log.info("验证结束，共拦截到 {} 个包含 U+FFFD 的损坏事件。", fffdCount);
 
+    }
+
+    @Test
+    public void compare1Test() {
+        // 文件比较的后缀大小写
+        int c1 = "0001.jpg".compareTo("0001.JPG");
+        assertFalse(c1 < 0);
     }
 
     private int findValidUtf8End(byte[] bytes) {
