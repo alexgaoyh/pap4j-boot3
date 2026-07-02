@@ -5,6 +5,11 @@ import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 
 public interface LibVips extends Library {
+
+    java.util.Map<String, Object> OPTIONS = java.util.Map.of(
+            Library.OPTION_STRING_ENCODING, "UTF-8"
+    );
+
     LibVips INSTANCE = loadVipsLibrary();
 
     static LibVips loadVipsLibrary() {
@@ -12,7 +17,7 @@ public interface LibVips extends Library {
         UnsatisfiedLinkError lastError = null;
         for (String name : libNames) {
             try {
-                return Native.load(name, LibVips.class);
+                return Native.load(name, LibVips.class, OPTIONS);
             } catch (UnsatisfiedLinkError e) {
                 lastError = e;
             }
@@ -83,7 +88,7 @@ public interface LibVips extends Library {
             UnsatisfiedLinkError lastError = null;
             for (String name : libNames) {
                 try {
-                    return Native.load(name, GLib.class);
+                    return Native.load(name, GLib.class, OPTIONS);
                 } catch (UnsatisfiedLinkError e) {
                     lastError = e;
                 }
