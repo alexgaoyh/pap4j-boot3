@@ -50,16 +50,76 @@ public interface LibVips extends Library {
     Pointer vips_image_new_from_file(String filename, Object... varargs);
 
     /**
+     * 获取图像宽度。
+     *
+     * @param image 图像指针
+     * @return 图像的宽度（像素）
+     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-get-width">vips_image_get_width API</a>
+     */
+    int vips_image_get_width(Pointer image);
+
+    /**
+     * 获取图像高度。
+     *
+     * @param image 图像指针
+     * @return 图像的高度（像素）
+     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-get-height">vips_image_get_height API</a>
+     */
+    int vips_image_get_height(Pointer image);
+
+    /**
+     * 对图像进行裁剪操作。
+     *
+     * @param in 输入图像指针
+     * @param out 接收裁剪后图像指针的引用
+     * @param left 裁剪区域左上角横坐标
+     * @param top 裁剪区域左上角纵坐标
+     * @param width 裁剪宽度
+     * @param height 裁剪高度
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-conversion.html#vips-crop">vips_crop API</a>
+     */
+    int vips_crop(Pointer in, PointerByReference out, int left, int top, int width, int height, Object... varargs);
+
+    /**
+     * 对图像进行重采样缩放操作。
+     *
+     * @param in 输入图像指针
+     * @param out 接收缩放后图像指针的引用
+     * @param scale 缩放比例因子
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-resample.html#vips-resize">vips_resize API</a>
+     */
+    int vips_resize(Pointer in, PointerByReference out, double scale, Object... varargs);
+
+    /**
      * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-write-to-file">vips_image_write_to_file API</a>
      */
     int vips_image_write_to_file(Pointer image, String name, Object... varargs);
 
     /**
+     * 从内存缓冲区加载图像元数据，建立惰性加载流指针。
+     *
+     * @param buf 内存缓冲区指针
+     * @param len 缓冲区长度
+     * @param optionString 选项字符串
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 图像指针
      * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-new-from-buffer">vips_image_new_from_buffer API</a>
      */
     Pointer vips_image_new_from_buffer(Pointer buf, long len, String optionString, Object... varargs);
 
     /**
+     * 将处理完成的图像惰性求值写出到内存缓冲区。
+     *
+     * @param image 图像指针
+     * @param suffix 输出格式后缀
+     * @param buf 接收输出指针 of 引用
+     * @param size 接收输出大小 of 引用
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 成功返回 0，失败返回非 0
      * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-write-to-buffer">vips_image_write_to_buffer API</a>
      */
     int vips_image_write_to_buffer(Pointer image, String suffix, PointerByReference buf, LongByReference size, Object... varargs);
@@ -146,5 +206,16 @@ public interface LibVips extends Library {
          * @see <a href="https://docs.gtk.org/glib/func.free.html">g_free API</a>
          */
         void g_free(Pointer mem);
+
+        /**
+         * 设置 GLib 级别的环境变量，直接影响 g_get_tmp_dir() 等 native 行为。
+         *
+         * @param variable 环境变量名
+         * @param value 环境变量值
+         * @param overwrite 是否在已存在的情况下覆盖
+         * @return 成功返回 true，失败返回 false
+         * @see <a href="https://docs.gtk.org/glib/func.setenv.html">g_setenv API</a>
+         */
+        boolean g_setenv(String variable, String value, boolean overwrite);
     }
 }

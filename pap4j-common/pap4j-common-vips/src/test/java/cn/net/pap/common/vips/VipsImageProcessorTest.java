@@ -25,6 +25,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 /**
  * libvips 图像处理器单元测试与压力测试
@@ -169,6 +170,41 @@ public class VipsImageProcessorTest {
         assertEquals(800, outputImg.getWidth(), "输出图像宽度应仍为 800");
         assertEquals(600, outputImg.getHeight(), "输出图像高度应仍为 600");
         log.info("成功转换 PNG 到 JPEG，验证分辨率为: {}x{}", outputImg.getWidth(), outputImg.getHeight());
+    }
+
+    /**
+     * 测试获取图片元数据以及裁剪与缩放管线。
+     */
+    @Test
+    public void testMetadataAndProcessImage() throws Exception {
+        log.info("测试 VipsImageProcessor.getImageMetadata 和 processImage...");
+
+        // 1. 测试获取元数据
+        VipsImageProcessor.ImageMetadata meta = VipsImageProcessor.getImageMetadata(inputFile.getAbsolutePath());
+        assertNotNull(meta);
+        assertEquals(800, meta.width());
+        assertEquals(600, meta.height());
+        log.info("成功获取测试图尺寸元数据: {}x{}", meta.width(), meta.height());
+
+        // 2. 测试裁剪并缩放
+        // 裁剪坐标 (100, 100)，宽度 400，高度 300，然后缩放 0.5 倍（预期输出为 200x150）
+        byte[] outputBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                100, 100, 400, 300,
+                0.5,
+                "jpeg"
+        );
+        assertNotNull(outputBytes);
+        assertTrue(outputBytes.length > 0);
+
+        // 将字节还原为图片以验证物理尺寸
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(outputBytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(200, bi.getWidth(), "裁剪缩放后的宽度应为 200");
+            assertEquals(150, bi.getHeight(), "裁剪缩放后的高度应为 150");
+            log.info("成功验证裁剪并缩放后的图像尺寸为: {}x{}", bi.getWidth(), bi.getHeight());
+        }
     }
 
     /**

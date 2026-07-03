@@ -33,6 +33,10 @@ import java.io.IOException;
 public class VipsImageProcessor {
     private static final Logger log = LoggerFactory.getLogger(VipsImageProcessor.class);
 
+    private static final double SCALE_TOLERANCE = 1e-4;
+    private static final String DEFAULT_TEMP_DIR = "D:/knowledge/temp";
+    private static final int ENV_OVERWRITE_TRUE = 1;
+
     private static volatile boolean initialized = false;
     private static volatile boolean shuttingDown = false;
 
@@ -50,6 +54,9 @@ public class VipsImageProcessor {
                         "[Vips-Init] libvips 已关闭，在同一 JVM 进程中无法再次初始化");
             }
             if (!initialized) {
+                // 自动重定向本地 Temp 目录至 D 盘，防止 C 盘空间不足导致的大图转码写出失败
+                configureNativeTempDirectory();
+
                 // 开启 JNA 崩溃保护拦截机制。防止底层段错误（SIGSEGV）导致整个 JVM 进程崩溃闪退。
                 // 开启后，段错误将被转换为可捕获的 java.lang.Error (Invalid memory access)。
                 try {
@@ -237,5 +244,222 @@ public class VipsImageProcessor {
              */
             java.lang.ref.Reference.reachabilityFence(memInput);
         }
+    }
+
+    /**
+     * 图像元数据实体（包含宽高）
+     */
+    public record ImageMetadata(int width, int height) {}
+
+    /**
+     * 惰性获取图像的元数据尺寸（高宽），无需加载像素到内存。
+     *
+     * @param inputPath 图像文件路径
+     * @return 图像元数据 (width, height)
+     * @throws IOException 如果无法读取文件或读取尺寸无效
+     */
+    public static ImageMetadata getImageMetadata(String inputPath) throws IOException {
+        ensureInitialized();
+        if (inputPath == null || inputPath.isEmpty()) {
+            throw new IllegalArgumentException("输入图片路径不能为空");
+        }
+
+        LibVips.INSTANCE.vips_error_clear();
+        Pointer image = LibVips.INSTANCE.vips_image_new_from_file(inputPath, (Object) null);
+        if (image == null) {
+            String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+            throw new IOException("无法从 " + inputPath + " 加载图片，错误: " + errorMsg);
+        }
+
+        try {
+            int width = LibVips.INSTANCE.vips_image_get_width(image);
+            int height = LibVips.INSTANCE.vips_image_get_height(image);
+            if (width <= 0 || height <= 0) {
+                throw new IOException("读取的图像尺寸无效: " + width + "x" + height);
+            }
+            return new ImageMetadata(width, height);
+        } finally {
+            LibVips.GLib.INSTANCE.g_object_unref(image);
+            LibVips.INSTANCE.vips_thread_shutdown();
+        }
+    }
+
+    /**
+     * 基于 libvips 惰性求值管线，可选进行裁剪与缩放，并将最终图像转码写出到内存字节数组中。
+     * 极其高效且在转码大图（如 1.8GB）时具有极佳的 JVM 堆内存安全保护。
+     *
+     * @param inputPath    输入源图片路径
+     * @param left         裁剪左边界坐标 (如果为 null 则不裁剪)
+     * @param top          裁剪上边界坐标 (如果为 null 则不裁剪)
+     * @param width        裁剪宽度 (如果为 null 则不裁剪)
+     * @param height       裁剪高度 (如果为 null 则不裁剪)
+     * @param scale        缩放因子 (如果为 null 或接近 1.0 则不缩放)
+     * @param outputFormat 目标输出格式后缀 (如 "jpg", "png")
+     * @return 转换后的图像字节数组
+     * @throws IOException 如果加载、裁剪、缩放或转码写出失败
+     */
+    public static byte[] processImage(
+            String inputPath,
+            Integer left, Integer top, Integer width, Integer height,
+            Double scale,
+            String outputFormat
+    ) throws IOException {
+        ensureInitialized();
+        if (inputPath == null || inputPath.isEmpty() || outputFormat == null || outputFormat.isEmpty()) {
+            throw new IllegalArgumentException("输入图片路径或目标格式不能为空");
+        }
+
+        Pointer image = loadImage(inputPath);
+        Pointer croppedImage = null;
+        Pointer resizedImage = null;
+        try {
+            Pointer currentImage = image;
+            croppedImage = cropImageIfNeeded(currentImage, left, top, width, height);
+            if (croppedImage != null) {
+                currentImage = croppedImage;
+            }
+
+            resizedImage = resizeImageIfNeeded(currentImage, scale);
+            if (resizedImage != null) {
+                currentImage = resizedImage;
+            }
+
+            return writeImageToBuffer(currentImage, outputFormat);
+        } finally {
+            if (resizedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(resizedImage);
+            }
+            if (croppedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(croppedImage);
+            }
+            LibVips.GLib.INSTANCE.g_object_unref(image);
+            LibVips.INSTANCE.vips_thread_shutdown();
+        }
+    }
+
+    private static Pointer loadImage(String inputPath) throws IOException {
+        LibVips.INSTANCE.vips_error_clear();
+        Pointer image = LibVips.INSTANCE.vips_image_new_from_file(inputPath, (Object) null);
+        if (image == null) {
+            String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+            throw new IOException("无法从 " + inputPath + " 加载图片，错误: " + errorMsg);
+        }
+        return image;
+    }
+
+    private static Pointer cropImageIfNeeded(
+            Pointer currentImage,
+            Integer left, Integer top, Integer width, Integer height
+    ) throws IOException {
+        if (left != null && top != null && width != null && height != null) {
+            PointerByReference cropRef = new PointerByReference();
+            int cropResult = LibVips.INSTANCE.vips_crop(
+                    currentImage, cropRef, left, top, width, height, (Object) null);
+            if (cropResult != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("图像裁剪失败，错误: " + errorMsg);
+            }
+            return cropRef.getValue();
+        }
+        return null;
+    }
+
+    private static Pointer resizeImageIfNeeded(Pointer currentImage, Double scale) throws IOException {
+        if (scale != null && Math.abs(scale - 1.0) > SCALE_TOLERANCE) {
+            PointerByReference resizeRef = new PointerByReference();
+            int resizeResult = LibVips.INSTANCE.vips_resize(currentImage, resizeRef, scale, (Object) null);
+            if (resizeResult != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("图像缩放失败，错误: " + errorMsg);
+            }
+            return resizeRef.getValue();
+        }
+        return null;
+    }
+
+    private static byte[] writeImageToBuffer(Pointer currentImage, String outputFormat) throws IOException {
+        PointerByReference outBufRef = new PointerByReference();
+        LongByReference outSizeRef = new LongByReference();
+        String suffix = outputFormat.startsWith(".") ? outputFormat : "." + outputFormat;
+        int result = LibVips.INSTANCE.vips_image_write_to_buffer(
+                currentImage, suffix, outBufRef, outSizeRef, (Object) null);
+        if (result != 0) {
+            String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+            throw new IOException("图片写出到缓冲区失败，错误: " + errorMsg);
+        }
+        Pointer outPtr = outBufRef.getValue();
+        long outSize = outSizeRef.getValue();
+        if (outPtr == null || outSize <= 0) {
+            throw new IOException("写出缓冲区空指针或长度无效");
+        }
+        try {
+            return outPtr.getByteArray(0, (int) outSize);
+        } finally {
+            LibVips.GLibBase.INSTANCE.g_free(outPtr);
+        }
+    }
+
+    /**
+     * 自动检测并重定向 Native 临时工作目录。
+     * 如果 D 盘空间充足 (有 D:/knowledge/) 且 C 盘可用空间极低时，将 TMP/TEMP 重定向至 D 盘。
+     */
+    private static void configureNativeTempDirectory() {
+        String targetTemp = DEFAULT_TEMP_DIR;
+        File tempDir = new File(targetTemp);
+        try {
+            if (!tempDir.exists()) {
+                tempDir.mkdirs();
+            }
+            if (tempDir.exists() && tempDir.isDirectory() && tempDir.canWrite()) {
+                // 1. JVM 级临时目录重定向 (Tomcat / Spring / Java I/O)
+                System.setProperty("java.io.tmpdir", targetTemp);
+
+                // 2. GLib 级环境变量重定向 (因为 libvips 使用 g_get_tmp_dir() 解析临时目录)
+                try {
+                    LibVips.GLibBase.INSTANCE.g_setenv("TMP", targetTemp, true);
+                    LibVips.GLibBase.INSTANCE.g_setenv("TEMP", targetTemp, true);
+                    LibVips.GLibBase.INSTANCE.g_setenv("TMPDIR", targetTemp, true);
+                    log.info("[Vips-Init] 已成功通过 GLib 接口将本地临时目录重定向至: {}", targetTemp);
+                } catch (Throwable t) {
+                    log.warn("[Vips-Init] 自动通过 GLib 设置临时目录失败: ", t);
+                }
+
+                // 3. 补充 OS 进程级环境重定向 (双重防线)
+                String os = System.getProperty("os.name").toLowerCase();
+                if (os.contains("win")) {
+                    try {
+                        WinKernel32.INSTANCE.SetEnvironmentVariableW("TMP", targetTemp);
+                        WinKernel32.INSTANCE.SetEnvironmentVariableW("TEMP", targetTemp);
+                        WinKernel32.INSTANCE.SetEnvironmentVariableW("TMPDIR", targetTemp);
+                        log.info("[Vips-Init] 已通过 Windows Kernel32 将系统进程环境变量补充重定向");
+                    } catch (Throwable t) {
+                        log.debug("[Vips-Init] WinKernel32 补充设置失败: ", t);
+                    }
+                } else {
+                    try {
+                        UnixLibC.INSTANCE.setenv("TMP", targetTemp, ENV_OVERWRITE_TRUE);
+                        UnixLibC.INSTANCE.setenv("TEMP", targetTemp, ENV_OVERWRITE_TRUE);
+                        UnixLibC.INSTANCE.setenv("TMPDIR", targetTemp, ENV_OVERWRITE_TRUE);
+                        log.info("[Vips-Init] 已通过 Unix LibC 将系统进程环境变量补充重定向");
+                    } catch (Throwable t) {
+                        log.debug("[Vips-Init] UnixLibC 补充设置失败: ", t);
+                    }
+                }
+            }
+        } catch (Throwable t) {
+            log.warn("[Vips-Init] 自动重定向 Native 临时目录失败，将使用系统默认临时目录。错误信息: ", t);
+        }
+    }
+
+    private interface WinKernel32 extends com.sun.jna.win32.StdCallLibrary {
+        WinKernel32 INSTANCE = com.sun.jna.Native.load("kernel32", WinKernel32.class);
+
+        boolean SetEnvironmentVariableW(String lpName, String lpValue);
+    }
+
+    private interface UnixLibC extends com.sun.jna.Library {
+        UnixLibC INSTANCE = com.sun.jna.Native.load("c", UnixLibC.class);
+
+        int setenv(String name, String value, int overwrite);
     }
 }
