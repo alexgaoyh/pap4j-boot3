@@ -74,7 +74,18 @@ public class VipsImageProcessorTest {
         File outputFile = new File(tempDir, "output_test.webp");
 
         log.info("正在使用 JNA libvips 将测试 PNG 转换为 WebP...");
-        VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), outputFile.getAbsolutePath());
+        try {
+            VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), outputFile.getAbsolutePath());
+        } catch (IllegalArgumentException e) {
+            log.error("测试 PNG 转换 WebP 时入参校验失败: ", e);
+            org.junit.jupiter.api.Assertions.fail("测试 PNG 转换 WebP 时入参校验失败", e);
+        } catch (IOException e) {
+            log.error("测试 PNG 转换 WebP 时发生 IO 读写错误: ", e);
+            org.junit.jupiter.api.Assertions.fail("测试 PNG 转换 WebP 时发生 IO 读写错误", e);
+        } catch (Throwable t) {
+            log.error("测试 PNG 转换 WebP 时捕获到底层致命 Error 或未知异常: ", t);
+            org.junit.jupiter.api.Assertions.fail("测试 PNG 转换 WebP 时发生底层系统级致命错误", t);
+        }
 
         // 验证输出文件存在且不为空
         assertTrue(outputFile.exists(), "应当成功创建 WebP 输出文件");
@@ -94,6 +105,40 @@ public class VipsImageProcessorTest {
     }
 
     /**
+     * 测试内存直传（不落盘）方式的图片格式转换
+     */
+    @Test
+    public void testConvertFormatInMemory() throws Exception {
+        // 读取输入测试图片的原始字节数据
+        byte[] inputBytes = java.nio.file.Files.readAllBytes(inputFile.toPath());
+        log.info("读取源图片字节完成，大小: {} 字节", inputBytes.length);
+
+        // 在内存中直接将图像转换为 WebP 格式
+        byte[] outputBytes = null;
+        try {
+            outputBytes = VipsImageProcessor.convertFormat(inputBytes, "webp");
+        } catch (IllegalArgumentException e) {
+            log.error("测试内存转换时入参校验失败: ", e);
+            org.junit.jupiter.api.Assertions.fail("测试内存转换时入参校验失败", e);
+        } catch (IOException e) {
+            log.error("测试内存转换时发生 IO 读写错误: ", e);
+            org.junit.jupiter.api.Assertions.fail("测试内存转换时发生 IO 读写错误", e);
+        } catch (Throwable t) {
+            log.error("测试内存转换时捕获到底层致命 Error 或未知异常: ", t);
+            org.junit.jupiter.api.Assertions.fail("测试内存转换时发生底层系统级致命错误", t);
+        }
+
+        assertTrue(outputBytes != null && outputBytes.length > 0, "转换后的内存数据不应为空且长度大于 0");
+
+        // 校验输出 WebP 数据头字节
+        String riff = new String(outputBytes, 0, 4);
+        String webp = new String(outputBytes, 8, 4);
+        assertEquals("RIFF", riff, "内存转换出的 WebP 数据必须以 RIFF 开头");
+        assertEquals("WEBP", webp, "内存转换出的 WebP 数据必须包含 WEBP");
+        log.info("成功在内存中直转 PNG 到 WebP 并校验格式头通过，输出大小: {} 字节", outputBytes.length);
+    }
+
+    /**
      * 测试转码为 JPEG 格式
      */
     @Test
@@ -101,7 +146,18 @@ public class VipsImageProcessorTest {
         File outputFile = new File(tempDir, "output_test.jpg");
 
         log.info("正在使用 JNA libvips 将测试 PNG 转换为 JPEG...");
-        VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), outputFile.getAbsolutePath());
+        try {
+            VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), outputFile.getAbsolutePath());
+        } catch (IllegalArgumentException e) {
+            log.error("测试 PNG 转换 JPEG 时入参校验失败: ", e);
+            org.junit.jupiter.api.Assertions.fail("测试 PNG 转换 JPEG 时入参校验失败", e);
+        } catch (IOException e) {
+            log.error("测试 PNG 转换 JPEG 时发生 IO 读写错误: ", e);
+            org.junit.jupiter.api.Assertions.fail("测试 PNG 转换 JPEG 时发生 IO 读写错误", e);
+        } catch (Throwable t) {
+            log.error("测试 PNG 转换 JPEG 时捕获到底层致命 Error 或未知异常: ", t);
+            org.junit.jupiter.api.Assertions.fail("测试 PNG 转换 JPEG 时发生底层系统级致命错误", t);
+        }
 
         assertTrue(outputFile.exists(), "应当成功创建 JPEG 输出文件");
         assertTrue(outputFile.length() > 0, "输出文件体积应当大于 0");
@@ -150,8 +206,14 @@ public class VipsImageProcessorTest {
                 try {
                     VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), outputFile.getAbsolutePath());
                     return outputFile.exists() && outputFile.length() > 0;
+                } catch (IllegalArgumentException e) {
+                    log.error("在第 {} 次转码任务中因入参校验发生失败: ", index, e);
+                    return false;
                 } catch (IOException e) {
-                    log.error("在第 {} 次转码任务中发生失败", index, e);
+                    log.error("在第 {} 次转码任务中因 IO 读写发生失败: ", index, e);
+                    return false;
+                } catch (Throwable t) {
+                    log.error("在第 {} 次转码任务中因底层致命 Error 或未知异常发生失败: ", index, t);
                     return false;
                 }
             }));

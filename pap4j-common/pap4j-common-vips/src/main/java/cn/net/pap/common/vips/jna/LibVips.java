@@ -3,6 +3,8 @@ package cn.net.pap.common.vips.jna;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.sun.jna.ptr.LongByReference;
+import com.sun.jna.ptr.PointerByReference;
 
 public interface LibVips extends Library {
 
@@ -51,6 +53,16 @@ public interface LibVips extends Library {
      * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-write-to-file">vips_image_write_to_file API</a>
      */
     int vips_image_write_to_file(Pointer image, String name, Object... varargs);
+
+    /**
+     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-new-from-buffer">vips_image_new_from_buffer API</a>
+     */
+    Pointer vips_image_new_from_buffer(Pointer buf, long len, String optionString, Object... varargs);
+
+    /**
+     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-write-to-buffer">vips_image_write_to_buffer API</a>
+     */
+    int vips_image_write_to_buffer(Pointer image, String suffix, PointerByReference buf, LongByReference size, Object... varargs);
 
     /**
      * @see <a href="https://libvips.github.io/libvips/API/current/libvips-error.html#vips-error-buffer">vips_error_buffer API</a>
@@ -102,5 +114,37 @@ public interface LibVips extends Library {
          * @see <a href="https://docs.gtk.org/gobject/method.Object.unref.html">g_object_unref API</a>
          */
         void g_object_unref(Pointer object);
+    }
+
+    /**
+     * GLib 核心基础依赖库接口，用于释放底层内存（g_free）。
+     */
+    interface GLibBase extends Library {
+        GLibBase INSTANCE = loadLibrary();
+
+        static GLibBase loadLibrary() {
+            String[] libNames = {
+                    "glib-2.0",
+                    "libglib-2.0-0",
+                    "libglib-2.0",
+                    "glib"
+            };
+            UnsatisfiedLinkError lastError = null;
+            for (String name : libNames) {
+                try {
+                    return Native.load(name, GLibBase.class, OPTIONS);
+                } catch (UnsatisfiedLinkError e) {
+                    lastError = e;
+                }
+            }
+            throw new UnsatisfiedLinkError("无法加载 glib-2.0 基础动态库以解析 g_free 函数。详情: " + (lastError != null ? lastError.getMessage() : "未知错误"));
+        }
+
+        /**
+         * 释放由 GLib 分配的内存
+         *
+         * @see <a href="https://docs.gtk.org/glib/func.free.html">g_free API</a>
+         */
+        void g_free(Pointer mem);
     }
 }

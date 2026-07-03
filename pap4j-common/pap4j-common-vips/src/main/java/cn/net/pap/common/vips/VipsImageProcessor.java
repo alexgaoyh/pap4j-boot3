@@ -2,6 +2,8 @@ package cn.net.pap.common.vips;
 
 import cn.net.pap.common.vips.jna.LibVips;
 import com.sun.jna.Pointer;
+import com.sun.jna.ptr.LongByReference;
+import com.sun.jna.ptr.PointerByReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,6 +12,20 @@ import java.io.IOException;
 
 /**
  * 使用 JNA 调用 libvips 实现的高效图像处理器。
+ *
+ * <p><b>JNA 本地内存安全设计规约（后续编写/新增代码必须严格遵循）：</b></p>
+ * <ul>
+ *   <li><b>1. 防提前回收 (Prevent Early GC)</b>：任何由 Java 分配并传入 C 本地代码的内存缓冲（如 {@link com.sun.jna.Memory}
+ *       或 Direct {@link java.nio.ByteBuffer}），若后续无 Java 级显式读写，其生命周期极易被 JIT 编译器判定为结束而被 GC 回收。
+ *       这会导致底层 C 代码异步/惰性处理时访问野指针崩溃。必须在 C 处理函数全部执行完毕后，显式调用
+ *       {@code java.lang.ref.Reference.reachabilityFence(memoryObj)} 筑起生命周期屏障。</li>
+ *   <li><b>2. 强入参校验 (Strict Input Validation)</b>：必须在 Java 边界对所有的路径、字节数组、格式后缀进行非空、非零长度等校验，
+ *       绝不允许把 Null 指针或非法参数直接传给 C 接口。</li>
+ *   <li><b>3. 线程级资源清理 (Per-Thread Cleanup)</b>：由于 libvips 采用激进的 Per-thread 内存池与错误缓存，而 Java 常驻于 Web
+ *       线程池中。调用完毕后，必须在 {@code finally} 中显式执行 {@code LibVips.INSTANCE.vips_thread_shutdown()} 清理临时状态，防止线程复用导致的堆外内存泄漏。</li>
+ *   <li><b>4. 生命周期防御 (Lifecycle Defense)</b>：libvips 的初始化与关闭具有 JVM 进程内单次有效性。必须确保 {@code vips_init}
+ *       和 {@code vips_shutdown} 在进程生命周期内只被安全调用一次。</li>
+ * </ul>
  *
  * @see <a href="https://libvips.github.io/libvips/">libvips 官方网站</a>
  * @see <a href="https://libvips.github.io/libvips/API/current/">libvips C API 官方文档</a>
@@ -34,6 +50,14 @@ public class VipsImageProcessor {
                         "[Vips-Init] libvips 已关闭，在同一 JVM 进程中无法再次初始化");
             }
             if (!initialized) {
+                // 开启 JNA 崩溃保护拦截机制。防止底层段错误（SIGSEGV）导致整个 JVM 进程崩溃闪退。
+                // 开启后，段错误将被转换为可捕获的 java.lang.Error (Invalid memory access)。
+                try {
+                    com.sun.jna.Native.setProtected(true);
+                } catch (Throwable t) {
+                    log.warn("[Vips-Init] 开启 JNA 崩溃保护拦截机制失败，当前系统或 JVM 可能不支持保护模式。详情: ", t);
+                }
+
                 int result = LibVips.INSTANCE.vips_init("pap4j-common-vips");
                 if (result != 0) {
                     throw new RuntimeException(
@@ -119,6 +143,99 @@ public class VipsImageProcessor {
             LibVips.GLib.INSTANCE.g_object_unref(image);
             // 释放线程级内存缓存
             LibVips.INSTANCE.vips_thread_shutdown();
+        }
+    }
+
+    /**
+     * 在内存中直接将图像从一个格式转换为另一个格式（无需读写本地磁盘文件）。
+     * 输出图像格式由目标后缀指定。
+     *
+     * @param inputBytes   源图片字节数组
+     * @param outputFormat 转换后的目标图片格式后缀（例如 "webp", "png", "jpg"）
+     * @return 转换后的目标图片字节数组
+     * @throws IOException 如果加载或写入图像失败
+     */
+    public static byte[] convertFormat(byte[] inputBytes, String outputFormat) throws IOException {
+        ensureInitialized();
+
+        if (inputBytes == null || inputBytes.length == 0) {
+            throw new IllegalArgumentException("输入图片字节数组不能为空");
+        }
+        if (outputFormat == null || outputFormat.isEmpty()) {
+            throw new IllegalArgumentException("目标图片格式不能为空");
+        }
+
+        // 清除之前的 vips 错误缓冲区
+        LibVips.INSTANCE.vips_error_clear();
+
+        // 1. 在 C 堆中分配一块内存并将 Java 字节拷贝进去
+        com.sun.jna.Memory memInput = new com.sun.jna.Memory(inputBytes.length);
+        memInput.write(0, inputBytes, 0, inputBytes.length);
+
+        Pointer image = null;
+        Pointer outPtr = null;
+        PointerByReference outBufRef = new PointerByReference();
+        LongByReference outSizeRef = new LongByReference();
+
+        try {
+            // 2. 从内存缓冲区加载图像元数据（建立惰性求值流指针）
+            // 注意：第四个参数为 vips 变参的 NULL 终止符
+            image = LibVips.INSTANCE.vips_image_new_from_buffer(memInput, inputBytes.length, null, (Object) null);
+            if (image == null) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("无法从内存缓冲区加载图片，错误: " + errorMsg);
+            }
+
+            // 3. 将处理流格式化写出到 C 堆分配的新缓冲区
+            String suffix = outputFormat.startsWith(".") ? outputFormat : "." + outputFormat;
+            int result = LibVips.INSTANCE.vips_image_write_to_buffer(image, suffix, outBufRef, outSizeRef, (Object) null);
+            if (result != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("无法将图片写出到内存缓冲区，错误: " + errorMsg);
+            }
+
+            // 4. 将 C 堆数据提取并还原回 Java 字节数组
+            outPtr = outBufRef.getValue();
+            long outSize = outSizeRef.getValue();
+            if (outPtr == null || outSize <= 0) {
+                throw new IOException("写出缓冲区空指针或长度无效");
+            }
+
+            return outPtr.getByteArray(0, (int) outSize);
+        } finally {
+            // 5. 必须显式释放由 GLib 分配的输出内存段以防堆外内存泄漏
+            if (outPtr != null) {
+                LibVips.GLibBase.INSTANCE.g_free(outPtr);
+            }
+            // 6. 释放本地 C 对象引用以防内存泄漏
+            if (image != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(image);
+            }
+            /*
+             * 释放线程级内存缓存（防 Web 容器线程池堆外内存泄漏）
+             *
+             * 【原理】：libvips 为了避免多线程内存申请的锁竞争，内部采用了激进的“线程局部内存池 (Per-thread Memory Pools)”，
+             *         在转换期间会为当前线程分配专属的 Native 缓冲区及错误缓冲区。
+             *
+             * 【作用】：由于当前 Java 代码运行在 Web 容器（如 WebFlux/Netty 或 Tomcat）的常驻线程池中，线程永不销毁。
+             *         若不显式调用此方法，该线程持有的 libvips 堆外缓存将常驻内存，随着线程池被全面轮询，
+             *         会导致巨大的物理内存隐式泄漏，且 JVM GC 对此无能为力。
+             *         在此处调用可彻底清空当前线程在 C 层的临时状态与缓存，保障线上系统堆外内存的稳定性。
+             */
+            LibVips.INSTANCE.vips_thread_shutdown();
+            /*
+             * 7. 核心安全屏障（防 JIT 提前回收导致 JVM 崩溃）
+             *
+             * 【原理】：JIT 编译器在优化时，不看代码执行到哪一行，而是通过“数据流分析”查看变量后续是否被读取。
+             *         在此行之前，memInput 作为 Java 变量的使命在第 2 步（传入 libvips）时就已经结束了。
+             *         若无此屏障，当第 3 步进行耗时转换并触发 GC 时，GC 会判定 memInput 已死并将其回收。
+             *         而 memInput(JNA Memory) 析构时会自动隐式释放底层的 C 堆内存。
+             *         此时 libvips 的惰性流（image）若仍在读取该内存地址，就会访问野指针，直接导致 JVM 遭遇 SIGSEGV 崩溃。
+             *
+             * 【作用】：在此处显式宣告引用，强行将 memInput 的生命周期“拦截并拉长”至方法的最末尾，
+             *         卡住 JIT 优化机制，确保 C 语言底层在整个生命周期内都能安全、稳定地访问该内存。
+             */
+            java.lang.ref.Reference.reachabilityFence(memInput);
         }
     }
 }
