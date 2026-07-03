@@ -249,6 +249,7 @@ public class IiifController {
                     imageFile.getAbsolutePath(),
                     left, top, width, height,
                     scale,
+                    quality,
                     format
             );
 

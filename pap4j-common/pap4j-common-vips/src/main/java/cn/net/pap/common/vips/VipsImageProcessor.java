@@ -304,6 +304,30 @@ public class VipsImageProcessor {
             Double scale,
             String outputFormat
     ) throws IOException {
+        return processImage(inputPath, left, top, width, height, scale, "default", outputFormat);
+    }
+
+    /**
+     * 基于 libvips 惰性求值管线，可选进行裁剪、缩放与质量转换（如灰度、二值化），并将最终图像转码写出到内存字节数组中。
+     *
+     * @param inputPath    输入源图片路径
+     * @param left         裁剪左边界坐标 (如果为 null 则不裁剪)
+     * @param top          裁剪上边界坐标 (如果为 null 则不裁剪)
+     * @param width        裁剪宽度 (如果为 null 则不裁剪)
+     * @param height       裁剪高度 (如果为 null 则不裁剪)
+     * @param scale        缩放因子 (如果为 null 或接近 1.0 则不缩放)
+     * @param quality      色彩质量参数 (支持 "default", "color", "gray", "bitonal")
+     * @param outputFormat 目标输出格式后缀 (如 "jpg", "png")
+     * @return 转换后的图像字节数组
+     * @throws IOException 如果加载、裁剪、缩放或转码写出失败
+     */
+    public static byte[] processImage(
+            String inputPath,
+            Integer left, Integer top, Integer width, Integer height,
+            Double scale,
+            String quality,
+            String outputFormat
+    ) throws IOException {
         ensureInitialized();
         if (inputPath == null || inputPath.isEmpty() || outputFormat == null || outputFormat.isEmpty()) {
             throw new IllegalArgumentException("输入图片路径或目标格式不能为空");
@@ -312,6 +336,7 @@ public class VipsImageProcessor {
         Pointer image = loadImage(inputPath);
         Pointer croppedImage = null;
         Pointer resizedImage = null;
+        Pointer qualityImage = null;
         try {
             Pointer currentImage = image;
             croppedImage = cropImageIfNeeded(currentImage, left, top, width, height);
@@ -324,8 +349,16 @@ public class VipsImageProcessor {
                 currentImage = resizedImage;
             }
 
+            qualityImage = applyQualityIfNeeded(currentImage, quality);
+            if (qualityImage != null) {
+                currentImage = qualityImage;
+            }
+
             return writeImageToBuffer(currentImage, outputFormat);
         } finally {
+            if (qualityImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(qualityImage);
+            }
             if (resizedImage != null) {
                 LibVips.GLib.INSTANCE.g_object_unref(resizedImage);
             }
@@ -335,6 +368,67 @@ public class VipsImageProcessor {
             LibVips.GLib.INSTANCE.g_object_unref(image);
             LibVips.INSTANCE.vips_thread_shutdown();
         }
+    }
+
+    private static Pointer applyQualityIfNeeded(Pointer currentImage, String quality) throws IOException {
+        if (currentImage == null) {
+            throw new IllegalArgumentException("输入图像指针不能为空");
+        }
+        if (quality == null || quality.isEmpty() || "default".equalsIgnoreCase(quality) || "color".equalsIgnoreCase(quality)) {
+            return null;
+        }
+
+        LibVips.INSTANCE.vips_error_clear();
+        if ("gray".equalsIgnoreCase(quality)) {
+            PointerByReference outRef = new PointerByReference();
+            // space = 1 corresponds to VIPS_INTERPRETATION_B_W (monochrome grayscale)
+            int result = LibVips.INSTANCE.vips_colourspace(currentImage, outRef, 1, (Object) null);
+            if (result != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("图像转换为灰度失败，错误: " + errorMsg);
+            }
+            return outRef.getValue();
+        } else if ("bitonal".equalsIgnoreCase(quality)) {
+            Pointer grayImage = null;
+            Pointer maskImage = null;
+            PointerByReference grayRef = new PointerByReference();
+            PointerByReference maskRef = new PointerByReference();
+            PointerByReference finalRef = new PointerByReference();
+            try {
+                // 1. 转为灰度图
+                int r1 = LibVips.INSTANCE.vips_colourspace(currentImage, grayRef, 1, (Object) null);
+                if (r1 != 0) {
+                    String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                    throw new IOException("二值化前转为灰度失败，错误: " + errorMsg);
+                }
+                grayImage = grayRef.getValue();
+
+                // 2. 比较运算，输出二值掩膜 (像素 > 127 为 1, 否则为 0)
+                int r2 = LibVips.INSTANCE.vips_more_const1(grayImage, maskRef, 127.0, (Object) null);
+                if (r2 != 0) {
+                    String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                    throw new IOException("二值化阈值判定失败，错误: " + errorMsg);
+                }
+                maskImage = maskRef.getValue();
+
+                // 3. 线性乘以 255.0，转换为 uchar 类型 (0/1 扩展到 0/255 亮度)
+                int r3 = LibVips.INSTANCE.vips_linear1(maskImage, finalRef, 255.0, 0.0, "uchar", 1, (Object) null);
+                if (r3 != 0) {
+                    String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                    throw new IOException("二值化线性拉伸失败，错误: " + errorMsg);
+                }
+                return finalRef.getValue();
+            } finally {
+                // 必须释放管线中的中间图像以防止堆外泄露
+                if (maskImage != null) {
+                    LibVips.GLib.INSTANCE.g_object_unref(maskImage);
+                }
+                if (grayImage != null) {
+                    LibVips.GLib.INSTANCE.g_object_unref(grayImage);
+                }
+            }
+        }
+        return null;
     }
 
     private static Pointer loadImage(String inputPath) throws IOException {

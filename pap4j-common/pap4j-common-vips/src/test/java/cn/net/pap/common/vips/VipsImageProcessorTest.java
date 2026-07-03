@@ -208,6 +208,68 @@ public class VipsImageProcessorTest {
     }
 
     /**
+     * 测试图像色彩品质处理 (gray, bitonal)
+     */
+    @Test
+    public void testImageQuality() throws Exception {
+        log.info("测试 VipsImageProcessor.processImage 的 quality 参数 (gray 和 bitonal)...");
+
+        // 1. 测试灰度图 (gray)
+        byte[] grayBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0,
+                "gray",
+                "jpeg"
+        );
+        assertNotNull(grayBytes);
+        assertTrue(grayBytes.length > 0);
+
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(grayBytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            log.info("成功验证 gray 图像，类型为: {}, 宽高为: {}x{}", bi.getType(), bi.getWidth(), bi.getHeight());
+        }
+
+        // 2. 测试二值图 (bitonal)
+        byte[] bitonalBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0,
+                "bitonal",
+                "png"
+        );
+        assertNotNull(bitonalBytes);
+        assertTrue(bitonalBytes.length > 0);
+
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(bitonalBytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+
+            // 采样点比对：二值图所有像素点在 RGB 上只能是纯黑 (0x000000) 或纯白 (0xFFFFFF)
+            int blackCount = 0;
+            int whiteCount = 0;
+            int otherCount = 0;
+            for (int y = 0; y < bi.getHeight(); y += 20) {
+                for (int x = 0; x < bi.getWidth(); x += 20) {
+                    int rgb = bi.getRGB(x, y) & 0x00FFFFFF; // 过滤透明通道
+                    if (rgb == 0x00000000) {
+                        blackCount++;
+                    } else if (rgb == 0x00FFFFFF) {
+                        whiteCount++;
+                    } else {
+                        otherCount++;
+                    }
+                }
+            }
+            log.info("bitonal 采样测试结果: black={}, white={}, others={}", blackCount, whiteCount, otherCount);
+            assertEquals(0, otherCount, "二值图的像素采样值应只有纯黑或纯白，不能有灰色过渡像素");
+            assertTrue(blackCount > 0 && whiteCount > 0, "图像中应同时包含黑白像素");
+        }
+    }
+
+
+    /**
      * 并发压力测试：还原生产环境的多路混合负载（内存直传、落盘文件、恶意非法参数），验证吞吐量与堆内堆外内存零泄漏。
      */
     @Test
@@ -248,12 +310,12 @@ public class VipsImageProcessorTest {
                 String targetFormat = (index % 2 == 0) ? "webp" : "jpeg";
 
                 try {
-                    if (mode < 70) {
-                        // 1. 70% 概率：内存直传转码（高并发核心堆外分配链，全面压测 JNA 内存释放与 GC 屏障）
+                    if (mode < 40) {
+                        // 1. 40% 概率：内存直传转码（高并发核心堆外分配链，全面压测 JNA 内存释放与 GC 屏障）
                         byte[] result = VipsImageProcessor.convertFormat(sourceBytes, targetFormat);
                         return result != null && result.length > 0;
-                    } else if (mode < 95) {
-                        // 2. 25% 概率：文件到文件落盘转换，并即时删除文件，防 FDs/句柄泄露及磁盘占满
+                    } else if (mode < 55) {
+                        // 2. 15% 概率：文件到文件落盘转换，并即时删除文件，防 FDs/句柄泄露及磁盘占满
                         File outputFile = new File(tempDir, "stress_output_" + index + "." + targetFormat);
                         try {
                             VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), outputFile.getAbsolutePath());
@@ -268,10 +330,33 @@ public class VipsImageProcessorTest {
                             }
                             throw t;
                         }
+                    } else if (mode < 95) {
+                        // 3. 40% 概率：并发切片、缩放及色彩品质过滤压测 (processImage)
+                        // 随机分配裁剪坐标和缩放比，混杂不同的色彩品质模式
+                        Integer left = (index % 3 == 0) ? 50 : null;
+                        Integer top = (index % 3 == 0) ? 50 : null;
+                        Integer width = (index % 3 == 0) ? 200 : null;
+                        Integer height = (index % 3 == 0) ? 150 : null;
+                        Double scale = (index % 2 == 0) ? 0.75 : 1.0;
+                        String[] qualities = {"default", "color", "gray", "bitonal"};
+                        String quality = qualities[index % qualities.length];
+
+                        byte[] result = VipsImageProcessor.processImage(
+                                inputFile.getAbsolutePath(),
+                                left, top, width, height,
+                                scale,
+                                quality,
+                                targetFormat
+                        );
+                        return result != null && result.length > 0;
                     } else {
-                        // 3. 5% 概率：并发注入非法 null 参数请求，验证 Java 防护边界对 C 层底层引擎的并发隔离安全性
+                        // 4. 5% 概率：并发注入非法 null 参数请求，验证 Java 防护边界对 C 层底层引擎的并发隔离安全性
                         try {
-                            VipsImageProcessor.convertFormat((byte[]) null, targetFormat);
+                            if (index % 2 == 0) {
+                                VipsImageProcessor.convertFormat((byte[]) null, targetFormat);
+                            } else {
+                                VipsImageProcessor.processImage(null, null, null, null, null, null, null, targetFormat);
+                            }
                             return false; // 如果未抛异常，则表明校验失效，压测失败
                         } catch (IllegalArgumentException e) {
                             // 捕获预期内的业务规则异常，表明并发保护成功

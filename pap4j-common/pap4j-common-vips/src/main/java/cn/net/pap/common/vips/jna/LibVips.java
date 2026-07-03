@@ -125,6 +125,46 @@ public interface LibVips extends Library {
     int vips_image_write_to_buffer(Pointer image, String suffix, PointerByReference buf, LongByReference size, Object... varargs);
 
     /**
+     * 对图像进行色彩空间转换操作。
+     *
+     * @param in 输入图像指针
+     * @param out 接收转换后图像指针的引用
+     * @param space 目标色彩空间枚举值（例如 1 表示 VIPS_INTERPRETATION_B_W 灰度模式）
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://www.libvips.org/API/current/method.Image.colourspace.html">vips_colourspace API</a>
+     */
+    int vips_colourspace(Pointer in, PointerByReference out, int space, Object... varargs);
+
+    /**
+     * 对图像进行“大于常数”的关系运算比较，常用于二值化掩膜生成（即 out = in > c）。
+     * 对图像中的每个像素，若其值大于常数 c，则输出图像对应像素置为 1，否则置为 0。
+     *
+     * @param in 输入图像指针
+     * @param out 接收比较后二值图像（0/1 掩膜）指针的引用
+     * @param c 比较的阀值常数值（例如 127.0）
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://www.libvips.org/API/current/method.Image.more_const1.html">vips_more_const1 API</a>
+     */
+    int vips_more_const1(Pointer in, PointerByReference out, double c, Object... varargs);
+
+    /**
+     * 对图像执行线性变换（out = in * a + b），常用于调整图像亮度/对比度或将二值掩膜（0/1）拉伸到可视灰度级（0/255）。
+     *
+     * @param in 输入图像指针
+     * @param out 接收变换后图像指针的引用
+     * @param a 乘法斜率因子（如 255.0，用以将 1 扩展至 255）
+     * @param b 加法截距因子（如 0.0）
+     * @param varargs 可变参数列表，以空（null）指针结尾。
+     *                支持的可选参数包含：
+     *                "uchar" (int) - 设为 1 (true) 可将输出像素强制转型为 8位无符号字符类型 (unsigned char)
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://www.libvips.org/API/current/method.Image.linear1.html">vips_linear1 API</a>
+     */
+    int vips_linear1(Pointer in, PointerByReference out, double a, double b, Object... varargs);
+
+    /**
      * @see <a href="https://libvips.github.io/libvips/API/current/libvips-error.html#vips-error-buffer">vips_error_buffer API</a>
      */
     String vips_error_buffer();
