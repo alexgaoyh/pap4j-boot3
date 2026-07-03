@@ -719,3 +719,32 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
 </body>
 </html>
 ```
+
+---
+
+## ⚡ 性能调优：使用金字塔 TIFF (Pyramid TIFF) 解决高频 I/O 写入问题
+
+### 1. 现象与原理分析
+对于普通的超大图片（如未切片/未分块的 `.png`、`.jpg` 或普通的 `.tif` 文件），当用户在浏览器（如 OpenSeadragon）中进行高频缩放、拖拽预览时，后端会接收到大量的并发切片（Tile）请求。
+- **高频写入问题**：由于这类格式不支持随机像素读取，`libvips` 在处理 `vips_crop`（裁剪）时必须先对图像进行解压。对于 1.8GB 以上的超大图像，为防止 Java 堆内存溢出 (OOM) 并限制 Native 内存占用，`libvips` 会自动采用 **Spill-to-disk（溢出到磁盘）** 机制，在本地临时文件夹（如 `D:/knowledge/temp`）下生成一个原始解压的临时中间文件。这会导致在刚开始浏览大图时，任务管理器中的硬盘写入 IO 瞬间飙升。
+- **无感延迟与归零**：一旦该临时文件生成并被打开，后续由于浏览器的 HTTP 缓存、`libvips` 内部的算子缓存（VipsCache）以及操作系统的页面缓存（Page Cache）的共同作用，多次并发请求将直接走内存命中，磁盘写入 IO 随即归零。
+
+### 2. 终极解决方案：引入金字塔 TIFF (Pyramid TIFF)
+要彻底消除首次预览时的 SSD 写入 IO 瓶颈，并实现毫秒级的切片响应，推荐将源图片转换为**金字塔 TIFF（Pyramid TIFF，也称分块式多级分辨率 TIFF）**格式。
+
+- **工作原理**：金字塔 TIFF 内部已经将图像分块（Tiled，例如 $256 \times 256$ 大小），并预先保存了多级分辨率的图像（金字塔层级）。`libvips` 打开此类文件时，可以直接通过文件指针以零拷贝方式随机定位并读取所需的分块，**在内存中流式处理并输出为 `.jpg`/`.png` 返回，全程 0 临时磁盘写入**。
+- **零代码改动**：由于 `pap4j-common-vips` 的接口及 OpenSeadragon 的 IIIF 协议是完全格式自适应的，您不需要修改任何 Java 或 HTML 代码，仅需输入金字塔 TIFF 的文件名（如 `input_test.tif`）即可完美运行。
+
+### 3. 生成金字塔 TIFF 转换命令
+在 `D:/knowledge/` 下通过 `libvips` 提供的命令行工具（或者集成的转换工具）执行以下转换：
+```bash
+# 将 1.8GB 的大图转换为 Pyramid TIFF 格式
+vips tiffsave D:/knowledge/qmsht.tif D:/knowledge/qmsht_pyramid.tif --tile --pyramid --tile-width 256 --tile-height 256
+```
+- `--tile`：开启分块化存储（支持随机快速定位）。
+- `--pyramid`：开启多级分辨率金字塔。
+- `--tile-width` 和 `--tile-height`：分块瓦片宽高设为 $256 \times 256$。
+
+> [!NOTE]
+> 转换后的金字塔 TIFF 包含了各个分辨率级别的图层，文件大小相比普通压缩格式可能会有轻微增长（例如从 1.8GB 变为 2.4GB），但这能极大提升大图并发切片加载性能，并使磁盘物理写入 IO 彻底归零。
+
