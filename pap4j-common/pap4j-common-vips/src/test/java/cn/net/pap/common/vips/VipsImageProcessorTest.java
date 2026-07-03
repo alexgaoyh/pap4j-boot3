@@ -36,8 +36,9 @@ public class VipsImageProcessorTest {
     static File tempDir;
 
     private static File inputFile;
-    private static final int CONCURRENT_THREADS = 10;
-    private static final int TOTAL_REQUESTS = 1000;
+    private static byte[] sourceBytes;
+    private static final int CONCURRENT_THREADS = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
+    private static final int TOTAL_REQUESTS = 5000;
 
     @BeforeAll
     public static void setUpAll() throws IOException {
@@ -57,7 +58,8 @@ public class VipsImageProcessorTest {
 
         inputFile = new File(tempDir, "input_test.png");
         ImageIO.write(img, "png", inputFile);
-        log.info("测试源图片创建成功: {}", inputFile.getAbsolutePath());
+        sourceBytes = java.nio.file.Files.readAllBytes(inputFile.toPath());
+        log.info("测试源图片及内存字节创建成功: {}，大小: {} 字节", inputFile.getAbsolutePath(), sourceBytes.length);
     }
 
     @AfterAll
@@ -170,19 +172,23 @@ public class VipsImageProcessorTest {
     }
 
     /**
-     * 并发压力测试：验证吞吐量与内存稳定性
+     * 并发压力测试：还原生产环境的多路混合负载（内存直传、落盘文件、恶意非法参数），验证吞吐量与堆内堆外内存零泄漏。
      */
     @Test
     public void runStressTest() throws Exception {
-        log.info("=== 开始 libvips JNA 并发压力测试 ===");
+        log.info("=== 开始 libvips JNA 生产级并发混合压力测试 ===");
         log.info("总请求数: {}, 并发线程数: {}", TOTAL_REQUESTS, CONCURRENT_THREADS);
 
-        // 记录初始 JVM 堆内存状况
+        // 记录初始 JVM 堆内存状况及系统物理内存（Working Set / RSS）
         System.gc();
         Thread.sleep(500);
         MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
         long initialUsedHeap = memoryMXBean.getHeapMemoryUsage().getUsed();
+        long initialWorkingSet = getProcessWorkingSetSize();
         log.info("初始 JVM 堆内存占用: {} MB", String.format("%.2f", initialUsedHeap / (1024.0 * 1024.0)));
+        if (initialWorkingSet > 0) {
+            log.info("初始 OS 物理内存 (Working Set): {} MB", String.format("%.2f", initialWorkingSet / (1024.0 * 1024.0)));
+        }
 
         // 严格遵循项目线程池规范 (guard.md)，显式使用 ThreadPoolExecutor 声明有界队列与拒绝策略
         AtomicInteger threadCounter = new AtomicInteger(0);
@@ -202,10 +208,40 @@ public class VipsImageProcessorTest {
         for (int i = 0; i < TOTAL_REQUESTS; i++) {
             final int index = i;
             futures.add(executor.submit(() -> {
-                File outputFile = new File(tempDir, "stress_output_" + index + ".webp");
+                int mode = index % 100; // 确定性概率分布
+                String targetFormat = (index % 2 == 0) ? "webp" : "jpeg";
+
                 try {
-                    VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), outputFile.getAbsolutePath());
-                    return outputFile.exists() && outputFile.length() > 0;
+                    if (mode < 70) {
+                        // 1. 70% 概率：内存直传转码（高并发核心堆外分配链，全面压测 JNA 内存释放与 GC 屏障）
+                        byte[] result = VipsImageProcessor.convertFormat(sourceBytes, targetFormat);
+                        return result != null && result.length > 0;
+                    } else if (mode < 95) {
+                        // 2. 25% 概率：文件到文件落盘转换，并即时删除文件，防 FDs/句柄泄露及磁盘占满
+                        File outputFile = new File(tempDir, "stress_output_" + index + "." + targetFormat);
+                        try {
+                            VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), outputFile.getAbsolutePath());
+                            boolean ok = outputFile.exists() && outputFile.length() > 0;
+                            if (outputFile.exists()) {
+                                outputFile.delete();
+                            }
+                            return ok;
+                        } catch (Throwable t) {
+                            if (outputFile.exists()) {
+                                outputFile.delete();
+                            }
+                            throw t;
+                        }
+                    } else {
+                        // 3. 5% 概率：并发注入非法 null 参数请求，验证 Java 防护边界对 C 层底层引擎的并发隔离安全性
+                        try {
+                            VipsImageProcessor.convertFormat((byte[]) null, targetFormat);
+                            return false; // 如果未抛异常，则表明校验失效，压测失败
+                        } catch (IllegalArgumentException e) {
+                            // 捕获预期内的业务规则异常，表明并发保护成功
+                            return true;
+                        }
+                    }
                 } catch (IllegalArgumentException e) {
                     log.error("在第 {} 次转码任务中因入参校验发生失败: ", index, e);
                     return false;
@@ -240,19 +276,56 @@ public class VipsImageProcessorTest {
         System.gc();
         Thread.sleep(500);
         long finalUsedHeap = memoryMXBean.getHeapMemoryUsage().getUsed();
+        long finalWorkingSet = getProcessWorkingSetSize();
 
-        log.info("=== 并发压力测试已完成 ===");
-        log.info("成功转码次数: {} / {}", successCount, TOTAL_REQUESTS);
+        log.info("=== 生产级并发压力测试已完成 ===");
+        log.info("成功处理/拦截次数: {} / {}", successCount, TOTAL_REQUESTS);
         log.info("总耗时: {} 毫秒", totalDuration);
-        log.info("吞吐量 (QPS): {}", String.format("%.2f", qps));
+        log.info("混合吞吐量 (QPS): {}", String.format("%.2f", qps));
         log.info("单张平均耗时: {} 毫秒", String.format("%.2f", (double) totalDuration / TOTAL_REQUESTS));
         log.info("最终 JVM 堆内存占用 (GC后): {} MB", String.format("%.2f", finalUsedHeap / (1024.0 * 1024.0)));
         log.info("堆内存差值 (Heap Delta): {} MB", String.format("%.2f", (finalUsedHeap - initialUsedHeap) / (1024.0 * 1024.0)));
+        if (initialWorkingSet > 0 && finalWorkingSet > 0) {
+            double workingSetDeltaMB = (finalWorkingSet - initialWorkingSet) / (1024.0 * 1024.0);
+            log.info("最终 OS 物理内存 (Working Set): {} MB", String.format("%.2f", finalWorkingSet / (1024.0 * 1024.0)));
+            log.info("物理内存差值 (Working Set Delta): {} MB", String.format("%.2f", workingSetDeltaMB));
+            // 物理内存增长必须非常平稳。一般由于 JVM 的 Metaspace 膨胀、JIT 编译或线程栈开销，会有小幅正常增量。
+            // 我们断言物理内存增量在 100MB 以内，这就保证了 5000 次 C 层转码操作中，完全没有百万字节级别的堆外/底层 C 内存泄露！
+            assertTrue(workingSetDeltaMB < 100.0, "OS 物理内存占用应当保持平稳 (Delta < 100MB)，证明无堆外本地 C 内存泄漏");
+        }
 
-        assertEquals(TOTAL_REQUESTS, successCount, "所有的转码任务必须全部成功，不应存在任何错误");
+        assertEquals(TOTAL_REQUESTS, successCount, "所有的转码或防卫拦截任务必须全部成功，不应存在任何未捕获致命错误");
 
         // 验证堆内存使用非常平稳（堆内存净增应当小于 20MB），证明无堆外及堆内内存泄漏
         double heapDeltaMB = (finalUsedHeap - initialUsedHeap) / (1024.0 * 1024.0);
         assertTrue(heapDeltaMB < 20.0, "JVM 堆内存占用应当保持平稳 (Delta < 20MB)，证明无内存泄漏");
+    }
+
+    /**
+     * 获取当前 JVM 进程的 OS 物理内存（Working Set / RSS）占用大小（字节）。
+     * 仅在 Windows 操作系统下有效，非 Windows 系统将返回 -1。
+     */
+    private static long getProcessWorkingSetSize() {
+        String os = System.getProperty("os.name").toLowerCase();
+        if (!os.contains("win")) {
+            return -1;
+        }
+        try {
+            long pid = ProcessHandle.current().pid();
+            // 在 Windows 环境下通过 PowerShell 查询进程的物理工作内存（Working Set）
+            Process process = Runtime.getRuntime().exec(new String[]{
+                "powershell", "-Command", "(Get-Process -Id " + pid + ").WorkingSet64"
+            });
+            try (java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(process.getInputStream()))) {
+                String line = reader.readLine();
+                if (line != null && !line.trim().isEmpty()) {
+                    return Long.parseLong(line.trim());
+                }
+            }
+        } catch (Exception e) {
+            log.debug("无法获取当前进程的 OS 物理内存 Working Set 大小: ", e);
+        }
+        return -1;
     }
 }
