@@ -42,12 +42,23 @@ public class VipsImageProcessorTest {
     private static final int CONCURRENT_THREADS = Math.max(1, Runtime.getRuntime().availableProcessors() / 2);
     private static final int TOTAL_REQUESTS = 5000;
 
+    private static boolean vipsAvailable = false;
+
     @BeforeAll
     public static void setUpAll() throws IOException {
         // 1. 初始化 libvips
         log.info("在运行测试前初始化 libvips 以隔离动态库加载耗时...");
-        VipsImageProcessor.ensureInitialized();
-        log.info("libvips 预初始化完成");
+        try {
+            VipsImageProcessor.ensureInitialized();
+            vipsAvailable = true;
+            log.info("libvips 预初始化完成");
+        } catch (Throwable t) {
+            log.error("[Vips-Test-Setup] 无法初始化 libvips 本地库，测试类将被跳过。错误详情: ", t);
+        }
+
+        // 若 libvips 环境不可用，则通过 JUnit 5 假设（Assumption）优雅跳过所有测试，不抛出异常导致构建失败
+        org.junit.jupiter.api.Assumptions.assumeTrue(vipsAvailable,
+                "当前环境缺少 libvips 本地动态库，跳过 VipsImageProcessorTest");
 
         // 2. 创建一张 800x600 带细节线条的测试源图片并保存为 PNG（一次性创建，所有用例复用）
         BufferedImage img = new BufferedImage(800, 600, BufferedImage.TYPE_INT_RGB);
