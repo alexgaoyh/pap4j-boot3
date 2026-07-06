@@ -86,6 +86,7 @@ public class IiifController {
     @Operation(summary = "获取 IIIF 图像元数据 (info.json)", description = "符合 IIIF 规范的默认信息接口，动态提取图片高宽并返回标准的 JSON 元数据")
     @GetMapping(value = "/iiif/2/{identifier}/info.json", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> getIiifInfo(
+            // 生产环境下建议将 identifier 设计为"物理路径"对称加密（如AES）后的密文，用以规避目录穿越、写锁冲突及多瓦片画面撕裂。
             @Parameter(description = "图像唯一标识符 (包含文件后缀的文件名)", example = "input_test.png")
             @PathVariable("identifier") String identifier,
             HttpServletRequest request
@@ -159,6 +160,7 @@ public class IiifController {
     @Operation(summary = "获取 IIIF 图像预览", description = "解析符合 IIIF Image API 规范 the URL，并调用 libvips 进行高性能格式转换与输出")
     @GetMapping("/iiif/2/{identifier}/{region}/{size}/{rotation}/{quality}.{format}")
     public ResponseEntity<byte[]> getIiifImage(
+            // 生产环境下建议将 identifier 设计为"物理路径"对称加密（如AES）后的密文，用以规避目录穿越、写锁冲突及多瓦片画面撕裂。
             @Parameter(description = "图像唯一标识符 (包含文件后缀的文件名)", example = "input_test.png")
             @PathVariable("identifier") String identifier,
             @Parameter(description = "裁剪区域，当前默认全图：full", example = "full")
