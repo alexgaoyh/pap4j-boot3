@@ -34,7 +34,8 @@ public class VipsImageProcessor {
     private static final Logger log = LoggerFactory.getLogger(VipsImageProcessor.class);
 
     private static final double SCALE_TOLERANCE = 1e-4;
-    private static final String DEFAULT_TEMP_DIR = "D:/knowledge/temp";
+    // TODO: 注意：由于超大图片处理时会产生大量本地缓存，默认使用当前用户的临时目录。如果 C 盘空间不足，建议设置环境变量 PAP_VIPS_TEMP_DIR 重定向到空间充足的磁盘分区。
+    private static final String ENV_TEMP_DIR_KEY = "PAP_VIPS_TEMP_DIR";
     private static final int ENV_OVERWRITE_TRUE = 1;
 
     private static volatile boolean initialized = false;
@@ -640,10 +641,16 @@ public class VipsImageProcessor {
 
     /**
      * 自动检测并重定向 Native 临时工作目录。
-     * 如果 D 盘空间充足 (有 D:/knowledge/) 且 C 盘可用空间极低时，将 TMP/TEMP 重定向至 D 盘。
+     * 优先读取 JVM 系统属性或环境变量 PAP_VIPS_TEMP_DIR 指定的路径，若未指定则使用系统默认的临时目录 (java.io.tmpdir)。
      */
     private static void configureNativeTempDirectory() {
-        String targetTemp = DEFAULT_TEMP_DIR;
+        String targetTemp = System.getProperty(ENV_TEMP_DIR_KEY);
+        if (targetTemp == null || targetTemp.trim().isEmpty()) {
+            targetTemp = System.getenv(ENV_TEMP_DIR_KEY);
+        }
+        if (targetTemp == null || targetTemp.trim().isEmpty()) {
+            targetTemp = System.getProperty("java.io.tmpdir");
+        }
         File tempDir = new File(targetTemp);
         try {
             if (!tempDir.exists()) {

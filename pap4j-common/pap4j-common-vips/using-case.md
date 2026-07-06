@@ -6,7 +6,7 @@
 
 ## 🚀 核心架构与原理
 - **零堆内存溢出 (OOM-Proof)**：对于超大图像文件，传统的 Java ImageIO 会将整张图读入堆内存解压像素，极易导致 `java.lang.OutOfMemoryError: Java heap space`。而 `pap4j-common-vips` 底层基于高性能 C 动态库 `libvips`，采用**惰性像素流管道 (Lazy Pixel Pipeline)**，仅在请求特定瓦片 (Tile) 时，流式执行 native 层的裁剪 (`vips_crop`) 与缩放 (`vips_resize`)，每次返回给 Java 堆的只有输出的单个小瓦片字节数组（约几 KB 到几十 KB），从而实现极佳 of JVM 稳定性。
-- **自动本地缓存重定向**：大图在转码过程中会产生临时缓存，模块已在 `ensureInitialized` 初始化时，通过 C 层的 `g_setenv` 自动将临时缓存重定向到 `D:/knowledge/temp` 目录，防范 C 盘空间不足（如 `No space left on device`）导致的底层写入失败。
+- **自动本地缓存重定向**：大图在转码过程中会产生临时缓存，模块已在 `ensureInitialized` 初始化时，通过 C 层的 `g_setenv` 自动将临时缓存重定向到本地临时工作目录（默认使用当前用户的系统临时目录，支持通过 `PAP_VIPS_TEMP_DIR` 环境变量进行自定义配置）。
 
 ---
 
@@ -72,6 +72,13 @@ public class IiifController {
 
     // 设置图像文件的基础物理路径，指向 D 盘的存放目录
     private static final String BASE_DIR = "D:/knowledge/";
+
+    // TODO: 底层 VipsImageProcessor 处理超大图片时会自动生成中间临时缓存，默认使用当前用户的系统临时目录（如 C 盘）。
+    // TODO: 为了防止系统盘空间不足导致转码失败或响应缓慢，请务必在部署或启动前配置 PAP_VIPS_TEMP_DIR JVM 系统属性或环境变量，将其重定向到空间充足的非系统盘（例如 D:/knowledge/temp）。
+    // 示例代码实现思路（在类加载最早期，或者在 Spring Boot 启动类的 main 方法中设置）：
+    // static {
+    //     System.setProperty("PAP_VIPS_TEMP_DIR", "D:/knowledge/temp");
+    // }
 
     /**
      * IIIF 规范接口 1：图像信息请求 (Image Information Request)，返回图片的尺寸、支持的格式等元数据信息。
@@ -910,7 +917,7 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
 
 ### 1. 现象与原理分析
 对于普通的超大图片（如未切片/未分块的 `.png`、`.jpg` 或普通的 `.tif` 文件），当用户在浏览器（如 OpenSeadragon）中进行高频缩放、拖拽预览时，后端会接收到大量的并发切片（Tile）请求。
-- **高频写入问题**：由于这类格式不支持随机像素读取，`libvips` 在处理 `vips_crop`（裁剪）时必须先对图像进行解压。对于 1.8GB 以上的超大图像，为防止 Java 堆内存溢出 (OOM) 并限制 Native 内存占用，`libvips` 会自动采用 **Spill-to-disk（溢出到磁盘）** 机制，在本地临时文件夹（如 `D:/knowledge/temp`）下生成一个原始解压的临时中间文件。这会导致在刚开始浏览大图时，任务管理器中的硬盘写入 IO 瞬间飙升。
+- **高频写入问题**：由于这类格式不支持随机像素读取，`libvips` 在处理 `vips_crop`（裁剪）时必须先对图像进行解压。对于 1.8GB 以上的超大图像，为防止 Java 堆内存溢出 (OOM) 并限制 Native 内存占用，`libvips` 会自动采用 **Spill-to-disk（溢出到磁盘）** 机制，在本地临时文件夹（默认为系统默认临时目录，可以通过 `PAP_VIPS_TEMP_DIR` 环境变量指定为空间充足的磁盘分区）下生成一个原始解压的临时中间文件。这会导致在刚开始浏览大图时，任务管理器中的硬盘写入 IO 瞬间飙升。
 - **无感延迟与归零**：一旦该临时文件生成并被打开，后续由于浏览器的 HTTP 缓存、`libvips` 内部的算子缓存（VipsCache）以及操作系统的页面缓存（Page Cache）的共同作用，多次并发请求将直接走内存命中，磁盘写入 IO 随即归零。
 
 ### 2. 终极解决方案：引入金字塔 TIFF (Pyramid TIFF)
