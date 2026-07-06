@@ -328,6 +328,35 @@ public class VipsImageProcessor {
             String quality,
             String outputFormat
     ) throws IOException {
+        return processImage(inputPath, left, top, width, height, scale, scale, "0", quality, outputFormat);
+    }
+
+    /**
+     * 基于 libvips 惰性求值管线，提供完整的裁剪、水平/垂直缩放、旋转/镜像与质量转换（如灰度、二值化）处理，并将最终图像转码写出到内存字节数组中。
+     *
+     * @param inputPath    输入源图片路径
+     * @param left         裁剪左边界坐标 (如果为 null 则不裁剪)
+     * @param top          裁剪上边界坐标 (如果为 null 则不裁剪)
+     * @param width        裁剪宽度 (如果为 null 则不裁剪)
+     * @param height       裁剪高度 (如果为 null 则不裁剪)
+     * @param hScale       横向缩放因子 (如果为 null 则不进行缩放)
+     * @param vScale       纵向缩放因子 (如果为 null 则使用与横向缩放因子相同的值以进行等比缩放；如果两者均非 null 且值不同，则进行非等比拉伸)
+     * @param rotation     旋转与镜像参数 (支持 "0", "90", "180", "270" 或前缀带有 "!" 的水平镜像翻转如 "!90"，亦支持任意浮点旋转角如 "45"。
+     *                     【集成注意】：在 IIIF 标准下，本参数对整图 (region=full) 旋转时会正确转换图像的物理宽高；但对于高频瓦片请求，
+     *                     若传入非 0 旋转，会导致各子瓦片独立旋转导致拼接坐标错位与拉伸，瓦片预览建议设为 "0"，由客户端 Canvas 视口执行整体旋转。)
+     * @param quality      色彩质量参数 (支持 "default", "color", "gray", "bitonal")
+     * @param outputFormat 目标输出格式后缀 (如 "jpg", "png")
+     * @return 转换后的图像字节数组
+     * @throws IOException 如果加载、裁剪、缩放、旋转或转码写出失败
+     */
+    public static byte[] processImage(
+            String inputPath,
+            Integer left, Integer top, Integer width, Integer height,
+            Double hScale, Double vScale,
+            String rotation,
+            String quality,
+            String outputFormat
+    ) throws IOException {
         ensureInitialized();
         if (inputPath == null || inputPath.isEmpty() || outputFormat == null || outputFormat.isEmpty()) {
             throw new IllegalArgumentException("输入图片路径或目标格式不能为空");
@@ -336,6 +365,7 @@ public class VipsImageProcessor {
         Pointer image = loadImage(inputPath);
         Pointer croppedImage = null;
         Pointer resizedImage = null;
+        Pointer rotatedImage = null;
         Pointer qualityImage = null;
         try {
             Pointer currentImage = image;
@@ -344,9 +374,14 @@ public class VipsImageProcessor {
                 currentImage = croppedImage;
             }
 
-            resizedImage = resizeImageIfNeeded(currentImage, scale);
+            resizedImage = resizeImageIfNeeded(currentImage, hScale, vScale);
             if (resizedImage != null) {
                 currentImage = resizedImage;
+            }
+
+            rotatedImage = rotateImageIfNeeded(currentImage, rotation);
+            if (rotatedImage != null) {
+                currentImage = rotatedImage;
             }
 
             qualityImage = applyQualityIfNeeded(currentImage, quality);
@@ -358,6 +393,9 @@ public class VipsImageProcessor {
         } finally {
             if (qualityImage != null) {
                 LibVips.GLib.INSTANCE.g_object_unref(qualityImage);
+            }
+            if (rotatedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(rotatedImage);
             }
             if (resizedImage != null) {
                 LibVips.GLib.INSTANCE.g_object_unref(resizedImage);
@@ -458,17 +496,124 @@ public class VipsImageProcessor {
         return null;
     }
 
-    private static Pointer resizeImageIfNeeded(Pointer currentImage, Double scale) throws IOException {
-        if (scale != null && Math.abs(scale - 1.0) > SCALE_TOLERANCE) {
-            PointerByReference resizeRef = new PointerByReference();
-            int resizeResult = LibVips.INSTANCE.vips_resize(currentImage, resizeRef, scale, (Object) null);
-            if (resizeResult != 0) {
-                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
-                throw new IOException("图像缩放失败，错误: " + errorMsg);
-            }
-            return resizeRef.getValue();
+    private static Pointer resizeImageIfNeeded(Pointer currentImage, Double hScale, Double vScale) throws IOException {
+        if (hScale == null) {
+            return null;
         }
-        return null;
+
+        boolean hasHScale = Math.abs(hScale - 1.0) > SCALE_TOLERANCE;
+        boolean hasVScale = vScale != null && Math.abs(vScale - 1.0) > SCALE_TOLERANCE;
+
+        if (!hasHScale && !hasVScale) {
+            return null;
+        }
+
+        PointerByReference resizeRef = new PointerByReference();
+        int resizeResult;
+        LibVips.INSTANCE.vips_error_clear();
+
+        if (vScale == null || Math.abs(hScale - vScale) <= SCALE_TOLERANCE) {
+            resizeResult = LibVips.INSTANCE.vips_resize(currentImage, resizeRef, hScale, (Object) null);
+        } else {
+            resizeResult = LibVips.INSTANCE.vips_resize(currentImage, resizeRef, hScale, "vscale", vScale, (Object) null);
+        }
+
+        if (resizeResult != 0) {
+            String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+            throw new IOException("图像缩放失败，错误: " + errorMsg);
+        }
+        return resizeRef.getValue();
+    }
+
+    private static Pointer rotateImageIfNeeded(Pointer currentImage, String rotation) throws IOException {
+        if (rotation == null || rotation.isEmpty() || "0".equals(rotation)) {
+            return null;
+        }
+
+        boolean mirror = rotation.startsWith("!");
+        String angleStr = mirror ? rotation.substring(1) : rotation;
+        double angle = parseRotationAngle(angleStr, rotation);
+        angle = ((angle % 360) + 360) % 360;
+
+        boolean rotate = Math.abs(angle) > SCALE_TOLERANCE;
+        if (!mirror && !rotate) {
+            return null;
+        }
+
+        return performRotationAndMirroring(currentImage, mirror, rotate, angle);
+    }
+
+    private static double parseRotationAngle(String angleStr, String originalRotation) {
+        try {
+            return Double.parseDouble(angleStr);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("非法的旋转角度参数: " + originalRotation, e);
+        }
+    }
+
+    private static Pointer performRotationAndMirroring(
+            Pointer currentImage, boolean mirror, boolean rotate, double angle
+    ) throws IOException {
+        Pointer activeImage = currentImage;
+        Pointer flippedImage = null;
+        Pointer rotatedImage = null;
+
+        try {
+            LibVips.INSTANCE.vips_error_clear();
+            if (mirror) {
+                PointerByReference flipRef = new PointerByReference();
+                int flipResult = LibVips.INSTANCE.vips_flip(activeImage, flipRef, 0, (Object) null);
+                if (flipResult != 0) {
+                    String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                    throw new IOException("图像镜像翻转失败，错误: " + errorMsg);
+                }
+                flippedImage = flipRef.getValue();
+                activeImage = flippedImage;
+            }
+
+            if (rotate) {
+                rotatedImage = applyVipsRotation(activeImage, angle);
+                activeImage = rotatedImage;
+            }
+
+            if (mirror && rotate) {
+                LibVips.GLib.INSTANCE.g_object_unref(flippedImage);
+                return rotatedImage;
+            }
+            return mirror ? flippedImage : rotatedImage;
+
+        } catch (Throwable t) {
+            if (rotatedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(rotatedImage);
+            }
+            if (flippedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(flippedImage);
+            }
+            if (t instanceof IOException) {
+                throw (IOException) t;
+            }
+            throw new IOException("旋转或翻转处理失败", t);
+        }
+    }
+
+    private static Pointer applyVipsRotation(Pointer activeImage, double angle) throws IOException {
+        PointerByReference rotRef = new PointerByReference();
+        int rotResult;
+        if (Math.abs(angle - 90.0) <= SCALE_TOLERANCE) {
+            rotResult = LibVips.INSTANCE.vips_rot(activeImage, rotRef, 1, (Object) null);
+        } else if (Math.abs(angle - 180.0) <= SCALE_TOLERANCE) {
+            rotResult = LibVips.INSTANCE.vips_rot(activeImage, rotRef, 2, (Object) null);
+        } else if (Math.abs(angle - 270.0) <= SCALE_TOLERANCE) {
+            rotResult = LibVips.INSTANCE.vips_rot(activeImage, rotRef, 3, (Object) null);
+        } else {
+            rotResult = LibVips.INSTANCE.vips_rotate(activeImage, rotRef, angle, (Object) null);
+        }
+
+        if (rotResult != 0) {
+            String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+            throw new IOException("图像旋转失败，错误: " + errorMsg);
+        }
+        return rotRef.getValue();
     }
 
     private static byte[] writeImageToBuffer(Pointer currentImage, String outputFormat) throws IOException {

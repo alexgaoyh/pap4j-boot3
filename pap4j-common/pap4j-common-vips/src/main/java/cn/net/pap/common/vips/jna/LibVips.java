@@ -95,6 +95,42 @@ public interface LibVips extends Library {
     int vips_resize(Pointer in, PointerByReference out, double scale, Object... varargs);
 
     /**
+     * 对图像进行翻转操作。
+     *
+     * @param in 输入图像指针
+     * @param out 接收翻转后图像指针的引用
+     * @param direction 翻转方向（0 表示水平翻转，1 表示垂直翻转）
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-conversion.html#vips-flip">vips_flip API</a>
+     */
+    int vips_flip(Pointer in, PointerByReference out, int direction, Object... varargs);
+
+    /**
+     * 对图像进行90度倍数无损旋转。
+     *
+     * @param in 输入图像指针
+     * @param out 接收旋转后图像指针的引用
+     * @param angle 旋转角度枚举值（0 表示0度，1 表示90度，2 表示180度，3 表示270度）
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-conversion.html#vips-rot">vips_rot API</a>
+     */
+    int vips_rot(Pointer in, PointerByReference out, int angle, Object... varargs);
+
+    /**
+     * 对图像进行任意角度的旋转操作。
+     *
+     * @param in 输入图像指针
+     * @param out 接收旋转后图像指针的引用
+     * @param angle 顺时针旋转角度（双精度浮点数，单位为度）
+     * @param varargs 可变参数列表，以空（null）指针结尾
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-resample.html#vips-rotate">vips_rotate API</a>
+     */
+    int vips_rotate(Pointer in, PointerByReference out, double angle, Object... varargs);
+
+    /**
      * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-write-to-file">vips_image_write_to_file API</a>
      */
     int vips_image_write_to_file(Pointer image, String name, Object... varargs);

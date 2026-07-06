@@ -331,20 +331,24 @@ public class VipsImageProcessorTest {
                             throw t;
                         }
                     } else if (mode < 95) {
-                        // 3. 40% 概率：并发切片、缩放及色彩品质过滤压测 (processImage)
-                        // 随机分配裁剪坐标和缩放比，混杂不同的色彩品质模式
+                        // 3. 40% 概率：并发裁剪、缩放、旋转/镜像及色彩品质过滤压测 (processImage)
+                        // 随机分配裁剪坐标、横向/纵向缩放比、旋转角度及镜像，混杂不同的色彩品质模式
                         Integer left = (index % 3 == 0) ? 50 : null;
                         Integer top = (index % 3 == 0) ? 50 : null;
                         Integer width = (index % 3 == 0) ? 200 : null;
                         Integer height = (index % 3 == 0) ? 150 : null;
-                        Double scale = (index % 2 == 0) ? 0.75 : 1.0;
+                        Double hScale = (index % 2 == 0) ? 0.75 : 1.0;
+                        Double vScale = (index % 3 == 0) ? 0.5 : hScale;
+                        String[] rotations = {"0", "90", "180", "270", "!0", "!90", "!180", "!270", "45"};
+                        String rotation = rotations[index % rotations.length];
                         String[] qualities = {"default", "color", "gray", "bitonal"};
                         String quality = qualities[index % qualities.length];
 
                         byte[] result = VipsImageProcessor.processImage(
                                 inputFile.getAbsolutePath(),
                                 left, top, width, height,
-                                scale,
+                                hScale, vScale,
+                                rotation,
                                 quality,
                                 targetFormat
                         );
@@ -420,6 +424,102 @@ public class VipsImageProcessorTest {
         // 验证堆内存使用非常平稳（堆内存净增应当小于 20MB），证明无堆外及堆内内存泄漏
         double heapDeltaMB = (finalUsedHeap - initialUsedHeap) / (1024.0 * 1024.0);
         assertTrue(heapDeltaMB < 20.0, "JVM 堆内存占用应当保持平稳 (Delta < 20MB)，证明无内存泄漏");
+    }
+
+    /**
+     * 测试图像翻转与旋转功能。
+     */
+    @Test
+    public void testImageRotationAndMirroring() throws Exception {
+        log.info("测试 VipsImageProcessor.processImage 的 rotation 参数 (翻转与旋转)...");
+
+        // 1. 测试 90 度旋转
+        byte[] rot90Bytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "90",
+                "default", "jpeg"
+        );
+        assertNotNull(rot90Bytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(rot90Bytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            // 原始尺寸为 800x600，旋转 90 度后宽高应对调，即 600x800
+            assertEquals(600, bi.getWidth(), "旋转 90 度后宽度应为 600");
+            assertEquals(800, bi.getHeight(), "旋转 90 度后高度应为 800");
+        }
+
+        // 2. 测试镜像水平翻转
+        byte[] mirrorBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "!0",
+                "default", "jpeg"
+        );
+        assertNotNull(mirrorBytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(mirrorBytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            // 翻转后尺寸应保持不变为 800x600
+            assertEquals(800, bi.getWidth());
+            assertEquals(600, bi.getHeight());
+        }
+
+        // 3. 测试镜像 + 270 度旋转 (旋转后宽高应对调，即 600x800)
+        byte[] mirrorRot270Bytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "!270",
+                "default", "jpeg"
+        );
+        assertNotNull(mirrorRot270Bytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(mirrorRot270Bytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(600, bi.getWidth());
+            assertEquals(800, bi.getHeight());
+        }
+
+        // 4. 测试任意浮点数角度旋转 (例如 45.0 度)
+        byte[] rot45Bytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "45",
+                "default", "jpeg"
+        );
+        assertNotNull(rot45Bytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(rot45Bytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            // 任意角度旋转后，画布会自适应变大，尺寸应大于 800x600
+            assertTrue(bi.getWidth() > 800);
+            assertTrue(bi.getHeight() > 600);
+            log.info("任意 45 度角旋转后图像尺寸自适应为: {}x{}", bi.getWidth(), bi.getHeight());
+        }
+    }
+
+    /**
+     * 测试非等比拉伸缩放功能。
+     */
+    @Test
+    public void testNonProportionalScaling() throws Exception {
+        log.info("测试 VipsImageProcessor.processImage 的横向/纵向非等比缩放功能...");
+
+        // 将 800x600 图像拉伸缩放到横向 0.5 倍，纵向 0.2 倍 (预期输出宽度 400，高度 120)
+        byte[] outputBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                0.5, 0.2, "0",
+                "default", "jpeg"
+        );
+        assertNotNull(outputBytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(outputBytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(400, bi.getWidth(), "横向非等比缩放后宽度应为 400");
+            assertEquals(120, bi.getHeight(), "纵向非等比缩放后高度应为 120");
+            log.info("成功验证非等比拉伸图像，尺寸为: {}x{}", bi.getWidth(), bi.getHeight());
+        }
     }
 
     /**

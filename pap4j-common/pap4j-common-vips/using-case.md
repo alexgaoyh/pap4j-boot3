@@ -112,6 +112,12 @@ public class IiifController {
                     "width", metadata.width(),
                     "height", metadata.height(),
                     "sizes", List.of(Map.of("width", metadata.width(), "height", metadata.height())),
+                    "tiles", List.of(
+                            Map.of(
+                                    "width", 256,
+                                    "scaleFactors", List.of(1, 2, 4, 8, 16, 32)
+                            )
+                    ),
                     "profile", List.of(
                             "http://iiif.io/api/image/2/level2.json",
                             Map.of(
@@ -131,6 +137,17 @@ public class IiifController {
 
     /**
      * IIIF 规范接口 2：图像转换请求 (Image Request)，返回转换后（支持 jpg/png）的图像二进制流。
+     *
+     * <p><b>关于旋转（Rotation）参数的集成规约与客户端适配机制：</b></p>
+     * <ul>
+     *   <li><b>单图或整图请求 (Single Image Request)</b>：若请求 region 为 <code>full</code>，后端会利用 libvips 对整图进行物理旋转，
+     *       旋转 90/270 度后输出图像的宽高物理尺寸会正确对调，以展示符合预期的旋转后整图。</li>
+     *   <li><b>瓦片流式加载 (Tiled/Deep Zoom Request)</b>：在配合 OpenSeadragon 等标准 IIIF 瓦片加载客户端使用时，
+     *       客户端会以 unrotated 的 <code>info.json</code> 原始宽高为基准布局瓦片。若在瓦片请求 URL 中直接传入非零 rotation 参数，
+     *       会导致后端对每个局部瓦片单独旋转，而在前端由于拼装坐标未变，会产生整体长宽不变（宽高没变）且瓦片拼装内容严重挤压变形（图像做了压缩）的问题。
+     *       因此，对于瓦片加载，<b>客户端请求 of URL 瓦片旋转参数必须保持为 0</b>，而整图的旋转与翻转应由前端通过视口 API（如
+     *       <code>viewer.viewport.setRotation(angle)</code> 和 <code>setFlip</code>）进行客户端 Canvas 级的统一旋转呈现。</li>
+     * </ul>
      */
     @Operation(summary = "获取 IIIF 图像预览", description = "解析符合 IIIF Image API 规范 the URL，并调用 libvips 进行高性能格式转换与输出")
     @GetMapping("/iiif/2/{identifier}/{region}/{size}/{rotation}/{quality}.{format}")
@@ -174,7 +191,13 @@ public class IiifController {
             Integer width = null;
             Integer height = null;
 
-            if (!"full".equalsIgnoreCase(region) && !"square".equalsIgnoreCase(region)) {
+            if ("square".equalsIgnoreCase(region)) {
+                int minDim = Math.min(imgWidth, imgHeight);
+                left = (imgWidth - minDim) / 2;
+                top = (imgHeight - minDim) / 2;
+                width = minDim;
+                height = minDim;
+            } else if (!"full".equalsIgnoreCase(region)) {
                 if (region.startsWith("pct:")) {
                     String[] parts = region.substring(4).split(",");
                     if (parts.length == 4) {
@@ -210,36 +233,38 @@ public class IiifController {
             int cropWidth = (width != null) ? width : imgWidth;
             int cropHeight = (height != null) ? height : imgHeight;
 
-            // 4. 解析 size 参数并计算缩放比例
-            Double scale = null;
+            // 4. 解析 size 参数并计算横向与纵向的缩放比例
+            Double hScale = null;
+            Double vScale = null;
             if (!"full".equalsIgnoreCase(size) && !"max".equalsIgnoreCase(size)) {
                 if (size.startsWith("pct:")) {
                     double pct = Double.parseDouble(size.substring(4));
-                    scale = pct / 100.0;
+                    hScale = pct / 100.0;
                 } else if (size.startsWith("!")) {
                     String[] parts = size.substring(1).split(",");
                     if (parts.length == 2) {
                         int w = Integer.parseInt(parts[0]);
                         int h = Integer.parseInt(parts[1]);
-                        scale = Math.min((double) w / cropWidth, (double) h / cropHeight);
+                        hScale = Math.min((double) w / cropWidth, (double) h / cropHeight);
                     }
                 } else {
                     String[] parts = size.split(",");
                     if (parts.length == 2) {
                         if (size.endsWith(",")) {
                             int w = Integer.parseInt(parts[0]);
-                            scale = (double) w / cropWidth;
+                            hScale = (double) w / cropWidth;
                         } else if (size.startsWith(",")) {
                             int h = Integer.parseInt(parts[1]);
-                            scale = (double) h / cropHeight;
+                            hScale = (double) h / cropHeight;
                         } else {
                             int w = Integer.parseInt(parts[0]);
                             int h = Integer.parseInt(parts[1]);
-                            scale = (double) w / cropWidth;
+                            hScale = (double) w / cropWidth;
+                            vScale = (double) h / cropHeight;
                         }
                     } else if (parts.length == 1) {
                         int w = Integer.parseInt(parts[0]);
-                        scale = (double) w / cropWidth;
+                        hScale = (double) w / cropWidth;
                     }
                 }
             }
@@ -248,7 +273,8 @@ public class IiifController {
             byte[] convertedBytes = VipsImageProcessor.processImage(
                     imageFile.getAbsolutePath(),
                     left, top, width, height,
-                    scale,
+                    hScale, vScale,
+                    rotation,
                     quality,
                     format
             );
@@ -612,6 +638,10 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
                     <input class="form-input" type="text" id="identifier" value="input_test.png" placeholder="例如: input_test.png">
                 </div>
                 <div class="form-group">
+                    <label class="form-label" for="rotation">旋转与镜像 (Rotation)</label>
+                    <input class="form-input" type="text" id="rotation" value="0" placeholder="例如: 90, !180, 45">
+                </div>
+                <div class="form-group">
                     <label class="form-label" for="format">输出格式 (通过 vips 动态转码)</label>
                     <select class="form-select" id="format">
                         <option value="jpeg">JPEG (经典兼容)</option>
@@ -686,6 +716,10 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
             loadIiifViewer(false); // 仅修改色彩品质时使用缓存的元数据加载
         });
 
+        document.getElementById('rotation').addEventListener('change', function() {
+            loadIiifViewer(false); // 仅修改旋转/镜像时使用缓存的元数据加载
+        });
+
         function loadIiifViewer(forceFetch) {
             var identifier = document.getElementById('identifier').value.trim();
             var baseUri = document.getElementById('server-url').value.trim();
@@ -748,6 +782,7 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
 
             var formatSelect = document.getElementById('format');
             var qualitySelect = document.getElementById('quality');
+            var rotation = document.getElementById('rotation').value.trim() || '0';
 
             // 暂存当前的选择，待列表刷新后尝试恢复
             var prevFormat = formatSelect.value;
@@ -797,7 +832,7 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
 
             // 更新监控看板的接口 URL
             var infoUrl = baseUri + '/iiif/2/' + identifier + '/info.json';
-            var imageUrl = baseUri + '/iiif/2/' + identifier + '/full/full/0/' + quality + '.' + format;
+            var imageUrl = baseUri + '/iiif/2/' + identifier + '/full/full/' + rotation + '/' + quality + '.' + format;
             document.getElementById('url-info').innerText = infoUrl;
             document.getElementById('url-image').innerText = imageUrl;
 
@@ -823,24 +858,35 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
                 }
             });
 
-            // 动态拦截瓦片请求，注入选择的 quality 与 format 参数
+            // 动态拦截瓦片请求，注入选择的 quality 与 format 参数，以及 rotation 参数
             viewer.addHandler('open', function() {
+                // 解析角度与翻转状态，并通过 OpenSeadragon 视口进行展示，避免旋转 90 度等非 0 视角瓦片导致图像拉伸与压缩
+                var cleanAngle = parseFloat(rotation.replace('!', '')) || 0;
+                viewer.viewport.setRotation(cleanAngle);
+                if (rotation.startsWith('!')) {
+                    viewer.viewport.setFlip(true);
+                } else {
+                    viewer.viewport.setFlip(false);
+                }
+
                 var tileSource = viewer.world.getItemAt(0).source;
                 var originalGetTileUrl = tileSource.getTileUrl;
                 tileSource.getTileUrl = function(level, x, y) {
                     var url = originalGetTileUrl.call(this, level, x, y);
                     if (url) {
-                        var lastSlashIndex = url.lastIndexOf('/');
-                        if (lastSlashIndex !== -1) {
-                            var cleanUrl = url.substring(0, lastSlashIndex);
+                        var parts = url.split('/');
+                        if (parts.length >= 4) {
+                            var lastPart = parts[parts.length - 1];
                             var params = '';
-                            var lastPart = url.substring(lastSlashIndex + 1);
                             var qIndex = lastPart.indexOf('?');
                             if (qIndex !== -1) {
                                 params = lastPart.substring(qIndex);
+                                lastPart = lastPart.substring(0, qIndex);
                             }
-                            url = cleanUrl + '/' + quality + '.' + format + params;
+                            parts[parts.length - 1] = quality + '.' + format + params;
+                            parts[parts.length - 2] = '0'; // 强制瓦片请求为 0 旋转，由前端 OpenSeadragon 视口负责整体旋转与镜像翻转
                         }
+                        url = parts.join('/');
                     }
                     return url;
                 };
