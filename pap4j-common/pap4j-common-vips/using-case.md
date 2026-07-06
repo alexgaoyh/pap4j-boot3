@@ -954,6 +954,7 @@ vips tiffsave D:/knowledge/qmsht.tif D:/knowledge/qmsht_pyramid.tif --tile --pyr
 #### 1) 物理存储层：版本化命名与原子写入（规避写锁冲突）
 - **规则**：更新图片时，不要同名覆盖，而是为文件名加上唯一的版本后缀（例如时间戳或 MD5 哈希），如 `input_test_1719918240.png`。
 - **流程**：将上传的数据先写入临时文件，写入完成后原子重命名。由于生成的是新文件，**彻底避开了旧文件的文件锁**，不影响 ongoing 用户的读操作。
+- **示例**: FileOperUtils.java
 
 #### 2) 路由层：图片 ID 绑定版本（隔离运行期版本）
 - **路由形式**：IIIF 服务的图片标识符与文件名完全绑定，例如 `/iiif/2/input_test_1719918240.png/info.json`。
@@ -972,4 +973,5 @@ vips tiffsave D:/knowledge/qmsht.tif D:/knowledge/qmsht_pyramid.tif --tile --pyr
 - **规则**：为了防止老版本图片无限堆积占用磁盘空间，可以设计一个异步定时任务：
   - 每天凌晨扫描图片存放目录。
   - 对于已经产生新版本、且最后修改时间超过指定阈值（例如超过 24 小时，已无存量用户浏览旧版本）的过往历史版本图片，物理执行删除，实现平滑的空间回收。
+  - 示例： FileOperUtils.java
 
