@@ -26,6 +26,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 /**
  * libvips 图像处理器单元测试与压力测试
@@ -519,6 +520,234 @@ public class VipsImageProcessorTest {
             assertEquals(400, bi.getWidth(), "横向非等比缩放后宽度应为 400");
             assertEquals(120, bi.getHeight(), "纵向非等比缩放后高度应为 120");
             log.info("成功验证非等比拉伸图像，尺寸为: {}x{}", bi.getWidth(), bi.getHeight());
+        }
+    }
+
+    /**
+     * 测试各种边界条件与非法输入异常抛出，提升测试分支覆盖率。
+     */
+    @Test
+    public void testEdgeCasesAndValidationExceptions() throws Exception {
+        log.info("测试边界条件与异常判定以提高测试覆盖率...");
+
+        // 1. 测试非法路径与文件不存在异常
+        assertThrows(IOException.class, () -> 
+                VipsImageProcessor.getImageMetadata(TestResourceUtil.getNonExistentPath("non_existent_file.png"))
+        );
+        assertThrows(IOException.class, () -> 
+                VipsImageProcessor.processImage(TestResourceUtil.getNonExistentPath("non_existent_file.png"), null, null, null, null, 1.0, 1.0, "0", "default", "jpg")
+        );
+
+        // 2. 测试输入路径为 null 或空
+        assertThrows(IllegalArgumentException.class, () -> 
+                VipsImageProcessor.processImage(null, null, null, null, null, 1.0, 1.0, "0", "default", "jpg")
+        );
+        assertThrows(IllegalArgumentException.class, () -> 
+                VipsImageProcessor.processImage("", null, null, null, null, 1.0, 1.0, "0", "default", "jpg")
+        );
+        assertThrows(IllegalArgumentException.class, () -> 
+                VipsImageProcessor.getImageMetadata(null)
+        );
+
+        // 3. 测试输出格式为 null 或空
+        assertThrows(IllegalArgumentException.class, () -> 
+                VipsImageProcessor.processImage(inputFile.getAbsolutePath(), null, null, null, null, 1.0, 1.0, "0", "default", null)
+        );
+        assertThrows(IllegalArgumentException.class, () -> 
+                VipsImageProcessor.processImage(inputFile.getAbsolutePath(), null, null, null, null, 1.0, 1.0, "0", "default", "")
+        );
+
+        // 4. 测试非法旋转字符串导致参数解析失败
+        assertThrows(IllegalArgumentException.class, () -> 
+                VipsImageProcessor.processImage(inputFile.getAbsolutePath(), null, null, null, null, 1.0, 1.0, "abc", "default", "jpg")
+        );
+        assertThrows(IllegalArgumentException.class, () -> 
+                VipsImageProcessor.processImage(inputFile.getAbsolutePath(), null, null, null, null, 1.0, 1.0, "!abc", "default", "jpg")
+        );
+
+        // 5. 测试 hScale 为 null (跳过 resize 逻辑)
+        byte[] noScaleBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                null, 1.0, "0",
+                "default", "jpg"
+        );
+        assertNotNull(noScaleBytes);
+
+        // 6. 测试 vScale 为 null (使用 hScale 等比 resize 逻辑)
+        byte[] equalScaleBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                0.5, null, "0",
+                "default", "jpg"
+        );
+        assertNotNull(equalScaleBytes);
+
+        // 7. 测试旋转参数为 null, 空, 以及 0 度 (跳过 rotate 逻辑)
+        byte[] noRot1 = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, null,
+                "default", "jpg"
+        );
+        assertNotNull(noRot1);
+        byte[] noRot2 = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "",
+                "default", "jpg"
+        );
+        assertNotNull(noRot2);
+        byte[] noRot3 = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "0",
+                "default", "jpg"
+        );
+        assertNotNull(noRot3);
+
+        // 8. 测试色彩品质为 invalid、default 或 color
+        byte[] invalidQualBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "0",
+                "invalid_quality", "jpg"
+        );
+        assertNotNull(invalidQualBytes);
+
+        // 9. 测试 convertFormat(String, String) 文件不存在异常
+        assertThrows(IOException.class, () ->
+                VipsImageProcessor.convertFormat(TestResourceUtil.getNonExistentPath("non_existent_file.png"), TestResourceUtil.getNonExistentPath("non_existent_out.png"))
+        );
+
+        // 10. 测试 convertFormat(String, String) 文件损坏/非法类型异常
+        File emptyFile = new File(tempDir, "empty_file.png");
+        java.nio.file.Files.write(emptyFile.toPath(), new byte[]{1, 2, 3, 4});
+        assertThrows(IOException.class, () ->
+                VipsImageProcessor.convertFormat(emptyFile.getAbsolutePath(), new File(tempDir, "empty_out.png").getAbsolutePath())
+        );
+
+        // 11. 测试 convertFormat(String, String) 自动创建不存在的父目录
+        File nestedOutputFile = new File(tempDir, "nested_dir_1/nested_dir_2/output_nested.webp");
+        VipsImageProcessor.convertFormat(inputFile.getAbsolutePath(), nestedOutputFile.getAbsolutePath());
+        assertTrue(nestedOutputFile.exists(), "应当成功创建嵌套子目录并生成文件");
+        assertTrue(nestedOutputFile.length() > 0);
+
+        // 12. 测试 convertFormat(byte[], String) 入参为 null 或空
+        assertThrows(IllegalArgumentException.class, () ->
+                VipsImageProcessor.convertFormat((byte[]) null, "webp")
+        );
+        assertThrows(IllegalArgumentException.class, () ->
+                VipsImageProcessor.convertFormat(new byte[0], "webp")
+        );
+        assertThrows(IllegalArgumentException.class, () ->
+                VipsImageProcessor.convertFormat(sourceBytes, (String) null)
+        );
+        assertThrows(IllegalArgumentException.class, () ->
+                VipsImageProcessor.convertFormat(sourceBytes, "")
+        );
+
+        // 13. 测试 convertFormat(byte[], String) 传入损坏/非法字节数组
+        assertThrows(IOException.class, () ->
+                VipsImageProcessor.convertFormat(new byte[]{1, 2, 3, 4}, "webp")
+        );
+
+        // 14. 测试 convertFormat(byte[], String) 传入不支持的输出后缀
+        assertThrows(IOException.class, () ->
+                VipsImageProcessor.convertFormat(sourceBytes, "xyz")
+        );
+
+        // 15. 测试 processImage 负角和大于360度的超大角度旋转 (例如 -90 度 和 450 度)
+        // -90度应等同于270度，宽高对调（800x600 -> 600x800）
+        byte[] rotNeg90Bytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "-90",
+                "default", "jpeg"
+        );
+        assertNotNull(rotNeg90Bytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(rotNeg90Bytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(600, bi.getWidth(), "旋转 -90 度后宽度应为 600");
+            assertEquals(800, bi.getHeight(), "旋转 -90 度后高度应为 800");
+        }
+
+        // 450度等同于90度 (450 % 360 = 90)，宽高对调（800x600 -> 600x800）
+        byte[] rot450Bytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                null, null, null, null,
+                1.0, 1.0, "450",
+                "default", "jpeg"
+        );
+        assertNotNull(rot450Bytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(rot450Bytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(600, bi.getWidth(), "旋转 450 度后宽度应为 600");
+            assertEquals(800, bi.getHeight(), "旋转 450 度后高度应为 800");
+        }
+
+        // 16. 测试 processImage 仅包含部分裁剪参数 (例如只传 left 和 top，宽和高为 null)
+        // 应该跳过裁剪，返回完整原始图片 (大小应仍为 800x600)
+        byte[] partialCropBytes = VipsImageProcessor.processImage(
+                inputFile.getAbsolutePath(),
+                100, 100, null, null,
+                1.0, 1.0, "0",
+                "default", "jpeg"
+        );
+        assertNotNull(partialCropBytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(partialCropBytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(800, bi.getWidth(), "不完全裁剪参数应跳过裁剪，宽度仍为 800");
+            assertEquals(600, bi.getHeight(), "不完全裁剪参数应跳过裁剪，高度仍为 600");
+        }
+    }
+
+    /**
+     * 深度内存泄漏验证：在频繁抛出异常（如非法旋转入参）的极端情况下，验证本地 Pointer 和中间状态是否被 finally 安全回收，物理内存有无累积泄漏。
+     */
+    @Test
+    public void testPointerCleanupOnException() throws Exception {
+        log.info("开始频繁发生异常情况下的本地内存泄露防范性测试...");
+
+        System.gc();
+        Thread.sleep(200);
+        long initialWorkingSet = getProcessWorkingSetSize();
+
+        int exceptionLoopCount = 1000;
+        int caughtExceptions = 0;
+
+        for (int i = 0; i < exceptionLoopCount; i++) {
+            try {
+                // 传入非法旋转字符串，故意在此处引发 IllegalArgumentException 异常
+                VipsImageProcessor.processImage(
+                        inputFile.getAbsolutePath(),
+                        null, null, null, null,
+                        1.0, 1.0, "invalid_angle_to_force_exception_" + i,
+                        "default", "jpg"
+                );
+            } catch (IllegalArgumentException e) {
+                caughtExceptions++;
+            }
+        }
+
+        assertEquals(exceptionLoopCount, caughtExceptions, "必须捕获到每一次人为构造的异常");
+
+        System.gc();
+        Thread.sleep(200);
+        long finalWorkingSet = getProcessWorkingSetSize();
+
+        if (initialWorkingSet > 0 && finalWorkingSet > 0) {
+            double workingSetDeltaMB = (finalWorkingSet - initialWorkingSet) / (1024.0 * 1024.0);
+            log.info("异常泄漏验证完成。初次 Working Set: {} MB，末次: {} MB，Delta: {} MB",
+                    String.format("%.2f", initialWorkingSet / (1024.0 * 1024.0)),
+                    String.format("%.2f", finalWorkingSet / (1024.0 * 1024.0)),
+                    String.format("%.2f", workingSetDeltaMB)
+            );
+            // 1000次发生异常的图像转码生命周期中，内存增长应保持平稳（在15MB以内），证明异常逻辑下没有任何 Pointer 回收遗漏
+            assertTrue(workingSetDeltaMB < 15.0, "异常处理管道中应无本地 Pointer 泄漏 (Delta < 15MB)");
         }
     }
 
