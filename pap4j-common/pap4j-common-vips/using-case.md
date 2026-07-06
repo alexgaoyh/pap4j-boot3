@@ -116,7 +116,7 @@ public class IiifController {
                             "http://iiif.io/api/image/2/level2.json",
                             Map.of(
                                     "formats", List.of("jpg", "png"),
-                                    "qualities", List.of("default")
+                                    "qualities", List.of("default", "color", "gray", "bitonal")
                             )
                     )
             );
@@ -143,7 +143,7 @@ public class IiifController {
             @PathVariable("size") String size,
             @Parameter(description = "旋转角度，当前默认不旋转：0", example = "0")
             @PathVariable("rotation") String rotation,
-            @Parameter(description = "输出色彩品质：default", example = "default")
+            @Parameter(description = "输出色彩品质 (支持 default, color, gray, bitonal)", example = "default")
             @PathVariable("quality") String quality,
             @Parameter(description = "目标输出格式：png, jpg 等", example = "jpg")
             @PathVariable("format") String format
@@ -618,6 +618,15 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
                         <option value="png">PNG (无损画质)</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label class="form-label" for="quality">色彩品质 (通过 vips 动态处理)</label>
+                    <select class="form-select" id="quality">
+                        <option value="default">Default (默认/不改变)</option>
+                        <option value="color">Color (彩色)</option>
+                        <option value="gray">Gray (灰度)</option>
+                        <option value="bitonal">Bitonal (二值化/黑白)</option>
+                    </select>
+                </div>
                 <button class="btn" id="load-btn">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                     载入图像预览
@@ -662,51 +671,179 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
 
     <script>
         var viewer = null;
+        var cachedInfoData = null;
+        var cachedKey = null;
 
         document.getElementById('load-btn').addEventListener('click', function() {
+            loadIiifViewer(true); // 按钮点击强制重新获取元数据
+        });
+
+        document.getElementById('format').addEventListener('change', function() {
+            loadIiifViewer(false); // 仅修改格式时使用缓存的元数据加载
+        });
+
+        document.getElementById('quality').addEventListener('change', function() {
+            loadIiifViewer(false); // 仅修改色彩品质时使用缓存的元数据加载
+        });
+
+        function loadIiifViewer(forceFetch) {
             var identifier = document.getElementById('identifier').value.trim();
-            var format = document.getElementById('format').value;
+            var baseUri = document.getElementById('server-url').value.trim();
+            if (baseUri.endsWith('/')) {
+                baseUri = baseUri.substring(0, baseUri.length - 1);
+            }
 
             if (!identifier) {
                 alert('请先输入图像标识符！');
                 return;
             }
 
-            // 隐藏占位符
-            document.getElementById('viewer-placeholder').style.display = 'none';
+            var infoUrl = baseUri + '/iiif/2/' + identifier + '/info.json';
+            var currentKey = baseUri + '||' + identifier;
 
-            // 动态生成并更新 IIIF 接口 URL 监控看板
-            var baseUri = document.getElementById('server-url').value.trim();
-            if (baseUri.endsWith('/')) {
-                baseUri = baseUri.substring(0, baseUri.length - 1);
+            if (!forceFetch && cachedInfoData && cachedKey === currentKey) {
+                // 使用已缓存的元数据直接重新载入视图
+                renderViewer(cachedInfoData, baseUri, identifier);
+            } else {
+                // 首次载入或标识符变更时，先获取 info.json
+                fetch(infoUrl)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('无法获取图像元数据 (info.json)');
+                        }
+                        return response.json();
+                    })
+                    .then(infoData => {
+                        cachedInfoData = infoData;
+                        cachedKey = currentKey;
+                        renderViewer(infoData, baseUri, identifier);
+                    })
+                    .catch(error => {
+                        document.getElementById('viewer-placeholder').style.display = 'flex';
+                        document.getElementById('viewer-placeholder').querySelector('span').innerText = '获取元数据或载入图像失败！请检查图片是否存在，以及服务端是否正常运行。';
+                        alert(error.message);
+                    });
+            }
+        }
+
+        function renderViewer(infoData, baseUri, identifier) {
+            // 动态解析 info.json 中声明支持的 formats 与 qualities
+            var formats = [];
+            var qualities = [];
+
+            if (infoData.profile) {
+                var profileList = Array.isArray(infoData.profile) ? infoData.profile : [infoData.profile];
+                for (var i = 0; i < profileList.length; i++) {
+                    var p = profileList[i];
+                    if (typeof p === 'object' && p !== null) {
+                        if (p.formats) formats = p.formats;
+                        if (p.qualities) qualities = p.qualities;
+                    }
+                }
             }
 
-            var infoUrl = baseUri + '/iiif/2/' + identifier + '/info.json';
-            var imageUrl = baseUri + '/iiif/2/' + identifier + '/full/full/0/default.' + format;
+            // 元数据未提供时的降级默认值
+            if (formats.length === 0) formats = ['jpg', 'png'];
+            if (qualities.length === 0) qualities = ['default'];
 
+            var formatSelect = document.getElementById('format');
+            var qualitySelect = document.getElementById('quality');
+
+            // 暂存当前的选择，待列表刷新后尝试恢复
+            var prevFormat = formatSelect.value;
+            var prevQuality = qualitySelect.value;
+
+            // 动态重建格式下拉选项
+            formatSelect.innerHTML = '';
+            formats.forEach(function(fmt) {
+                var option = document.createElement('option');
+                option.value = fmt;
+                var displayLabel = fmt.toUpperCase();
+                if (fmt === 'jpg' || fmt === 'jpeg') displayLabel = 'JPEG (经典兼容)';
+                if (fmt === 'png') displayLabel = 'PNG (无损画质)';
+                option.text = displayLabel;
+                formatSelect.appendChild(option);
+            });
+
+            // 动态色彩品质下拉选项
+            qualitySelect.innerHTML = '';
+            qualities.forEach(function(q) {
+                var option = document.createElement('option');
+                option.value = q;
+                var displayLabel = q.charAt(0).toUpperCase() + q.slice(1);
+                if (q === 'default') displayLabel = 'Default (默认/不改变)';
+                if (q === 'color') displayLabel = 'Color (彩色)';
+                if (q === 'gray') displayLabel = 'Gray (灰度)';
+                if (q === 'bitonal') displayLabel = 'Bitonal (二值化/黑白)';
+                option.text = displayLabel;
+                qualitySelect.appendChild(option);
+            });
+
+            // 恢复先前的选择 (若在新支持列表中)
+            if (formats.includes(prevFormat)) {
+                formatSelect.value = prevFormat;
+            } else {
+                formatSelect.selectedIndex = 0;
+            }
+
+            if (qualities.includes(prevQuality)) {
+                qualitySelect.value = prevQuality;
+            } else {
+                qualitySelect.selectedIndex = 0;
+            }
+
+            var format = formatSelect.value;
+            var quality = qualitySelect.value;
+
+            // 更新监控看板的接口 URL
+            var infoUrl = baseUri + '/iiif/2/' + identifier + '/info.json';
+            var imageUrl = baseUri + '/iiif/2/' + identifier + '/full/full/0/' + quality + '.' + format;
             document.getElementById('url-info').innerText = infoUrl;
             document.getElementById('url-image').innerText = imageUrl;
 
-            // 销毁旧 of OSD 实例防止容器冲突
+            // 隐藏占位符
+            document.getElementById('viewer-placeholder').style.display = 'none';
+
+            // 销毁旧的 OSD 实例防止容器冲突
             if (viewer) {
                 viewer.destroy();
             }
 
-            // 初始化 OpenSeadragon 并加载符合 IIIF 规范的 info.json 配置源
+            // 初始化 OpenSeadragon 并加载符合 IIIF 规范的 info.json 数据源
             viewer = OpenSeadragon({
                 id: "openseadragon-viewer",
                 prefixUrl: "https://cdnjs.cloudflare.com/ajax/libs/openseadragon/4.1.0/images/",
-                // 直接指向符合 IIIF 规范的 info.json 服务接口
-                tileSources: infoUrl,
-                // 可选参数：显示导航小地图
+                tileSources: infoData, // 直接传入预先获取的 info.json 数据对象
                 showNavigator: true,
                 navigatorPosition: "BOTTOM_RIGHT",
-                // 开启平滑变焦动画
                 gestureSettingsMouse: {
                     clickToZoom: true,
                     dblClickToZoom: true,
                     pinchToZoom: true
                 }
+            });
+
+            // 动态拦截瓦片请求，注入选择的 quality 与 format 参数
+            viewer.addHandler('open', function() {
+                var tileSource = viewer.world.getItemAt(0).source;
+                var originalGetTileUrl = tileSource.getTileUrl;
+                tileSource.getTileUrl = function(level, x, y) {
+                    var url = originalGetTileUrl.call(this, level, x, y);
+                    if (url) {
+                        var lastSlashIndex = url.lastIndexOf('/');
+                        if (lastSlashIndex !== -1) {
+                            var cleanUrl = url.substring(0, lastSlashIndex);
+                            var params = '';
+                            var lastPart = url.substring(lastSlashIndex + 1);
+                            var qIndex = lastPart.indexOf('?');
+                            if (qIndex !== -1) {
+                                params = lastPart.substring(qIndex);
+                            }
+                            url = cleanUrl + '/' + quality + '.' + format + params;
+                        }
+                    }
+                    return url;
+                };
             });
 
             // 异常监听，提示找不到文件等错误
@@ -715,7 +852,7 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
                 document.getElementById('viewer-placeholder').querySelector('span').innerText = '图像载入失败！请检查 D:/knowledge/ 是否存在该图片，或查看后台服务日志。';
                 alert('载入失败：未能获取图像元数据 (info.json)，请确保 D:/knowledge/' + identifier + ' 文件存在。');
             });
-        });
+        }
     </script>
 </body>
 </html>
