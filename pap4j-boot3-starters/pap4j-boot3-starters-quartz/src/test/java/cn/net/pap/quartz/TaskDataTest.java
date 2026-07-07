@@ -1,5 +1,6 @@
 package cn.net.pap.quartz;
 
+import cn.net.pap.quartz.repository.TaskDataRepository;
 import cn.net.pap.quartz.util.BeanMethodInvoker;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.AfterAll;
@@ -37,10 +38,12 @@ public class TaskDataTest {
 
     private final ITaskDataService taskDataService;
     private final ApplicationContext applicationContext;
+    private final TaskDataRepository taskDataRepository;
 
-    public TaskDataTest(ITaskDataService taskDataService, ApplicationContext applicationContext) {
+    public TaskDataTest(ITaskDataService taskDataService, ApplicationContext applicationContext, TaskDataRepository taskDataRepository) {
         this.taskDataService = taskDataService;
         this.applicationContext = applicationContext;
+        this.taskDataRepository = taskDataRepository;
     }
     public static final ExecutorService executor = new ThreadPoolExecutor(
             20,
@@ -153,6 +156,72 @@ public class TaskDataTest {
         logger.error("callNptExceptionTest", exception);
     }
 
+    /**
+     * 测试非阻塞数据库驱动的退避重试机制
+     * 验证在并发环境下，单条数据失败后不会阻塞同批次其他数据的正常处理，
+     * 并且能按照计算得到的 nextProcessTime 进行精准的延迟捞取重试，直到达到最大重试上限变为最终失败。
+     */
+    @Test
+    public void testNonBlockingDatabaseDrivenRetry() {
+        taskDataService.deleteAll();
 
+        // 1. 准备测试数据：1条正常数据，1条会触发可重试异常的数据（包含 "RETRY"）
+        TaskData taskRetry = new TaskData();
+        taskRetry.setId(1L);
+        taskRetry.setDataContent("RETRY task");
+        taskRetry.setProcessStatus("PENDING");
+
+        TaskData taskNormal = new TaskData();
+        taskNormal.setId(2L);
+        taskNormal.setDataContent("Normal task");
+        taskNormal.setProcessStatus("PENDING");
+
+        taskDataService.saveAll(List.of(taskRetry, taskNormal));
+
+        // 2. 第一次批处理捞起：两个任务被同时捞起。
+        // Normal 应该直接 SUCCESS 提交；Retry 会执行失败并进行非阻塞退避。
+        taskDataService.processBatchSafely();
+
+        // 【断言】Normal 任务成功，说明没有被失败的 Retry 任务拖慢/阻塞
+        TaskData dbNormal = taskDataRepository.findById(2L).orElseThrow();
+        assertEquals("SUCCESS", dbNormal.getProcessStatus());
+
+        // 【断言】Retry 任务状态变为 RETRYABLE_FAILED，尝试次数加 1，且写入了未来的下一次可执行时间（nextProcessTime）
+        TaskData dbRetry = taskDataRepository.findById(1L).orElseThrow();
+        assertEquals("RETRYABLE_FAILED", dbRetry.getProcessStatus());
+        assertEquals(1, dbRetry.getProcessAttempts());
+        org.junit.jupiter.api.Assertions.assertNotNull(dbRetry.getNextProcessTime());
+        assertTrue(dbRetry.getNextProcessTime().isAfter(java.time.LocalDateTime.now()));
+
+        // 3. 第二次批处理捞起（立即执行）：
+        // 由于 Retry 任务的下一次可执行时间是未来时间，数据库 SQL 应将其过滤掉。
+        taskDataService.processBatchSafely();
+        
+        // 【断言】Retry 任务依然维持原样，尝试次数没有被增加，说明未被重复抢占
+        TaskData dbRetryImmediate = taskDataRepository.findById(1L).orElseThrow();
+        assertEquals("RETRYABLE_FAILED", dbRetryImmediate.getProcessStatus());
+        assertEquals(1, dbRetryImmediate.getProcessAttempts());
+
+        // 4. 模拟时间流逝：手动将下一次可执行时间调整到过去的 10 秒前，使其满足抢占条件
+        dbRetryImmediate.setNextProcessTime(java.time.LocalDateTime.now().minusSeconds(10));
+        taskDataRepository.save(dbRetryImmediate);
+
+        // 5. 第三次批处理捞起：Retry 任务此时因到达时间被成功重新捞起，但会再次处理失败（attempts = 2）
+        taskDataService.processBatchSafely();
+        TaskData dbRetrySecond = taskDataRepository.findById(1L).orElseThrow();
+        assertEquals("RETRYABLE_FAILED", dbRetrySecond.getProcessStatus());
+        assertEquals(2, dbRetrySecond.getProcessAttempts());
+
+        // 6. 再次模拟时间流逝：调整重试时间到过去
+        dbRetrySecond.setNextProcessTime(java.time.LocalDateTime.now().minusSeconds(10));
+        taskDataRepository.save(dbRetrySecond);
+
+        // 7. 第四次批处理捞起：第 3 次重新执行并再次失败。
+        // 由于尝试次数已达到 MAX_RETRY_ATTEMPTS(3)，状态被最终置为 FAILED。
+        taskDataService.processBatchSafely();
+        TaskData dbRetryFinal = taskDataRepository.findById(1L).orElseThrow();
+        assertEquals("FAILED", dbRetryFinal.getProcessStatus());
+        assertEquals(3, dbRetryFinal.getProcessAttempts());
+    }
 
 }

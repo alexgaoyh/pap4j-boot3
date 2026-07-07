@@ -33,7 +33,8 @@ public class TaskDataServiceImpl implements ITaskDataService {
 
     private static final int BATCH_SIZE = 10;
 
-    private static final int MAX_RETRY_ATTEMPTS = 1;
+    // 允许的最大重试尝试次数设定为 3，支持完整的指数退避重试链路
+    private static final int MAX_RETRY_ATTEMPTS = 3;
 
     private static final Duration PROCESSING_TIMEOUT = Duration.ofHours(24);
 
@@ -185,8 +186,16 @@ public class TaskDataServiceImpl implements ITaskDataService {
                         log.warn("标记失败时发生冲突: {}", data.getId());
                     }
                 } else {
-                    // 标记为可重试失败
-                    taskDataRepository.markAsRetryableFailed(data.getId(), processToken, e.getMessage());
+                    // 【非阻塞分布式指数退避与抖动机制 (Jitter)】
+                    // 1. 计算延迟时间：以当前已尝试次数为指数，2 秒为基准进行指数级递增。
+                    // 2. 注入 ±10% 的随机抖动（Jitter），防止高并发时大量失败任务在同一时间点重试，避免“惊群效应”打垮下游接口。
+                    double jitter = 0.9 + java.util.concurrent.ThreadLocalRandom.current().nextDouble() * 0.2;
+                    long backoffSeconds = (long) (2 * Math.pow(2, data.getProcessAttempts()) * jitter);
+                    LocalDateTime nextProcessTime = LocalDateTime.now().plusSeconds(backoffSeconds);
+
+                    // 3. 将当前任务标记为 RETRYABLE_FAILED 并持久化下一次允许执行时间。
+                    // 此操作立即提交事务释放本条数据的抢占 Token，执行线程不阻塞，直接处理本批次内的下一条数据。
+                    taskDataRepository.markAsRetryableFailed(data.getId(), processToken, e.getMessage(), nextProcessTime);
                 }
                 return null;
             });

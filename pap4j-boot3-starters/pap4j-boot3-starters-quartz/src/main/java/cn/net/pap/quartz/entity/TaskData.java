@@ -62,6 +62,20 @@ public class TaskData {
     @Column(name = "finished_time")
     private LocalDateTime finishTime;
 
+    /**
+     * 【非阻塞分布式退避重试核心字段】
+     * 下一次允许被捞起执行的时间点。在发生可重试错误时，系统计算未来的退避时间并写入此列。
+     * 
+     * 引入该时间控制字段的核心架构意义：
+     * 1. 【避免瞬间耗尽尝试次数】：若不设延迟进行即时重试，在下游服务短暂瘫痪时，多次重试会在 1 秒钟之内被瞬间榨干并报错最终失败，使重试机制失效；
+     * 2. 【平滑重试风暴（防惊群效应）】：配合随机抖动（Jitter）将失败任务在时间轴上散开，避免高并发下大量失败任务同时在下一秒重试，形成二次重试风暴轰炸下游；
+     * 3. 【防止队列空转与饥饿】：未到重试时间的任务会被查询过滤，腾出批处理窗口（BATCH_SIZE）优先处理新进来的正常任务，防止故障任务无限期霸占处理通道。
+     * 
+     * 此外，基于数据库字段时间的异步退避设计彻底消除了内存中同步线程挂起（Thread.sleep）所带来的头部阻塞与连接池枯竭隐患。
+     */
+    @Column(name = "next_process_time")
+    private LocalDateTime nextProcessTime;
+
     public Long getId() {
         return id;
     }
@@ -132,5 +146,13 @@ public class TaskData {
 
     public void setFinishTime(LocalDateTime finishTime) {
         this.finishTime = finishTime;
+    }
+
+    public LocalDateTime getNextProcessTime() {
+        return nextProcessTime;
+    }
+
+    public void setNextProcessTime(LocalDateTime nextProcessTime) {
+        this.nextProcessTime = nextProcessTime;
     }
 }
