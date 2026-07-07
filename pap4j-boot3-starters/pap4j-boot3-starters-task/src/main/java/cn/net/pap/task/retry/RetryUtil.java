@@ -32,6 +32,10 @@ public class RetryUtil {
 
     /**
      * 泛型重试方法
+     * <p>
+     * 注意：该方法为【同步阻塞式重试】。底层使用 Thread.sleep 进行延迟等待，
+     * 严禁在响应式编程环境（如 Spring WebFlux、Project Reactor 的 EventLoop 线程）中使用，
+     * 否则会阻塞事件循环线程，导致严重的性能和吞吐量下降。
      *
      * @param maxRetries  最大重试次数
      * @param delayMillis 每次重试前的延迟（毫秒）
@@ -95,7 +99,11 @@ public class RetryUtil {
     }
 
     /**
-     * 泛型重试方法（支持特定异常的指数退避延迟）
+     * 泛型重试方法（支持特定异常的指数退避延迟与随机抖动 Jitter）
+     * <p>
+     * 注意：该方法为【同步阻塞式重试】。底层使用 Thread.sleep 进行延迟等待，
+     * 严禁在响应式编程环境（如 Spring WebFlux、Project Reactor 的 EventLoop 线程）中使用，
+     * 否则会严重阻塞事件循环，降低系统吞吐量。
      *
      * @param maxRetries  最大重试次数
      * @param delayMillis 每次重试前的延迟（毫秒）
@@ -129,8 +137,9 @@ public class RetryUtil {
                     retryCount++;
                     if (retryCount < maxRetries) {
                         waitBeforeRetry(currentDelay);
-                        // 对于验证失败的情况，也应用退避策略
-                        currentDelay = (long) (currentDelay * backoffRatio);
+                        // 对于验证失败的情况，也应用退避策略并引入 ±10% 的随机抖动（Jitter），防止高并发时发生惊群效应
+                        double jitter = 0.9 + java.util.concurrent.ThreadLocalRandom.current().nextDouble() * 0.2;
+                        currentDelay = Math.max(1L, (long) (currentDelay * backoffRatio * jitter));
                     }
                 }
             } catch (Exception e) {
@@ -143,11 +152,14 @@ public class RetryUtil {
                     // 检查是否是需要应用退避延迟的异常类型
                     if (isBackoffException(e, backoffExceptions)) {
                         waitBeforeRetry(currentDelay);
-                        // 应用退避策略：延迟时间按比例增长
-                        currentDelay = (long) (currentDelay * backoffRatio);
+                        // 应用退避策略并引入 ±10% 的随机抖动（Jitter），防止高并发时发生惊群效应
+                        double jitter = 0.9 + java.util.concurrent.ThreadLocalRandom.current().nextDouble() * 0.2;
+                        currentDelay = Math.max(1L, (long) (currentDelay * backoffRatio * jitter));
                     } else {
-                        // 非退避异常，使用基础延迟
-                        waitBeforeRetry(delayMillis);
+                        // 非退避异常，使用基础固定延迟（不引入指数级增长，但可加入微量随机抖动打散并发）
+                        double jitter = 0.9 + java.util.concurrent.ThreadLocalRandom.current().nextDouble() * 0.2;
+                        long currentBaseDelay = Math.max(1L, (long) (delayMillis * jitter));
+                        waitBeforeRetry(currentBaseDelay);
                         currentDelay = delayMillis; // 重置为初始延迟
                     }
                 }
@@ -192,7 +204,7 @@ public class RetryUtil {
     }
 
     /**
-     * 等待指定时间（可重写此方法以支持中断等特性）
+     * 等待指定时间（阻塞式 Thread.sleep，注意不要在响应式 EventLoop 线程中调用）
      */
     private static void waitBeforeRetry(long delayMillis) {
         try {
