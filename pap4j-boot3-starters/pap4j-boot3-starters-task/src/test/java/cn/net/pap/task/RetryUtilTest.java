@@ -48,6 +48,14 @@ public class RetryUtilTest {
         );
         assertEquals("always fail", exception.getMessage());
         assertEquals(3, count.get());
+
+        // Verify Dimension 2: check that intermediate exceptions are added as suppressed exceptions
+        // 注意：第 3 次抛出的异常作为主异常抛出，前 2 次被吞掉的异常作为被压制（suppressed）异常。
+        // 由于异常不能自我压制，所以被压制的异常中不含自己，总数量是 maxRetries - 1 = 2。
+        Throwable[] suppressed = exception.getSuppressed();
+        assertEquals(2, suppressed.length);
+        assertEquals("always fail", suppressed[0].getMessage());
+        assertEquals("always fail", suppressed[1].getMessage());
     }
 
     @Test
@@ -71,7 +79,14 @@ public class RetryUtilTest {
                 }, r -> "good".equals(r))
         );
         assertEquals(3, count.get());
-        assertTrue(exception.getMessage().contains("Retry failed"));
+        assertTrue(exception.getMessage().contains("Validation failed. Result: bad"));
+
+        // 注意：第 3 次校验失败生成的异常作为主异常抛出，前 2 次校验失败异常作为被压制（suppressed）异常。
+        // 由于异常不能自我压制，所以被压制的异常中不含自己，总数量是 maxRetries - 1 = 2。
+        Throwable[] suppressed = exception.getSuppressed();
+        assertEquals(2, suppressed.length);
+        assertTrue(suppressed[0].getMessage().contains("Validation failed. Result: bad"));
+        assertTrue(suppressed[1].getMessage().contains("Validation failed. Result: bad"));
     }
 
     @Test
@@ -125,7 +140,7 @@ public class RetryUtilTest {
     @Test
     public void testTTaskFailsOnceThenSucceeds() throws Exception {
         AtomicInteger count = new AtomicInteger(0);
-        String result = RetryUtil.retryTWithBackoff(3, 1000, () -> {
+        String result = RetryUtil.retryTWithBackoff(3, 100, () -> {
             log.info("{}", System.currentTimeMillis());
             if (count.getAndIncrement() < 1) {
                 throw new RuntimeException("fail once");
@@ -141,7 +156,7 @@ public class RetryUtilTest {
     public void testTTaskAlwaysFailsWithBackoffException() {
         AtomicInteger count = new AtomicInteger(0);
         Exception exception = assertThrows(RuntimeException.class, () ->
-                RetryUtil.retryTWithBackoff(5, 1000, () -> {
+                RetryUtil.retryTWithBackoff(5, 50, () -> {
                     log.info("{}", System.currentTimeMillis());
                     count.incrementAndGet();
                     throw new RuntimeException("always fail");
@@ -150,6 +165,73 @@ public class RetryUtilTest {
 
         assertEquals("always fail", exception.getMessage());
         assertEquals(5, count.get());
+
+        // Verify Dimension 2: check that intermediate exceptions are added as suppressed exceptions
+        Throwable[] suppressed = exception.getSuppressed();
+        assertEquals(4, suppressed.length);
+        for (int i = 0; i < 4; i++) {
+            assertEquals("always fail", suppressed[i].getMessage());
+        }
+    }
+
+    @Test
+    void testTaskAlwaysFailsWithManyRetriesDoesNotOOM() {
+        AtomicInteger count = new AtomicInteger(0);
+        Exception exception = assertThrows(RuntimeException.class, () ->
+                RetryUtil.retryT(50, 1, () -> {
+                    int c = count.incrementAndGet();
+                    throw new RuntimeException("fail " + c);
+                }, r -> true)
+        );
+        assertEquals("fail 50", exception.getMessage());
+        assertEquals(50, count.get());
+
+        // Verify OOM Defense: check that intermediate exceptions are capped at 10 (1 final thrown, 9 suppressed)
+        Throwable[] suppressed = exception.getSuppressed();
+        assertEquals(9, suppressed.length); // 10 total exceptions retained (1 main + 9 suppressed)
+        
+        // The first suppressed exception must be "fail 1" (our first root cause)
+        assertEquals("fail 1", suppressed[0].getMessage());
+        
+        // The remaining 8 suppressed exceptions must be the latest failures: fail 42, fail 43, ..., fail 49
+        assertEquals("fail 42", suppressed[1].getMessage());
+        assertEquals("fail 49", suppressed[8].getMessage());
+    }
+
+    private static class RetryUtilCustomException extends Exception {
+        public RetryUtilCustomException(String message) {
+            super(message);
+        }
+    }
+
+    @Test
+    void testTaskFailsWithCustomCheckedException() {
+        AtomicInteger count = new AtomicInteger(0);
+        RetryUtilCustomException exception = assertThrows(RetryUtilCustomException.class, () ->
+                RetryUtil.retryT(3, 10, () -> {
+                    count.incrementAndGet();
+                    throw new RetryUtilCustomException("custom error");
+                }, r -> true)
+        );
+        assertEquals("custom error", exception.getMessage());
+        assertEquals(3, count.get());
+        assertEquals(2, exception.getSuppressed().length);
+        assertTrue(exception.getSuppressed()[0] instanceof RetryUtilCustomException);
+    }
+
+    @Test
+    void testTaskFailsWithCustomExceptionBackoff() {
+        AtomicInteger count = new AtomicInteger(0);
+        RetryUtilCustomException exception = assertThrows(RetryUtilCustomException.class, () ->
+                RetryUtil.retryTWithBackoff(3, 10, () -> {
+                    count.incrementAndGet();
+                    throw new RetryUtilCustomException("custom backoff error");
+                }, r -> true, 2.0, RetryUtilCustomException.class)
+        );
+        assertEquals("custom backoff error", exception.getMessage());
+        assertEquals(3, count.get());
+        assertEquals(2, exception.getSuppressed().length);
+        assertTrue(exception.getSuppressed()[0] instanceof RetryUtilCustomException);
     }
 
 }

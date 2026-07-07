@@ -1,5 +1,10 @@
 package cn.net.pap.task.retry;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 
@@ -7,6 +12,23 @@ import java.util.function.Predicate;
  * 重试 工具类
  */
 public class RetryUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(RetryUtil.class);
+
+    private static final int MAX_SUPPRESSED_EXCEPTIONS = 10;
+
+    /**
+     * 辅助方法：安全地往被压制异常列表中添加异常，防止重试次数过多时发生 OOM
+     */
+    private static void addSuppressedException(List<Exception> list, Exception e) {
+        if (list.size() < MAX_SUPPRESSED_EXCEPTIONS) {
+            list.add(e);
+        } else if (list.size() > 1) {
+            // 保留第 1 个异常（通常是最初始的根源错误），移除第 2 个（较旧的中间错误），并在末尾追加最新异常
+            list.remove(1);
+            list.add(e);
+        }
+    }
 
     /**
      * 泛型重试方法
@@ -22,6 +44,7 @@ public class RetryUtil {
     public static <T> T retryT(int maxRetries, long delayMillis, Callable<T> task, Predicate<T> validator) throws Exception {
         int retryCount = 0;
         Exception lastException = null;
+        List<Exception> suppressedExceptions = new ArrayList<>();
 
         // 在循环条件中增加对线程中断状态的检查，防止死循环
         while (retryCount < maxRetries && !Thread.currentThread().isInterrupted()) {
@@ -30,12 +53,18 @@ public class RetryUtil {
                 if (validator == null || validator.test(result)) {
                     return result;
                 } else {
+                    log.warn("Attempt {}/{} failed validation. Result: {}", retryCount + 1, maxRetries, result);
+                    IllegalStateException validationException = new IllegalStateException("Validation failed. Result: " + result);
+                    addSuppressedException(suppressedExceptions, validationException);
+                    lastException = validationException;
                     retryCount++;
                     if (retryCount < maxRetries) {
                         waitBeforeRetry(delayMillis);
                     }
                 }
             } catch (Exception e) {
+                log.warn("Attempt {}/{} failed with exception: {}", retryCount + 1, maxRetries, e.getMessage(), e);
+                addSuppressedException(suppressedExceptions, e);
                 lastException = e;
                 retryCount++;
                 if (retryCount < maxRetries) {
@@ -49,8 +78,15 @@ public class RetryUtil {
             throw new InterruptedException("Retry was interrupted.");
         }
 
-        // 如果重试完毕仍然失败，抛出最后一次异常
+        // 如果重试完毕仍然失败，抛出最后一次异常，并把之前的异常作为 suppressed 异常添加进去。
+        // 注意：最后一次异常（第 N 次）作为主异常抛出，前 N-1 次的异常作为被压制（suppressed）异常添加。
+        // 自身不能压制自身（Java 会抛出 IllegalArgumentException: Self-suppression not permitted），因此被压制的异常数量为 maxRetries - 1。
         if (lastException != null) {
+            for (Exception suppressed : suppressedExceptions) {
+                if (suppressed != lastException) {
+                    lastException.addSuppressed(suppressed);
+                }
+            }
             throw lastException;
         }
 
@@ -77,6 +113,7 @@ public class RetryUtil {
         int retryCount = 0;
         Exception lastException = null;
         long currentDelay = delayMillis;
+        List<Exception> suppressedExceptions = new ArrayList<>();
 
         // 增加对线程中断状态的检查
         while (retryCount < maxRetries && !Thread.currentThread().isInterrupted()) {
@@ -85,6 +122,10 @@ public class RetryUtil {
                 if (validator == null || validator.test(result)) {
                     return result;
                 } else {
+                    log.warn("Attempt {}/{} failed validation. Result: {}", retryCount + 1, maxRetries, result);
+                    IllegalStateException validationException = new IllegalStateException("Validation failed. Result: " + result);
+                    addSuppressedException(suppressedExceptions, validationException);
+                    lastException = validationException;
                     retryCount++;
                     if (retryCount < maxRetries) {
                         waitBeforeRetry(currentDelay);
@@ -93,6 +134,8 @@ public class RetryUtil {
                     }
                 }
             } catch (Exception e) {
+                log.warn("Attempt {}/{} failed with exception: {}", retryCount + 1, maxRetries, e.getMessage(), e);
+                addSuppressedException(suppressedExceptions, e);
                 lastException = e;
                 retryCount++;
 
@@ -116,8 +159,15 @@ public class RetryUtil {
             throw new InterruptedException("Retry was interrupted.");
         }
 
-        // 如果重试完毕仍然失败，抛出最后一次异常
+        // 如果重试完毕仍然失败，抛出最后一次异常，并把之前的异常作为 suppressed 异常添加进去。
+        // 注意：最后一次异常（第 N 次）作为主异常抛出，前 N-1 次的异常作为被压制（suppressed）异常添加。
+        // 自身不能压制自身（Java 会抛出 IllegalArgumentException: Self-suppression not permitted），因此被压制的异常数量为 maxRetries - 1。
         if (lastException != null) {
+            for (Exception suppressed : suppressedExceptions) {
+                if (suppressed != lastException) {
+                    lastException.addSuppressed(suppressed);
+                }
+            }
             throw lastException;
         }
 
