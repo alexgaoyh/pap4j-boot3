@@ -710,4 +710,103 @@ public final class XmlParseUtil {
         return map;
     }
 
+    /**
+     * 将任意复杂结构的 XML 字符串转换为 List<Map<String, Object>>
+     * 每一个 Map 代表根节点下的一个直接子元素，递归解析其子元素、属性与数组结构。
+     *
+     * @param xmlContent XML 字符串内容
+     * @return 解析后的 List Map 结构
+     * @throws Exception 解析异常
+     */
+    public static List<Map<String, Object>> xmlToMapList(String xmlContent) throws Exception {
+        if (xmlContent == null || xmlContent.trim().isEmpty()) {
+            return Collections.emptyList();
+        }
+        Document doc = getDocumentByContent(xmlContent.trim());
+        Element root = doc.getDocumentElement();
+        NodeList children = root.getChildNodes();
+        List<Map<String, Object>> list = new ArrayList<>();
+        
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            if (child.getNodeType() == Node.ELEMENT_NODE) {
+                Map<String, Object> map = new LinkedHashMap<>();
+                Object value = nodeToMapOrString(child);
+                map.put(child.getNodeName(), value);
+                list.add(map);
+            }
+        }
+        return list;
+    }
+
+    /**
+     * 递归解析节点为 Map、List 或 String
+     */
+    @SuppressWarnings("unchecked")
+    private static Object nodeToMapOrString(Node node) {
+        NodeList children = node.getChildNodes();
+        if (children.getLength() == 0) {
+            return node.getTextContent().trim();
+        }
+
+        // 检查是否包含子元素节点
+        boolean hasElementChildren = false;
+        for (int i = 0; i < children.getLength(); i++) {
+            if (children.item(i).getNodeType() == Node.ELEMENT_NODE) {
+                hasElementChildren = true;
+                break;
+            }
+        }
+
+        // 如果只有文本子节点，且没有属性，直接返回文本内容
+        if (!hasElementChildren && !node.hasAttributes()) {
+            return node.getTextContent().trim();
+        }
+
+        // 构建当前节点的 Map 结构
+        Map<String, Object> map = new LinkedHashMap<>();
+
+        // 解析并添加属性，以 "@" 符号作为前缀，符合标准 XML-to-JSON 转换契约
+        if (node.hasAttributes()) {
+            NamedNodeMap attributes = node.getAttributes();
+            for (int i = 0; i < attributes.getLength(); i++) {
+                Node attr = attributes.item(i);
+                map.put("@" + attr.getNodeName(), attr.getNodeValue().trim());
+            }
+        }
+
+        // 如果没有子元素节点但有属性，将文本内容放入特殊的 "#text" 键中，符合业界通用转换标准
+        if (!hasElementChildren) {
+            String textVal = node.getTextContent().trim();
+            if (!textVal.isEmpty()) {
+                map.put("#text", textVal);
+            }
+            return map;
+        }
+
+        // 递归解析所有子元素节点
+        for (int i = 0; i < children.getLength(); i++) {
+            Node child = children.item(i);
+            if (child.getNodeType() == Node.ELEMENT_NODE) {
+                String name = child.getNodeName();
+                Object childVal = nodeToMapOrString(child);
+
+                if (map.containsKey(name)) {
+                    Object existing = map.get(name);
+                    if (existing instanceof List) {
+                        ((List<Object>) existing).add(childVal);
+                    } else {
+                        List<Object> list = new ArrayList<>();
+                        list.add(existing);
+                        list.add(childVal);
+                        map.put(name, list);
+                    }
+                } else {
+                    map.put(name, childVal);
+                }
+            }
+        }
+        return map;
+    }
+
 }

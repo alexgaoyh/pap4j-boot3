@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class XmlParseUtilTest {
     private static final Logger log = LoggerFactory.getLogger(XmlParseUtilTest.class);
@@ -121,6 +121,104 @@ public class XmlParseUtilTest {
                 """;
         List<Segment> segments = XmlParseUtil.splitByAnchorAddMissingNode(xml.trim());
         segments.forEach(s -> log.info("{}", s));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    @DisplayName("任意结构复杂 XML 转换为 List Map 验证")
+    public void xmlToMapListTest() throws Exception {
+        String complexXml = """
+                <?xml version="1.0" encoding="utf-8"?>
+                <root>
+                    <student id="S001" status="active">
+                        <name>张三</name>
+                        <age>20</age>
+                        <scores>
+                            <subject name="math">95</subject>
+                            <subject name="english">88</subject>
+                        </scores>
+                        <extraInfo>
+                            <address>河南省许昌市</address>
+                            <phone/>
+                        </extraInfo>
+                    </student>
+                    <school>
+                        <name>郑州大学</name>
+                        <address>郑州市</address>
+                    </school>
+                </root>
+                """;
+
+        List<Map<String, Object>> result = XmlParseUtil.xmlToMapList(complexXml.trim());
+        log.info("XML to Map List result: {}", result);
+
+        // 验证结果结构是否正确
+        assertTrue(result != null && !result.isEmpty());
+        assertTrue(result.size() == 2); // student 和 school 两个直接子节点
+        
+        // 验证第一个子节点 student
+        Map<String, Object> firstChild = result.get(0);
+        assertTrue(firstChild.containsKey("student"));
+        Map<String, Object> studentMap = (Map<String, Object>) firstChild.get("student");
+        assertTrue("S001".equals(studentMap.get("@id")));
+        assertTrue("active".equals(studentMap.get("@status")));
+        assertTrue("张三".equals(studentMap.get("name")));
+        assertTrue("20".equals(studentMap.get("age")));
+        
+        // 验证包含相同标签的 List 重合节点 scores -> subject
+        Map<String, Object> scoresMap = (Map<String, Object>) studentMap.get("scores");
+        assertTrue(scoresMap.get("subject") instanceof List);
+        List<Map<String, Object>> subjects = (List<Map<String, Object>>) scoresMap.get("subject");
+        assertTrue(subjects.size() == 2);
+        assertTrue("math".equals(subjects.get(0).get("@name")));
+        assertTrue("95".equals(subjects.get(0).get("#text")));
+        assertTrue("english".equals(subjects.get(1).get("@name")));
+        assertTrue("88".equals(subjects.get(1).get("#text")));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    @DisplayName("高级 XML 结构（CDATA、注释、命名空间、格式错误）转换为 List Map 验证")
+    public void xmlToMapListAdvancedTest() throws Exception {
+        String advancedXml = """
+                <?xml version="1.0" encoding="utf-8"?>
+                <root>
+                    <ns:student id="S002" xmlns:ns="http://example.com/ns">
+                        <!-- 这是一个学生注释 -->
+                        <name>李四<!-- 姓名内部注释 --></name>
+                        <bio><![CDATA[具有 <html/> 标签的简介 & 特殊符号]]></bio>
+                    </ns:student>
+                </root>
+                """;
+
+        List<Map<String, Object>> result = XmlParseUtil.xmlToMapList(advancedXml.trim());
+        log.info("Advanced XML to Map List result: {}", result);
+
+        // 1. 验证基本结构
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+        assertEquals(1, result.size());
+
+        // 2. 验证命名空间节点
+        Map<String, Object> firstChild = result.get(0);
+        assertTrue(firstChild.containsKey("ns:student"));
+        Map<String, Object> studentMap = (Map<String, Object>) firstChild.get("ns:student");
+
+        // 3. 验证属性（含命名空间属性声明）
+        assertEquals("S002", studentMap.get("@id"));
+        assertEquals("http://example.com/ns", studentMap.get("@xmlns:ns"));
+
+        // 4. 验证注释是否被过滤（getTextContent() 不会包含注释，不影响结果）
+        assertEquals("李四", studentMap.get("name"));
+
+        // 5. 验证 CDATA 内容解析
+        assertEquals("具有 <html/> 标签的简介 & 特殊符号", studentMap.get("bio"));
+
+        // 6. 验证格式错误的 XML 能够抛出异常
+        String malformedXml = "<root><student>张三</root>";
+        assertThrows(Exception.class, () -> {
+            XmlParseUtil.xmlToMapList(malformedXml);
+        });
     }
 
 }
