@@ -5,6 +5,7 @@ import cn.net.pap.quartz.repository.TaskDataRepository;
 import cn.net.pap.quartz.service.ITaskDataService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Primary;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -18,7 +19,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-@Service
+@Service("taskDataServiceImpl")
+@Primary
 public class TaskDataServiceImpl implements ITaskDataService {
 
     private static final Logger log = LoggerFactory.getLogger(TaskDataServiceImpl.class);
@@ -129,7 +131,8 @@ public class TaskDataServiceImpl implements ITaskDataService {
     /**
      * 处理业务逻辑 - 根据实际业务需求实现
      */
-    private void processBusinessLogic(TaskData data) {
+    @Override
+    public void processBusinessLogic(TaskData data) {
         // 这里实现具体的业务处理逻辑
         // 例如：数据转换、调用外部接口、计算等
 
@@ -165,7 +168,8 @@ public class TaskDataServiceImpl implements ITaskDataService {
     /**
      * 在独立的事务中标记成功
      */
-    private boolean markTaskSuccessInNewTransaction(Long id, String processToken) {
+    @Override
+    public boolean markTaskSuccessInNewTransaction(Long id, String processToken) {
         Boolean result = transactionTemplate.execute(status -> 
             taskDataRepository.markAsSuccess(id, processToken) > 0
         );
@@ -175,7 +179,8 @@ public class TaskDataServiceImpl implements ITaskDataService {
     /**
      * 在独立的事务中标记失败
      */
-    private void markTaskFailureInNewTransaction(TaskData data, String processToken, Exception e) {
+    @Override
+    public void markTaskFailureInNewTransaction(TaskData data, String processToken, Exception e) {
         try {
             transactionTemplate.execute(status -> {
                 if (data.getProcessAttempts() >= MAX_RETRY_ATTEMPTS ||

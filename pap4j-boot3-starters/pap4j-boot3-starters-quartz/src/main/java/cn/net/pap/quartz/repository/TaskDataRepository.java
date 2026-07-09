@@ -71,4 +71,11 @@ public interface TaskDataRepository extends JpaRepository<TaskData, Long> {
      */
     long countByProcessStatus(String processStatus);
 
+    /**
+     * 在服务销毁时，原子地回滚被中断且未真正执行完成的任务状态，避免长耗时的 stuck timeout 等待。
+     */
+    @Modifying
+    @Query("UPDATE TaskData d SET d.processStatus = 'RETRYABLE_FAILED', d.processToken = NULL, d.processAttempts = d.processAttempts - 1, d.nextProcessTime = CURRENT_TIMESTAMP WHERE d.id = :id AND d.processToken = :processToken AND d.processStatus = 'PROCESSING'")
+    int resetInterruptedData(@Param("id") Long id, @Param("processToken") String processToken);
+
 }

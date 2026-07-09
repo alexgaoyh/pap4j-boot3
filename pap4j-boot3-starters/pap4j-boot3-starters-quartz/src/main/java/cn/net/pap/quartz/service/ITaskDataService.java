@@ -37,4 +37,11 @@ public interface ITaskDataService {
     public void deleteAll();
 
     public void callNptException(Long inputLong);
+
+    void processBusinessLogic(TaskData data);
+
+    boolean markTaskSuccessInNewTransaction(Long id, String processToken);
+
+    void markTaskFailureInNewTransaction(TaskData data, String processToken, Exception e);
+
 }
