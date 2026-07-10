@@ -38,6 +38,24 @@
     *   **顺序控制 (Sequential Control)**: 必须确保验证步骤在代码写入完全完成后再执行。
     *   **结果闭环 (Result Loop)**: 除非编译和测试全部通过，否则不应宣布任务完成。若验证失败，必须自动进行诊断并尝试修复。
 
+### 🏛️ 基于适应度函数的渐进式演进 (Automated Fitness Functions)
+为了保障重构与开发的交付质量，项目在 `pap4j-boot3-example-devtools` 模块下部署了自动化监考（适应度函数）测试类。AI 代理必须使用它们进行质量合规验证：
+
+1. **代码规范扫描器 (RefactorScanner)**
+   * **作用**: 遍历项目源码，静态扫描是否违反 `guard.md` 中的架构红线（如 `@Autowired` 字段注入、JPA级联关联注解、类级事务或超长方法等）。
+   * **输出**: 自动生成或更新待重构清单：[.ai/diagnostics/refactor_todo.md]。
+   * **命令**: 
+     ```powershell
+     mvn test -pl pap4j-boot3-example/pap4j-boot3-example-devtools "-Dtest=RefactorScanner" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true"
+     ```
+2. **失败日志精炼器 (DiagnosticsExtractor)**
+   * **作用**: 当单元测试/编译执行失败时运行，自动扫描 surefire 报告，剔除 Spring, JUnit 等框架级冗余噪音日志，提取最核心 of 业务 Exception 堆栈。
+   * **输出**: 自动生成或更新精炼错误日志：[.ai/diagnostics/test_failures.md]。
+   * **命令**:
+     ```powershell
+     mvn test -pl pap4j-boot3-example/pap4j-boot3-example-devtools "-Dtest=DiagnosticsExtractor" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true"
+     ```
+
 ### 🔁 修复重试上限（强制）
 
 > 同一验证失败，**最多自主修复 2 次**。第 3 次仍失败时，立即停止并向用户汇报：完整错误信息、已尝试的两种思路、当前根因判断，并请求指令。严禁超过 2 次后继续盲目重试。
