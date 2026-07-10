@@ -48,8 +48,8 @@
   mvn clean test -pl <module> "-Dtest=<test_class>" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true" "-DskipTests=false"
   Get-ChildItem -Path . -Filter *Test.java -Recurse | Select-String -Pattern "Autowired"
   ```
-*   **清理**: 删除调试期间添加的所有临时文件、日志或 `System.out`。
+*   **清理**: 任务完成且独立验证通过后，必须主动删除调试期间添加的所有临时文件、日志或 `System.out`。
 
 ## 4. Git 协议
 * **禁止自动提交**: 严禁 AI 代理自主执行 `git commit` 或 `git push`。
-* **上下文相关的提交信息**: 当被要求起草提交信息时，遵循项目中使用的 `feat:`, `fix:`, `refactor:` 等规范。
+* **起草提交信息**: 在任务验证通过后的最终回复中，AI **必须主动**为用户起草符合规范（`feat:`, `fix:`, `refactor:` 等）的 Commit Message，以方便用户手动提交。
