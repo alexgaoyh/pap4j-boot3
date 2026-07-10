@@ -59,7 +59,9 @@ public class RefactorScanner {
                                !pathStr.contains("/.git/") &&
                                !pathStr.contains("/.ai/") &&
                                !pathStr.contains("/.agent/") &&
-                               !pathStr.contains("/.idea/");
+                               !pathStr.contains("/.idea/") &&
+                               !pathStr.endsWith("/RefactorScanner.java") &&
+                               !pathStr.endsWith("/DiagnosticsExtractor.java");
                     })
                     .collect(Collectors.toList());
         }
@@ -85,10 +87,16 @@ public class RefactorScanner {
 
         for (String line : lines) {
             String trimmed = line.trim();
+            if (trimmed.contains(" class ") || trimmed.contains(" interface ") || 
+                trimmed.contains(" enum ") || trimmed.contains(" record ") ||
+                trimmed.startsWith("public class ") || trimmed.startsWith("class ") ||
+                trimmed.startsWith("public interface ") || trimmed.startsWith("interface ")) {
+                break;
+            }
             if (trimmed.contains("@RestController") || trimmed.contains("@Controller")) {
                 isController = true;
             }
-            if (trimmed.contains("@Repository") || trimmed.contains("interface ") && file.getFileName().toString().endsWith("Repository.java")) {
+            if (trimmed.contains("@Repository") || (trimmed.contains("interface ") && file.getFileName().toString().endsWith("Repository.java"))) {
                 isRepository = true;
             }
             if (trimmed.contains("@Service")) {
