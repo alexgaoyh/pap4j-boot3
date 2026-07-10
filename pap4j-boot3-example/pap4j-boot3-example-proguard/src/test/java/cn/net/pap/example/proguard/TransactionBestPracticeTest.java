@@ -187,8 +187,11 @@ public class TransactionBestPracticeTest {
     @Service
     public static class TestService {
 
-        @Autowired
-        private ProguardRepository proguardRepository;
+        private final ProguardRepository proguardRepository;
+
+        public TestService(ProguardRepository proguardRepository) {
+            this.proguardRepository = proguardRepository;
+        }
 
         /**
          * 声明式事务方法，包含慢操作（模拟外部系统调用），事务期间独占数据库连接。

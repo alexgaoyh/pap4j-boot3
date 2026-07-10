@@ -30,11 +30,13 @@ public class TreeStorageTest {
 
     private static final Logger log = LoggerFactory.getLogger(TreeStorageTest.class);
 
-    @Autowired
-    private ITreeStorageService treeStorageService;
+    private final ITreeStorageService treeStorageService;
+    private final TreeStorageRepository treeStorageRepository;
 
-    @Autowired
-    private TreeStorageRepository treeStorageRepository;
+    public TreeStorageTest(ITreeStorageService treeStorageService, TreeStorageRepository treeStorageRepository) {
+        this.treeStorageService = treeStorageService;
+        this.treeStorageRepository = treeStorageRepository;
+    }
 
     @Test
     public void hierarchicalServiceInsertionTest() {
