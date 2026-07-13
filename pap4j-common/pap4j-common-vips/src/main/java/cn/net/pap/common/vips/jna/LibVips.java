@@ -24,9 +24,69 @@ public interface LibVips extends Library {
                 lastError = e;
             }
         }
+
+        // 首轮加载失败，尝试寻找当前用户目录下的备用目录 ~/.pap-vips/bin
+        String userHome = System.getProperty("user.home");
+        if (userHome != null && !userHome.isEmpty()) {
+            java.io.File fallbackDir = new java.io.File(userHome, ".pap-vips" + java.io.File.separator + "bin");
+            if (fallbackDir.exists() && fallbackDir.isDirectory() && hasVipsFiles(fallbackDir)) {
+                String absolutePath = fallbackDir.getAbsolutePath();
+                boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");
+
+                // 1. 设置 JVM 级别 JNA 库搜索路径
+                System.setProperty("jna.library.path", absolutePath);
+
+                try {
+                    // 2. 针对 Windows 系统，将该目录动态加入到当前进程的 DLL 搜索路径中，以便加载 libvips 所依赖的其他 DLL
+                    if (isWindows) {
+                        try {
+                            WinKernel32.INSTANCE.SetDllDirectoryW(absolutePath);
+                        } catch (Throwable t) {
+                            System.err.println("[Vips-Load] 尝试通过 Windows Kernel32.SetDllDirectoryW 绑定备用路径失败: " + t.getMessage());
+                        }
+                    }
+
+                    // 3. 重新尝试执行加载逻辑
+                    for (String name : libNames) {
+                        try {
+                            return Native.load(name, LibVips.class, OPTIONS);
+                        } catch (UnsatisfiedLinkError e) {
+                            lastError = e;
+                        }
+                    }
+                } finally {
+                    // 4. 无论加载成功还是失败，均还原 Windows 默认 DLL 搜索路径，实现进程环境彻底闭环
+                    if (isWindows) {
+                        try {
+                            WinKernel32.INSTANCE.SetDllDirectoryW(null);
+                        } catch (Throwable t) {
+                            // 忽略清理失败异常
+                        }
+                    }
+                }
+            }
+        }
+
         throw new UnsatisfiedLinkError(
-                "无法加载 libvips 本地动态链接库。请确保系统已安装 libvips 且已将其 bin 目录配置到 PATH 或 LD_LIBRARY_PATH 环境变量中。详情: "
+                "无法加载 libvips 本地动态链接库。请确保系统已安装 libvips 且已将其 bin 目录配置到 PATH 或 LD_LIBRARY_PATH 环境变量中，"
+                        + "或者确保在当前用户目录下存在并配置了完整的 .pap-vips/bin 文件夹。详情: "
                         + (lastError != null ? lastError.getMessage() : "未知错误"));
+    }
+
+    private static boolean hasVipsFiles(java.io.File dir) {
+        java.io.File[] files = dir.listFiles();
+        if (files == null) {
+            return false;
+        }
+        for (java.io.File f : files) {
+            String name = f.getName().toLowerCase();
+            if (name.contains("vips")) {
+                if (name.endsWith(".dll") || name.endsWith(".so") || name.endsWith(".dylib")) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /**
@@ -294,4 +354,11 @@ public interface LibVips extends Library {
          */
         boolean g_setenv(String variable, String value, boolean overwrite);
     }
+
+    interface WinKernel32 extends com.sun.jna.win32.StdCallLibrary {
+        WinKernel32 INSTANCE = Native.load("kernel32", WinKernel32.class);
+
+        boolean SetDllDirectoryW(String lpPathName);
+    }
+
 }
