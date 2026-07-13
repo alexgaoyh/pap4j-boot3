@@ -4,6 +4,9 @@ import cn.net.pap.example.proguard.entity.Proguard;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -12,6 +15,38 @@ import java.util.Map;
  * 提供将 JSON 结构数据解析并生成对应 SQL INSERT 语句的功能。
  */
 public class SQLUtil {
+
+    /**
+     * json 2 list map
+     * @param jsonStr
+     * @return
+     * @throws Exception
+     */
+    public static List<Map<String, JsonNode>> generateJsonNodeFromJson(String jsonStr) throws Exception {
+        List<Map<String, JsonNode>> returnList = new ArrayList<>();
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode jsonNode = mapper.readTree(jsonStr);
+        if(jsonNode.isObject() && !jsonNode.isArray()) {
+            Map<String, JsonNode> returnMapList = new HashMap<>();
+            Iterator<Map.Entry<String, JsonNode>> fields = jsonNode.fields();
+            while (fields.hasNext()) {
+                Map.Entry<String, JsonNode> entry = fields.next();
+                returnMapList.put(entry.getKey(), entry.getValue());
+            }
+            returnList.add(returnMapList);
+        } else {
+            for (JsonNode node : jsonNode) {
+                Map<String, JsonNode> returnMapList = new HashMap<>();
+                Iterator<Map.Entry<String, JsonNode>> fields = node.fields();
+                while (fields.hasNext()) {
+                    Map.Entry<String, JsonNode> entry = fields.next();
+                    returnMapList.put(entry.getKey(), entry.getValue());
+                }
+                returnList.add(returnMapList);
+            }
+        }
+        return returnList;
+    }
 
     /**
      * 将符合 Proguard 结构的 JSON 字符串解析并转换为实际的 SQL INSERT 语句（只考虑一级节点）。

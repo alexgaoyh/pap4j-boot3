@@ -725,4 +725,32 @@ public class ProguardTest {
         assertEquals("schema_content", dbRecord.getJsonSchema());
     }
 
+    @Test
+    @Transactional
+    public void json2MapListTest() throws Exception {
+        String jsonInput = """
+                {
+                    "proguardId": 888888,
+                    "proguardName": "json_insert_name",
+                    "proguardIdx": 88,
+                    "extMap": {"timeswap": 123456789, "info": "nested 'quote' test"},
+                    "extList": ["item1", "item2"],
+                    "abstractList": [{"key": "val1"}, {"key": "val2"}],
+                    "abstractObj": {"nested": {"key": "value"}},
+                    "jsonSchema": "schema_content",
+                    "jsonData": {"test": "data"},
+                    "tenantId": "default"
+                }
+                """;
+        String jsonInputArray = "[" + jsonInput + "," + jsonInput + "]";
+
+        List<Map<String, JsonNode>> mapList1 = SQLUtil.generateJsonNodeFromJson(jsonInput);
+
+        List<Map<String, JsonNode>> mapList2 = SQLUtil.generateJsonNodeFromJson(jsonInputArray);
+
+        assertTrue(mapList1.size() == 1);
+        assertTrue(mapList2.size() == 2);
+
+    }
+
 }
