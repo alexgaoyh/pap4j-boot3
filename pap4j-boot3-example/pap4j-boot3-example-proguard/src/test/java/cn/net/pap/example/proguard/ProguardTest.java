@@ -42,7 +42,14 @@ import java.util.stream.LongStream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@SpringBootTest(classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class})
+@SpringBootTest(
+        classes = {cn.net.pap.example.proguard.Pap4jBoot3ExampleProguardApplication.class},
+        properties = {
+                "spring.jpa.show-sql=true",
+                "logging.level.org.hibernate.SQL=DEBUG",
+                "logging.level.org.hibernate.orm.jdbc.bind=TRACE"
+        }
+)
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class ProguardTest {
 
@@ -783,6 +790,100 @@ public class ProguardTest {
         assertEquals(88, dbRecord.getProguardIdx());
         assertEquals("default", dbRecord.getTenantId());
 
+    }
+
+    /**
+     * 数据处理的时候，与上面的 SQLUtil.getSqlValue(valueNode, objectMapper) 做出对比。
+     * @throws Exception
+     */
+    @Test
+    public void json2MapListTest2() throws Exception {
+        String jsonInput = """
+                {
+                    "proguardId": 888889,
+                    "proguardName": "json_insert_name",
+                    "proguardIdx": 88,
+                    "extMap": {"timeswap": 123456789, "info": "nested 'quote' test"},
+                    "extList": ["item1", "item2"],
+                    "abstractList": [{"key": "val1"}, {"key": "val2"}],
+                    "abstractObj": {"nested": {"key": "value"}},
+                    "jsonSchema": "schema_content",
+                    "jsonData": {"test": "data"},
+                    "tenantId": "default"
+                }
+                """;
+        String jsonInputArray = "[" + jsonInput + "," + jsonInput + "]";
+
+        List<Map<String, JsonNode>> mapList1 = SQLUtil.generateJsonNodeFromJson(jsonInput);
+
+        List<Map<String, JsonNode>> mapList2 = SQLUtil.generateJsonNodeFromJson(jsonInputArray);
+
+        assertTrue(mapList1.size() == 1);
+        assertTrue(mapList2.size() == 2);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        StringBuilder columns = new StringBuilder();
+        StringBuilder values = new StringBuilder();
+
+        for (Map.Entry<String, JsonNode> entry : mapList1.get(0).entrySet()) {
+
+            String columnName = entry.getKey();
+            JsonNode valueNode = entry.getValue();
+            if (valueNode != null && !valueNode.isMissingNode()) {
+                if (columns.length() > 0) {
+                    columns.append(", ");
+                    values.append(", ");
+                }
+                columns.append(SQLUtil.convertCamelToSnake(columnName));
+                values.append("'" + objectMapper.writeValueAsString(entry.getValue()).replace("'", "''") + "'");
+            }
+        }
+
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.execute(status -> {
+            try {
+                String SQL =  "INSERT INTO proguard " + " (" + columns + ") VALUES (" + values + ")";
+                assertTrue(!SQL.isEmpty());
+
+                int i = entityManager.createNativeQuery(SQL).executeUpdate();
+                return i;
+            } catch (Exception e) {
+                status.setRollbackOnly();
+                throw new RuntimeException("保存失败: " + e.getMessage(), e);
+            }
+        });
+
+        transactionTemplate.execute(status -> {
+            try {
+                // 1. 使用原生 SQL 查询（绕过多租户过滤器），看数据是否存在于数据库中，并使用日志占位符打印内容
+                List<Object[]> rawList = entityManager.createNativeQuery(
+                        "SELECT proguard_id, proguard_name, tenant_id FROM proguard WHERE proguard_id = 888889"
+                ).getResultList();
+                if (!rawList.isEmpty()) {
+                    Object[] row = rawList.get(0);
+                    log.info("[ProguardTest-RawQuery] Found raw record, proguard_id: {}, proguard_name: {}, tenant_id: {}",
+                            row[0], row[1], row[2]);
+                } else {
+                    log.warn("[ProguardTest-RawQuery] No raw record found in database for ID: 888889");
+                }
+
+                // 2. 原有的 JPA find 查询， 其实是有数据的，只是租户这里的原因没查询到。
+                Proguard dbRecord = entityManager.find(Proguard.class, 888889L);
+                if (dbRecord != null) {
+                    assertEquals("json_insert_name", dbRecord.getProguardName());
+                    assertEquals(88, dbRecord.getProguardIdx());
+                    assertEquals("default", dbRecord.getTenantId());
+                } else {
+                    log.warn("[ProguardTest-JPAQuery] JPA find returned null for ID: 888889");
+                }
+                return 1;
+            } catch (Exception e) {
+                status.setRollbackOnly();
+                log.error("[ProguardTest-QueryError] Failed to execute query test: ", e);
+                throw new RuntimeException("查询失败: " + e.getMessage(), e);
+            }
+        });
     }
 
 }
