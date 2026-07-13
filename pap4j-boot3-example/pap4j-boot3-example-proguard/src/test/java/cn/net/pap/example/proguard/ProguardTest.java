@@ -730,7 +730,7 @@ public class ProguardTest {
     public void json2MapListTest() throws Exception {
         String jsonInput = """
                 {
-                    "proguardId": 888888,
+                    "proguardId": 888889,
                     "proguardName": "json_insert_name",
                     "proguardIdx": 88,
                     "extMap": {"timeswap": 123456789, "info": "nested 'quote' test"},
@@ -750,6 +750,38 @@ public class ProguardTest {
 
         assertTrue(mapList1.size() == 1);
         assertTrue(mapList2.size() == 2);
+
+        ObjectMapper objectMapper = new ObjectMapper();
+
+        StringBuilder columns = new StringBuilder();
+        StringBuilder values = new StringBuilder();
+
+        for (Map.Entry<String, JsonNode> entry : mapList1.get(0).entrySet()) {
+
+            String columnName = entry.getKey();
+            JsonNode valueNode = entry.getValue();
+            if (valueNode != null && !valueNode.isMissingNode()) {
+                if (columns.length() > 0) {
+                    columns.append(", ");
+                    values.append(", ");
+                }
+                columns.append(SQLUtil.convertCamelToSnake(columnName));
+                values.append(SQLUtil.getSqlValue(valueNode, objectMapper));
+            }
+        }
+
+        String SQL =  "INSERT INTO proguard " + " (" + columns + ") VALUES (" + values + ")";
+        assertTrue(!SQL.isEmpty());
+
+        int i = entityManager.createNativeQuery(SQL).executeUpdate();
+        entityManager.flush();
+        entityManager.clear();
+
+        Proguard dbRecord = entityManager.getReference(Proguard.class, 888889L);
+
+        assertEquals("json_insert_name", dbRecord.getProguardName());
+        assertEquals(88, dbRecord.getProguardIdx());
+        assertEquals("default", dbRecord.getTenantId());
 
     }
 

@@ -135,6 +135,29 @@ public class SQLUtil {
     }
 
     /**
+     * 将 JsonNode 格式化为用于 SQL 的字符串表示形式（如包含单引号的转义字符串、数字字面量或 NULL）
+     *
+     * @param valueNode    JSON 节点值
+     * @param objectMapper Jackson ObjectMapper
+     * @return 格式化后的 SQL 字符串值
+     * @throws Exception 序列化异常
+     */
+    public static String getSqlValue(JsonNode valueNode, ObjectMapper objectMapper) throws Exception {
+        if (valueNode == null || valueNode.isMissingNode() || valueNode.isNull()) {
+            return "NULL";
+        }
+        if (valueNode.isTextual()) {
+            return "'" + valueNode.asText().replace("'", "''") + "'";
+        }
+        if (valueNode.isNumber()) {
+            return valueNode.asText();
+        }
+        // 如果是复杂的 JSON 对象或数组，序列化为 JSON 字符串后转义并加上单引号
+        String jsonStr = objectMapper.writeValueAsString(valueNode);
+        return "'" + jsonStr.replace("'", "''") + "'";
+    }
+
+    /**
      * 将 camelCase 格式的字符串转换为 snake_case 格式。
      *
      * @param input 输入字符串
