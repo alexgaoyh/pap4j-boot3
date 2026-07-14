@@ -47,6 +47,8 @@
 ## 🛡️ SQL 校验与解析
 *   [JsonToSqlConverter](../pap4j-common/pap4j-common-jsqlparser/src/main/java/cn/net/pap/common/jsqlparser/JsonToSqlConverter.java): JSON 查询转换 SQL，带 AST 防注入校验。（测试验证见 [JsonToSqlConverterTest](../pap4j-common/pap4j-common-jsqlparser/src/test/java/cn/net/pap/common/jsqlparser/JsonToSqlConverterTest.java)）
 *   [SQLCheckerUtil](../pap4j-common/pap4j-common-jsqlparser/src/main/java/cn/net/pap/common/jsqlparser/SQLCheckerUtil.java): SQL 语法验证与动态改写。（测试验证见 [SQLCheckerUtilTest](../pap4j-common/pap4j-common-jsqlparser/src/test/java/cn/net/pap/common/jsqlparser/SQLCheckerUtilTest.java)）
+*   [DbMetadataReader](../pap4j-common/pap4j-common-jdbc/src/main/java/cn/net/pap/common/jdbc/DbMetadataReader.java): 物理数据库元数据读取工具，支持 MySQL、Kingbase、H2 等多种数据库的表与字段及其注释元数据获取。（测试验证见 [DbMetadataReaderTest](../pap4j-common/pap4j-common-jdbc/src/test/java/cn/net/pap/common/jdbc/DbMetadataReaderTest.java)）
+
 
 ## 🌐 爬虫与诊断
 *   [OkHttpBatchExecutor](../pap4j-common/pap4j-common-spider/src/main/java/cn/net/pap/common/spider/util/OkHttpBatchExecutor.java): OkHttp 安全批处理并发执行器。（测试验证见 [OkHttpBatchExecutorTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/util/OkHttpBatchExecutorTest.java)）
