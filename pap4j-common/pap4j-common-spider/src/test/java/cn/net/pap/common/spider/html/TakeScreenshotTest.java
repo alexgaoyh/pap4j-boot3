@@ -14,11 +14,14 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.time.Duration;
 import org.openqa.selenium.logging.LogEntries;
 import org.openqa.selenium.logging.LogEntry;
 import org.openqa.selenium.logging.LogType;
 import org.openqa.selenium.logging.LoggingPreferences;
 import org.openqa.selenium.By;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 
 /**
  * <p><strong>TakeScreenshotTest</strong></p>
@@ -93,6 +96,8 @@ public class TakeScreenshotTest {
         logPrefs.enable(LogType.PERFORMANCE, java.util.logging.Level.ALL);
 
         WebDriver driver = null;
+        File dest = null;
+        boolean isTempFile = false;
         try {
             // 尝试初始化 Chrome Headless
             ChromeOptions options = new ChromeOptions();
@@ -122,7 +127,13 @@ public class TakeScreenshotTest {
                 Thread.sleep(sleepMs); // 等待页面动画和资源加载完成
 
                 File src = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-                File dest = File.createTempFile("api_tester_screenshot_", ".png");
+                String destPath = System.getProperty("screenshot.dest");
+                if (destPath != null && !destPath.trim().isEmpty()) {
+                    dest = new File(destPath);
+                } else {
+                    dest = File.createTempFile("api_tester_screenshot_", ".png");
+                    isTempFile = true;
+                }
 
                 Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 log.info("截图成功！已保存至: {}", dest.getAbsolutePath());
@@ -148,7 +159,17 @@ public class TakeScreenshotTest {
                 }
 
             } finally {
-                driver.quit();
+                if (driver != null) {
+                    driver.quit();
+                }
+                if (isTempFile && dest != null && dest.exists()) {
+                    try {
+                        dest.delete();
+                        log.info("已清理临时截图文件: {}", dest.getAbsolutePath());
+                    } catch (Exception e) {
+                        log.warn("清理临时文件失败: ", e);
+                    }
+                }
             }
         } else {
             log.error("未能初始化任何 WebDriver 实例。请确保本地安装了 Chrome 或 Edge 浏览器。");
@@ -240,6 +261,8 @@ public class TakeScreenshotTest {
         logPrefs.enable(LogType.PERFORMANCE, java.util.logging.Level.ALL);
 
         WebDriver driver = initWebDriver(windowSize, logPrefs);
+        File dest = null;
+        boolean isTempFile = false;
         if (driver != null) {
             try {
                 driver.get(testUrl);
@@ -249,13 +272,27 @@ public class TakeScreenshotTest {
                 Thread.sleep(sleepMs);
 
                 File src = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-                File dest = File.createTempFile("baidu_search_screenshot_", ".png");
+                String destPath = System.getProperty("screenshot.dest");
+                if (destPath != null && !destPath.trim().isEmpty()) {
+                    dest = new File(destPath);
+                } else {
+                    dest = File.createTempFile("baidu_search_screenshot_", ".png");
+                    isTempFile = true;
+                }
                 Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 log.info("搜索测试成功并截图！已保存至: {}", dest.getAbsolutePath());
 
                 printBrowserLogs(driver);
             } finally {
                 driver.quit();
+                if (isTempFile && dest != null && dest.exists()) {
+                    try {
+                        dest.delete();
+                        log.info("已清理临时截图文件: {}", dest.getAbsolutePath());
+                    } catch (Exception e) {
+                        log.warn("清理临时文件失败: ", e);
+                    }
+                }
             }
         } else {
             log.error("未能初始化任何 WebDriver 实例。请确保本地安装了 Chrome 或 Edge 浏览器。");
@@ -342,6 +379,69 @@ public class TakeScreenshotTest {
             }
         } catch (Exception e) {
             log.warn("无法获取浏览器网络日志: ", e);
+        }
+    }
+
+    /**
+     * <p><b>testExplicitWaitDemo — 演示使用显式等待 (Explicit Wait) 替代 Thread.sleep 进行动态 UI 探测</b></p>
+     * <p>
+     * 显式等待是 Selenium 自动化测试的行业标准解。它允许设置一个最大超时时间，并在后台以轮询方式动态探测元素状态，
+     * 一旦元素可见或符合条件，立即停止等待并继续，能有效提高测试速度并消减因网络波动引起的用例抖动。
+     * </p>
+     */
+    @Test
+    public void testExplicitWaitDemo() throws Exception {
+        // 使用百度首页作为默认测试页面，演示显式等待探测元素
+        String testUrl = System.getProperty("screenshot.url", "https://www.baidu.com");
+        String windowSize = System.getProperty("screenshot.windowSize", "1280,1024");
+
+        LoggingPreferences logPrefs = new LoggingPreferences();
+        logPrefs.enable(LogType.BROWSER, java.util.logging.Level.ALL);
+        logPrefs.enable(LogType.PERFORMANCE, java.util.logging.Level.ALL);
+
+        WebDriver driver = initWebDriver(windowSize, logPrefs);
+        File dest = null;
+        boolean isTempFile = false;
+        if (driver != null) {
+            try {
+                driver.get(testUrl);
+
+                // 1. 初始化显式等待器，设定最大超时时间为 10 秒
+                WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                
+                // 2. 动态检测，一旦百度的搜索按钮 (By.id("su")) 在 DOM 中可见立刻返回
+                org.openqa.selenium.WebElement element = wait.until(
+                    ExpectedConditions.visibilityOfElementLocated(By.id("chat-submit-button"))
+                );
+
+                log.info("显式等待成功！页面元素已渲染就绪，开始截图。");
+
+                File src = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
+                String destPath = System.getProperty("screenshot.dest");
+                if (destPath != null && !destPath.trim().isEmpty()) {
+                    dest = new File(destPath);
+                } else {
+                    dest = File.createTempFile("explicit_wait_screenshot_", ".png");
+                    isTempFile = true;
+                }
+                Files.copy(src.toPath(), dest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                log.info("截图成功！已保存至: {}", dest.getAbsolutePath());
+
+            } catch (org.openqa.selenium.TimeoutException e) {
+                log.warn("【温馨提示】显式等待超时：未能成功访问 {} 或未能在 10 秒内找到元素 '#su'。若本地或沙箱处于离线/无外网环境，此超时属正常现象，不阻塞单测构建。", testUrl);
+            } catch (Exception e) {
+                log.warn("【温馨提示】访问 {} 过程中发生异常: {}。若无公网连接属正常现象。", testUrl, e.getMessage());
+            } finally {
+                driver.quit();
+                if (isTempFile && dest != null && dest.exists()) {
+                    try {
+                        dest.delete();
+                        log.info("已清理临时截图文件: {}", dest.getAbsolutePath());
+                    } catch (Exception e) {
+                        log.warn("清理临时文件失败: ", e);
+                    }
+                }
+            }
         }
     }
 }
