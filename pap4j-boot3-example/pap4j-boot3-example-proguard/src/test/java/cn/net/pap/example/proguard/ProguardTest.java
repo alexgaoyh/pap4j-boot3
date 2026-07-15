@@ -735,6 +735,10 @@ public class ProguardTest {
     @Test
     @Transactional
     public void json2MapListTest() throws Exception {
+        // 先清理数据，防止其他测试方法残留导致主键冲突
+        entityManager.createNativeQuery("DELETE FROM proguard WHERE proguard_id = 888889").executeUpdate();
+        entityManager.flush();
+
         String jsonInput = """
                 {
                     "proguardId": 888889,
@@ -798,9 +802,16 @@ public class ProguardTest {
      */
     @Test
     public void json2MapListTest2() throws Exception {
+        // 先清理数据，防止其他测试方法残留导致主键冲突 (使用独立的 ID 888890)
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.execute(status -> {
+            entityManager.createNativeQuery("DELETE FROM proguard WHERE proguard_id = 888890").executeUpdate();
+            return null;
+        });
+
         String jsonInput = """
                 {
-                    "proguardId": 888889,
+                    "proguardId": 888890,
                     "proguardName": "json_insert_name",
                     "proguardIdx": 88,
                     "extMap": {"timeswap": 123456789, "info": "nested 'quote' test"},
@@ -840,7 +851,6 @@ public class ProguardTest {
             }
         }
 
-        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.execute(status -> {
             try {
                 String SQL =  "INSERT INTO proguard " + " (" + columns + ") VALUES (" + values + ")";
@@ -858,24 +868,24 @@ public class ProguardTest {
             try {
                 // 1. 使用原生 SQL 查询（绕过多租户过滤器），看数据是否存在于数据库中，并使用日志占位符打印内容
                 List<Object[]> rawList = entityManager.createNativeQuery(
-                        "SELECT proguard_id, proguard_name, tenant_id FROM proguard WHERE proguard_id = 888889"
+                        "SELECT proguard_id, proguard_name, tenant_id FROM proguard WHERE proguard_id = 888890"
                 ).getResultList();
                 if (!rawList.isEmpty()) {
                     Object[] row = rawList.get(0);
                     log.info("[ProguardTest-RawQuery] Found raw record, proguard_id: {}, proguard_name: {}, tenant_id: {}",
                             row[0], row[1], row[2]);
                 } else {
-                    log.warn("[ProguardTest-RawQuery] No raw record found in database for ID: 888889");
+                    log.warn("[ProguardTest-RawQuery] No raw record found in database for ID: 888890");
                 }
 
                 // 2. 原有的 JPA find 查询， 其实是有数据的，只是租户这里的原因没查询到。
-                Proguard dbRecord = entityManager.find(Proguard.class, 888889L);
+                Proguard dbRecord = entityManager.find(Proguard.class, 888890L);
                 if (dbRecord != null) {
                     assertEquals("json_insert_name", dbRecord.getProguardName());
                     assertEquals(88, dbRecord.getProguardIdx());
                     assertEquals("default", dbRecord.getTenantId());
                 } else {
-                    log.warn("[ProguardTest-JPAQuery] JPA find returned null for ID: 888889");
+                    log.warn("[ProguardTest-JPAQuery] JPA find returned null for ID: 888890");
                 }
                 return 1;
             } catch (Exception e) {
@@ -885,5 +895,4 @@ public class ProguardTest {
             }
         });
     }
-
 }
