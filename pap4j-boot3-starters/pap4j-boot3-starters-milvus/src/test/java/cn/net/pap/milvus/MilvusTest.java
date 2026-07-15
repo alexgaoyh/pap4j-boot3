@@ -40,6 +40,18 @@ public class MilvusTest {
 
     private static final Logger log = LoggerFactory.getLogger(MilvusTest.class);
 
+    @org.junit.jupiter.api.BeforeAll
+    public static void checkMilvusAvailable() {
+        boolean isUp = false;
+        try (java.net.Socket s = new java.net.Socket()) {
+            s.connect(new java.net.InetSocketAddress("192.168.1.115", 19530), 1000);
+            isUp = true;
+        } catch (Exception e) {
+            // connection failed
+        }
+        org.junit.jupiter.api.Assumptions.assumeTrue(isUp, "Milvus is not running on 192.168.1.115:19530. Skipping tests.");
+    }
+
     private static final String COLLECTION_NAME = "USER";
 
     private static final String PARTITION_NAME = "alexgaoyh";

@@ -88,6 +88,7 @@ public class TakeScreenshotTest {
     public void testTakeScreenshot() throws Exception {
         // 从 System Properties 中读取可配置参数，并提供合理的默认值以防无参运行时报错
         String testUrl = System.getProperty("screenshot.url", "http://www.baidu.com");
+        org.junit.jupiter.api.Assumptions.assumeTrue(isUrlReachable(testUrl), "Target URL " + testUrl + " is not reachable. Skipping test.");
         String windowSize = System.getProperty("screenshot.windowSize", "1280,1024");
         int sleepMs = Integer.getInteger("screenshot.sleepMs", 1500);
 
@@ -252,6 +253,7 @@ public class TakeScreenshotTest {
     @Test
     public void testBaiduSearch() throws Exception {
         String testUrl = System.getProperty("screenshot.url", "http://www.baidu.com");
+        org.junit.jupiter.api.Assumptions.assumeTrue(isUrlReachable(testUrl), "Target URL " + testUrl + " is not reachable. Skipping test.");
         String searchQuery = System.getProperty("screenshot.searchQuery", "alexgaoyh");
         String windowSize = System.getProperty("screenshot.windowSize", "1280,1024");
         int sleepMs = Integer.getInteger("screenshot.sleepMs", 3000);
@@ -393,6 +395,7 @@ public class TakeScreenshotTest {
     public void testExplicitWaitDemo() throws Exception {
         // 使用百度首页作为默认测试页面，演示显式等待探测元素
         String testUrl = System.getProperty("screenshot.url", "https://www.baidu.com");
+        org.junit.jupiter.api.Assumptions.assumeTrue(isUrlReachable(testUrl), "Target URL " + testUrl + " is not reachable. Skipping test.");
         String windowSize = System.getProperty("screenshot.windowSize", "1280,1024");
 
         LoggingPreferences logPrefs = new LoggingPreferences();
@@ -442,6 +445,23 @@ public class TakeScreenshotTest {
                     }
                 }
             }
+        }
+    }
+
+    private static boolean isUrlReachable(String urlStr) {
+        if (urlStr.startsWith("file:") || urlStr.startsWith("data:")) {
+            return true;
+        }
+        try {
+            java.net.URL url = new java.net.URL(urlStr);
+            String host = url.getHost();
+            int port = url.getPort() != -1 ? url.getPort() : (url.getProtocol().equalsIgnoreCase("https") ? 443 : 80);
+            try (java.net.Socket s = new java.net.Socket()) {
+                s.connect(new java.net.InetSocketAddress(host, port), 1500);
+                return true;
+            }
+        } catch (Exception e) {
+            return false;
         }
     }
 }

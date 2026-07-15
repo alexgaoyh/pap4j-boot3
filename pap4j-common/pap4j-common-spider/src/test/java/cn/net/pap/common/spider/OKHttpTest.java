@@ -18,6 +18,7 @@ public class OKHttpTest {
      */
     @Test
     public void verifyClosedExceptionWithRealNetwork() {
+        org.junit.jupiter.api.Assumptions.assumeTrue(isUrlReachable("https://www.baidu.com"), "Baidu is not reachable. Skipping test.");
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder().url("https://www.baidu.com").build();
 
@@ -45,4 +46,17 @@ public class OKHttpTest {
         }
     }
 
+    private static boolean isUrlReachable(String urlStr) {
+        try {
+            java.net.URL url = new java.net.URL(urlStr);
+            String host = url.getHost();
+            int port = url.getPort() != -1 ? url.getPort() : (url.getProtocol().equalsIgnoreCase("https") ? 443 : 80);
+            try (java.net.Socket s = new java.net.Socket()) {
+                s.connect(new java.net.InetSocketAddress(host, port), 1500);
+                return true;
+            }
+        } catch (Exception e) {
+            return false;
+        }
+    }
 }

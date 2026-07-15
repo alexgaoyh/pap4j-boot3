@@ -76,9 +76,7 @@ class JdbcKingbaseTemplateTest {
 
     @BeforeEach
     void setup() {
-        if(!isDatabaseConnected()) {
-            return;
-        }
+        org.junit.jupiter.api.Assumptions.assumeTrue(isDatabaseConnected(), "Kingbase database is not connected. Skipping test.");
         // 创建测试表并插入大数据量
         jdbcTemplate.execute("""
                     CREATE TABLE IF NOT EXISTS user_info (
