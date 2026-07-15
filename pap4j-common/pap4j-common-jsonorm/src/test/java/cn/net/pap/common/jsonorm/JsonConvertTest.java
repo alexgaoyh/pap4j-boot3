@@ -2,13 +2,33 @@ package cn.net.pap.common.jsonorm;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.DocumentContext;
+import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
+/**
+ * JsonConvertTest - 针对复杂/多变 JSON 结构转换的设计示范单元测试
+ *
+ * <p>【设计思想说明】
+ * 本测试展示了“面向多变 JSON 的轻量级转换方案”（基于 JsonPath 提取 + 仅定义输出 DTO）。
+ *
+ * <p>1. 痛点背景：
+ * 传统的反序列化方案要求定义一整套与源 JSON 结构完全一致的 Java DTO 类（例如之前的 InputRoot, InputData 等）。
+ * 当输入 JSON 格式庞大且包含大量无关字段、或者后续有多种异构的输入格式时，会产生大量一次性使用的冗余类定义，导致代码臃肿。
+ *
+ * <p>2. 本类所用设计思路：
+ * <ul>
+ *   <li><b>“只定义输出，不定义输入”</b>：彻底干掉输入端所有的 Record/DTO 类定义。
+ *   <li><b>“JsonPath 动态提取”</b>：利用 {@link com.jayway.jsonpath.JsonPath} 语法对源 JSON 进行按需定位和提取（如使用 {@code $.data.textArr[*][*]} 实现多维数组的就地平铺/扁平化），直接拿到基础类型构成的 Map/List。
+ *   <li><b>“强类型输出装配”</b>：在 Converter 中将提取的数据直接映射组装到强类型的输出 DTO（{@link OutputRoot} 等记录类）中，保障后续业务消费时的类型安全。
+ * </ul>
+ */
 public class JsonConvertTest {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
@@ -65,7 +85,7 @@ public class JsonConvertTest {
                 }
                 """;
 
-        OutputRoot output = OcrConverter.convert(objectMapper.readValue(jsonInput, InputRoot.class));
+        OutputRoot output = OcrConverter.convert(jsonInput);
 
         objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(output);
     }
@@ -78,34 +98,46 @@ public class JsonConvertTest {
         /**
          * 简易转换重载（不传元数据时使用默认值）
          */
-        public static OutputRoot convert(InputRoot input) {
-            return convert(input, "", 0, 0);
+        public static OutputRoot convert(String jsonInput) {
+            return convert(jsonInput, "", 0, 0);
         }
 
         /**
          * 标准转换方法（支持传入外部元数据）
          */
-        public static OutputRoot convert(InputRoot input, String imagePageName, int height, int width) {
-            if (input == null || input.data() == null) {
+        @SuppressWarnings("unchecked")
+        public static OutputRoot convert(String jsonInput, String imagePageName, int height, int width) {
+            if (jsonInput == null || jsonInput.isBlank()) {
                 return new OutputRoot(Collections.emptyList(), imagePageName, height, width);
             }
 
-            InputData data = input.data();
+            DocumentContext ctx = JsonPath.parse(jsonInput);
             List<LineInfo> lineInfos = new ArrayList<>();
 
             // 1. 解析 textArr (多维数组平铺)
-            if (data.textArr() != null) {
-                for (List<TextItem> col : data.textArr()) {
-                    if (col == null) continue;
-                    for (TextItem item : col) {
-                        lineInfos.add(buildLineInfo(item));
-                    }
+            List<Map<String, Object>> textItems = null;
+            try {
+                textItems = ctx.read("$.data.textArr[*][*]");
+            } catch (Exception e) {
+                // Ignore if path not found
+            }
+            if (textItems != null) {
+                for (Map<String, Object> item : textItems) {
+                    if (item == null) continue;
+                    lineInfos.add(buildLineInfo(item));
                 }
             }
 
             // 2. 解析 outTextArr (单字行归一化)
-            if (data.outTextArr() != null) {
-                for (CharItem item : data.outTextArr()) {
+            List<Map<String, Object>> outTextItems = null;
+            try {
+                outTextItems = ctx.read("$.data.outTextArr[*]");
+            } catch (Exception e) {
+                // Ignore if path not found
+            }
+            if (outTextItems != null) {
+                for (Map<String, Object> item : outTextItems) {
+                    if (item == null) continue;
                     lineInfos.add(buildLineInfoFromSingleChar(item));
                 }
             }
@@ -129,14 +161,23 @@ public class JsonConvertTest {
         /**
          * 从普通的 TextItem 构建 LineInfo
          */
-        private static LineInfo buildLineInfo(TextItem item) {
-            BBox lineBox = BBox.of(item.bbox());
-            boolean isAncientNote = item.categ() == 3;
+        @SuppressWarnings("unchecked")
+        private static LineInfo buildLineInfo(Map<String, Object> item) {
+            List<Integer> bboxList = (List<Integer>) item.get("bbox");
+            BBox lineBox = BBox.of(bboxList);
+            
+            Object categObj = item.get("categ");
+            boolean isAncientNote = categObj != null && ((Number) categObj).intValue() == 3;
 
             List<OcrChar> chars = new ArrayList<>();
-            if (item.textList() != null) {
-                for (CharItem ci : item.textList()) {
-                    chars.add(new OcrChar(ci.txt(), null, ci.score() != null ? (int) Math.round(ci.score() * 1000) : 0, BBox.of(ci.bbox())));
+            List<Map<String, Object>> textList = (List<Map<String, Object>>) item.get("textList");
+            if (textList != null) {
+                for (Map<String, Object> ci : textList) {
+                    List<Integer> charBbox = (List<Integer>) ci.get("bbox");
+                    String txt = (String) ci.get("txt");
+                    Number score = (Number) ci.get("score");
+                    int confidence = score != null ? (int) Math.round(score.doubleValue() * 1000) : 0;
+                    chars.add(new OcrChar(txt, null, confidence, BBox.of(charBbox)));
                 }
             }
             return new LineInfo(isAncientNote, lineBox, chars);
@@ -145,9 +186,14 @@ public class JsonConvertTest {
         /**
          * 将 outTextArr 中的单字包装为单行 LineInfo
          */
-        private static LineInfo buildLineInfoFromSingleChar(CharItem ci) {
-            BBox box = BBox.of(ci.bbox());
-            OcrChar ocrChar = new OcrChar(ci.txt(), null, ci.score() != null ? (int) Math.round(ci.score() * 1000) : 0, box);
+        @SuppressWarnings("unchecked")
+        private static LineInfo buildLineInfoFromSingleChar(Map<String, Object> ci) {
+            List<Integer> bboxList = (List<Integer>) ci.get("bbox");
+            BBox box = BBox.of(bboxList);
+            String txt = (String) ci.get("txt");
+            Number score = (Number) ci.get("score");
+            int confidence = score != null ? (int) Math.round(score.doubleValue() * 1000) : 0;
+            OcrChar ocrChar = new OcrChar(txt, null, confidence, box);
             return new LineInfo(false, box, List.of(ocrChar));
         }
 
@@ -194,26 +240,6 @@ public class JsonConvertTest {
             if (other == null) return this;
             return new BBox(Math.min(this.x1, other.x1), Math.min(this.y1, other.y1), Math.max(this.x2, other.x2), Math.max(this.y2, other.y2));
         }
-    }
-
-    // ==========================================
-    // 输入 DTO 定义 (Java Records)
-    // ==========================================
-
-    public record InputRoot(InputData data) {
-    }
-
-    public record InputData(List<LanItem> lanArr, List<List<TextItem>> textArr, List<CharItem> outTextArr) {
-    }
-
-    public record LanItem(int categ, List<Integer> bbox, String id) {
-    }
-
-    public record TextItem(int categ, List<Integer> bbox, String id, List<CharItem> textList,
-                           @JsonProperty("hang_id") int hangId, @JsonProperty("isHead") Boolean isHead) {
-    }
-
-    public record CharItem(List<Integer> bbox, String txt, Double score) {
     }
 
     // ==========================================
