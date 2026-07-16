@@ -27,22 +27,27 @@ public class ThumbnailatorConserveMemoryTest {
     private static final String KEY = "thumbnailator.conserveMemoryWorkaround";
 
     private byte[] imageBytes; // 模拟服务器上的图片二进制数据
+    private int imageWidth;
+    private int imageHeight;
     private static final int ITERATIONS = 10;
     private static final int WARM_UP = 3;
 
     @BeforeEach
     public void setUp() throws Exception {
         // 在内存中生成一张 4000x3000 的大图
-        BufferedImage img = new BufferedImage(4000, 3000, BufferedImage.TYPE_INT_RGB);
+        this.imageWidth = 4000;
+        this.imageHeight = 3000;
+        BufferedImage img = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_RGB);
         Graphics2D g = img.createGraphics();
         g.setColor(Color.BLUE);
-        g.fillRect(0, 0, 4000, 3000);
+        g.fillRect(0, 0, imageWidth, imageHeight);
         g.dispose();
 
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             ImageIO.write(img, "jpg", baos);
             this.imageBytes = baos.toByteArray();
         }
+        log.info("测试图片已生成，分辨率: {}x{}，大小: {} KB", imageWidth, imageHeight, (this.imageBytes.length / 1024));
     }
 
     @AfterEach
@@ -65,6 +70,7 @@ public class ThumbnailatorConserveMemoryTest {
         double[] optimizedAvg = runTest("优化模式(true)");
 
         // 3. 结果输出与业务断言
+        log.info("【测试图像信息】分辨率: {}x{} | 大小: {} KB", imageWidth, imageHeight, (this.imageBytes.length / 1024));
         log.info("【对比结果】默认平均: {} MB | 优化平均: {} MB", String.format("%.2f", defaultAvg[0]), String.format("%.2f", optimizedAvg[0]));
         log.info("【对比结果】默认平均: {} MS | 优化平均: {} MS", String.format("%.2f", defaultAvg[1]), String.format("%.2f", optimizedAvg[1]));
 
