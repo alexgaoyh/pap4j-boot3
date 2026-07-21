@@ -8,7 +8,7 @@ globs: ".ai/diagnostics/*.md, logs/recorded-bugs/*.json"
 
 ## 📌 触发机制
 
-- **🤖 自动触发**：当本地 Maven 编译、构建或单元测试运行失败，或检测到 `.ai/diagnostics/test_failures.md` 存在错误日志时。
+- **🤖 自动触发**：当本地 Maven 编译、构建或单元测试运行出现非预期的报错崩溃，或检测到 `.ai/diagnostics/test_failures.md` 存在错误日志时（注意：新功能编写过程中预期的断言失败测试请参考 [tdd-workflow](../tdd-workflow/SKILL.md)）。
 - **💬 显式触发**：当开发者输入 `smart-diagnose-heal`、`“诊断单测失败”` 或 `“修复测试报错日志”` 时。
 
 ---
@@ -16,7 +16,7 @@ globs: ".ai/diagnostics/*.md, logs/recorded-bugs/*.json"
 ## 🛠️ 执行流程 (Execution Steps)
 
 ### 步骤 1：错误堆栈提取与精练 (Extract Failures)
-1. 运行项目专属快捷诊断脚本提炼堆栈至 [.ai/diagnostics/test_failures.md](file:///D:/ideaprojects/pap4j-boot3/.ai/diagnostics/test_failures.md)，滤除冗余日志，精准定位核心 Exception 堆栈与失败代码行：
+1. 运行项目专属快捷诊断脚本提炼堆栈至 [.ai/diagnostics/test_failures.md](../../diagnostics/test_failures.md)，滤除冗余日志，精准定位核心 Exception 堆栈与失败代码行：
    ```powershell
    .\.agent\agent-diagnose.cmd
    ```

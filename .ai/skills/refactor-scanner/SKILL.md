@@ -22,7 +22,7 @@ globs: "**/*.java, .ai/diagnostics/refactor_todo.md"
 ```
 
 ### 步骤 2：解析扫描待办清单 (Parse refactor_todo.md)
-读取生成的 [.ai/diagnostics/refactor_todo.md](file:///D:/ideaprojects/pap4j-boot3/.ai/diagnostics/refactor_todo.md)，归类扫描出的违规项：
+读取生成的 [.ai/diagnostics/refactor_todo.md](../../diagnostics/refactor_todo.md)，归类扫描出的违规项：
 1. **控制台输出残留**：`System.out.println` / `e.printStackTrace()`。
 2. **日志规范违规**：未使用 Slf4j 占位符、硬编码字符串拼接。
 3. **Guardrails 红线违规**：JPA 级联注解使用、`pap4j-common` 公共 API 破坏性变动。

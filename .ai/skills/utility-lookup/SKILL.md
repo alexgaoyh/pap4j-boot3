@@ -16,7 +16,7 @@ globs: "pap4j-common/**/*.java, .ai/utilities.md"
 ## 🛠️ 执行流程 (Execution Steps)
 
 ### 步骤 1：检索现有工具库索引与防重 (Anti-Duplication Check)
-1. 优先检索 [.ai/utilities.md](file:///D:/ideaprojects/pap4j-boot3/.ai/utilities.md) 中的分类工具表（涵盖 `pap4j-common-file`, `pap4j-common-json`, `pap4j-common-crypto` 等 25+ 子模块）。
+1. 优先检索 [.ai/utilities.md](../../utilities.md) 中的分类工具表（涵盖 `pap4j-common-file`, `pap4j-common-json`, `pap4j-common-crypto` 等 25+ 子模块）。
 2. 使用 PowerShell 工具进行关键词模糊与精确搜索：
    ```powershell
    # 将 <TargetMethodName> 替换为准备编写的目标工具方法名或检索关键词
@@ -27,7 +27,7 @@ globs: "pap4j-common/**/*.java, .ai/utilities.md"
    - 若确认不存在 ➔ 明确应归属的具体 `pap4j-common-*` 子模块。
 
 ### 步骤 2：遵规编写与 100% 边界单测 (Implementation & Unit Test)
-1. 编写工具类：严格遵守 JDK 17 语法，公共 API 方法必须有清晰的 Javadoc 说明。
+1. 编写工具类：严格遵守 JDK 17 语法，公共 API 方法必须有清晰的 Javadoc 说明（复杂工具类推荐结合 [tdd-workflow](../tdd-workflow/SKILL.md) 采用红-绿-重构顺序驱动编写）。
 2. 为新工具方法编写 100% 覆盖率的单元测试，包含 NULL 值、空字符串、极端边界等情况。
 
 ### 步骤 3：PowerShell 单测验证 (Verification)
@@ -38,7 +38,7 @@ globs: "pap4j-common/**/*.java, .ai/utilities.md"
 ```
 
 ### 步骤 4：同步更新 utilities.md 索引 (Index Maintenance)
-单测通过后，主动将新工具类及其方法简要说明同步追加至 [.ai/utilities.md](file:///D:/ideaprojects/pap4j-boot3/.ai/utilities.md)。
+单测通过后，主动将新工具类及其方法简要说明同步追加至 [.ai/utilities.md](../../utilities.md)。
 
 ---
 

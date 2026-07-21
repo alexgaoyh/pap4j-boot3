@@ -39,7 +39,7 @@ globs: "*"
 
 ### 步骤 3：逐 Task 循环迭代执行 (Execution Loop)
 1. 顺序选择未完成的 Task。
-2. 依据 `AI.md` 规范进行 `[QuickPlan]` 或 `[Plan]`，而后进行 `[Edit]`。
+2. 依据 `AI.md` 规范进行 `[QuickPlan]` 或 `[Plan]`，而后进行 `[Edit]`（在编写具体的代码与测试时，可选择激活 [tdd-workflow](../tdd-workflow/SKILL.md) 驱动微观逻辑实现）。
 3. 执行该 Task 对应的 PowerShell 验证命令。
 4. 验证通过后标记 Task 为 `[x]`，再推进下一个 Task。
 
