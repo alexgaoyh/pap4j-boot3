@@ -47,7 +47,8 @@ globs: "*"
 
 ## ⚡ 命令行与验证规范 (PowerShell Compliance)
 - 严禁使用 Linux 命令（`grep` / `cat` / `&&`）。
-- 测试验证命令必须使用 `.\.agent\agent-test.cmd` 并加双引号包裹参数（将 `<YourModuleTaskTest>` 替换为对应模块拆解 Task 的测试类名）：
+- 测试验证命令必须使用 `.\.agent\agent-test.cmd` 并加双引号包裹参数：
   ```powershell
+  # 将 <YourModuleTaskTest> 替换为对应模块拆解 Task 的实际测试类名（例如 FileUtilsTest）
   .\.agent\agent-test.cmd "-Dtest=<YourModuleTaskTest>"
   ```

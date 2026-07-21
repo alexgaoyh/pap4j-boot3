@@ -30,8 +30,10 @@ globs: ".ai/diagnostics/*.md, logs/recorded-bugs/*.json"
 2. 进行目标代码的外科手术式修复 `[Edit]`。
 
 ### 步骤 4：闭环重新验证与重试控制 (Retry Policy)
-1. 使用 PowerShell 命令重新运行失败的单测（将 `<FailingTestClass>` 替换为实际失败的单测类名，如 `ReqResLoggerReplayTest`）：
+1. 使用 PowerShell 命令重新运行失败的单测：
    ```powershell
+   # 1. 将 <FailingTestClass> 替换为实际失败的单测类名
+   # 2. 若涉及 HTTP 接口 Mock 回放，可直接使用项目通用回放类 ReqResLoggerReplayTest
    .\.agent\agent-test.cmd "-Dtest=<FailingTestClass>"
    ```
 2. **重试上限限制**：自动修复尝试上限为 **2 次**。若 2 次修复后测试仍然失败，暂停自动修复并向开发者汇报诊断细节。

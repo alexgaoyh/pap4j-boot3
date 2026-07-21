@@ -35,8 +35,9 @@ globs: "**/*.java, .ai/diagnostics/refactor_todo.md"
 
 ### 步骤 4：再次扫描与单测闭环 (Re-Scan Verification)
 1. 重新运行 `RefactorScanner` 确保违规项为 0。
-2. 运行相关子模块单测验证功能未中断（将 `<AffectedModuleTest>` 替换为受重构影响模块的单测类名）：
+2. 运行相关子模块单测验证功能未中断：
    ```powershell
+   # 将 <AffectedModuleTest> 替换为受重构影响模块的实际单测类名
    .\.agent\agent-test.cmd "-Dtest=<AffectedModuleTest>"
    ```
 

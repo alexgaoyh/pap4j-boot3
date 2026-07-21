@@ -49,7 +49,8 @@ globs: "*"
 ---
 
 ## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 验证指令必须符合 **Windows PowerShell 思想钢印**（将 `<YourTestClass>` 替换为实际需要验证的单测类名）：
+- 验证指令必须符合 **Windows PowerShell 思想钢印**：
   ```powershell
+  # 将 <YourTestClass> 替换为实际需要验证的单测类名
   .\.agent\agent-test.cmd "-Dtest=<YourTestClass>"
   ```
