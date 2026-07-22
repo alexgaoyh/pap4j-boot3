@@ -75,17 +75,64 @@ public class AiAssistantConfig {
     }
 
     /**
-     * 3. 预置携带聊天记忆能力的 ChatClient
+     * 3. 预置主大模型 ChatClient（从 ai.main-llm 读取专属 base-url, model, temperature，搭载多轮记忆）
      */
-    @Bean
-    public ChatClient customChatClient(ChatClient.Builder builder, ChatMemory chatMemory) {
+    @Bean(name = "customChatClient")
+    @org.springframework.context.annotation.Primary
+    public ChatClient customChatClient(
+            @Value("${ai.main-llm.base-url}") String baseUrl,
+            @Value("${ai.main-llm.model}") String modelName,
+            @Value("${ai.main-llm.temperature:0.7}") Double temperature,
+            ChatMemory chatMemory) {
 
-        // 1. ChatMemory 顾问：维护对话上下文
+        org.springframework.ai.ollama.api.OllamaApi ollamaApi = org.springframework.ai.ollama.api.OllamaApi.builder()
+                .baseUrl(baseUrl)
+                .build();
+
+        org.springframework.ai.ollama.OllamaChatModel chatModel = org.springframework.ai.ollama.OllamaChatModel.builder()
+                .ollamaApi(ollamaApi)
+                .defaultOptions(org.springframework.ai.ollama.api.OllamaChatOptions.builder()
+                        .model(modelName)
+                        .temperature(temperature)
+                        .build())
+                .build();
+
         MessageChatMemoryAdvisor memoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
 
-        // 2. 注入到 ChatClient 中
-        return builder
+        return ChatClient.builder(chatModel)
                 .defaultAdvisors(memoryAdvisor)
+                .build();
+    }
+
+    /**
+     * 4. 预置专用于 Query 改写的极速 ChatClient（从 ai.rewrite-slm 读取专属 base-url, model, temperature）
+     */
+    @Bean(name = "queryRewriteChatClient")
+    public ChatClient queryRewriteChatClient(
+            @Value("${ai.rewrite-slm.base-url}") String baseUrl,
+            @Value("${ai.rewrite-slm.model}") String modelName,
+            @Value("${ai.rewrite-slm.temperature:0.1}") Double temperature) {
+
+        org.springframework.ai.ollama.api.OllamaApi ollamaApi = org.springframework.ai.ollama.api.OllamaApi.builder()
+                .baseUrl(baseUrl)
+                .build();
+
+        org.springframework.ai.ollama.OllamaChatModel chatModel = org.springframework.ai.ollama.OllamaChatModel.builder()
+                .ollamaApi(ollamaApi)
+                .defaultOptions(org.springframework.ai.ollama.api.OllamaChatOptions.builder()
+                        .model(modelName)
+                        .temperature(temperature)
+                        .build())
+                .build();
+
+        String rewriteSystemPrompt = """
+                你是一个专业检索 Query 改写助手。
+                任务：结合历史对话上下文，将用户的最新提问改写为【包含完整主谓宾的独立提问】（消解“它”、“这个”等代词）。
+                规则：只输出改写后的最终提问文本，绝对不要包含任何解释说明或额外标点。
+                """;
+
+        return ChatClient.builder(chatModel)
+                .defaultSystem(rewriteSystemPrompt)
                 .build();
     }
 

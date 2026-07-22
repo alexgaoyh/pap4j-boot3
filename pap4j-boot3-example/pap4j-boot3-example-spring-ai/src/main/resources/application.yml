@@ -1,11 +1,8 @@
 spring:
   ai:
-    ollama:
-      base-url: https://px-wj-1.matpool.com:27863/
-      chat:
-        options:
-          model: llama3.1
-          temperature: 0.2
+    chat:
+      client:
+        enabled: false # 按照 Spring AI 官方文档：使用多个 ChatClient 时禁用单一默认自动配置，由配置类手动声明多个 Bean
     embedding:
       transformer:
         onnx:
@@ -15,10 +12,22 @@ spring:
           # 指向 resources/onnx 目录下的本地分词器文件
           uri: classpath:/onnx/tokenizer.json
 
-# 自定义配置：知识库文件目录和向量存储位置
+# 自定义配置：知识库文件目录和向量存储位置, 多模型配置：主大模型与极速改写小模型全量参数物理隔离
 ai:
   knowledge:
     docs-location: classpath:/knowledge/docs/
     vector-store-path: ${java.io.tmpdir}/pap4j-boot3-example-spring-ai/vector
   assistant:
     persona: Java 开发架构师
+
+  # 1. 答案生成主大模型 (Main LLM) 专属配置 (连接与模型参数)
+  main-llm:
+    base-url: ${AI_MAIN_LLM_BASE_URL:https://hz-4.matpool.com:28211/}
+    model: ${AI_MAIN_LLM_MODEL:llama3.1}
+    temperature: 0.7
+
+  # 2. 极速小模型 Query 改写专属配置 (全量连接与模型参数隔离)
+  rewrite-slm:
+    base-url: ${AI_REWRITE_SLM_BASE_URL:https://hz-4.matpool.com:28211/}
+    model: ${AI_REWRITE_SLM_MODEL:llama3.1}
+    temperature: 0.1

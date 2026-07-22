@@ -12,6 +12,7 @@ import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,16 +39,25 @@ public class AiController {
     private static final Logger log = LoggerFactory.getLogger(AiController.class);
 
     private final ChatClient chatClient;
+    private final ChatClient queryRewriteChatClient;
     private final ChatClient statelessChatClient;
+    private final ChatMemory chatMemory;
     private final VectorStore vectorStore;
     private final ObjectMapper objectMapper;
 
     @Value("${ai.assistant.persona:Java 开发架构师}")
     private String defaultPersona;
 
-    public AiController(ChatClient customChatClient, ChatClient.Builder chatClientBuilder, VectorStore vectorStore, ObjectMapper objectMapper) {
+    public AiController(@Qualifier("customChatClient") ChatClient customChatClient,
+                        @Qualifier("queryRewriteChatClient") ChatClient queryRewriteChatClient,
+                        ChatMemory chatMemory,
+                        org.springframework.ai.chat.model.ChatModel chatModel,
+                        VectorStore vectorStore,
+                        ObjectMapper objectMapper) {
         this.chatClient = customChatClient;
-        this.statelessChatClient = chatClientBuilder.build(); // 创建一个不带任何默认 Advisor (无会话记忆) 的干净客户端
+        this.queryRewriteChatClient = queryRewriteChatClient;
+        this.chatMemory = chatMemory;
+        this.statelessChatClient = ChatClient.builder(chatModel).build(); // 创建一个不带任何默认 Advisor (无会话记忆) 的干净客户端
         this.vectorStore = vectorStore;
         this.objectMapper = objectMapper;
     }
@@ -61,10 +71,39 @@ public class AiController {
         return Flux.defer(() -> {
             String chatId = request.chatId() != null ? request.chatId() : "default-chat-id";
 
-            // 1. 第一次检索：基于用户问题语义召回 (RAG)，过滤 type == 'knowledge' 的文档
+            // 0. 从 ChatMemory 获取多轮历史上下文 (取最近 4 条消息用于 Query 改写)
+            List<org.springframework.ai.chat.messages.Message> fullHistory = chatMemory.get(chatId);
+            List<org.springframework.ai.chat.messages.Message> history = (fullHistory != null && fullHistory.size() > 4)
+                    ? fullHistory.subList(fullHistory.size() - 4, fullHistory.size())
+                    : (fullHistory != null ? fullHistory : java.util.Collections.emptyList());
+            String searchQuery = request.prompt();
+
+            if (!history.isEmpty()) {
+                try {
+                    String historyText = history.stream()
+                            .map(m -> m.getMessageType() + ": " + m.getText())
+                            .collect(Collectors.joining("\n"));
+
+                    String rewritten = queryRewriteChatClient.prompt()
+                            .user(u -> u.text("历史上下文:\n{history}\n\n最新提问: {query}")
+                                        .param("history", historyText)
+                                        .param("query", request.prompt()))
+                            .call()
+                            .content();
+
+                    if (rewritten != null && !rewritten.isBlank()) {
+                        searchQuery = rewritten.trim();
+                        log.info("Query 改写成功 - chatId: {}, 原始: '{}' -> 改写: '{}'", chatId, request.prompt(), searchQuery);
+                    }
+                } catch (Exception e) {
+                    log.warn("Query 改写过程出现异常/超时，降级使用原始提问 - chatId: {}, 异常: ", chatId, e);
+                }
+            }
+
+            // 1. 第一次检索：使用改写后的 searchQuery 进行语义召回 (RAG)，过滤 type == 'knowledge' 的文档
             List<Document> firstDocs = new ArrayList<>(vectorStore.similaritySearch(
                     SearchRequest.builder()
-                            .query(request.prompt())
+                            .query(searchQuery)
                             .topK(3)
                             .filterExpression("type == 'knowledge'")
                             .build()
