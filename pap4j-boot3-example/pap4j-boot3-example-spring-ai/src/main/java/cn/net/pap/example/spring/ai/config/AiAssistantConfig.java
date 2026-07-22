@@ -10,11 +10,11 @@ import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.reader.TextReader;
-import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 
@@ -32,23 +32,24 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Configuration
+@EnableConfigurationProperties(AiProperties.class)
 public class AiAssistantConfig {
 
     private static final Logger log = LoggerFactory.getLogger(AiAssistantConfig.class);
 
-    @Value("${ai.knowledge.vector-store-path}")
-    private String vectorStorePath;
+    private final AiProperties aiProperties;
 
-    @Value("${ai.knowledge.docs-location}")
-    private String docsLocation;
+    public AiAssistantConfig(AiProperties aiProperties) {
+        this.aiProperties = aiProperties;
+    }
 
     /**
-     * 1. 声明纯内存+文件持久化的向量数据库
+     * 1. 声明纯内存+文件持久化的向量数据库，显式通过 Qualifier 注入我们自定义的动态 Bean
      */
     @Bean
-    public SimpleVectorStore simpleVectorStore(EmbeddingModel embeddingModel) {
+    public SimpleVectorStore simpleVectorStore(@org.springframework.beans.factory.annotation.Qualifier("customEmbeddingModel") EmbeddingModel embeddingModel) {
         SimpleVectorStore vectorStore = SimpleVectorStore.builder(embeddingModel).build();
-        File storeFile = new File(vectorStorePath);
+        File storeFile = new File(aiProperties.knowledge().vectorStorePath());
 
         // 【优化点】：为了保证 YAML 知识库修改能立即生效，这里强制执行一次知识库向量化。
         // 在生产环境建议改回判断 storeFile.exists() 以提升启动速度。
@@ -58,7 +59,7 @@ public class AiAssistantConfig {
         // 保存到本地磁盘（覆盖旧版本）
         storeFile.getParentFile().mkdirs();
         vectorStore.save(storeFile);
-        log.info("知识库刷新并向量化完成！向量文件位置: {}", vectorStorePath);
+        log.info("知识库刷新并向量化完成！向量文件位置: {}", aiProperties.knowledge().vectorStorePath());
         
         return vectorStore;
     }
@@ -75,28 +76,12 @@ public class AiAssistantConfig {
     }
 
     /**
-     * 3. 预置主大模型 ChatClient（从 ai.main-llm 读取专属 base-url, model, temperature，搭载多轮记忆）
+     * 3. 预置主大模型 ChatClient（搭载多轮记忆）
      */
     @Bean(name = "customChatClient")
-    @org.springframework.context.annotation.Primary
-    public ChatClient customChatClient(
-            @Value("${ai.main-llm.base-url}") String baseUrl,
-            @Value("${ai.main-llm.model}") String modelName,
-            @Value("${ai.main-llm.temperature:0.7}") Double temperature,
-            ChatMemory chatMemory) {
-
-        org.springframework.ai.ollama.api.OllamaApi ollamaApi = org.springframework.ai.ollama.api.OllamaApi.builder()
-                .baseUrl(baseUrl)
-                .build();
-
-        org.springframework.ai.ollama.OllamaChatModel chatModel = org.springframework.ai.ollama.OllamaChatModel.builder()
-                .ollamaApi(ollamaApi)
-                .defaultOptions(org.springframework.ai.ollama.api.OllamaChatOptions.builder()
-                        .model(modelName)
-                        .temperature(temperature)
-                        .build())
-                .build();
-
+    @Primary
+    public ChatClient customChatClient(ChatMemory chatMemory) {
+        org.springframework.ai.chat.model.ChatModel chatModel = createChatModel(aiProperties.mainLlm(), "主模型", 0.7);
         MessageChatMemoryAdvisor memoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
 
         return ChatClient.builder(chatModel)
@@ -105,25 +90,11 @@ public class AiAssistantConfig {
     }
 
     /**
-     * 4. 预置专用于 Query 改写的极速 ChatClient（从 ai.rewrite-slm 读取专属 base-url, model, temperature）
+     * 4. 预置专用于 Query 改写的极速 ChatClient
      */
     @Bean(name = "queryRewriteChatClient")
-    public ChatClient queryRewriteChatClient(
-            @Value("${ai.rewrite-slm.base-url}") String baseUrl,
-            @Value("${ai.rewrite-slm.model}") String modelName,
-            @Value("${ai.rewrite-slm.temperature:0.1}") Double temperature) {
-
-        org.springframework.ai.ollama.api.OllamaApi ollamaApi = org.springframework.ai.ollama.api.OllamaApi.builder()
-                .baseUrl(baseUrl)
-                .build();
-
-        org.springframework.ai.ollama.OllamaChatModel chatModel = org.springframework.ai.ollama.OllamaChatModel.builder()
-                .ollamaApi(ollamaApi)
-                .defaultOptions(org.springframework.ai.ollama.api.OllamaChatOptions.builder()
-                        .model(modelName)
-                        .temperature(temperature)
-                        .build())
-                .build();
+    public ChatClient queryRewriteChatClient() {
+        org.springframework.ai.chat.model.ChatModel chatModel = createChatModel(aiProperties.rewriteSlm(), "改写模型", 0.1);
 
         String rewriteSystemPrompt = """
                 你是一个专业检索 Query 改写助手。
@@ -137,12 +108,107 @@ public class AiAssistantConfig {
     }
 
     /**
+     * 5. 声明向量化模型 Bean，支持 ONNX / Ollama / OpenAI(含DeepSeek) 三模动态切换。
+     * <p>
+     * 【重要命名与内存开销说明】：
+     * 我们将该 Bean 显式命名为 "customEmbeddingModel" 并标注为 @Primary，以避免与 Spring Boot 自动配置的 "embeddingModel" 产生命名冲突。
+     * 由于 classpath 下引入了 `spring-ai-starter-model-transformers` 依赖以支持本地离线 ONNX 模式，Spring AI 默认的自动配置类
+     * TransformersEmbeddingModelAutoConfiguration 依然会强行运行并注册其底层的 "embeddingModel" Bean（加载本地 ONNX 引擎与 model.onnx 资源文件），
+     * 即使您在配置中将 provider 设定为 ollama 或 openai 也是如此，这会额外占用数百兆 JVM 内存。
+     * 如果您后续决定完全迁移到云端大模型接口/互联网服务（不再需要本地离线计算），为了最大化节省内存，您应当从 pom.xml 中彻底剔除
+     * `spring-ai-starter-model-transformers` 依赖，这样 Spring AI 自动配置就会彻底退避，不再加载本地模型。
+     */
+    @Bean(name = "customEmbeddingModel")
+    @Primary
+    public EmbeddingModel customEmbeddingModel() throws Exception {
+        AiProperties.ModelConfig config = aiProperties.embeddingModel();
+        String provider = config.provider();
+
+        if ("openai".equalsIgnoreCase(provider)) {
+            log.info("【Embedding】切换为 OpenAI 标准 API 向量服务，地址: {}, 模型: {}", config.baseUrl(), config.model());
+            return new org.springframework.ai.openai.OpenAiEmbeddingModel(createOpenAiApi(config),
+                    org.springframework.ai.document.MetadataMode.EMBED,
+                    org.springframework.ai.openai.OpenAiEmbeddingOptions.builder()
+                            .model(config.model())
+                            .build());
+        } else if ("ollama".equalsIgnoreCase(provider)) {
+            log.info("【Embedding】切换为 Ollama 向量服务，地址: {}, 模型: {}", config.baseUrl(), config.model());
+            return org.springframework.ai.ollama.OllamaEmbeddingModel.builder()
+                    .ollamaApi(createOllamaApi(config))
+                    .defaultOptions(org.springframework.ai.ollama.api.OllamaEmbeddingOptions.builder()
+                            .model(config.model())
+                            .build())
+                    .build();
+        } else {
+            AiProperties.OnnxConfig onnx = config.onnx();
+            String onnxModelUri = onnx != null ? onnx.modelUri() : null;
+            String onnxTokenizerUri = onnx != null ? onnx.tokenizerUri() : null;
+            log.info("【Embedding】切换为本地内嵌 ONNX 向量模型，Model: {}, Tokenizer: {}", onnxModelUri, onnxTokenizerUri);
+            org.springframework.ai.transformers.TransformersEmbeddingModel embeddingModel = 
+                    new org.springframework.ai.transformers.TransformersEmbeddingModel();
+            embeddingModel.setModelResource(onnxModelUri);
+            embeddingModel.setTokenizerResource(onnxTokenizerUri);
+            embeddingModel.afterPropertiesSet();
+            return embeddingModel;
+        }
+    }
+
+    /**
+     * 统一创建 OpenAI API 客户端
+     */
+    private org.springframework.ai.openai.api.OpenAiApi createOpenAiApi(AiProperties.ModelConfig config) {
+        return org.springframework.ai.openai.api.OpenAiApi.builder()
+                .baseUrl(config.baseUrl())
+                .apiKey(config.apiKey())
+                .build();
+    }
+
+    /**
+     * 统一创建 Ollama API 客户端
+     */
+    private org.springframework.ai.ollama.api.OllamaApi createOllamaApi(AiProperties.ModelConfig config) {
+        return org.springframework.ai.ollama.api.OllamaApi.builder()
+                .baseUrl(config.baseUrl())
+                .build();
+    }
+
+    /**
+     * 根据配置动态创建 ChatModel 实例
+     */
+    private org.springframework.ai.chat.model.ChatModel createChatModel(
+            AiProperties.ModelConfig config, String logLabel, Double defaultTemp) {
+        String provider = config.provider();
+        String modelName = config.model();
+        Double temperature = config.temperature() != null ? config.temperature() : defaultTemp;
+
+        if ("openai".equalsIgnoreCase(provider)) {
+            log.info("【ChatClient - {}】切换为 OpenAI 标准 API 服务，地址: {}, 模型: {}", logLabel, config.baseUrl(), modelName);
+            return org.springframework.ai.openai.OpenAiChatModel.builder()
+                    .openAiApi(createOpenAiApi(config))
+                    .defaultOptions(org.springframework.ai.openai.OpenAiChatOptions.builder()
+                            .model(modelName)
+                            .temperature(temperature)
+                            .build())
+                    .build();
+        } else {
+            log.info("【ChatClient - {}】切换为 Ollama API 服务，地址: {}, 模型: {}", logLabel, config.baseUrl(), modelName);
+            return org.springframework.ai.ollama.OllamaChatModel.builder()
+                    .ollamaApi(createOllamaApi(config))
+                    .defaultOptions(org.springframework.ai.ollama.api.OllamaChatOptions.builder()
+                            .model(modelName)
+                            .temperature(temperature)
+                            .build())
+                    .build();
+        }
+    }
+
+    /**
      * 私有方法：读取 classpath 下的知识文档并切块
      */
     private void loadAndVectorizeKnowledge(SimpleVectorStore vectorStore) {
         try {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
-            Resource[] resources = resolver.getResources(docsLocation + "*.md");
+            Resource[] resources = resolver.getResources(aiProperties.knowledge().docsLocation() + "*.md");
 
             List<Document> allDocuments = new ArrayList<>();
             for (Resource resource : resources) {
