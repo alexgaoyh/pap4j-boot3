@@ -1,10 +1,10 @@
-## JSON_PATH — 脚本内深度过滤函数
+## JSON_PATH — 脚本内深度过滤,复杂 JSON 数据解析与节点提取函数
 
 > **元数据**
 > - **组件/引擎**：QLExpress
 > - **分类/模块**：集合/列表操作
 > - **类型**：自定义函数
-> - **关键字**：jsonpath, 过滤, 深度搜索, 数组查询
+> - **关键字**：jsonpath, 过滤, 深度搜索, 数组查询, json解析, json提取, 节点查询, 复杂json
 
 ### 💡 核心介绍
 JSON_PATH 是 QLExpress 引擎中动态调用 JsonPath 引擎进行复杂数据过滤的函数。它允许在 QLExpress 脚本内部，对已经解析好的 json 对象使用 JsonPath 语法进行深度搜索、条件过滤和数组查询，是两种引擎能力的融合使用方式。关于引擎路由规则（什么情况下用 JsonPath 引擎、什么情况下用 QLExpress 引擎）详见 [engine_routing_strategy.md](engine_routing_strategy.md)。
