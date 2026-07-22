@@ -40,7 +40,6 @@ public class AiController {
 
     private final ChatClient chatClient;
     private final ChatClient queryRewriteChatClient;
-    private final ChatClient statelessChatClient;
     private final ChatMemory chatMemory;
     private final VectorStore vectorStore;
     private final ObjectMapper objectMapper;
@@ -51,13 +50,11 @@ public class AiController {
     public AiController(@Qualifier("customChatClient") ChatClient customChatClient,
                         @Qualifier("queryRewriteChatClient") ChatClient queryRewriteChatClient,
                         ChatMemory chatMemory,
-                        org.springframework.ai.chat.model.ChatModel chatModel,
                         VectorStore vectorStore,
                         ObjectMapper objectMapper) {
         this.chatClient = customChatClient;
         this.queryRewriteChatClient = queryRewriteChatClient;
         this.chatMemory = chatMemory;
-        this.statelessChatClient = ChatClient.builder(chatModel).build(); // 创建一个不带任何默认 Advisor (无会话记忆) 的干净客户端
         this.vectorStore = vectorStore;
         this.objectMapper = objectMapper;
     }
@@ -270,7 +267,7 @@ public class AiController {
                         删除 清除 移除 垃圾桶 废弃 叉号 禁止
                 """;
 
-            String rewrittenQuery = statelessChatClient.prompt()
+            String rewrittenQuery = chatClient.prompt()
                     .system(systemPrompt)
                     .user(request.prompt())
                     .call()
