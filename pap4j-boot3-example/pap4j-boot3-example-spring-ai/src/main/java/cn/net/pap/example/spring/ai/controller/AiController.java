@@ -141,7 +141,7 @@ public class AiController {
             }
 
             // 3. 记录 RAG 检索细节结构化日志
-            logRagTrace(chatId, request.prompt(), firstDocs, linkedFiles, extraDocs, docs.size());
+            logRagTrace(chatId, request.prompt(), searchQuery, firstDocs, linkedFiles, extraDocs, docs.size());
 
             String context = docs.stream()
                     .map(Document::getText)
@@ -339,14 +339,14 @@ public class AiController {
                 .collect(Collectors.toList());
     }
 
-    private record RagTrace(String chatId, String query, List<DocTrace> firstPassDocs, List<String> extractedLinks,
+    private record RagTrace(String chatId, String query, String rewrittenQuery, List<DocTrace> firstPassDocs, List<String> extractedLinks,
                             List<DocTrace> secondPassDocs, int finalDocCount) {
     }
 
     private record DocTrace(String id, Map<String, Object> metadata, String content, Boolean merged) {
     }
 
-    private void logRagTrace(String chatId, String query, List<Document> firstDocs, List<String> linkedTexts, List<Document> extraDocs, int finalCount) {
+    private void logRagTrace(String chatId, String query, String rewrittenQuery, List<Document> firstDocs, List<String> linkedTexts, List<Document> extraDocs, int finalCount) {
         try {
             List<DocTrace> firstTraces = firstDocs.stream().map(doc -> new DocTrace(doc.getId(), doc.getMetadata(), doc.getText(), null)).toList();
 
@@ -359,7 +359,7 @@ public class AiController {
                 }
             }
 
-            RagTrace trace = new RagTrace(chatId, query, firstTraces, linkedTexts, secondTraces, finalCount);
+            RagTrace trace = new RagTrace(chatId, query, rewrittenQuery, firstTraces, linkedTexts, secondTraces, finalCount);
             String json = objectMapper.writeValueAsString(trace);
             log.info("RAG Trace Detail - chatId: {}, trace: {}", chatId, json);
         } catch (Exception e) {
