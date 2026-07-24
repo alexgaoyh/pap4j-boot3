@@ -11,14 +11,16 @@ public record AiProperties(
         AssistantConfig assistant,
         ModelConfig mainLlm,
         ModelConfig rewriteSlm,
-        ModelConfig embeddingModel
+        ModelConfig embeddingModel,
+        ElasticsearchConfig elasticsearch
 ) {
     /**
      * 知识库配置
      */
     public record KnowledgeConfig(
             String docsLocation,
-            String vectorStorePath
+            String vectorStorePath,
+            String storeType
     ) {}
 
     /**
@@ -46,5 +48,14 @@ public record AiProperties(
     public record OnnxConfig(
             String modelUri,
             String tokenizerUri
+    ) {}
+
+    /**
+     * Elasticsearch 专属配置
+     */
+    public record ElasticsearchConfig(
+            String uris,
+            String username,
+            String password
     ) {}
 }

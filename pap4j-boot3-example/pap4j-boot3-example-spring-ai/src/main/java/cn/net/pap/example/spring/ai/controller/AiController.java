@@ -41,7 +41,8 @@ public class AiController {
     private final ChatClient chatClient;
     private final ChatClient queryRewriteChatClient;
     private final ChatMemory chatMemory;
-    private final VectorStore vectorStore;
+    private final VectorStore knowledgeVectorStore;
+    private final VectorStore emojiVectorStore;
     private final ObjectMapper objectMapper;
 
     @Value("${ai.assistant.persona:Java 开发架构师}")
@@ -50,12 +51,14 @@ public class AiController {
     public AiController(@Qualifier("customChatClient") ChatClient customChatClient,
                         @Qualifier("queryRewriteChatClient") ChatClient queryRewriteChatClient,
                         ChatMemory chatMemory,
-                        VectorStore vectorStore,
+                        @Qualifier("knowledgeVectorStore") VectorStore knowledgeVectorStore,
+                        @Qualifier("emojiVectorStore") VectorStore emojiVectorStore,
                         ObjectMapper objectMapper) {
         this.chatClient = customChatClient;
         this.queryRewriteChatClient = queryRewriteChatClient;
         this.chatMemory = chatMemory;
-        this.vectorStore = vectorStore;
+        this.knowledgeVectorStore = knowledgeVectorStore;
+        this.emojiVectorStore = emojiVectorStore;
         this.objectMapper = objectMapper;
     }
 
@@ -114,12 +117,11 @@ public class AiController {
                 log.info("无历史会话 - chatId: {}, 原始: '{}'", chatId, request.prompt());
             }
 
-            // 1. 第一次检索：使用改写后的 searchQuery 进行语义召回 (RAG)，过滤 type == 'knowledge' 的文档
-            List<Document> firstDocs = new ArrayList<>(vectorStore.similaritySearch(
+            // 1. 第一次检索：使用改写后的 searchQuery 进行语义召回 (RAG)
+            List<Document> firstDocs = new ArrayList<>(knowledgeVectorStore.similaritySearch(
                     SearchRequest.builder()
                             .query(searchQuery)
                             .topK(3)
-                            .filterExpression("type == 'knowledge'")
                             .build()
             ));
 
@@ -129,13 +131,13 @@ public class AiController {
             List<Document> docs = new ArrayList<>(firstDocs);
 
             if (!linkedFiles.isEmpty()) {
-                // 构建多文件精准过滤表达式，如：type == 'knowledge' && (source == 'file1.md' || source == 'file2.md')
+                // 构建多文件精准过滤表达式，如：(source == 'file1.md' || source == 'file2.md')
                 String fileConditions = linkedFiles.stream()
                         .map(file -> "source == '" + file + "'")
                         .collect(Collectors.joining(" || "));
-                String filterExpr = "type == 'knowledge' && (" + fileConditions + ")";
+                String filterExpr = "(" + fileConditions + ")";
 
-                extraDocs.addAll(vectorStore.similaritySearch(
+                extraDocs.addAll(knowledgeVectorStore.similaritySearch(
                         SearchRequest.builder()
                                 // 因元数据已实现精确过滤，query 使用原始 Prompt 以作格式占位即可，核心由 Metadata Filter 负责硬召回
                                 .query(request.prompt())
@@ -294,18 +296,16 @@ public class AiController {
 
             int limit = request.topK() > 0 ? request.topK() : 10;
 
-            // 使用转换后的词语去向量库中检索具有 type == "emoji" 属性 of 文档
-            List<Document> docs = vectorStore.similaritySearch(
+            // 使用转换后的词语去向量库中检索
+            List<Document> docs = emojiVectorStore.similaritySearch(
                     SearchRequest.builder()
                             .query(rewrittenQuery)
                             .topK(limit)
-                            .filterExpression("type == 'emoji'")
                             .build()
             );
 
-            // 进行内存双重过滤以保证绝对可靠，并拼装返回结果
+            // 拼装返回结果
             return docs.stream()
-                    .filter(doc -> "emoji".equals(doc.getMetadata().get("type")))
                     .map(doc -> new EmojiResponse(
                             (String) doc.getMetadata().get("emoji"),
                             doc.getText(),

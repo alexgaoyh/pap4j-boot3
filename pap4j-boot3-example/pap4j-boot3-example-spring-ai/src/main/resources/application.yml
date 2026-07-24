@@ -1,4 +1,7 @@
 spring:
+  autoconfigure:
+    exclude:
+      - org.springframework.ai.vectorstore.elasticsearch.autoconfigure.ElasticsearchVectorStoreAutoConfiguration
   ai:
     chat:
       client:
@@ -7,19 +10,27 @@ spring:
       api-key: "dummy-key-to-bypass-starter-validation" # 哑值：用于绕过未使用 OpenAI Starter 自动装配 Bean 的启动 API-Key 强校验
     model:
       embedding: none # 关闭默认的 ONNX 向量自动装配，防止启动时从 GitHub 自动下载模型权重
+    vectorstore:
+      elasticsearch:
+        enabled: false # 关闭官方默认装配，防止其在 Simple 模式下自作聪明
 
 # 自定义配置：知识库文件目录和向量存储位置, 多模型配置：主大模型与极速改写小模型全量参数物理隔离
 ai:
   knowledge:
     docs-location: classpath:/knowledge/docs/
     vector-store-path: ${java.io.tmpdir}/pap4j-boot3-example-spring-ai/vector
+    store-type: simple # simple | elasticsearch
+  elasticsearch:
+    uris: http://192.168.1.115:9200
+    username: "elastic"
+    password: "alexgaoyh"
   assistant:
     persona: Java 开发架构师
 
   # 1. 答案生成主大模型 (Main LLM) 专属配置 (支持 ollama / openai)
   main-llm:
     provider: ollama
-    base-url: https://px2-jcy.matpool.com:28087/
+    base-url: http://10.0.0.0
     api-key: ""
     model: llama3.1
     temperature: 0.7

@@ -6,8 +6,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
-import org.springframework.ai.vectorstore.SimpleVectorStore;
+import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 
 import java.util.ArrayList;
@@ -21,7 +22,8 @@ public class RagRetrievalTest {
     private static final Logger log = LoggerFactory.getLogger(RagRetrievalTest.class);
 
     @Autowired
-    private SimpleVectorStore vectorStore;
+    @Qualifier("knowledgeVectorStore")
+    private VectorStore vectorStore;
 
     private record TestCase(String question, String expectedFile, String desc) {
     }

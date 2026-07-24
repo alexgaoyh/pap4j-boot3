@@ -67,7 +67,7 @@ public class RagEvaluationTest {
     );
 
     @Autowired
-    public RagEvaluationTest(VectorStore vectorStore,
+    public RagEvaluationTest(@Qualifier("knowledgeVectorStore") VectorStore vectorStore,
                              @Qualifier("customChatClient") ChatClient chatClient,
                              AiProperties aiProperties) {
         this.vectorStore = vectorStore;
@@ -197,7 +197,6 @@ public class RagEvaluationTest {
                     SearchRequest.builder()
                             .query(tc.question())
                             .topK(3)
-                            .filterExpression("type == 'knowledge'")
                             .build()
             );
 

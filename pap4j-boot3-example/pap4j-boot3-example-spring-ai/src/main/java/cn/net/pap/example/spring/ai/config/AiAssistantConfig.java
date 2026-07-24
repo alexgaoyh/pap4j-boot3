@@ -11,6 +11,8 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.embedding.EmbeddingModel;
 import org.springframework.ai.reader.TextReader;
 import org.springframework.ai.vectorstore.SimpleVectorStore;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -44,24 +46,104 @@ public class AiAssistantConfig {
     }
 
     /**
-     * 1. 声明纯内存+文件持久化的向量数据库，显式通过 Qualifier 注入我们自定义的动态 Bean
+     * 1. 声明知识库向量数据库 Bean
      */
-    @Bean
-    public SimpleVectorStore simpleVectorStore(@org.springframework.beans.factory.annotation.Qualifier("customEmbeddingModel") EmbeddingModel embeddingModel) {
-        SimpleVectorStore vectorStore = SimpleVectorStore.builder(embeddingModel).build();
-        File storeFile = new File(aiProperties.knowledge().vectorStorePath());
+    @Bean(name = "knowledgeVectorStore")
+    @Primary
+    public VectorStore knowledgeVectorStore(@org.springframework.beans.factory.annotation.Qualifier("customEmbeddingModel") EmbeddingModel embeddingModel) {
+        String type = aiProperties.knowledge().storeType();
+        if ("elasticsearch".equalsIgnoreCase(type)) {
+            return createElasticsearchStore(embeddingModel, "knowledge");
+        } else if ("simple".equalsIgnoreCase(type)) {
+            return createSimpleStore(embeddingModel, "knowledge");
+        } else {
+            throw new IllegalArgumentException("未知的向量库类型配置: " + type + "，仅支持 'simple' 或 'elasticsearch'。");
+        }
+    }
 
+    /**
+     * 1b. 声明 Emoji 向量数据库 Bean
+     */
+    @Bean(name = "emojiVectorStore")
+    public VectorStore emojiVectorStore(@org.springframework.beans.factory.annotation.Qualifier("customEmbeddingModel") EmbeddingModel embeddingModel) {
+        String type = aiProperties.knowledge().storeType();
+        if ("elasticsearch".equalsIgnoreCase(type)) {
+            return createElasticsearchStore(embeddingModel, "emoji");
+        } else if ("simple".equalsIgnoreCase(type)) {
+            return createSimpleStore(embeddingModel, "emoji");
+        } else {
+            throw new IllegalArgumentException("未知的向量库类型配置: " + type + "，仅支持 'simple' 或 'elasticsearch'。");
+        }
+    }
+
+    private VectorStore createElasticsearchStore(EmbeddingModel embeddingModel, String storeKey) {
+        log.info("【VectorStore】初始化 Elasticsearch {} 存储...", storeKey);
+        
+        org.elasticsearch.client.RestClient restClient = createElasticsearchRestClient(aiProperties.elasticsearch());
+        String indexName = "spring-ai-" + storeKey + "-index";
+
+        org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStoreOptions options = 
+                new org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStoreOptions();
+        options.setIndexName(indexName);
+        
+        org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStore esStore = 
+                org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStore.builder(restClient, embeddingModel)
+                        .options(options)
+                        .initializeSchema(true)
+                        .build();
+        
+        checkAndInitElasticsearch(esStore, storeKey, indexName, "开发");
+        return esStore;
+    }
+
+    private void checkAndInitElasticsearch(
+            org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStore esStore, 
+            String storeKey, String indexName, String testQuery) {
+        try {
+            log.info("【Elasticsearch-{}】检查数据状态 (Index: {})...", storeKey, indexName);
+            List<Document> results = esStore.similaritySearch(SearchRequest.builder().query(testQuery).topK(1).build());
+            if (results.isEmpty()) {
+                log.info("【Elasticsearch-{}】索引为空，开始导入初始数据...", storeKey);
+                initStoreData(esStore, storeKey);
+                log.info("【Elasticsearch-{}】数据导入完成！", storeKey);
+            } else {
+                log.info("【Elasticsearch-{}】已存在数据，跳过导入。", storeKey);
+            }
+        } catch (Exception e) {
+            log.info("【Elasticsearch-{}】未检测到有效索引（{}），开始重建并导入...", storeKey, e.getMessage());
+            try {
+                initStoreData(esStore, storeKey);
+                log.info("【Elasticsearch-{}】数据重建导入完成！", storeKey);
+            } catch (Exception ex) {
+                log.error("【Elasticsearch-{}】数据导入失败", storeKey, ex);
+            }
+        }
+    }
+
+    private VectorStore createSimpleStore(EmbeddingModel embeddingModel, String storeKey) {
+
+        log.info("【VectorStore】激活本地 SimpleVectorStore 内存 {} 向量数据库...", storeKey);
+        SimpleVectorStore vectorStore = SimpleVectorStore.builder(embeddingModel).build();
         // 【优化点】：为了保证 YAML 知识库修改能立即生效，这里强制执行一次知识库向量化。
         // 在生产环境建议改回判断 storeFile.exists() 以提升启动速度。
-        log.info("正在刷新并向量化本地知识库...");
-        loadAndVectorizeKnowledge(vectorStore);
-        loadAndVectorizeEmojis(vectorStore);
-        // 保存到本地磁盘（覆盖旧版本）
+        File storeFile = new File(aiProperties.knowledge().vectorStorePath() + "-" + storeKey);
+
+        log.info("正在刷新并向量化本地 {} 库...", storeKey);
+        initStoreData(vectorStore, storeKey);
         storeFile.getParentFile().mkdirs();
         vectorStore.save(storeFile);
-        log.info("知识库刷新并向量化完成！向量文件位置: {}", aiProperties.knowledge().vectorStorePath());
+        log.info("{} 库刷新并向量化完成！向量文件位置: {}", storeKey, storeFile.getAbsolutePath());
         
         return vectorStore;
+    }
+
+    private void initStoreData(VectorStore vectorStore, String storeKey) {
+        if(storeKey.equals("knowledge")) {
+            loadAndVectorizeKnowledge(vectorStore);
+        }
+        if(storeKey.equals("emoji")) {
+            loadAndVectorizeEmojis(vectorStore);
+        }
     }
 
     /**
@@ -218,7 +300,7 @@ public class AiAssistantConfig {
     /**
      * 私有方法：读取 classpath 下的知识文档并切块
      */
-    private void loadAndVectorizeKnowledge(SimpleVectorStore vectorStore) {
+    private void loadAndVectorizeKnowledge(VectorStore vectorStore) {
         try {
             PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
             Resource[] resources = resolver.getResources(aiProperties.knowledge().docsLocation() + "*.md");
@@ -249,7 +331,7 @@ public class AiAssistantConfig {
     /**
      * 私有方法：解析 annotations.json 导入到向量库中
      */
-    private void loadAndVectorizeEmojis(SimpleVectorStore vectorStore) {
+    private void loadAndVectorizeEmojis(VectorStore vectorStore) {
         try {
             org.springframework.core.io.ClassPathResource resource = new org.springframework.core.io.ClassPathResource("annotations.json");
             if (!resource.exists()) {
@@ -311,5 +393,34 @@ public class AiAssistantConfig {
             log.error("加载 annotations.json 向量化失败", e);
             throw new RuntimeException("读取 Emoji 字典失败", e);
         }
+    }
+
+    /**
+     * 根据自定义属性，局部实例化 Elasticsearch RestClient，规避全局连接探测
+     */
+    private org.elasticsearch.client.RestClient createElasticsearchRestClient(AiProperties.ElasticsearchConfig config) {
+        if (config == null || !org.springframework.util.StringUtils.hasText(config.uris())) {
+            throw new IllegalArgumentException("Elasticsearch URIs 配置不能为空！");
+        }
+        
+        org.elasticsearch.client.RestClientBuilder builder = org.elasticsearch.client.RestClient.builder(
+                org.apache.http.HttpHost.create(config.uris())
+        ).setRequestConfigCallback(requestConfigBuilder -> requestConfigBuilder
+                .setConnectTimeout(5000)
+                .setSocketTimeout(30000)
+        );
+
+        if (org.springframework.util.StringUtils.hasText(config.username()) && org.springframework.util.StringUtils.hasText(config.password())) {
+            final org.apache.http.client.CredentialsProvider credentialsProvider = new org.apache.http.impl.client.BasicCredentialsProvider();
+            credentialsProvider.setCredentials(
+                    org.apache.http.auth.AuthScope.ANY,
+                    new org.apache.http.auth.UsernamePasswordCredentials(config.username(), config.password())
+            );
+            builder.setHttpClientConfigCallback(httpClientBuilder -> 
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
+            );
+        }
+
+        return builder.build();
     }
 }
