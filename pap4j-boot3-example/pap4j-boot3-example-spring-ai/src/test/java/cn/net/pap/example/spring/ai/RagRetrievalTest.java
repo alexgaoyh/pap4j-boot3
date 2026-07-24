@@ -45,7 +45,12 @@ public class RagRetrievalTest {
             new TestCase("有没有可以将扁平的树状结构数据转换成平铺列表的函数？", "function_tree_flatten.md", "树结构扁平化 (TREE_FLATTEN)"),
             new TestCase("我想去除文本前后的所有空白和换行字符，有专门的函数吗？", "function_trim.md", "去除首尾空格 (TRIM)"),
             new TestCase("在表达式里，如何将一个 list 里面的所有元素用指定的连接符拼接成一个字符串？", "function_list_join.md", "列表元素拼接 (LIST_JOIN)"),
-            new TestCase("QLExpress 中怎么做三元逻辑判断？有对应的函数或者语法吗？", "function_ternary.md", "三元运算符 (TERNARY)")
+            new TestCase("QLExpress 中怎么做三元逻辑判断？有对应的函数或者语法吗？", "function_ternary.md", "三元运算符 (TERNARY)"),
+            // 注意：此处的查询词 "QLExpress 引擎能否处理树形 JSON 数据" 属于典型的"注意力稀释与检索漂移"现象。
+            // 原始短查询 "你能处理树形json吗" 能 100% 命中，但因改写模型引入了高频通用词（"QLExpress"、"引擎"、"数据"），
+            // 导致向量表示向宏观架构文档漂移而未能在纯向量检索（Top 3）下命中。在实际应用中需要通过 Hybrid 混合检索（向量 + BM25）解决此类漂移。
+            // 当前对比 输入是“改写提炼模型”，改为后是“QLExpress 引擎能否处理树形 JSON 数据”，检索关键词抽取是“QLExpress 树形 JSON 处理”
+            new TestCase("QLExpress 引擎能否处理树形 JSON 数据", "function_tree_flatten.md", "树形JSON处理 (TREE_FLATTEN)")
     );
 
     @Test

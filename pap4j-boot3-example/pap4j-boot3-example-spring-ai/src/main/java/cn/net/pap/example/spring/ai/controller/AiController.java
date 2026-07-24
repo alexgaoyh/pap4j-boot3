@@ -74,27 +74,44 @@ public class AiController {
                     ? fullHistory.subList(fullHistory.size() - 4, fullHistory.size())
                     : (fullHistory != null ? fullHistory : java.util.Collections.emptyList());
             String searchQuery = request.prompt();
+            String bm25Keywords = "";
 
             if (!history.isEmpty()) {
+                String modelResult = null;
                 try {
                     String historyText = history.stream()
                             .map(m -> m.getMessageType() + ": " + m.getText())
                             .collect(Collectors.joining("\n"));
 
-                    String rewritten = queryRewriteChatClient.prompt()
+                    modelResult = queryRewriteChatClient.prompt()
                             .user(u -> u.text("历史上下文:\n{history}\n\n最新提问: {query}")
                                         .param("history", historyText)
                                         .param("query", request.prompt()))
                             .call()
                             .content();
 
-                    if (rewritten != null && !rewritten.isBlank()) {
-                        searchQuery = rewritten.trim();
-                        log.info("Query 改写成功 - chatId: {}, 原始: '{}' -> 改写: '{}'", chatId, request.prompt(), searchQuery);
+                    ProcessResult result = parseModelResult(modelResult);
+                    if (result != null) {
+                        searchQuery = result.rewrittenQuery().isEmpty() ? request.prompt() : result.rewrittenQuery();
+                        bm25Keywords = result.bm25Keywords();
+                        log.info("Query 改写与提炼成功 - chatId: {}, 原始: '{}' -> 改写: '{}' | 关键词: '{}'",
+                                chatId, request.prompt(), searchQuery, bm25Keywords);
+                    } else {
+                        log.warn("Query 改写与提炼 JSON 解析失败，降级不改写直接回答 - chatId: {}, 原始: '{}', 模型返回: {}",
+                                chatId, request.prompt(), modelResult);
+                        searchQuery = request.prompt();
+                        bm25Keywords = "";
                     }
                 } catch (Exception e) {
-                    log.warn("Query 改写过程出现异常/超时，降级使用原始提问 - chatId: {}, 异常: ", chatId, e);
+                    log.warn("Query 改写提炼异常，降级不改写直接回答 - chatId: {}, 原始: '{}', 模型返回: {}, 异常: {}",
+                            chatId, request.prompt(), modelResult, e.getMessage());
+                    searchQuery = request.prompt();
+                    bm25Keywords = "";
                 }
+            } else {
+                // 无历史会话时，免去模型调用，不改写也不提炼关键字
+                bm25Keywords = "";
+                log.info("无历史会话 - chatId: {}, 原始: '{}'", chatId, request.prompt());
             }
 
             // 1. 第一次检索：使用改写后的 searchQuery 进行语义召回 (RAG)，过滤 type == 'knowledge' 的文档
@@ -138,7 +155,7 @@ public class AiController {
             }
 
             // 3. 记录 RAG 检索细节结构化日志
-            logRagTrace(chatId, request.prompt(), searchQuery, firstDocs, linkedFiles, extraDocs, docs.size());
+            logRagTrace(chatId, request.prompt(), searchQuery, bm25Keywords, firstDocs, linkedFiles, extraDocs, docs.size());
 
             String context = docs.stream()
                     .map(Document::getText)
@@ -336,14 +353,14 @@ public class AiController {
                 .collect(Collectors.toList());
     }
 
-    private record RagTrace(String chatId, String query, String rewrittenQuery, List<DocTrace> firstPassDocs, List<String> extractedLinks,
+    private record RagTrace(String chatId, String query, String rewrittenQuery, String bm25Keywords, List<DocTrace> firstPassDocs, List<String> extractedLinks,
                             List<DocTrace> secondPassDocs, int finalDocCount) {
     }
 
     private record DocTrace(String id, Map<String, Object> metadata, String content, Boolean merged) {
     }
 
-    private void logRagTrace(String chatId, String query, String rewrittenQuery, List<Document> firstDocs, List<String> linkedTexts, List<Document> extraDocs, int finalCount) {
+    private void logRagTrace(String chatId, String query, String rewrittenQuery, String bm25Keywords, List<Document> firstDocs, List<String> linkedTexts, List<Document> extraDocs, int finalCount) {
         try {
             List<DocTrace> firstTraces = firstDocs.stream().map(doc -> new DocTrace(doc.getId(), doc.getMetadata(), doc.getText(), null)).toList();
 
@@ -356,11 +373,33 @@ public class AiController {
                 }
             }
 
-            RagTrace trace = new RagTrace(chatId, query, rewrittenQuery, firstTraces, linkedTexts, secondTraces, finalCount);
+            RagTrace trace = new RagTrace(chatId, query, rewrittenQuery, bm25Keywords, firstTraces, linkedTexts, secondTraces, finalCount);
             String json = objectMapper.writeValueAsString(trace);
             log.info("RAG Trace Detail - chatId: {}, trace: {}", chatId, json);
         } catch (Exception e) {
             log.error("Failed to serialize RAG trace detail for chatId: {}", chatId, e);
+        }
+    }
+
+    private record ProcessResult(String rewrittenQuery, String bm25Keywords) {}
+
+    private ProcessResult parseModelResult(String jsonResponse) {
+        if (jsonResponse == null || jsonResponse.isBlank()) {
+            return null;
+        }
+        try {
+            String cleanJson = jsonResponse.trim();
+            // 去除 ```json 和 ``` 标记
+            if (cleanJson.startsWith("```")) {
+                cleanJson = cleanJson.replaceAll("^```(json)?", "").replaceAll("```$", "").trim();
+            }
+            com.fasterxml.jackson.databind.JsonNode node = objectMapper.readTree(cleanJson);
+            String rewritten = node.path("rewrittenQuery").asText("").trim();
+            String keywords = node.path("bm25Keywords").asText("").trim();
+            return new ProcessResult(rewritten, keywords);
+        } catch (Exception e) {
+            log.warn("【Query 解析】解析模型 JSON 失败，返回原文本: {}, 异常信息: {}", jsonResponse, e.getMessage());
+            return null;
         }
     }
 

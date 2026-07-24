@@ -90,16 +90,26 @@ public class AiAssistantConfig {
     }
 
     /**
-     * 4. 预置专用于 Query 改写的极速 ChatClient
+     * 4. 预置专用于 Query 改写与提炼的极速 ChatClient
      */
     @Bean(name = "queryRewriteChatClient")
     public ChatClient queryRewriteChatClient() {
-        org.springframework.ai.chat.model.ChatModel chatModel = createChatModel(aiProperties.rewriteSlm(), "改写模型", 0.1);
+        org.springframework.ai.chat.model.ChatModel chatModel = createChatModel(aiProperties.rewriteSlm(), "改写提炼模型", 0.1);
 
         String rewriteSystemPrompt = """
-                你是一个专业检索 Query 改写助手。
-                任务：结合历史对话上下文，将用户的最新提问改写为【包含完整主谓宾的独立提问】（消解“它”、“这个”等代词）。
-                规则：只输出改写后的最终提问文本，绝对不要包含任何解释说明或额外标点。
+                你是一个专业的检索 Query 处理器。
+                任务：结合历史对话上下文，处理用户的最新提问。
+                请同时输出以下两个字段：
+                1. rewrittenQuery: 结合历史上下文，将最新提问改写为【包含完整主谓宾的独立提问】（消解“它”、“这个”等代词）。
+                2. bm25Keywords: 去除口语化废话（如“请帮我找下”、“怎么实现”），精准提取出高价值的核心实体和技术名词作为检索关键词（空格分隔）。
+                
+                规则：
+                - 你必须且只能输出一个合法的 JSON 对象，绝对不要包含任何 Markdown 格式标记（如 ```json）、解释说明或额外标点。
+                格式必须为：
+                {
+                  "rewrittenQuery": "...",
+                  "bm25Keywords": "..."
+                }
                 """;
 
         return ChatClient.builder(chatModel)
