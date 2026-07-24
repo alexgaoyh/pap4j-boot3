@@ -237,6 +237,8 @@ public class AiAssistantConfig {
 
             // 【RAG 优化】：由于每个 MD 文件均小于 1.5KB，已属于理想的独立语义单元，
             // 绕过 TokenTextSplitter 分块器直接导入向量库，避免切分造成上下文割裂。
+            // 【开发注意】：此处会直接进行全量批量向量化（Batching）。若后续迁移为云端三方向量 API（如 OpenAI）
+            // 并在冷启动时遇到速率限制（HTTP 429 / TPM），需在此处重构为“分批（Partition）+ 间隔睡眠”模式。
             vectorStore.add(allDocuments);
 
         } catch (IOException e) {
@@ -299,6 +301,9 @@ public class AiAssistantConfig {
             }
 
             log.info("从 annotations.json 成功加载了 {} 个 Emoji 注解条目，正在进行向量生成与导入...", emojiDocs.size());
+            // 【开发注意】：由于 Emoji 数量较多（1000+ 条），此处会发起全量批量向量化请求以提升 CPU/GPU 推理效率。
+            // 若后续切换为云端三方向量 API 并触发频率限制（Rate Limit / TPM），
+            // 须在此处对 emojiDocs 列表进行分段分批（如每批 100 条）并引入短暂睡眠（Thread.sleep）。
             vectorStore.add(emojiDocs);
             log.info("Emoji 向量导入完成！");
 
