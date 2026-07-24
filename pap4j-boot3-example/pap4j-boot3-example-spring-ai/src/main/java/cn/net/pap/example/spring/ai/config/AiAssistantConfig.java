@@ -118,15 +118,18 @@ public class AiAssistantConfig {
     }
 
     /**
-     * 5. 声明向量化模型 Bean，支持 ONNX / Ollama / OpenAI(含DeepSeek) 三模动态切换。
+     * 5. 声明向量化模型 Bean，支持 ONNX / Ollama / OpenAI / Mock 四模动态切换。
      * <p>
-     * 【重要命名与内存开销说明】：
-     * 我们将该 Bean 显式命名为 "customEmbeddingModel" 并标注为 @Primary，以避免与 Spring Boot 自动配置的 "embeddingModel" 产生命名冲突。
-     * 由于 classpath 下引入了 `spring-ai-starter-model-transformers` 依赖以支持本地离线 ONNX 模式，Spring AI 默认的自动配置类
-     * TransformersEmbeddingModelAutoConfiguration 依然会强行运行并注册其底层的 "embeddingModel" Bean（加载本地 ONNX 引擎与 model.onnx 资源文件），
-     * 即使您在配置中将 provider 设定为 ollama 或 openai 也是如此，这会额外占用数百兆 JVM 内存。
-     * 如果您后续决定完全迁移到云端大模型接口/互联网服务（不再需要本地离线计算），为了最大化节省内存，您应当从 pom.xml 中彻底剔除
-     * `spring-ai-starter-model-transformers` 依赖，这样 Spring AI 自动配置就会彻底退避，不再加载本地模型。
+     * 【配置与装配关系说明】：
+     * 1. 禁用官方默认装配：
+     *    在 {@code application.yml} 中配置了 {@code spring.ai.model.embedding: none}，
+     *    用以硬性关闭 Spring AI 官方默认的本地 ONNX 向量自动装配，防止其在启动时自动从 GitHub 下载默认模型权重并加载。
+     * 
+     * 2. 自定义装配实现：
+     *    本 Bean 作为系统中唯一生效的 {@link EmbeddingModel}，通过 {@link org.springframework.context.annotation.Primary} 注入。
+     *    它会根据运行时参数 {@code ai.embedding-model.provider} 的设定，自适应实例化对应的向量化计算引擎。
+     *    - 当配置为 'onnx' 时，才会在本方法中实例化本地模型并初始化本地 C++ 计算引擎（产生约 400MB 物理内存开销）；
+     *    - 当配置为 'openai'、'ollama' 时，本地 C++ 引擎完全不会被装载，保持低开销。
      */
     @Bean(name = "customEmbeddingModel")
     @Primary
