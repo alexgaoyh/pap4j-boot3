@@ -171,27 +171,13 @@ public class AiController {
             SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemTemplateText);
             String renderedSystemPrompt = systemPromptTemplate.render(Map.of("persona", defaultPersona));
 
-            // 3. 构造 User提示词 (PromptTemplate)
-            String userTemplateText = """
-                    使用以下提供的上下文信息来回答用户的问题。
-                    ---------------------
-                    上下文:
-                    {context}
-                    ---------------------
-                    用户问题: {question}
-                    """;
-            PromptTemplate userPromptTemplate = new PromptTemplate(userTemplateText);
-            String renderedUserPrompt = userPromptTemplate.render(Map.of(
-                    "context", context,
-                    "question", request.prompt()
-            ));
-
             // 4. 调用 ChatClient 流式接口 (使用默认配置的模型与温度)
             return chatClient.prompt()
                     .system(renderedSystemPrompt)
-                    .user(renderedUserPrompt)
-                    // 动态指定会话 ID
-                    .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
+                    .user(request.prompt())
+                    // 动态指定会话 ID，并以 Advisor 参数形式注入 RAG 上下文
+                    .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId)
+                                    .param(cn.net.pap.example.spring.ai.advisor.RagContextAdvisor.RAG_CONTEXT_KEY, context))
                     .stream()
                     .content();
         }).subscribeOn(Schedulers.boundedElastic());

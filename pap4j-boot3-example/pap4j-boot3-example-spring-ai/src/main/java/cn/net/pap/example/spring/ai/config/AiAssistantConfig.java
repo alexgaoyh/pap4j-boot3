@@ -167,7 +167,7 @@ public class AiAssistantConfig {
         MessageChatMemoryAdvisor memoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
 
         return ChatClient.builder(chatModel)
-                .defaultAdvisors(memoryAdvisor)
+                .defaultAdvisors(memoryAdvisor, new cn.net.pap.example.spring.ai.advisor.RagContextAdvisor())
                 .build();
     }
 
