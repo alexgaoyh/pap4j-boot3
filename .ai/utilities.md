@@ -22,7 +22,7 @@
 3. **离线请求录制与回放闭环 (Offline Mock & Replay Loop)**:
    * **适用场景**：调试第三方 API 不可用、局域网访问限制，或需要本地重现接口的 4xx/5xx 错误。
    * **操作步骤**：
-     * 系统在过滤到 HTTP 400/500/未捕获异常时，通过 [ReqResLoggerHttpFilter](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/main/java/cn/net/pap/logback/filter/ReqResLoggerHttpFilter.java) 自动录制 HTTP 报文快照，写出到 `logs/recorded-bugs/` 下 of `bug_*.json` 文件。
+     * 系统在过滤到 HTTP 400/500/未捕获异常时，通过 [ReqResLoggerHttpFilter](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/main/java/cn/net/pap/logback/filter/ReqResLoggerHttpFilter.java) 自动录制 HTTP 报文快照，写出到 `logs/recorded-bugs/` 下的 `bug_*.json` 文件。
      * AI 代理人可以读取此 JSON 数据，并在不需要启动真实 Servlet 容器的情况下，利用 [ReqResLoggerReplayTest](../pap4j-boot3-starters/pap4j-boot3-starters-logback/src/test/java/cn/net/pap/logback/filter/ReqResLoggerReplayTest.java) 描述的方式，利用最小化的 MockMvc 模拟器回放该请求以复现和定位问题。
 
 ## 📁 基础与文本 (File & Text)

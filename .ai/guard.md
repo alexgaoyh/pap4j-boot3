@@ -133,7 +133,9 @@
 6. **持久层关联**: 是否存在 `@OneToMany` / `@ManyToOne` / `@ManyToMany` 等关联注解？
 7. **持久层 N+1**: 是否存在在循环内部调用 Repository/Mapper 的情况？
 8. **持久层事务**: `@Transactional` 是否仅标注在 Service 方法级别（而非类级别或 Repository/Controller 上）？写操作是否添加了 `rollbackFor = Exception.class`？纯查询方法是否避免了无意义的注解（仅在对账、JPA优化或读写分离时使用 `readOnly = true`）？
-9. **pap4j-common 公共 API 边界**: 本次修改是否涉及 `pap4j-common` 任意子模块下 `src/main/java` 中的 `public` 方法或 `public` 接口？若是，**无论改动大小，必须触发 `[Plan]` 强阻断**，不得跳过，因为这些方法是跨模块公共契约。
+9. **pap4j-common 公共 API 边界**: 本次修改是否涉及 `pap4j-common` 任意子模块下 `src/main/java` 中的 `public` 方法或 `public` 接口？
+   - **新增 public 方法**走 `[QuickPlan]`（轻量确认）
+   - **修改已有 public 方法签名或行为**走 `[Plan]`（强阻断），因为这些方法是跨模块公共契约。
 10. **Swagger 注解**: 模块含 `springdoc-openapi` 时，新增接口/参数是否已补齐 Swagger 注解？
 11. **防御性安全 (SQL 注入)**: 存在动态拼接 SQL 时，是否强制进行了严格的参数格式过滤（如正则/类型校验）或白名单校验？
 12. **防御性安全 (文件上传)**: 上传接口是否对文件后缀与 MIME 类型进行双重白名单校验，并对文件名执行了安全清理（防路径穿越）？
