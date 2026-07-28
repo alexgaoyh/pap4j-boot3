@@ -51,7 +51,7 @@
      mvn test -pl pap4j-boot3-example/pap4j-boot3-example-devtools "-Dtest=RefactorScanner" "-Dfile.encoding=UTF-8" "-Dmaven.gitcommitid.skip=true"
      ```
 2. **失败日志精炼器 (DiagnosticsExtractor)**
-   * **作用**: 当单元测试/编译执行失败时运行，自动扫描 surefire 报告，剔除 Spring, JUnit 等框架级冗余噪音日志，提取最核心 of 业务 Exception 堆栈。
+   * **作用**: 当单元测试/编译执行失败时运行，自动扫描 surefire 报告，剔除 Spring, JUnit 等框架级冗余噪音日志，提取最核心的业务 Exception 堆栈。
    * **输出**: 自动生成或更新精炼错误日志：[.ai/diagnostics/test_failures.md]。
    * **命令**:
      ```powershell
@@ -60,7 +60,11 @@
 
 ### 🔁 修复重试上限（强制）
 
-> 同一验证失败，**最多自主修复 2 次**。第 3 次仍失败时，立即停止并向用户汇报：完整错误信息、已尝试的两种思路、当前根因判断，并请求指令。严禁超过 2 次后继续盲目重试。
+> 同一次 `[Edit] → [Shell]` 验证循环，**最多 2 轮**。第 3 轮仍失败时，立即停止并向用户汇报：完整错误信息、已尝试的两种思路、当前根因判断，并请求指令。严禁超过 2 轮后继续盲目重试。
+>
+> - 第 1 轮修了 A 错误，第 2 轮出现新的 B 错误 → 算新轮次，继续
+> - 第 1 轮修完后全部通过，后续新增功能引入新失败 → 不算重试（新任务）
+> - 计数按 `[Edit]` 开始到 `[Shell]` 结果返回为一个完整轮次
 
 *   **PowerShell 常用命令**:
   ```powershell
