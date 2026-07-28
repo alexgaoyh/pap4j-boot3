@@ -26,21 +26,20 @@
 | `[Plan]` | 进入设计规划模式，输出设计方案后再修改 | 设计规划模式 / 深度思考模式 |
 | `[QuickPlan]` | 轻量确认档：≤2 个 `src/main` 源文件、同一子模块、不触发强阻断（测试文件、配置文件不纳入计数） | 1 句说明范围后直接 `[Edit]` |
 | `[Edit]` | 执行代码修改 | 精确替换 / 整体写入 |
-| `[Shell]` | 执行终端命令 | 终端命令执行 |
+| `[Shell]` | 执行终端命令（🚨 仅限 Windows PowerShell，严禁 Linux 命令） | 终端命令执行 |
 
-*   **`[Search]`**: 调用代码搜索、路径匹配或文件列表，用于探索上下文。
-*   **`[Plan]`**: 开启深度思考或设计规划模式，在修改前输出详细的设计逻辑。触发强阻断条件时强制进入。
-*   **`[QuickPlan]`**: 轻量确认档。**≤2 个 `src/main` 源文件、同一子模块、不触发强阻断**时使用（测试文件、配置文件不纳入计数）：1 句说明范围后直接 `[Edit]`。≥3 个 `src/main` 源文件一律升级为 `[Plan]`。
-*   **`[Edit]`**: 执行代码修改、重写或外科手术式编辑操作。
-*   **`[Shell]`**: **【强制：当前绝对是 Windows 10/11 PowerShell 环境】**
-    *   🚨 **【思想钢印：Linux 命令死罪红线】**：
-        *   严禁使用 `grep` ── 必须替换为 `Select-String`。
-        *   严禁使用 `find` ── 必须替换为 `Get-ChildItem`。
-        *   严禁使用 `cat` ── 必须替换为 `Get-Content` 或 `type`。
-        *   严禁使用 `rm -rf` ── 必须替换为 `Remove-Item -Recurse -Force`。
-        *   严禁使用 `pwd` ── 必须替换为 `(Get-Location).Path`。
-        *   严禁在命令中拼接 `&&` ── 必须替换为分号 `;`。
-    *   *执行原则*：模型在生成 `[Shell]` 指令**输出前**，必须自检是否包含上述违禁词。如果包含，必须立刻重写为原生 PowerShell 语法。
+> **`[Shell]` 命令映射（Linux → PowerShell）**：
+>
+> | 禁用 | 必须替换为 |
+> |------|-----------|
+> | `grep` | `Select-String` |
+> | `find` | `Get-ChildItem` |
+> | `cat` | `Get-Content` / `type` |
+> | `rm -rf` | `Remove-Item -Recurse -Force` |
+> | `pwd` | `(Get-Location).Path` |
+> | `&&` | `;` |
+>
+> *执行原则*：模型在生成 `[Shell]` 指令**输出前**，必须自检是否包含上述违禁词。如果包含，必须立刻重写为原生 PowerShell 语法。
 
 ---
 

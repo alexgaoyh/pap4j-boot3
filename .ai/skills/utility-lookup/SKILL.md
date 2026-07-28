@@ -31,7 +31,7 @@ globs: "pap4j-common/**/*.java, .ai/utilities.md"
 2. 为新工具方法编写 100% 覆盖率的单元测试，包含 NULL 值、空字符串、极端边界等情况。
 
 ### 步骤 3：PowerShell 单测验证 (Verification)
-使用 `.agent/agent-test.cmd` 验证新增工具单测：
+使用 `.\.agent\agent-test.cmd` 验证新增工具单测：
 ```powershell
 # 将 <YourNewUtilityTest> 替换为新建工具类的实际单测类名
 .\.agent\agent-test.cmd "-Dtest=<YourNewUtilityTest>"
