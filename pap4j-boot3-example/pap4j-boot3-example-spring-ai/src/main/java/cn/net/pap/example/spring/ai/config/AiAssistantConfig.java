@@ -249,22 +249,47 @@ public class AiAssistantConfig {
     }
 
     /**
-     * 统一创建 OpenAI API 客户端
+     * 统一创建 OpenAI API 客户端，增加连接与读取/响应超时设置以防止大模型长文生成超时
      */
     private org.springframework.ai.openai.api.OpenAiApi createOpenAiApi(AiProperties.ModelConfig config) {
         return org.springframework.ai.openai.api.OpenAiApi.builder()
                 .baseUrl(config.baseUrl())
                 .apiKey(config.apiKey())
+                .restClientBuilder(createTimeoutRestClientBuilder())
+                .webClientBuilder(createTimeoutWebClientBuilder())
                 .build();
     }
 
     /**
-     * 统一创建 Ollama API 客户端
+     * 统一创建 Ollama API 客户端，增加连接与读取/响应超时设置以防止本地大模型长文生成超时
      */
     private org.springframework.ai.ollama.api.OllamaApi createOllamaApi(AiProperties.ModelConfig config) {
         return org.springframework.ai.ollama.api.OllamaApi.builder()
                 .baseUrl(config.baseUrl())
+                .restClientBuilder(createTimeoutRestClientBuilder())
+                .webClientBuilder(createTimeoutWebClientBuilder())
                 .build();
+    }
+
+    private org.springframework.web.client.RestClient.Builder createTimeoutRestClientBuilder() {
+        org.springframework.http.client.SimpleClientHttpRequestFactory requestFactory = 
+                new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(60000); // 60s 连接超时
+        requestFactory.setReadTimeout(300000);    // 300s (5分钟) 读取超时
+        return org.springframework.web.client.RestClient.builder()
+                .requestFactory(requestFactory);
+    }
+
+    private org.springframework.web.reactive.function.client.WebClient.Builder createTimeoutWebClientBuilder() {
+        reactor.netty.http.client.HttpClient httpClient = reactor.netty.http.client.HttpClient.create()
+                .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, 60000)
+                .responseTimeout(java.time.Duration.ofSeconds(300))
+                .doOnConnected(conn -> conn
+                        .addHandlerLast(new io.netty.handler.timeout.ReadTimeoutHandler(300, java.util.concurrent.TimeUnit.SECONDS))
+                        .addHandlerLast(new io.netty.handler.timeout.WriteTimeoutHandler(300, java.util.concurrent.TimeUnit.SECONDS))
+                );
+        return org.springframework.web.reactive.function.client.WebClient.builder()
+                .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(httpClient));
     }
 
     /**
