@@ -27,6 +27,16 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * 本测试主要读取类路径下的文档图片（例如 {@code test_doc_page.jpg}），并将其输入给支持多模态的
  * 大语言模型进行转译，验证其输出干净的 Markdown 格式及对表格、标题层级的解析效果。
  * </p>
+ * <p>
+ * <b>重试机制验证说明：</b><br>
+ * 本类内嵌了一个 {@link MockRetryServer} 模拟服务器，用于重现和验证大模型请求的失败重试逻辑：
+ * </p>
+ * <ol>
+ *   <li><b>启动模拟服务：</b>在 IDE 中直接运行内嵌静态类 <code>MockRetryServer</code> 的 <code>main</code> 方法（会监听本地 9999 端口并返回 500 错误）。</li>
+ *   <li><b>修改配置指向：</b>在 <code>application.yml</code> 中将大模型的 <code>base-url</code> 临时修改为 <code>http://localhost:9999/</code>。</li>
+ *   <li><b>调整重试次数：</b>在 {@code AiAssistantConfig#createNoRetryTemplate()} 中将最大重试次数修改为 2 或 3 次。</li>
+ *   <li><b>运行本测试：</b>运行 {@link #testMultimodalDocumentParsing()}。此时可在控制台看到 Retry 监听器打印的重试日志，并在 MockRetryServer 控制台确认重试请求次数。</li>
+ * </ol>
  *
  */
 @SpringBootTest
@@ -152,6 +162,45 @@ public class MultimodalDocumentParsingTest {
         } catch (Exception e) {
             log.warn("TCP 探活失败 ({})，将跳过本组多模态解析单元测试。错误: {}", baseUrl, e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * 本地模拟服务器，用作单元测试的错误终点，重现大模型请求失败下的重试逻辑。
+     */
+    public static class MockRetryServer {
+        public static void main(String[] args) throws Exception {
+            com.sun.net.httpserver.HttpServer server = 
+                    com.sun.net.httpserver.HttpServer.create(new java.net.InetSocketAddress(9999), 0);
+            java.util.concurrent.atomic.AtomicInteger hitCounter = new java.util.concurrent.atomic.AtomicInteger(0);
+
+            server.createContext("/v1/chat/completions", new com.sun.net.httpserver.HttpHandler() {
+                @Override
+                public void handle(com.sun.net.httpserver.HttpExchange exchange) throws java.io.IOException {
+                    // 读取请求体，防止连接被强行关闭报错
+                    try (java.io.InputStream is = exchange.getRequestBody()) {
+                        byte[] buffer = new byte[4096];
+                        while (is.read(buffer) != -1) {
+                        }
+                    }
+
+                    int hits = hitCounter.incrementAndGet();
+                    System.out.println("【Mock 服务端】收到第 " + hits + " 次请求尝试！");
+
+                    String response = "{\"error\": \"Mock 500 Internal Server Error\"}";
+                    byte[] bytes = response.getBytes();
+                    exchange.getResponseHeaders().set("Content-Type", "application/json");
+                    exchange.sendResponseHeaders(500, bytes.length);
+
+                    try (java.io.OutputStream os = exchange.getResponseBody()) {
+                        os.write(bytes);
+                    }
+                    exchange.close();
+                }
+            });
+
+            server.start();
+            System.out.println("🚀 Mock 500 模拟服务端已成功在 9999 端口启动...");
         }
     }
 }

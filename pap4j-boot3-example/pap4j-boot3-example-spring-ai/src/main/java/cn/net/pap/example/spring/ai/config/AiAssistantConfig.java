@@ -225,7 +225,8 @@ public class AiAssistantConfig {
                     org.springframework.ai.document.MetadataMode.EMBED,
                     org.springframework.ai.openai.OpenAiEmbeddingOptions.builder()
                             .model(config.model())
-                            .build());
+                            .build(),
+                    createNoRetryTemplate());
         } else if ("ollama".equalsIgnoreCase(provider)) {
             log.info("【Embedding】切换为 Ollama 向量服务，地址: {}, 模型: {}", config.baseUrl(), config.model());
             return org.springframework.ai.ollama.OllamaEmbeddingModel.builder()
@@ -295,6 +296,23 @@ public class AiAssistantConfig {
     /**
      * 根据配置动态创建 ChatModel 实例
      */
+    private org.springframework.retry.support.RetryTemplate createNoRetryTemplate() {
+        org.springframework.retry.support.RetryTemplate template = org.springframework.retry.support.RetryTemplate.builder()
+                .maxAttempts(1)
+                .build();
+
+        template.registerListener(new org.springframework.retry.RetryListener() {
+            @Override
+            public <T, E extends Throwable> void onError(org.springframework.retry.RetryContext context,
+                                                         org.springframework.retry.RetryCallback<T, E> callback,
+                                                         Throwable throwable) {
+                log.info("[Spring Retry 监听器]请求失败，当前已尝试 {} 次，异常信息: {}", context.getRetryCount(), throwable.getMessage());
+            }
+        });
+
+        return template;
+    }
+
     private org.springframework.ai.chat.model.ChatModel createChatModel(
             AiProperties.ModelConfig config, String logLabel, Double defaultTemp) {
         String provider = config.provider();
@@ -309,6 +327,7 @@ public class AiAssistantConfig {
                             .model(modelName)
                             .temperature(temperature)
                             .build())
+                    .retryTemplate(createNoRetryTemplate()) // 禁用自动重试
                     .build();
         } else {
             log.info("【ChatClient - {}】切换为 Ollama API 服务，地址: {}, 模型: {}", logLabel, config.baseUrl(), modelName);
@@ -318,6 +337,7 @@ public class AiAssistantConfig {
                             .model(modelName)
                             .temperature(temperature)
                             .build())
+                    .retryTemplate(createNoRetryTemplate()) // 禁用自动重试
                     .build();
         }
     }
