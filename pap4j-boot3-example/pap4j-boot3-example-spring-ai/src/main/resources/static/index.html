@@ -402,7 +402,7 @@
                         }
                         try {
                             const parsed = JSON.parse(content);
-                            eventLines.push(parsed.content);
+                            eventLines.push(parsed.v);
                         } catch (e) {
                             eventLines.push(content);
                         }
@@ -433,7 +433,7 @@
                     }
                     try {
                         const parsed = JSON.parse(content);
-                        eventLines.push(parsed.content);
+                        eventLines.push(parsed.v);
                     } catch (e) {
                         eventLines.push(content);
                     }
