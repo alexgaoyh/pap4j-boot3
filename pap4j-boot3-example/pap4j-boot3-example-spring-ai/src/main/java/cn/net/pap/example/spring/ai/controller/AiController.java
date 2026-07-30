@@ -102,7 +102,19 @@ public class AiController {
                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId)
                                     .param(cn.net.pap.example.spring.ai.advisor.RagContextAdvisor.RAG_CONTEXT_KEY, retrieval.context()))
                     .stream()
-                    .content();
+                    .content()
+                    // 【设计决策】：为了防止 W3C SSE (Server-Sent Events) 协议在流式传输时吞噬首尾空格或换行符
+                    // （例如："### " 后的空格被吞噬导致前端 marked 无法正确解析为 h3 标题标签），
+                    // 采用业界主流的 JSON 包装传输方案。将每一个文本块打包为 {"content": "..."}，
+                    // 通过 JSON 的自动转义机制确保传输的空白字符在前端能被 100% 还原。
+                    .map(chunk -> {
+                        try {
+                            return this.objectMapper.writeValueAsString(Map.of("content", chunk));
+                        } catch (Exception e) {
+                            log.error("JSON serialization failed for stream chunk", e);
+                            return "{\"content\":\"\"}";
+                        }
+                    });
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
