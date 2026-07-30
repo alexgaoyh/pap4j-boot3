@@ -31,9 +31,13 @@ globs: "**/*.java, docs/**/*.md"
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 讲解过程中涉及的代码检索必须使用 PowerShell 命令：
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- 讲解过程中涉及的代码检索命令（按环境选择）：
+  ```bash
+  # Git Bash 环境（如 Claude Code）
+  find pap4j-common -name "<TargetClassName>.java"
+  ```
   ```powershell
-  # 将 <TargetClassName> 替换为待讲解的类名
+  # PowerShell 环境
   Get-ChildItem -Path "pap4j-common" -Recurse -Filter "<TargetClassName>.java"
   ```

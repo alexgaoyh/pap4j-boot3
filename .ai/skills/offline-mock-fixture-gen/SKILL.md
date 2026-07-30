@@ -1,4 +1,4 @@
----
+﻿---
 name: offline-mock-fixture-gen
 description: [开发/测试] 离线 Mock 数据与测试基桩生成技能。结合 JSONAPIController 与 ReqResLoggerReplayTest，针对复杂 JSON/Query 参数或第三方 API 自动生成 Mock 数据基桩 JSON，在无需真实启动 Servlet 容器的情况下模拟各种场景。
 globs: "**/src/test/**/*.json, **/filter/ReqResLoggerReplayTest.java"
@@ -48,16 +48,17 @@ globs: "**/src/test/**/*.json, **/filter/ReqResLoggerReplayTest.java"
 ### 步骤 3：结合 MockMvc / ReqResLoggerReplayTest 回放测试 (Replay Integration)
 编写或集成测试用例，结合 `ReqResLoggerReplayTest` (MockMvc 离线测试套件) 加载 Mock 报文基桩。
 
-### 步骤 4：PowerShell 运行验证 (Verification)
-使用 `.agent/agent-test.cmd` 运行 Mock 离线测试：
-```powershell
-.\.agent\agent-test.cmd "-Dtest=ReqResLoggerReplayTest"
+### 步骤 4：运行验证 (Verification)
+使用 `.agent/agent-test.cmd` 运行 Mock 离线测试（Git Bash / PowerShell 通用）：
+```bash
+./.agent/agent-test.cmd "-Dtest=ReqResLoggerReplayTest"
 ```
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 所有 Maven 命令及单测参数使用 PowerShell 格式：
-  ```powershell
-  .\.agent\agent-test.cmd "-Dtest=ReqResLoggerReplayTest"
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- `.agent/` 目录下的 `.cmd` 脚本在 Git Bash 和 PowerShell 中均可执行：
+  ```bash
+  ./.agent/agent-test.cmd "-Dtest=ReqResLoggerReplayTest"
   ```
+

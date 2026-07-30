@@ -19,8 +19,8 @@ globs: "*"
 切换为 **【验证代理 / Reviewer】** 人格，摆脱编码者的主观倾向，以挑剔和批判性的视角对待任何代码改动。
 
 ### 步骤 2：提取并审阅 Git Diff (Diff Audit)
-使用 PowerShell 获取本次对话涉及的所有代码改动 `git diff`：
-```powershell
+获取本次对话涉及的所有代码改动（Git Bash / PowerShell 通用）：
+```bash
 git diff
 ```
 
@@ -31,7 +31,7 @@ git diff
 3. **空指针与边界防御**：入参及返回值是否有 NULL 值防护？极端集合为空时是否优雅处理？
 4. **单测覆盖度**：新增逻辑是否补全对应的单元测试？
 5. **日志与规范**：日志级别是否恰当？是否使用 Slf4j 占位符 `log.info("...", arg)`？
-6. **PowerShell 环境兼容**：文档或说明中的命令是否均原生兼容 Windows PowerShell？
+6. **Shell 环境兼容**：文档或说明中的命令是否适配当前 AI 工具的运行环境（Git Bash / PowerShell）？
 
 ### 步骤 4：输出 Code Review 报告 (Pass / Reject)
 根据审查结果输出结构化评审报告：
@@ -47,15 +47,15 @@ git diff
 2. [x] 调试代码与控制台打印清理
 3. [x] 空指针与极值边界防御
 4. [x] 单元测试覆盖
-5. [x] 日志规范与 PowerShell 指令兼容
+5. [x] 日志规范与 Git Bash / PowerShell 指令兼容
 
 *(若驳回，必须指出具体违规文件、代码行及修改指导方案)*
 ```
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 仅使用 PowerShell 原生命令查看 diff 与日志：
-  ```powershell
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- Git 命令在 Git Bash 和 PowerShell 中通用：
+  ```bash
   git diff
   ```

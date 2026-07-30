@@ -1,4 +1,4 @@
----
+﻿---
 name: api-contract-sync
 description: [开发/编码] OpenAPI 契约刷新与 Swagger 校验技能。当新增或修改 Controller / REST 接口时，运行 ApiRouterCatalogExporterTest 导出 OpenAPI 标准 JSON 快照，核对 Swagger 注解与契约规范。
 globs: "**/*Controller.java, **/openapi/*.json"
@@ -23,9 +23,9 @@ globs: "**/*Controller.java, **/openapi/*.json"
 2. 确保 REST API 响应对象具备清晰的字段说明与类型。
 
 ### 步骤 2：触发契约导出测试 (Export OpenAPI JSON)
-运行项目专属快捷脚本导出最新 OpenAPI 标准快照：
-```powershell
-.\.agent\agent-export-openapi.cmd
+运行项目专属快捷脚本导出最新 OpenAPI 标准快照（Git Bash / PowerShell 通用）：
+```bash
+./.agent/agent-export-openapi.cmd
 ```
 
 ### 步骤 3：核对契约快照与 Diff 变更 (Contract Verification)
@@ -37,8 +37,9 @@ globs: "**/*Controller.java, **/openapi/*.json"
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 运行命令必须原生支持 PowerShell：
-  ```powershell
-  .\.agent\agent-test.cmd "-Dtest=cn.net.pap.example.proguard.diagnostics.ApiRouterCatalogExporterTest"
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- `.agent/` 目录下的 `.cmd` 脚本在 Git Bash 和 PowerShell 中均可执行：
+  ```bash
+  ./.agent/agent-test.cmd "-Dtest=cn.net.pap.example.proguard.diagnostics.ApiRouterCatalogExporterTest"
   ```
+

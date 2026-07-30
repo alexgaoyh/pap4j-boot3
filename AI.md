@@ -1,4 +1,4 @@
-# 项目 AI 协同总纲 (Universal AI Instructions)
+﻿# 项目 AI 协同总纲 (Universal AI Instructions)
 
 欢迎。本文件是 `pap4j-boot3` 项目的通用 AI 指令入口。
 
@@ -26,29 +26,29 @@
 | `[Plan]` | 进入设计规划模式，输出设计方案后再修改 | 设计规划模式 / 深度思考模式 |
 | `[QuickPlan]` | 轻量确认档：≤2 个 `src/main` 源文件、同一子模块、不触发强阻断（测试文件、配置文件不纳入计数） | 1 句说明范围后直接 `[Edit]` |
 | `[Edit]` | 执行代码修改 | 精确替换 / 整体写入 |
-| `[Shell]` | 执行终端命令（🚨 仅限 Windows PowerShell，严禁 Linux 命令） | 终端命令执行 |
+| `[Shell]` | 执行终端命令（🚨 默认使用 Windows PowerShell；若 AI 工具运行于 Git Bash 环境则向下兼容 Linux 命令） | 终端命令执行 |
 
-> **`[Shell]` 命令映射（Linux → PowerShell）**：
+> **`[Shell]` 命令对照（Git Bash ↔ PowerShell）**：
 >
-> | 禁用 | 必须替换为 |
-> |------|-----------|
-> | `grep` | `Select-String` |
-> | `find` | `Get-ChildItem` |
-> | `cat` | `Get-Content` / `type` |
-> | `rm -rf` | `Remove-Item -Recurse -Force` |
-> | `pwd` | `(Get-Location).Path` |
-> | `&&` | `;` |
+> | 命令用途 | Git Bash | PowerShell |
+> |---------|---------|-----------|
+> | 文本搜索 | `grep` | `Select-String` |
+> | 文件查找 | `find` / `ls` | `Get-ChildItem` |
+> | 查看文件 | `cat` | `Get-Content` / `type` |
+> | 删除目录 | `rm -rf` | `Remove-Item -Recurse -Force` |
+> | 当前路径 | `pwd` | `(Get-Location).Path` |
+> | 命令链 | `&&` | `;` |
 >
-> *执行原则*：模型在生成 `[Shell]` 指令**输出前**，必须自检是否包含上述违禁词。如果包含，必须立刻重写为原生 PowerShell 语法。
+> *执行原则*：模型在生成 `[Shell]` 指令**输出前**，必须根据自身运行环境选择命令。运行于 Git Bash（如 Claude Code）使用左列命令；运行于原生 PowerShell 使用右列命令。
 
 ---
 
 ## 🧩 模块化指令集
 
 1.  **[技术守卫](./.ai/guard.md)**: 
-    *   定义了项目的技术栈（JDK 17/SB3）、Windows/PowerShell 环境红线、代码红线、并发禁令、持久层关联注解禁令、防御性编码安全原则（如防 SQL 注入、敏感参数越权篡改、未授权接口验签、跨域劫持等）及反模式示例。
+    *   定义了项目的技术栈（JDK 17/SB3）、Windows 环境红线（Git Bash / PowerShell 双环境兼容）、代码红线、并发禁令、持久层关联注解禁令、防御性编码安全原则（如防 SQL 注入、敏感参数越权篡改、未授权接口验签、跨域劫持等）及反模式示例。
 2.  **[开发工作流](./.ai/workflow.md)**:
-    *   定义了 RSE 操作周期（结合功能原型标签）、PowerShell 自动化验证标准（基于适应度函数的渐进式演进）、链式执行协议及修复重试上限规则。
+    *   定义了 RSE 操作周期（结合功能原型标签）、自动化验证标准（Git Bash / PowerShell 双环境兼容，基于适应度函数的渐进式演进）、链式执行协议及修复重试上限规则。
 3.  **[代理角色](./.ai/agents.md)**:
     *   定义了在不同场景下应采取的专业人格、角色自动激活规则及其对应的原型行为。
 4.  **[动态技能库](./.ai/skills/)**:
@@ -76,9 +76,9 @@
 ---
 
 ## 🎯 核心原则 (Core Tenets)
-- **环境合规性**: 必须时刻铭记当前处于 Windows 环境，所有的 `[Shell]` 指令必须原生支持 PowerShell。
+- **环境合规性**: 必须时刻铭记当前处于 Windows 环境。`[Shell]` 指令**默认使用 PowerShell 语法**；若 AI 工具运行于 Git Bash 环境（如 Claude Code）则可使用 Git Bash 命令。
 - **参数保护**: 文件路径、Maven 参数、Git 信息必须包裹在**双引号**中。
-- **构建与测试**: 本地执行编译与测试时，优先调用 `.agent\` 下的专属脚本（如 `.\.agent\agent-test.cmd`）以自动规避乱码和冗余插件校验；若直接调用 `mvn`，必须携带 `"-Dfile.encoding=UTF-8"` 及必要的插件跳过标志。
+- **构建与测试**: 本地执行编译与测试时，优先调用 `./.agent/` 下的专属脚本（如 `./.agent/agent-test.cmd`）以自动规避乱码和冗余插件校验；若直接调用 `mvn`，必须携带 `"-Dfile.encoding=UTF-8"` 及必要的插件跳过标志。
 - **合规性**: 必须遵守 `guard.md` 中的所有禁令，严禁“自作聪明”。
 - **验证性**: 任何修改 **`[Edit]`** 必须通过终端 **`[Shell]`** 进行验证。
 - **透明度**: 修改前先沟通策略 **`[Plan]`** 或 **`[QuickPlan]`**，修改后汇报结果。

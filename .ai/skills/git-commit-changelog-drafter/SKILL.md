@@ -16,8 +16,8 @@ globs: "*"
 ## 🛠️ 执行流程 (Execution Steps)
 
 ### 步骤 1：分析物理变更文件与作用域 (Scope & Status)
-1. 使用 PowerShell 查看受影响的文件及 Git 状态：
-   ```powershell
+1. 查看受影响的文件及 Git 状态（Git Bash / PowerShell 通用）：
+   ```bash
    git status
    ```
 2. 识别变动集中的子模块作用域 (Scope)，如：
@@ -64,8 +64,8 @@ feat(common-file): add ZipCompressor utility method with unit tests
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 所有 Git 状态分析均使用 PowerShell 原生指令：
-  ```powershell
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- Git 命令在 Git Bash 和 PowerShell 中通用：
+  ```bash
   git status
   ```

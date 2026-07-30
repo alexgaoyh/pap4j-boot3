@@ -1,4 +1,4 @@
----
+﻿---
 name: grill-me
 description: [需求/设计] 苏格拉底式反向质询技能。在触发 [Plan] 强阻断（修改 pap4j-common 接口、高并发/底层算法变动或跨多模块）时自动或显式触发。AI 暂停编辑，主动向开发者提出 3~5 个关于并发死锁、缓存击穿、幂等容灾与边界条件的质询。
 globs: "*"
@@ -48,9 +48,10 @@ globs: "*"
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 验证指令必须符合 **Windows PowerShell 思想钢印**：
-  ```powershell
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- `.agent/` 目录下的 `.cmd` 脚本在 Git Bash 和 PowerShell 中均可执行：
+  ```bash
   # 将 <YourTestClass> 替换为实际需要验证的单测类名
-  .\.agent\agent-test.cmd "-Dtest=<YourTestClass>"
+  ./.agent/agent-test.cmd "-Dtest=<YourTestClass>"
   ```
+

@@ -1,15 +1,15 @@
-# 项目守卫：技术标准与约束 (Project Guard)
+﻿# 项目守卫：技术标准与约束 (Project Guard)
 
 本文件定义了 `pap4j-boot3` 项目的严格技术边界和安全规则。AI 代理必须遵守这些规则，以确保系统的稳定性和安全性。
 
 ## 1. 核心技术栈与运行环境
 * **宿主环境**: Windows 操作系统 (Windows 10/11 或 Windows Server)。
-* **执行终端**: PowerShell。AI 在调用 `[Shell]` 时必须**直接且仅生成**适用于 PowerShell 的命令。
+* **执行终端**: 默认使用 PowerShell；若 AI 工具运行于 Git Bash 环境（如 Claude Code）则可使用 Git Bash 命令。
 * **运行环境**: Java 17+ & Spring Boot 3.x (Jakarta EE)。
 * **构建工具**: Maven。
-    * ⚠️ **PowerShell 下的 Maven 执行约束**:
-        * 优先使用 `mvn`，若不存在则使用项目自带的包装器 `.\mvnw`。
-        * **参数包裹规则**: 在 PowerShell 中传递复杂的 Maven 参数（如测试类名、多模块指定等）时，**必须使用双引号 `"` 包裹参数**（例如 `"-Dtest=..."`），严禁使用单引号，防止参数被 PowerShell 引擎解析截断。
+    * ⚠️ **Windows 下的 Maven 执行约束（Git Bash / PowerShell 通用）**:
+        * 优先使用 `mvn`，若不存在则使用项目自带的包装器 `./mvnw`。
+        * **参数包裹规则**: 在 Windows 环境下传递复杂的 Maven 参数（如测试类名、多模块指定等）时，**必须使用双引号 `"` 包裹参数**（例如 `"-Dtest=..."`），防止参数被 shell 引擎解析截断。该规则在 Git Bash 和 PowerShell 中均适用。
         * **文件编码与插件跳过强制**: 运行任何构建、编译或测试验证命令时，应优先调用 `.agent/` 目录下的专属脚本以自动注入参数；若直接使用 maven 命令行，必须同时显式附加 `"-Dfile.encoding=UTF-8"` 以及 `"-Dmaven.gitcommitid.skip=true"` 参数，以防止 Windows 默认的 GBK 环境导致控制台乱码，并严防冗余校验拖慢流程。
 * **命名空间**: 仅使用 `jakarta.*`。严禁使用 `javax.*`（Jakarta EE 迁移，`javax.*` 在 SB3 中编译期即报错）。
 
@@ -146,7 +146,7 @@
 ## 10. AI 自我纠错指导原则 (AI Self-Correction Principles)
 * **本地单元测试执行规范**:
   * 运行单元测试时，为避免复杂的命令行转义错误以及自动激活 `agent` 调试 Profile，**优先**使用 `.agent/` 目录下的专属脚本。若因特殊情况无法使用脚本，则退而使用原生 Maven 命令行（必须附带 `"-Dfile.encoding=UTF-8"` 与 `"-Dmaven.gitcommitid.skip=true"`）：
-    * **Windows (PowerShell)**: 优先使用 `.\.agent\agent-test.cmd -pl <module-name> test`（例如：`.\.agent\agent-test.cmd -pl pap4j-boot3-example/pap4j-boot3-example-dynamic-form test`）。
+    * **Windows（Git Bash / PowerShell 通用）**: 优先使用 `./.agent/agent-test.cmd -pl <module-name> test`（例如：`./.agent/agent-test.cmd -pl pap4j-boot3-example/pap4j-boot3-example-dynamic-form test`）。`.cmd` 脚本在 Git Bash 和 PowerShell 中均可执行。
 * **低噪音精准定位报错**:
   * 若测试执行失败，AI **必须优先且直接读取**项目根目录下的 `.ai/diagnostics/test_failures.md` 文件。该文件包含了剔除杂音后的精炼失败堆栈信息，禁止盲目在庞杂的 Maven 控制台日志中遍历检索，以节约上下文窗口与 Token 消耗。
 

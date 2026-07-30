@@ -20,8 +20,13 @@ globs: "**/pom.xml, **/*.java"
 2. 识别子模块间的引用关系，排查是否存在循环依赖或不合理的下层依赖上层反向依赖。
 
 ### 步骤 2：废弃 API 与强阻断禁令扫描 (Code Debt Audit)
-1. 使用 PowerShell 命令检索项目中的 `@Deprecated` 标注及调用情况：
+1. 检索项目中的 `@Deprecated` 标注及调用情况（按环境选择）：
+   ```bash
+   # Git Bash
+   grep -rn "@Deprecated" --include="*.java" .
+   ```
    ```powershell
+   # PowerShell
    Get-ChildItem -Recurse -Filter "*.java" | Select-String "@Deprecated"
    ```
 2. 检视 `guard.md` 中的架构红线违规：
@@ -37,8 +42,15 @@ globs: "**/pom.xml, **/*.java"
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 所有文本检索与文件定位使用 PowerShell 原生命令：
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- **Git Bash 环境**：使用 `grep -rn` 进行文本检索。
+- **PowerShell 环境**：使用 `Get-ChildItem | Select-String` 原生命令。
+- 双环境等价命令示例：
+  ```bash
+  # Git Bash
+  grep -rn "Deprecated" pap4j-common/ --include="*.java"
+  ```
   ```powershell
+  # PowerShell
   Get-ChildItem -Path "pap4j-common" -Recurse -Include "*.java" | Select-String -Pattern "Deprecated"
   ```

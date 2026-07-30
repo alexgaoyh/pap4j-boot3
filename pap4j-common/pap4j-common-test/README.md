@@ -1,4 +1,4 @@
-# 🧪 pap4j-common-test
+﻿# 🧪 pap4j-common-test
 
 `pap4j-common-test` 是专为 AI 代理设计的单元测试故障诊断与收集模块。
 
@@ -24,4 +24,4 @@
 ### 💡 运行建议
 
 推荐配合项目内置的测试脚本或 `-Pagent` 参数运行测试，以跳过 Checkstyle / Git Commit Id 等非必要校验并指定 UTF-8 编码：
-*   **PowerShell**: `.\.agent\agent-test.cmd -pl <module-name> test`
+*   **PowerShell**: `./.agent/agent-test.cmd -pl <module-name> test`

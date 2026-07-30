@@ -1,4 +1,4 @@
----
+﻿---
 name: refactor-scanner
 description: [质量/重构] 适应度函数静态扫描与代码修缮技能。运行 RefactorScanner 巡检项目违规代码（如 System.out、未用 log、关联注解滥用），解析 refactor_todo.md 并执行闭环修复。
 globs: "**/*.java, .ai/diagnostics/refactor_todo.md"
@@ -16,9 +16,9 @@ globs: "**/*.java, .ai/diagnostics/refactor_todo.md"
 ## 🛠️ 执行流程 (Execution Steps)
 
 ### 步骤 1：运行适应度函数静态扫描 (Execute Scanner)
-使用 PowerShell 运行项目专属快捷巡检脚本：
-```powershell
-.\.agent\agent-scan.cmd
+运行项目专属快捷巡检脚本（Git Bash / PowerShell 通用）：
+```bash
+./.agent/agent-scan.cmd
 ```
 
 ### 步骤 2：解析扫描待办清单 (Parse refactor_todo.md)
@@ -35,16 +35,17 @@ globs: "**/*.java, .ai/diagnostics/refactor_todo.md"
 
 ### 步骤 4：再次扫描与单测闭环 (Re-Scan Verification)
 1. 重新运行 `RefactorScanner` 确保违规项为 0。
-2. 运行相关子模块单测验证功能未中断：
-   ```powershell
+2. 运行相关子模块单测验证功能未中断（Git Bash / PowerShell 通用）：
+   ```bash
    # 将 <AffectedModuleTest> 替换为受重构影响模块的实际单测类名
-   .\.agent\agent-test.cmd "-Dtest=<AffectedModuleTest>"
+   ./.agent/agent-test.cmd "-Dtest=<AffectedModuleTest>"
    ```
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 所有扫描与测试命令均通过 PowerShell 原生脚本执行：
-  ```powershell
-  .\.agent\agent-test.cmd "-Dtest=cn.net.pap.example.devtools.RefactorScanner"
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- `.agent/` 目录下的 `.cmd` 脚本在 Git Bash 和 PowerShell 中均可执行：
+  ```bash
+  ./.agent/agent-test.cmd "-Dtest=cn.net.pap.example.devtools.RefactorScanner"
   ```
+

@@ -1,4 +1,4 @@
----
+﻿---
 name: tdd-workflow
 description: [开发/测试] TDD 红-绿-重构测试驱动开发技能。在编写新功能或修复复杂 Bug 前，先编写断言失败的单元测试 (Red)，再编写最小化实现代码使测试通过 (Green)，最后进行外科手术式重构 (Refactor)。
 globs: "**/src/test/**/*.java, **/src/main/**/*.java"
@@ -26,20 +26,20 @@ globs: "**/src/test/**/*.java, **/src/main/**/*.java"
 ### 步骤 1：🔴 红灯阶段 (Red — 编写断言失败的单测)
 1. 明确新功能的物理路径与边界条件（NULL 值、极值、异常路径）。
 2. 在 `src/test/java` 目录下编写单元测试类，针对未实现的方法书写断言逻辑。
-3. 使用 PowerShell 执行单测，**确认测试失败 (Red Phase Pass)**：
-   ```powershell
+3. 执行单测（Git Bash / PowerShell 通用），**确认测试失败 (Red Phase Pass)**：
+   ```bash
    # 将 <YourTddTestClass> 替换为新建的 TDD 单元测试类名
-   .\.agent\agent-test.cmd "-Dtest=<YourTddTestClass>"
+   ./.agent/agent-test.cmd "-Dtest=<YourTddTestClass>"
    ```
 4. 确认控制台输出预期的断言异常（如 `AssertionFailedError`）或未实现异常，验证测试的有效性。
 
 ### 步骤 2：🟢 绿灯阶段 (Green — 编写最小化实现代码)
 1. 在 `src/main/java` 中编写**刚好能使测试通过的最小化实现代码**。
 2. 严禁在绿灯阶段过早优化或编写未被测试覆盖的冗余逻辑。
-3. 再次运行单测，**确认测试全绿 (Green Phase Pass)**：
-   ```powershell
+3. 再次运行单测（Git Bash / PowerShell 通用），**确认测试全绿 (Green Phase Pass)**：
+   ```bash
    # 将 <YourTddTestClass> 替换为新建的 TDD 单元测试类名
-   .\.agent\agent-test.cmd "-Dtest=<YourTddTestClass>"
+   ./.agent/agent-test.cmd "-Dtest=<YourTddTestClass>"
    ```
 
 ### 步骤 3：🔵 重构阶段 (Refactor — 外科手术式代码修缮)
@@ -51,9 +51,9 @@ globs: "**/src/test/**/*.java, **/src/main/**/*.java"
 
 ---
 
-## ⚡ 命令行与验证规范 (PowerShell Compliance)
-- 所有测试运行命令必须原生支持 PowerShell：
-  ```powershell
+## ⚡ 命令行与验证规范 (Git Bash / PowerShell Compliance)
+- `.agent/` 目录下的 `.cmd` 脚本在 Git Bash 和 PowerShell 中均可执行：
+  ```bash
   # 将 <YourTddTestClass> 替换为实际需要验证的 TDD 单测类名
-  .\.agent\agent-test.cmd "-Dtest=<YourTestClass>"
+  ./.agent/agent-test.cmd "-Dtest=<YourTestClass>"
   ```

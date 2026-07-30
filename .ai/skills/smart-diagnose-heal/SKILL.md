@@ -1,4 +1,4 @@
----
+﻿---
 name: smart-diagnose-heal
 description: [测试/诊断] 失败日志精炼与 MockMvc 回放自愈技能。当编译或单测失败时，自动提取 DiagnosticsExtractor 堆栈，结合 recorded-bugs 与 ReqResLoggerReplayTest (MockMvc) 进行零容器回放与自愈修复（上限 2 次）。
 globs: ".ai/diagnostics/*.md, logs/recorded-bugs/*.json"
@@ -18,7 +18,7 @@ globs: ".ai/diagnostics/*.md, logs/recorded-bugs/*.json"
 ### 步骤 1：错误堆栈提取与精练 (Extract Failures)
 1. 运行项目专属快捷诊断脚本提炼堆栈至 [.ai/diagnostics/test_failures.md](../../diagnostics/test_failures.md)，滤除冗余日志，精准定位核心 Exception 堆栈与失败代码行：
    ```powershell
-   .\.agent\agent-diagnose.cmd
+   ./.agent/agent-diagnose.cmd
    ```
 2. 若属于 HTTP 接口类异常，检索 `logs/recorded-bugs/bug_*.json` 捕获的异常快照报文。
 
@@ -34,7 +34,7 @@ globs: ".ai/diagnostics/*.md, logs/recorded-bugs/*.json"
    ```powershell
    # 1. 将 <FailingTestClass> 替换为实际失败的单测类名
    # 2. 若涉及 HTTP 接口 Mock 回放，可直接使用项目通用回放类 ReqResLoggerReplayTest
-   .\.agent\agent-test.cmd "-Dtest=<FailingTestClass>"
+   ./.agent/agent-test.cmd "-Dtest=<FailingTestClass>"
    ```
 2. **重试上限限制**：自动修复尝试上限为 **2 次**。若 2 次修复后测试仍然失败，暂停自动修复并向开发者汇报诊断细节。
 
@@ -44,5 +44,5 @@ globs: ".ai/diagnostics/*.md, logs/recorded-bugs/*.json"
 - 强制遵守 2 次重试上限。
 - 所有命令原生支持 PowerShell 语法：
   ```powershell
-  .\.agent\agent-test.cmd "-Dtest=ReqResLoggerReplayTest"
+  ./.agent/agent-test.cmd "-Dtest=ReqResLoggerReplayTest"
   ```
