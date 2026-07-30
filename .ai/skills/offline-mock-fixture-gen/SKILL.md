@@ -49,7 +49,7 @@ globs: "**/src/test/**/*.json, **/filter/ReqResLoggerReplayTest.java"
 编写或集成测试用例，结合 `ReqResLoggerReplayTest` (MockMvc 离线测试套件) 加载 Mock 报文基桩。
 
 ### 步骤 4：运行验证 (Verification)
-使用 `.agent/agent-test.cmd` 运行 Mock 离线测试（Git Bash / PowerShell 通用）：
+使用 `./.agent/agent-test.cmd` 运行 Mock 离线测试（Git Bash / PowerShell 通用）：
 ```bash
 ./.agent/agent-test.cmd "-Dtest=ReqResLoggerReplayTest"
 ```
