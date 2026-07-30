@@ -76,94 +76,18 @@ public class AiController {
             List<org.springframework.ai.chat.messages.Message> history = (fullHistory != null && fullHistory.size() > 4)
                     ? fullHistory.subList(fullHistory.size() - 4, fullHistory.size())
                     : (fullHistory != null ? fullHistory : java.util.Collections.emptyList());
-            String searchQuery = request.prompt();
-            String bm25Keywords = "";
 
-            if (!history.isEmpty()) {
-                String modelResult = null;
-                try {
-                    String historyText = history.stream()
-                            .map(m -> m.getMessageType() + ": " + m.getText())
-                            .collect(Collectors.joining("\n"));
+            // 1. Query 改写与 BM25 关键词提炼 (有历史会话时)
+            RewriteResult rewrite = rewriteQuery(chatId, history, request.prompt());
 
-                    modelResult = queryRewriteChatClient.prompt()
-                            .user(u -> u.text("历史上下文:\n{history}\n\n最新提问: {query}")
-                                        .param("history", historyText)
-                                        .param("query", request.prompt()))
-                            .call()
-                            .content();
-
-                    ProcessResult result = parseModelResult(modelResult);
-                    if (result != null) {
-                        searchQuery = result.rewrittenQuery().isEmpty() ? request.prompt() : result.rewrittenQuery();
-                        bm25Keywords = result.bm25Keywords();
-                        log.info("Query 改写与提炼成功 - chatId: {}, 原始: '{}' -> 改写: '{}' | 关键词: '{}'",
-                                chatId, request.prompt(), searchQuery, bm25Keywords);
-                    } else {
-                        log.warn("Query 改写与提炼 JSON 解析失败，降级不改写直接回答 - chatId: {}, 原始: '{}', 模型返回: {}",
-                                chatId, request.prompt(), modelResult);
-                        searchQuery = request.prompt();
-                        bm25Keywords = "";
-                    }
-                } catch (Exception e) {
-                    log.warn("Query 改写提炼异常，降级不改写直接回答 - chatId: {}, 原始: '{}', 模型返回: {}, 异常: {}",
-                            chatId, request.prompt(), modelResult, e.getMessage());
-                    searchQuery = request.prompt();
-                    bm25Keywords = "";
-                }
-            } else {
-                // 无历史会话时，免去模型调用，不改写也不提炼关键字
-                bm25Keywords = "";
-                log.info("无历史会话 - chatId: {}, 原始: '{}'", chatId, request.prompt());
-            }
-
-            // 1. 第一次检索：使用改写后的 searchQuery 进行语义召回 (RAG)
-            List<Document> firstDocs = new ArrayList<>(knowledgeVectorStore.similaritySearch(
-                    SearchRequest.builder()
-                            .query(searchQuery)
-                            .topK(3)
-                            .build()
-            ));
-
-            // 2. 第二次检索：从已召回文档中提取跨文件链接，使用元数据（Metadata）进行精确过滤召回，规避语义检索漂移
-            List<String> linkedFiles = extractMarkdownLinkFiles(firstDocs);
-            List<Document> extraDocs = new ArrayList<>();
-            List<Document> docs = new ArrayList<>(firstDocs);
-
-            if (!linkedFiles.isEmpty()) {
-                // 构建多文件精准过滤表达式，如：(source == 'file1.md' || source == 'file2.md')
-                String fileConditions = linkedFiles.stream()
-                        .map(file -> "source == '" + file + "'")
-                        .collect(Collectors.joining(" || "));
-                String filterExpr = "(" + fileConditions + ")";
-
-                extraDocs.addAll(knowledgeVectorStore.similaritySearch(
-                        SearchRequest.builder()
-                                // 因元数据已实现精确过滤，query 使用原始 Prompt 以作格式占位即可，核心由 Metadata Filter 负责硬召回
-                                .query(request.prompt())
-                                .topK(linkedFiles.size())
-                                .filterExpression(filterExpr)
-                                .build()
-                ));
-
-                // 按文本内容去重合并
-                Set<String> seenTexts = firstDocs.stream().map(Document::getText).collect(Collectors.toSet());
-                for (Document extra : extraDocs) {
-                    if (!seenTexts.contains(extra.getText())) {
-                        docs.add(extra);
-                        seenTexts.add(extra.getText());
-                    }
-                }
-            }
+            // 2. 多轮 RAG 文档检索 (语义召回 + 元数据精确过滤 + 去重合并)
+            RetrievalResult retrieval = retrieveAndBuildContext(rewrite.searchQuery(), request.prompt());
 
             // 3. 记录 RAG 检索细节结构化日志
-            logRagTrace(chatId, request.prompt(), searchQuery, bm25Keywords, firstDocs, linkedFiles, extraDocs, docs.size());
+            logRagTrace(chatId, request.prompt(), rewrite.searchQuery(), rewrite.bm25Keywords(),
+                    retrieval.firstDocs(), retrieval.linkedFiles(), retrieval.extraDocs(), retrieval.finalDocCount());
 
-            String context = docs.stream()
-                    .map(Document::getText)
-                    .collect(Collectors.joining("\n\n---\n\n"));
-
-            // 2. 构造 System提示词 (SystemPromptTemplate)
+            // 4. 构造 System 提示词
             String systemTemplateText = """
                     你是一个资深的{persona}。请参考提供的上下文回答用户的开发问题。
                     如果没有找到确切答案，请基于你的知识合理推断并说明。
@@ -171,16 +95,106 @@ public class AiController {
             SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemTemplateText);
             String renderedSystemPrompt = systemPromptTemplate.render(Map.of("persona", defaultPersona));
 
-            // 4. 调用 ChatClient 流式接口 (使用默认配置的模型与温度)
+            // 5. 调用 ChatClient 流式接口
             return chatClient.prompt()
                     .system(renderedSystemPrompt)
                     .user(request.prompt())
-                    // 动态指定会话 ID，并以 Advisor 参数形式注入 RAG 上下文
                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId)
-                                    .param(cn.net.pap.example.spring.ai.advisor.RagContextAdvisor.RAG_CONTEXT_KEY, context))
+                                    .param(cn.net.pap.example.spring.ai.advisor.RagContextAdvisor.RAG_CONTEXT_KEY, retrieval.context()))
                     .stream()
                     .content();
         }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private record RewriteResult(String searchQuery, String bm25Keywords) {}
+
+    private RewriteResult rewriteQuery(String chatId,
+                                       List<org.springframework.ai.chat.messages.Message> history,
+                                       String originalPrompt) {
+        if (history.isEmpty()) {
+            log.info("无历史会话 - chatId: {}, 原始: '{}'", chatId, originalPrompt);
+            return new RewriteResult(originalPrompt, "");
+        }
+
+        String modelResult = null;
+        try {
+            String historyText = history.stream()
+                    .map(m -> m.getMessageType() + ": " + m.getText())
+                    .collect(Collectors.joining("\n"));
+
+            modelResult = queryRewriteChatClient.prompt()
+                    .user(u -> u.text("历史上下文:\n{history}\n\n最新提问: {query}")
+                                .param("history", historyText)
+                                .param("query", originalPrompt))
+                    .call()
+                    .content();
+
+            ProcessResult result = parseModelResult(modelResult);
+            if (result != null) {
+                String searchQuery = result.rewrittenQuery().isEmpty() ? originalPrompt : result.rewrittenQuery();
+                String bm25Keywords = result.bm25Keywords();
+                log.info("Query 改写与提炼成功 - chatId: {}, 原始: '{}' -> 改写: '{}' | 关键词: '{}'",
+                        chatId, originalPrompt, searchQuery, bm25Keywords);
+                return new RewriteResult(searchQuery, bm25Keywords);
+            } else {
+                log.warn("Query 改写与提炼 JSON 解析失败，降级不改写直接回答 - chatId: {}, 原始: '{}', 模型返回: {}",
+                        chatId, originalPrompt, modelResult);
+                return new RewriteResult(originalPrompt, "");
+            }
+        } catch (Exception e) {
+            log.warn("Query 改写提炼异常，降级不改写直接回答 - chatId: {}, 原始: '{}', 模型返回: {}",
+                    chatId, originalPrompt, modelResult, e);
+            return new RewriteResult(originalPrompt, "");
+        }
+    }
+
+    private record RetrievalResult(List<Document> firstDocs, List<String> linkedFiles,
+                                   List<Document> extraDocs, String context, int finalDocCount) {}
+
+    private RetrievalResult retrieveAndBuildContext(String searchQuery, String originalPrompt) {
+        // 1. 第一次检索：使用改写后的 searchQuery 进行语义召回
+        List<Document> firstDocs = new ArrayList<>(knowledgeVectorStore.similaritySearch(
+                SearchRequest.builder()
+                        .query(searchQuery)
+                        .topK(3)
+                        .build()
+        ));
+
+        // 2. 第二次检索：从已召回文档中提取跨文件链接，使用元数据（Metadata）进行精确过滤召回，规避语义检索漂移
+        List<String> linkedFiles = extractMarkdownLinkFiles(firstDocs);
+        List<Document> extraDocs = new ArrayList<>();
+        List<Document> docs = new ArrayList<>(firstDocs);
+
+        if (!linkedFiles.isEmpty()) {
+            // 构建多文件精准过滤表达式，如：(source == 'file1.md' || source == 'file2.md')
+            String fileConditions = linkedFiles.stream()
+                    .map(file -> "source == '" + file + "'")
+                    .collect(Collectors.joining(" || "));
+
+            extraDocs.addAll(knowledgeVectorStore.similaritySearch(
+                    SearchRequest.builder()
+                            .query(originalPrompt)
+                            .topK(linkedFiles.size())
+                            .filterExpression("(" + fileConditions + ")")
+                            .build()
+            ));
+
+            // 按文本内容去重合并
+            Set<String> seenTexts = firstDocs.stream().map(Document::getText).collect(Collectors.toSet());
+            for (Document extra : extraDocs) {
+                if (!seenTexts.contains(extra.getText())) {
+                    docs.add(extra);
+                    seenTexts.add(extra.getText());
+                }
+            }
+        }
+
+        // 3. 记录 RAG 检索细节结构化日志
+        String context = docs.stream()
+                .map(Document::getText)
+                .collect(Collectors.joining("\n\n---\n\n"));
+
+        return new RetrievalResult(firstDocs, linkedFiles, extraDocs, context, docs.size());
     }
 
     /**

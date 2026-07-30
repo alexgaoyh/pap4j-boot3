@@ -384,48 +384,7 @@ public class AiAssistantConfig {
                 return;
             }
 
-            ObjectMapper mapper = new ObjectMapper();
-            JsonNode rootNode;
-            try (InputStream is = resource.getInputStream()) {
-                rootNode = mapper.readTree(is);
-            }
-            JsonNode annotationsNode = rootNode.path("annotations").path("annotations");
-
-            List<Document> emojiDocs = new ArrayList<>();
-            Iterator<Map.Entry<String, JsonNode>> fields = annotationsNode.fields();
-            while (fields.hasNext()) {
-                Map.Entry<String, JsonNode> field = fields.next();
-                String emojiChar = field.getKey();
-                JsonNode valueNode = field.getValue();
-
-                Set<String> keywords = new HashSet<>();
-
-                // 解析 default
-                JsonNode defaultNode = valueNode.path("default");
-                if (defaultNode.isArray()) {
-                    for (JsonNode node : defaultNode) {
-                        keywords.add(node.asText());
-                    }
-                }
-
-                // 解析 tts
-                JsonNode ttsNode = valueNode.path("tts");
-                if (ttsNode.isArray()) {
-                    for (JsonNode node : ttsNode) {
-                        keywords.add(node.asText());
-                    }
-                }
-
-                if (!keywords.isEmpty()) {
-                    String combinedText = String.join(" ", keywords);
-                    // 为 Emoji 创建专门的 Document，通过 metadata 进行类别区分
-                    Document doc = new Document(
-                            combinedText,
-                            Map.of("type", "emoji", "emoji", emojiChar)
-                    );
-                    emojiDocs.add(doc);
-                }
-            }
+            List<Document> emojiDocs = parseEmojiAnnotations(resource);
 
             log.info("从 annotations.json 成功加载了 {} 个 Emoji 注解条目，正在进行向量生成与导入...", emojiDocs.size());
             // 【开发注意】：由于 Emoji 数量较多（1000+ 条），此处会发起全量批量向量化请求以提升 CPU/GPU 推理效率。
@@ -438,6 +397,55 @@ public class AiAssistantConfig {
             log.error("加载 annotations.json 向量化失败", e);
             throw new RuntimeException("读取 Emoji 字典失败", e);
         }
+    }
+
+    /**
+     * 解析 annotations.json 中的 Emoji 注解条目，转换为 Document 列表
+     */
+    private List<Document> parseEmojiAnnotations(org.springframework.core.io.ClassPathResource resource) throws IOException {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode rootNode;
+        try (InputStream is = resource.getInputStream()) {
+            rootNode = mapper.readTree(is);
+        }
+        JsonNode annotationsNode = rootNode.path("annotations").path("annotations");
+
+        List<Document> emojiDocs = new ArrayList<>();
+        Iterator<Map.Entry<String, JsonNode>> fields = annotationsNode.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> field = fields.next();
+            String emojiChar = field.getKey();
+            JsonNode valueNode = field.getValue();
+
+            Set<String> keywords = new HashSet<>();
+
+            // 解析 default
+            JsonNode defaultNode = valueNode.path("default");
+            if (defaultNode.isArray()) {
+                for (JsonNode node : defaultNode) {
+                    keywords.add(node.asText());
+                }
+            }
+
+            // 解析 tts
+            JsonNode ttsNode = valueNode.path("tts");
+            if (ttsNode.isArray()) {
+                for (JsonNode node : ttsNode) {
+                    keywords.add(node.asText());
+                }
+            }
+
+            if (!keywords.isEmpty()) {
+                String combinedText = String.join(" ", keywords);
+                // 为 Emoji 创建专门的 Document，通过 metadata 进行类别区分
+                Document doc = new Document(
+                        combinedText,
+                        Map.of("type", "emoji", "emoji", emojiChar)
+                );
+                emojiDocs.add(doc);
+            }
+        }
+        return emojiDocs;
     }
 
     /**
