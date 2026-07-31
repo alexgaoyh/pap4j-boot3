@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>HTML 表格原生布局效果预览 —— 全覆盖场景</title>
+    <style>
+        table { border-collapse: collapse; margin-bottom: 10px; }
+        th, td { border: 1px solid #999; padding: 5px 8px; }
+    </style>
+</head>
+<body>
+
+    <h3>场景 1: 基础标准表格</h3>
+    <table>
+        <tr><th>姓名</th><th>年龄</th></tr>
+        <tr><td>张三</td><td>25</td></tr>
+        <tr><td>李四</td><td>30</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 2: colspan 横向合并</h3>
+    <table>
+        <tr><th>项目</th><th colspan="2">数值范围</th></tr>
+        <tr><td>指标A</td><td>10</td><td>20</td></tr>
+        <tr><td>总计</td><td colspan="2">30</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 3: rowspan 纵向合并</h3>
+    <table>
+        <tr><th>部门</th><th>员工</th></tr>
+        <tr><td rowspan="2">研发部</td><td>张三</td></tr>
+        <tr><td>李四</td></tr>
+        <tr><td>销售部</td><td>王五</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 4: 混合跨行跨列与多级表头</h3>
+    <table>
+        <tr><th rowspan="2">地区</th><th colspan="2">销售业绩</th></tr>
+        <tr><th>线上</th><th>线下</th></tr>
+        <tr><td rowspan="2">华东</td><td>100</td><td>200</td></tr>
+        <tr><td colspan="2">总计 300</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 5: rowspan + colspan 同时作用于同一个单元格</h3>
+    <table>
+        <tr><th>季度</th><th>线上</th><th>线下</th><th>海外</th></tr>
+        <tr><td>Q1</td><td>100</td><td>200</td><td>50</td></tr>
+        <tr><td>Q2</td><td rowspan="2" colspan="2">合并区</td><td>80</td></tr>
+        <tr><td>Q3</td><td>90</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 6: rowspan + colspan 复杂网格交叉</h3>
+    <table>
+        <tr><th colspan="2">科目</th><th>分数</th><th>排名</th></tr>
+        <tr><td rowspan="2">理科</td><td>数学</td><td>95</td><td rowspan="3">综合排名区</td></tr>
+        <tr><td>物理</td><td>88</td></tr>
+        <tr><td colspan="2">文科综合</td><td>82</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 7: 表格嵌套（1层）</h3>
+    <table>
+        <tr><th>一级表头A</th><th>一级表头B</th></tr>
+        <tr>
+            <td><table><tr><td>嵌套行1</td></tr><tr><td>嵌套行2</td></tr></table></td>
+            <td>外部单元格</td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 8: 多层嵌套表格（深度 > 1）</h3>
+    <table>
+        <tr><th>外层表头</th></tr>
+        <tr>
+            <td>
+                <table>
+                    <tr>
+                        <td><table><tr><td>最深层</td></tr></table></td>
+                        <td>中层单元格</td>
+                    </tr>
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 9: 特殊符号与单元格内换行</h3>
+    <table>
+        <tr><th>名称</th><th>描述</th></tr>
+        <tr><td>商品A | 豪华版</td><td>第一行描述<br/>第二行描述<p>第三行段落</p></td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 10: tfoot 在 tbody 之前定义（语义顺序重组）</h3>
+    <table>
+        <thead><tr><th>账目项目</th><th>收支金额</th></tr></thead>
+        <tfoot><tr><td>合计归档</td><td>1200 元</td></tr></tfoot>
+        <tbody>
+            <tr><td>购买书籍</td><td>200 元</td></tr>
+            <tr><td>购买硬件</td><td>1000 元</td></tr>
+        </tbody>
+    </table>
+
+    <hr>
+
+    <h3>场景 11: 多个 tbody 分组</h3>
+    <table>
+        <thead><tr><th>分组名</th><th>项目</th><th>金额</th></tr></thead>
+        <tbody>
+            <tr><td>收入</td><td>工资</td><td>8000</td></tr>
+            <tr><td>收入</td><td>奖金</td><td>2000</td></tr>
+        </tbody>
+        <tbody>
+            <tr><td>支出</td><td>房租</td><td>3000</td></tr>
+            <tr><td>支出</td><td>餐饮</td><td>1500</td></tr>
+        </tbody>
+        <tfoot><tr><td colspan="2">结余</td><td>5500</td></tr></tfoot>
+    </table>
+
+    <hr>
+
+    <h3>场景 12: 隐藏元素过滤全覆盖</h3>
+    <table>
+        <tr>
+            <th>产品名称</th>
+            <th>售价</th>
+            <th style="display:none">隐藏进货成本</th>
+            <th style="visibility:hidden">隐藏备注</th>
+        </tr>
+        <tr>
+            <td>办公椅</td>
+            <td>499 元</td>
+            <td style="display:none">150 元</td>
+            <td style="visibility:hidden">热销款</td>
+        </tr>
+        <tr hidden>
+            <td>已下架产品</td><td>0 元</td><td>0 元</td><td>-</td>
+        </tr>
+        <tr style="display:none">
+            <td>已停产产品</td><td>0 元</td><td>0 元</td><td>-</td>
+        </tr>
+        <tr>
+            <td>升降桌</td>
+            <td>1299 元</td>
+            <td hidden>400 元</td>
+            <td style="visibility:hidden">新品</td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 13: 视觉合并 —— 原样保留，不做填充</h3>
+    <table>
+        <tr><th>主类别</th><th>子项目</th><th>数量</th></tr>
+        <tr><td>水果类</td><td>苹果</td><td>10 个</td></tr>
+        <tr><td></td><td>香蕉</td><td>5 根</td></tr>
+        <tr><td>同上</td><td>橘子</td><td>8 个</td></tr>
+        <tr><td>同前</td><td>葡萄</td><td>3 串</td></tr>
+        <tr><td>-</td><td>西瓜</td><td>1 个</td></tr>
+        <tr><td>蔬菜类</td><td>西红柿</td><td>2 斤</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 14: 纯 td 表格（无任何 th）</h3>
+    <table>
+        <tr><td>张三</td><td>25</td><td>北京</td></tr>
+        <tr><td>李四</td><td>30</td><td>上海</td></tr>
+        <tr><td>王五</td><td>28</td><td>广州</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 15: th scope="row" 行标题</h3>
+    <table>
+        <tr><th></th><th scope="col">Q1</th><th scope="col">Q2</th><th scope="col">Q3</th></tr>
+        <tr><th scope="row">线上</th><td>100</td><td>200</td><td>150</td></tr>
+        <tr><th scope="row">线下</th><td>300</td><td>250</td><td>280</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 16: 表头行中混入 td（辅助说明行）</h3>
+    <table>
+        <tr><th>地区</th><th>销售额</th><th>同比增长</th></tr>
+        <tr><td colspan="3">(单位：万元 / 统计周期：2024年)</td></tr>
+        <tr><td>华东</td><td>5000</td><td>12%</td></tr>
+        <tr><td>华南</td><td>3200</td><td>8%</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 17: caption 表格标题</h3>
+    <table>
+        <caption>2024 年度各部门业绩汇总表</caption>
+        <tr><th>部门</th><th>年度营收</th><th>达成率</th></tr>
+        <tr><td>营销部</td><td>1200 万</td><td>105%</td></tr>
+        <tr><td>研发部</td><td>800 万</td><td>98%</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 18: 单元格内 a 链接</h3>
+    <table>
+        <tr><th>商品ID</th><th>商品名称</th><th>详情页</th></tr>
+        <tr><td>001</td><td><a href="/product/001">机械键盘 (青轴)</a></td><td><a href="/detail/001" target="_blank">查看详情</a></td></tr>
+        <tr><td>002</td><td><a href="/product/002" title="无线蓝牙鼠标">无线鼠标</a></td><td><a href="/detail/002">查看详情</a></td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 19: 单元格内 img 图片</h3>
+    <table>
+        <tr><th>序号</th><th>图标</th><th>状态</th></tr>
+        <tr><td>1</td><td><img src="https://via.placeholder.com/16" alt="正常" /> 正常</td><td>运行中</td></tr>
+        <tr><td>2</td><td><img src="https://via.placeholder.com/16" alt="警告" /> 警告</td><td>需要注意</td></tr>
+        <tr><td>3</td><td>纯文字标识</td><td>已停止</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 20: &amp;nbsp; 占位 vs 真正空单元格</h3>
+    <table>
+        <tr><th>ID</th><th>描述</th><th>备注</th></tr>
+        <tr><td>1</td><td>有描述的项</td><td>&nbsp;</td></tr>
+        <tr><td>2</td><td></td><td>有备注</td></tr>
+        <tr><td>3</td><td>&nbsp;&nbsp;&nbsp;</td><td>&nbsp;</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 21: 单元格内包含 ul / ol 列表</h3>
+    <table>
+        <tr><th>功能模块</th><th>核心能力</th><th>版本要求</th></tr>
+        <tr>
+            <td>用户系统</td>
+            <td><ul><li>注册 / 登录</li><li>OAuth 第三方接入</li><li>权限角色管理</li></ul></td>
+            <td>v2.0+</td>
+        </tr>
+        <tr>
+            <td>支付模块</td>
+            <td><ol><li>微信支付</li><li>支付宝</li><li>银联</li></ol></td>
+            <td>v2.1+</td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 22: 单元格内 code / pre 代码块</h3>
+    <table>
+        <tr><th>参数名</th><th>类型</th><th>示例值</th><th>说明</th></tr>
+        <tr>
+            <td><code>pageSize</code></td>
+            <td><code>int</code></td>
+            <td><code>20</code></td>
+            <td>每页条数，范围 <code>[1, 100]</code></td>
+        </tr>
+        <tr>
+            <td><code>sortBy</code></td>
+            <td><code>String</code></td>
+            <td><code>"createdAt"</code></td>
+            <td><pre>可选值:
+  - createdAt
+  - updatedAt</pre></td>
+        </tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 23: 单元格内联格式化 b / i / strong / em / span</h3>
+    <table>
+        <tr><th>项目</th><th>状态</th><th>说明</th></tr>
+        <tr><td><b>紧急需求</b></td><td><strong>进行中</strong></td><td><i>截止日期：2024-12-31</i></td></tr>
+        <tr><td><em>优化项</em></td><td><span style="color:green">已完成</span></td><td><b><i>无需关注</i></b></td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 24: 不规则行 —— 某行缺列（非 colspan 所致）</h3>
+    <table>
+        <tr><th>A</th><th>B</th><th>C</th><th>D</th></tr>
+        <tr><td>A1</td><td>B1</td><td>C1</td><td>D1</td></tr>
+        <tr><td>A2</td><td>B2</td></tr>
+        <tr><td colspan="2">A3跨2</td><td>B3</td><td>C3</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 25: colspan 越界</h3>
+    <table>
+        <tr><th>名称</th><th>属性1</th><th>属性2</th></tr>
+        <tr><td>条目A</td><td colspan="3">超宽合并（colspan=3 但只剩2列空间）</td></tr>
+        <tr><td>条目B</td><td>X</td><td>Y</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 26: rowspan / colspan 异常值（0 / 超大值）</h3>
+    <table>
+        <tr><th>类别</th><th>子项</th><th>值</th></tr>
+        <tr><td rowspan="0">rowspan=0</td><td>子A</td><td>100</td></tr>
+        <tr><td>子B</td><td>200</td></tr>
+        <tr><td colspan="0">colspan=0</td><td>-</td><td>-</td></tr>
+        <tr><td rowspan="999">超大rowspan</td><td>测试1</td><td>X</td></tr>
+        <tr><td>测试2</td><td>Y</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 27: colgroup / col 列组定义</h3>
+    <table>
+        <colgroup>
+            <col style="width: 100px" />
+            <col style="width: 80px" />
+        </colgroup>
+        <tr><th>名称</th><th>状态</th></tr>
+        <tr><td>节点A</td><td>在线</td></tr>
+        <tr><td>节点B</td><td>离线</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 28: table 自身 hidden 属性（整表隐藏）</h3>
+    <table hidden>
+        <tr><th>隐藏表头</th><th>隐藏列2</th></tr>
+        <tr><td>不可见数据</td><td>不可见数据</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 29: table 自身 style="display:none"（整表隐藏）</h3>
+    <table style="display:none">
+        <tr><th>隐藏表头</th><th>隐藏列2</th></tr>
+        <tr><td>不可见数据</td><td>不可见数据</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 30: 单元格内嵌 HTML 实体字符</h3>
+    <table>
+        <tr><th>符号名称</th><th>字符</th></tr>
+        <tr><td>与号</td><td>&amp;</td></tr>
+        <tr><td>小于/大于</td><td>&lt;div&gt;</td></tr>
+        <tr><td>版权</td><td>&copy; 2024</td></tr>
+        <tr><td>货币</td><td>&yen; 100 &euro; 20</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 31: 单元格仅包含空白字符</h3>
+    <table>
+        <tr><th>编号</th><th>内容</th><th>状态</th></tr>
+        <tr><td>1</td><td>正常内容</td><td>   </td></tr>
+        <tr><td>2</td><td> </td><td>已确认</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 32: 斜线表头 —— 纯文本 "/" 分隔</h3>
+    <table>
+        <tr><th>科目 / 时间</th><th>上半年</th><th>下半年</th></tr>
+        <tr><td>收入</td><td>100</td><td>200</td></tr>
+        <tr><td>支出</td><td>80</td><td>150</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 33: 斜线表头 —— CSS 对角线 + 文字对角定位</h3>
+    <table>
+        <tr>
+            <th>
+                <span class="top-right">时间</span>
+                <span class="bottom-left">科目</span>
+            </th>
+            <th>上半年</th>
+            <th>下半年</th>
+        </tr>
+        <tr><td>收入</td><td>100</td><td>200</td></tr>
+        <tr><td>支出</td><td>80</td><td>150</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 34: 斜线表头 —— 多级 "/"（三维信息）</h3>
+    <table>
+        <tr><th>部门 / 季度 / 指标</th><th>Q1</th><th>Q2</th><th>Q3</th><th>Q4</th></tr>
+        <tr><td>研发 / 营收 / 达成率</td><td>80%</td><td>90%</td><td>95%</td><td>100%</td></tr>
+        <tr><td>销售 / 营收 / 达成率</td><td>70%</td><td>85%</td><td>88%</td><td>92%</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>场景 35: 斜线表头 —— CSS 双斜线三区对角</h3>
+    <table>
+        <tr>
+            <th>
+                <span class="top">月份</span>
+                <span class="mid">指标</span>
+                <span class="bottom">部门</span>
+            </th>
+            <th>1月</th>
+            <th>2月</th>
+            <th>3月</th>
+        </tr>
+        <tr><td>研发部</td><td>达标</td><td>超标</td><td>达标</td></tr>
+        <tr><td>销售部</td><td>未达标</td><td>达标</td><td>超标</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>边界: table 自身 style="visibility:hidden"（整表隐藏）</h3>
+    <table style="visibility:hidden">
+        <tr><th>列1</th></tr>
+        <tr><td>数据</td></tr>
+    </table>
+
+    <hr>
+
+    <h3>边界: 表格仅含 thead 无 body</h3>
+    <table>
+        <thead><tr><th>A</th><th>B</th></tr></thead>
+    </table>
+
+    <hr>
+
+    <h3>边界: colgroup 含 class 隐藏列</h3>
+    <table>
+        <colgroup>
+            <col />
+            <col class="hidden-col" />
+        </colgroup>
+        <tr><th>名称</th><th class="hidden-col">密钥</th></tr>
+        <tr><td>节点A</td><td class="hidden-col">sk-xxxx</td></tr>
+    </table>
+
+</body>
+</html>
