@@ -27,6 +27,43 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  * 本测试主要读取类路径下的文档图片（例如 {@code test_doc_page.jpg}），并将其输入给支持多模态的
  * 大语言模型进行转译，验证其输出干净的 Markdown 格式及对表格、标题层级的解析效果。
  * </p>
+ *
+ * <h3>💡 一、 大模型 Agent 经验真理总结</h3>
+ * <ul>
+ *   <li><b>注重过程，注重执行轨迹，注重thinking措词：</b>不要只盯着结果。记录耗时、实际模型及 Token 消耗。</li>
+ *   <li><b>能代码执行的就走原链路，不要都丢给大模型：</b>大模型不擅长复杂的格式微调，建议能用 Java 后置清洗解决的（如反引号包裹符剥离、表格跨行展开等）就用 Java 处理，死守核心以对抗大模型的不确定性。</li>
+ *   <li><b>PASS^N 远远优于 PASS at N：</b>建立静态规则校验，当模型偶发性输出格式损坏时，应自动结合 Chat Memory 追加第二轮纠错提问，在 $N$ 次尝试内收敛并判定 PASS。</li>
+ *   <li><b>死磕单位时间内的有效迭代次数：</b>睁眼看世界，终结肉眼比对。应建立本地黄金样本评测集，用编辑距离（Levenshtein）自动算出与 Expected 答案的相似度百分比。</li>
+ * </ul>
+ *
+ * <h3>🤝 二、 Agent Handoff 交接与未解决问题（Pending Tasks）</h3>
+ * <ol>
+ *   <li>
+ *     <b>【已选型】客户端后置处理技术路线确定：</b>
+ *     对合并单元格的平铺与填充逻辑，已确定在 Java 客户端采用 <b>Jsoup + 虚拟坐标网格算法</b> 进行确定性工程清洗。
+ *     对比 Python 栈的 Pandas 方案（成熟但有跨语言调用/进程开销），原生的 Java 算法可以做到零运行时依赖、纯内存计算且微秒级延迟，最符合 Spring Boot 项目的自包含架构。
+ *   </li>
+ *   <li>
+ *     <b>【未决问题】大模型与工程代码职能剥离：</b>当前 Prompt 长达 170 行，混合了跨行跨列单元格展开及空白填充等逻辑，极易产生规则互斥。
+ *     <br><i>优化路径：</i>改为让大模型仅负责结构化 HTML Table（保留 colspan/rowspan）的提取，接着由 Java 层独立执行矩阵平铺与向上/前向数据填充，可使 Prompt 瘦身 80%。
+ *   </li>
+ *   <li>
+ *     <b>【未决问题】基于 Chat Memory 的自纠错（PASS^N）落地：</b>当前测试仅为单次提取（PASS at 1）。
+ *     <br><i>优化路径：</i>编写 `validateMarkdownStructure` 校验器方法检测表格各行列数是否齐平，若校验失败，则自动启动第 2 轮会话要求大模型重新修正。
+ *   </li>
+ *   <li>
+ *     <b>【未决问题】黄金测试集与自动化评测度量：</b>，但尚未针对大量 JPG 提取任务建立自动化评测机制。
+ *     <br><i>优化路径：</i>收集 10 张代表性 JPG 并标注 Ground Truth，使用 JUnit 参数化测试一键跑批统计相似度平均分。
+ *   </li>
+ * </ol>
+ *
+ * <h3>📚 三、 业界关于表格后置处理的共识实践</h3>
+ * <ul>
+ *   <li><b>大模型与解析器提取标准 HTML &lt;table&gt;：</b>大模型（VLM）和成熟 OCR 在空间网格计算（拼接 Markdown 竖线）上极易发生空间幻觉。业界的共识是第一阶段只做结构化提取输出 HTML <code>&lt;table&gt;</code>（完美保留 colspan 与 rowspan 结构，成功率接近 100%）。</li>
+ *   <li><b>客户端双指针虚拟矩阵填充算法 (Grid Normalization)：</b>在客户端中使用 Jsoup (Java) 或 BeautifulSoup (Python) 开辟二维坐标网格，计算 Span 并将父单元格内容横向/纵向复制平铺，从而将非确定性黑盒转化为确定性工程逻辑。</li>
+ *   <li><b>Pandas 方案（Python 生态最佳）：</b>在 Python 生态中，直接通过 <code>pd.read_html()</code> 配合 <code>ffill(axis=0)</code> 可三行代码搞定，但跨语言调用到 Java 时会有额外性能和部署开销。</li>
+ * </ul>
+ *
  * <p>
  * <b>重试机制验证说明：</b><br>
  * 本类内嵌了一个 {@link MockRetryServer} 模拟服务器，用于重现和验证大模型请求的失败重试逻辑：
