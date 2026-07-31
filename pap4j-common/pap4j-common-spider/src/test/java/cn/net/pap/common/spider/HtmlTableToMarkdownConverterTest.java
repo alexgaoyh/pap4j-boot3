@@ -1038,4 +1038,112 @@ public class HtmlTableToMarkdownConverterTest {
         assertTrue(md.contains("名称"));
         // 当前行为：class 隐藏的列也出现在输出中（已知局限）
     }
+
+    // ================================================================
+    // VLM 表格后置清洗与校验增强测试
+    // ================================================================
+
+    @Test
+    @DisplayName("验证代码块标记清理 logic (cleanCodeBlocks)")
+    public void testCleanCodeBlocks() {
+        String input = "Here is a table:\n```html\n<table><tr><td>content</td></tr></table>\n```\nEnjoy!";
+        String expected = "Here is a table:\n<table><tr><td>content</td></tr></table>\nEnjoy!";
+        assertEquals(expected, HtmlTableToMarkdownConverter.cleanCodeBlocks(input));
+
+        String input2 = "```\n<table><tr><td>no lang</td></tr></table>\n```";
+        String expected2 = "<table><tr><td>no lang</td></tr></table>";
+        assertEquals(expected2, HtmlTableToMarkdownConverter.cleanCodeBlocks(input2));
+    }
+
+    @Test
+    @DisplayName("验证管道符转义逻辑统计 (countSeparators)")
+    public void testCountSeparators() {
+        // 无转义
+        assertEquals(3, HtmlTableToMarkdownConverter.countSeparators("| a | b |"));
+        // 一个转义的 \|
+        assertEquals(2, HtmlTableToMarkdownConverter.countSeparators("| a \\| b |"));
+        // 奇数个反斜杠导致转义，偶数个不转义
+        // \\| -> 一个物理反斜杠，跟着一个物理管道符（未转义）
+        assertEquals(3, HtmlTableToMarkdownConverter.countSeparators("| a \\\\| b |"));
+        // 多个转义与未转义组合
+        assertEquals(2, HtmlTableToMarkdownConverter.countSeparators("| a \\| b \\| c |"));
+    }
+
+    @Test
+    @DisplayName("验证静态表格结构对齐校验 (validateMarkdownTableStructure)")
+    public void testValidateMarkdownTableStructure() {
+        // Case 1: 完美对齐的 HTML <table> 结构
+        String validHtmlTable = """
+                Some text before
+                <table>
+                  <thead>
+                    <tr><th>Header1</th><th>Header2</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Val1</td><td>Val2</td></tr>
+                    <tr><td>Val3</td><td>Val4</td></tr>
+                  </tbody>
+                </table>
+                Some text after
+                """;
+        assertNull(HtmlTableToMarkdownConverter.validateMarkdownTableStructure(validHtmlTable));
+
+        // Case 2: 无 <table> 标签
+        String noTable = "This is a normal paragraph without any table.";
+        String errorNoTable = HtmlTableToMarkdownConverter.validateMarkdownTableStructure(noTable);
+        assertNotNull(errorNoTable);
+        assertTrue(errorNoTable.contains("未在输出的 Markdown 中检测到任何有效的"));
+
+        // Case 3: 标签未闭合
+        String unclosedTable = "<table><tr><td>unclosed table";
+        String errorUnclosed = HtmlTableToMarkdownConverter.validateMarkdownTableStructure(unclosedTable);
+        assertNotNull(errorUnclosed);
+        assertTrue(errorUnclosed.contains("检测到未完整闭合的 HTML 表格标签"));
+
+        // Case 4: 网格平铺展开后，数据行列数不对齐（例如 tr 少了一个 td）
+        String misalignedTable = """
+                <table>
+                  <thead>
+                    <tr><th>Header1</th><th>Header2</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Val1</td><td>Val2</td></tr>
+                    <tr><td>Val3</td></tr>
+                  </tbody>
+                </table>
+                """;
+
+        String errorMisaligned = HtmlTableToMarkdownConverter.validateMarkdownTableStructure(misalignedTable);
+        assertNotNull(errorMisaligned);
+        assertTrue(errorMisaligned.contains("Markdown 表格各行列数不一致"));
+    }
+
+    @Test
+    @DisplayName("验证 HTML <table> 转换 Markdown 功能 (convertHtmlTablesToMarkdown)")
+    public void testConvertHtmlTablesToMarkdown() {
+        String input = """
+                This is a list:
+                - item 1
+                - item 2
+                
+                ```html
+                <table>
+                  <thead>
+                    <tr><th>Name</th><th>Age</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Alice</td><td>20</td></tr>
+                  </tbody>
+                </table>
+                ```
+                That is all.
+                """;
+
+        String output = HtmlTableToMarkdownConverter.convertHtmlTablesToMarkdown(input);
+        assertNotNull(output);
+        assertTrue(output.contains("Name | Age"));
+        assertTrue(output.contains("Alice | 20"));
+        // 验证代码块 ```html ... ``` 被完美剥离
+        assertTrue(!output.contains("```html"));
+    }
 }

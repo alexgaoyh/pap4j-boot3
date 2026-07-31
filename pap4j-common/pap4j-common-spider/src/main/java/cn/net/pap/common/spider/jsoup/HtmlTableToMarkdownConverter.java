@@ -4,12 +4,16 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * HTML 表格转 Markdown 转换器
@@ -18,6 +22,8 @@ import java.util.Map;
  * 仅做结构转换，不做任何自然语言层面的语义推断（如前向填充、占位符替换等）。
  */
 public class HtmlTableToMarkdownConverter {
+
+    private static final Logger log = LoggerFactory.getLogger(HtmlTableToMarkdownConverter.class);
 
     /**
      * 将包含表格的 HTML 片段转换为 Markdown 格式的表格。
@@ -229,5 +235,229 @@ public class HtmlTableToMarkdownConverter {
         text = text.replaceAll("(<br>\\s*)+$", "");
 
         return text.trim();
+    }
+
+    // =========================================================================
+    // VLM 多模态大模型表格提取后置清洗与静态校验增强方法
+    // =========================================================================
+
+    /**
+     * 自动清除包裹在 HTML table 外面的 markdown 代码块标记，例如 ```html \n <table>...</table> \n ```
+     * 采用确定的前缀/后缀清理方式，彻底消除 ReDoS 复杂正则匹配带来的性能与回溯风险。
+     *
+     * @param content 原始模型输出
+     * @return 清理后的文本
+     */
+    public static String cleanCodeBlocks(String content) {
+        if (content == null || content.isBlank()) {
+            return content;
+        }
+        String result = content;
+        result = result.replaceAll("(?i)```(?:html|xml|xhtml)?\\s*<table", "<table");
+        result = result.replaceAll("</table>\\s*```", "</table>");
+        return result;
+    }
+
+    /**
+     * 静态解析并转换 Markdown 中的 HTML 表格，并做扁平化处理。
+     *
+     * @param content 包含 HTML <table> 标签的 Markdown 文本
+     * @return 转换平铺展开后的规范 Markdown 文本
+     */
+    public static String convertHtmlTablesToMarkdown(String content) {
+        if (content == null || content.isBlank()) {
+            return content;
+        }
+
+        // 1. 清除代码块标记
+        String cleaned = cleanCodeBlocks(content);
+
+        // 2. 查找 <table> 元素
+        Pattern pattern = Pattern.compile("(?si)<table\\b[^>]*>.*?</table>");
+        Matcher matcher = pattern.matcher(cleaned);
+
+        StringBuilder sb = new StringBuilder();
+        int lastEnd = 0;
+        boolean hasTable = false;
+
+        while (matcher.find()) {
+            hasTable = true;
+            String tableHtml = matcher.group();
+            sb.append(cleaned, lastEnd, matcher.start());
+
+            try {
+                // 执行网格还原与数据平铺填充
+                String markdownTable = convert(tableHtml);
+                sb.append("\n\n").append(markdownTable).append("\n\n");
+            } catch (Exception e) {
+                log.error("【表格后置处理】转换 HTML <table> 失败，将保留原 HTML 内容。错误: {}", e.getMessage(), e);
+                sb.append(tableHtml);
+            }
+
+            lastEnd = matcher.end();
+        }
+        sb.append(cleaned.substring(lastEnd));
+
+        if (hasTable) {
+            log.info("【表格后置处理】已检测到并成功转换 HTML <table> 为 Markdown 表格。");
+        } else {
+            log.info("【表格后置处理】未检测到 HTML 表格，无需转换（或已使用模型自带的 Markdown 表格输出）。");
+        }
+
+        // 规范化多余换行
+        return sb.toString().replaceAll("(\\r?\\n\\s*){3,}", "\n\n").trim();
+    }
+
+    /**
+     * 对 Markdown 中包含的 HTML <table> 结构进行静态规则与对齐校验。
+     *
+     * @param markdownResult 原始模型输出
+     * @return 校验通过返回 null，校验失败返回具体的错误诊断信息
+     */
+    public static String validateMarkdownTableStructure(String markdownResult) {
+        if (markdownResult == null || markdownResult.isBlank()) {
+            return "模型返回的 Markdown 内容为空。";
+        }
+
+        // 1. 自动清除代码块标记
+        String cleaned = cleanCodeBlocks(markdownResult);
+
+        // 如果包含 <table 却不包含 </table>，说明明显未闭合
+        if (cleaned.toLowerCase().contains("<table") && !cleaned.toLowerCase().contains("</table>")) {
+            return "检测到未完整闭合的 HTML 表格标签（例如缺少 </table>, </td> 或 </th>）。";
+        }
+
+        // 2. 查找 <table> 元素
+        Pattern pattern = Pattern.compile("(?si)<table\\b[^>]*>.*?</table>");
+        Matcher matcher = pattern.matcher(cleaned);
+
+        boolean foundTable = false;
+        while (matcher.find()) {
+            foundTable = true;
+            String tableHtml = matcher.group();
+
+            // 检查 HTML table 标签的基本闭合完整性
+            if (!tableHtml.toLowerCase().contains("</table>")
+                    || (!tableHtml.toLowerCase().contains("</td>") && !tableHtml.toLowerCase().contains("</th>"))) {
+                return "检测到未完整闭合的 HTML 表格标签（例如缺少 </table>, </td> 或 </th>）。";
+            }
+
+            try {
+                // 校验 HTML 表格的对齐结构
+                Document doc = Jsoup.parse(tableHtml);
+                Element table = doc.selectFirst("table");
+                if (table != null) {
+                    Elements rows = new Elements();
+                    rows.addAll(table.select("> thead > tr"));
+                    rows.addAll(table.select("> tr"));
+                    rows.addAll(table.select("> tbody > tr"));
+                    rows.addAll(table.select("> tfoot > tr"));
+                    rows.removeIf(HtmlTableToMarkdownConverter::isHidden);
+
+                    if (!rows.isEmpty()) {
+                        Map<Integer, Map<Integer, String>> grid = new HashMap<>();
+                        int maxCols = 0;
+                        for (int r = 0; r < rows.size(); r++) {
+                            Element row = rows.get(r);
+                            Elements cells = row.select("> th, > td");
+                            cells.removeIf(HtmlTableToMarkdownConverter::isHidden);
+                            int c = 0;
+                            for (Element cell : cells) {
+                                while (grid.computeIfAbsent(r, k -> new HashMap<>()).containsKey(c)) {
+                                    c++;
+                                }
+                                int rowspan = cell.hasAttr("rowspan") ? Integer.parseInt(cell.attr("rowspan")) : 1;
+                                int colspan = cell.hasAttr("colspan") ? Integer.parseInt(cell.attr("colspan")) : 1;
+                                if (rowspan < 1) rowspan = 1;
+                                if (colspan < 1) colspan = 1;
+                                String text = cell.text();
+                                for (int i = 0; i < rowspan; i++) {
+                                    for (int j = 0; j < colspan; j++) {
+                                        grid.computeIfAbsent(r + i, k -> new HashMap<>()).put(c + j, text);
+                                        maxCols = Math.max(maxCols, c + j + 1);
+                                    }
+                                }
+                                c += colspan;
+                            }
+                        }
+                        // 检查是否有行长度不一致
+                        for (int r = 0; r < rows.size(); r++) {
+                            int colCount = grid.getOrDefault(r, Collections.emptyMap()).size();
+                            if (colCount < maxCols) {
+                                return "Markdown 表格各行列数不一致！预期有 " + maxCols + " 列，但该行有 "
+                                        + colCount + " 列。不匹配的行数据: " + rows.get(r).text();
+                            }
+                        }
+                    }
+                }
+
+                // 尝试转换该 HTML 表格
+                String markdownTable = convert(tableHtml);
+                if (markdownTable == null || markdownTable.isBlank()) {
+                    return "HTML 表格转换后得到的 Markdown 表格为空，请检查 table/tr/td/th 的 HTML 标签层次。";
+                }
+
+                // 静态结构列数齐平校验，兼容 Windows 的 \r\n 换行符
+                String[] lines = markdownTable.split("\\r?\\n");
+                int expectedCols = -1;
+                for (String line : lines) {
+                    String trimmed = line.trim();
+                    if (trimmed.isEmpty()) {
+                        continue;
+                    }
+                    // Markdown 表格行必须以 '|' 开始和结束
+                    if (!trimmed.startsWith("|") || !trimmed.endsWith("|")) {
+                        return "转换得到的 Markdown 表格行未遵循规范格式（未以 '|' 开头和结尾）: " + trimmed;
+                    }
+
+                    // 统计管道符数量（排除转义的 '\|'，并且防御 '\\|' 场景）
+                    int cols = countSeparators(trimmed);
+                    if (expectedCols == -1) {
+                        expectedCols = cols;
+                    } else if (expectedCols != cols) {
+                        return "Markdown 表格各行列数不一致！预期有 " + (expectedCols - 1) + " 列，但该行有 "
+                                + (cols - 1) + " 列。不匹配的行数据: " + trimmed;
+                    }
+                }
+            } catch (Exception e) {
+                return "解析/转换 HTML <table> 遇到异常: " + e.getMessage();
+            }
+        }
+
+        if (!foundTable) {
+            return "未在输出的 Markdown 中检测到任何有效的 HTML <table> 标签，表格提取可能丢失或生成为其他格式。";
+        }
+
+        return null; // 校验通过
+    }
+
+    /**
+     * 辅助统计行内排除转义外的 '|' 个数。
+     * 采用状态机思想，精确处理奇偶个反斜杠转义符号，防止 `\\|` 等场景发生漏判。
+     *
+     * @param line 行文本
+     * @return 逻辑分隔符数
+     */
+    public static int countSeparators(String line) {
+        if (line == null) {
+            return 0;
+        }
+        int count = 0;
+        int backslashes = 0;
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+            if (c == '\\') {
+                backslashes++;
+            } else if (c == '|') {
+                // 如果管道符前有偶数个反斜杠（包括0个），说明管道符未被转义
+                if (backslashes % 2 == 0) {
+                    count++;
+                }
+                backslashes = 0; // 重置计数
+            } else {
+                backslashes = 0; // 重置计数
+            }
+        }
+        return count;
     }
 }
