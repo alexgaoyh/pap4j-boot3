@@ -140,6 +140,44 @@ public class MultimodalTwoStageTableParsingTest {
         }
     }
 
+    /** 二维表格解析错误类型枚举 */
+    public enum TableErrorType {
+        JSON_SYNTAX("JSON 语法错误", "检查括号匹配（确保每对 [ ] 与 { } 闭合）、引号转义与多余逗号。"),
+        ROW_COL_MISMATCH("行列数不一致", "核对每一行的单元格数量。所有行的列数必须与首行列数完全相同！合并单元格必须在覆盖的所有格子中重复填入文字，切勿漏列或擅自删减列数。"),
+        STRUCTURE_ERROR("数据结构错误", "确保输出格式为 {\"rows\": [[...], [...]]} 的严格二维字符串数组，单元格内必须是纯文本或数字，不能嵌套对象或数组。");
+
+        private final String title;
+        private final String guidance;
+
+        TableErrorType(String title, String guidance) {
+            this.title = title;
+            this.guidance = guidance;
+        }
+
+        public String getTitle() {
+            return title;
+        }
+
+        public String getGuidance() {
+            return guidance;
+        }
+    }
+
+    /** 二维表格解析异常，携带明确的错误类型 */
+    public static class GridParseException extends RuntimeException {
+        private final TableErrorType errorType;
+
+        public GridParseException(TableErrorType errorType, String message) {
+            super(message);
+            this.errorType = errorType;
+        }
+
+        public TableErrorType getErrorType() {
+            return errorType;
+        }
+    }
+
+
     private final ChatClient chatClient;
     private final ChatMemory chatMemory;
     private final AiProperties aiProperties;
@@ -219,14 +257,47 @@ public class MultimodalTwoStageTableParsingTest {
         chatMemory.clear(chatId);
 
         // 2. PASS^N：调用模型 → 二维校验 → 失败则带上错误信息重试
+        TableErrorType lastErrorType = null;
         String lastError = null;
+        String lastResult = null;
         JsonNode rows = null;
         long totalStartTime = System.currentTimeMillis();
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-            String prompt = (attempt == 1) ? PROMPT_GRID
-                    : PROMPT_GRID + "\n\n注意：你上一次的输出未通过二维校验：" + lastError
-                        + "\n请严格按照规则重新输出，确保 rows 为每一行长度完全相等的二维数组。";
+            // 重试前必须清空 ChatMemory，切断模型对上一轮错误回答的复读惯性
+            chatMemory.clear(chatId);
+
+            String prompt;
+            if (attempt == 1) {
+                prompt = PROMPT_GRID;
+            } else {
+                // 根据与 parseGrid 匹配的错误类型，精准动态渲染修复指导 Prompt
+                String errorGuidance = (lastErrorType != null)
+                        ? String.format("【%s】：%s", lastErrorType.getTitle(), lastErrorType.getGuidance())
+                        : "请仔细检查上一次的输出并严格按照规则重新输出规范的二维表格 JSON。";
+
+                prompt = PROMPT_GRID + String.format("""
+
+                    --------------------------------------------------
+                    【重要提示：你上一轮的解析输出未通过系统校验，请针对性修正】
+
+                    上一轮你的原始输出为：
+                    %s
+
+                    未通过校验的具体错误原因：
+                    %s
+
+                    针对性修复指导：
+                    %s
+
+                    请仔细对照上一轮输出与错误原因，重新输出修正后的二维表格 JSON（只输出合法 JSON，不要包含 Markdown 代码块或任何解释）。
+                    --------------------------------------------------
+                    """,
+                        (lastResult != null && !lastResult.isBlank()) ? lastResult : "(无输出)",
+                        lastError,
+                        errorGuidance
+                );
+            }
 
             long startTime = System.currentTimeMillis();
             String result = chatClient.prompt()
@@ -242,14 +313,23 @@ public class MultimodalTwoStageTableParsingTest {
 
             if (result == null || result.isBlank()) {
                 lastError = "模型返回为空";
+                lastResult = null;
+                lastErrorType = null;
                 continue;
             }
             try {
                 rows = parseGrid(result);
                 log.info("【二维表格契约】第 {} 次输出通过严格二维校验", attempt);
                 break;
-            } catch (IllegalArgumentException e) {
+            } catch (GridParseException e) {
+                lastErrorType = e.getErrorType();
                 lastError = e.getMessage();
+                lastResult = result;
+                log.warn("【二维表格契约】第 {} 次输出未通过二维校验 [{}]: {}", attempt, lastErrorType.getTitle(), lastError);
+            } catch (IllegalArgumentException e) {
+                lastErrorType = TableErrorType.STRUCTURE_ERROR;
+                lastError = e.getMessage();
+                lastResult = result;
                 log.warn("【二维表格契约】第 {} 次输出未通过二维校验: {}", attempt, lastError);
             }
         }
@@ -292,7 +372,7 @@ public class MultimodalTwoStageTableParsingTest {
      * 兼容 {@code {"rows":[...]}} 与直接输出二维数组两种形式，容忍 Markdown 代码块包裹。
      *
      * @return 校验通过后的 rows 节点
-     * @throws IllegalArgumentException 输出不是合法二维表格时抛出，携带可读的错误原因
+     * @throws GridParseException 输出不是合法二维表格时抛出，携带具体的错误分类与原因
      */
     private JsonNode parseGrid(String rawContent) {
         String content = stripCodeFences(rawContent);
@@ -300,39 +380,45 @@ public class MultimodalTwoStageTableParsingTest {
         try {
             root = new ObjectMapper().readTree(content);
         } catch (Exception e) {
-            throw new IllegalArgumentException("无法解析为 JSON: " + e.getMessage());
+            throw new GridParseException(TableErrorType.JSON_SYNTAX, "无法解析为 JSON: " + e.getMessage());
         }
 
         if (root == null || (!root.isArray() && !root.has("rows"))) {
-            throw new IllegalArgumentException("输出不是合法的二维表格 JSON，期望 {\"rows\":[...]} 或直接的二维数组");
+            throw new GridParseException(TableErrorType.STRUCTURE_ERROR, "输出不是合法的二维表格 JSON，期望 {\"rows\":[...]} 或直接的二维数组");
         }
         JsonNode rows = root.isArray() ? root : root.path("rows");
         if (!rows.isArray() || rows.size() == 0) {
-            throw new IllegalArgumentException("rows 必须是非空数组");
+            throw new GridParseException(TableErrorType.STRUCTURE_ERROR, "rows 必须是非空数组");
         }
 
         // 严格二维校验：每一行都是数组、行宽完全一致、单元格为标量
         int colCount = -1;
         List<String> errors = new ArrayList<>();
+        TableErrorType firstErrorType = null;
         for (int r = 0; r < rows.size(); r++) {
             JsonNode row = rows.get(r);
             if (!row.isArray() || row.size() == 0) {
                 errors.add("第 " + r + " 行不是非空数组");
+                if (firstErrorType == null) firstErrorType = TableErrorType.STRUCTURE_ERROR;
                 continue;
             }
             if (colCount == -1) {
                 colCount = row.size();
             } else if (row.size() != colCount) {
                 errors.add("第 " + r + " 行列数=" + row.size() + " 与首行列数=" + colCount + " 不一致");
+                if (firstErrorType == null) firstErrorType = TableErrorType.ROW_COL_MISMATCH;
             }
             for (int c = 0; c < row.size(); c++) {
                 if (!row.get(c).isValueNode()) {
                     errors.add("第 " + r + " 行第 " + c + " 列不是标量值");
+                    if (firstErrorType == null) firstErrorType = TableErrorType.STRUCTURE_ERROR;
                 }
             }
         }
         if (!errors.isEmpty()) {
-            throw new IllegalArgumentException(String.join("; ", errors));
+            throw new GridParseException(
+                    firstErrorType != null ? firstErrorType : TableErrorType.STRUCTURE_ERROR,
+                    String.join("; ", errors));
         }
         return rows;
     }
