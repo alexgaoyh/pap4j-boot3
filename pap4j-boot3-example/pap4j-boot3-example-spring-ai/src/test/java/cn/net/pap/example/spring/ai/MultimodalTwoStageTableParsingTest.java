@@ -410,7 +410,7 @@ public class MultimodalTwoStageTableParsingTest {
                 return true;
             }
         } catch (Exception e) {
-            log.warn("TCP 探活失败 ({})，将跳过本组多模态解析单元测试。错误: {}", baseUrl, e.getMessage());
+            log.warn("TCP 探活失败 ({})，将跳过本组多模态解析单元测试。", baseUrl, e);
             return false;
         }
     }

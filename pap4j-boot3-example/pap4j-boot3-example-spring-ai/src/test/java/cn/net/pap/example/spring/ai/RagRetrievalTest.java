@@ -21,9 +21,12 @@ public class RagRetrievalTest {
 
     private static final Logger log = LoggerFactory.getLogger(RagRetrievalTest.class);
 
+    private final VectorStore vectorStore;
+
     @Autowired
-    @Qualifier("knowledgeVectorStore")
-    private VectorStore vectorStore;
+    public RagRetrievalTest(@Qualifier("knowledgeVectorStore") VectorStore vectorStore) {
+        this.vectorStore = vectorStore;
+    }
 
     private record TestCase(String question, String expectedFile, String desc) {
     }

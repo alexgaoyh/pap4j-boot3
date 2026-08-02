@@ -39,6 +39,12 @@ public class AiAssistantConfig {
 
     private static final Logger log = LoggerFactory.getLogger(AiAssistantConfig.class);
 
+    /** 外部 LLM / 向量服务连接超时（毫秒） */
+    private static final int CONNECT_TIMEOUT_MS = 60_000;
+
+    /** 外部 LLM / 向量服务读取超时（毫秒） */
+    private static final int READ_TIMEOUT_MS = 300_000;
+
     private final AiProperties aiProperties;
 
     public AiAssistantConfig(AiProperties aiProperties) {
@@ -110,7 +116,7 @@ public class AiAssistantConfig {
                 log.info("【Elasticsearch-{}】已存在数据，跳过导入。", storeKey);
             }
         } catch (Exception e) {
-            log.info("【Elasticsearch-{}】未检测到有效索引（{}），开始重建并导入...", storeKey, e.getMessage());
+            log.info("【Elasticsearch-{}】未检测到有效索引，开始重建并导入...", storeKey, e);
             try {
                 initStoreData(esStore, storeKey);
                 log.info("【Elasticsearch-{}】数据重建导入完成！", storeKey);
@@ -275,19 +281,19 @@ public class AiAssistantConfig {
     private org.springframework.web.client.RestClient.Builder createTimeoutRestClientBuilder() {
         org.springframework.http.client.SimpleClientHttpRequestFactory requestFactory = 
                 new org.springframework.http.client.SimpleClientHttpRequestFactory();
-        requestFactory.setConnectTimeout(60000); // 60s 连接超时
-        requestFactory.setReadTimeout(300000);    // 300s (5分钟) 读取超时
+        requestFactory.setConnectTimeout(CONNECT_TIMEOUT_MS);
+        requestFactory.setReadTimeout(READ_TIMEOUT_MS);
         return org.springframework.web.client.RestClient.builder()
                 .requestFactory(requestFactory);
     }
 
     private org.springframework.web.reactive.function.client.WebClient.Builder createTimeoutWebClientBuilder() {
         reactor.netty.http.client.HttpClient httpClient = reactor.netty.http.client.HttpClient.create()
-                .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, 60000)
-                .responseTimeout(java.time.Duration.ofSeconds(300))
+                .option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, CONNECT_TIMEOUT_MS)
+                .responseTimeout(java.time.Duration.ofMillis(READ_TIMEOUT_MS))
                 .doOnConnected(conn -> conn
-                        .addHandlerLast(new io.netty.handler.timeout.ReadTimeoutHandler(300, java.util.concurrent.TimeUnit.SECONDS))
-                        .addHandlerLast(new io.netty.handler.timeout.WriteTimeoutHandler(300, java.util.concurrent.TimeUnit.SECONDS))
+                        .addHandlerLast(new io.netty.handler.timeout.ReadTimeoutHandler(READ_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS))
+                        .addHandlerLast(new io.netty.handler.timeout.WriteTimeoutHandler(READ_TIMEOUT_MS, java.util.concurrent.TimeUnit.MILLISECONDS))
                 );
         return org.springframework.web.reactive.function.client.WebClient.builder()
                 .clientConnector(new org.springframework.http.client.reactive.ReactorClientHttpConnector(httpClient));
@@ -306,7 +312,7 @@ public class AiAssistantConfig {
             public <T, E extends Throwable> void onError(org.springframework.retry.RetryContext context,
                                                          org.springframework.retry.RetryCallback<T, E> callback,
                                                          Throwable throwable) {
-                log.info("[Spring Retry 监听器]请求失败，当前已尝试 {} 次，异常信息: {}", context.getRetryCount(), throwable.getMessage());
+                log.info("[Spring Retry 监听器]请求失败，当前已尝试 {} 次", context.getRetryCount(), throwable);
             }
         });
 

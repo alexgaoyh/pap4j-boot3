@@ -378,9 +378,7 @@ public class MultimodalDocumentParsingTest {
 
         // 4. 验证并输出结果
         assertNotNull(markdownResult, "模型返回的 Markdown 内容不能为 null");
-        log.info("\n==================== 模型返回的 Markdown ====================\n" 
-                + markdownResult 
-                + "\n============================================================");
+        log.info("\n==================== 模型返回的 Markdown ====================\n{}\n============================================================", markdownResult);
     }
 
     private boolean checkLlmAccessibility(AiProperties.ModelConfig modelConfig) {
@@ -428,7 +426,7 @@ public class MultimodalDocumentParsingTest {
                 return true;
             }
         } catch (Exception e) {
-            log.warn("TCP 探活失败 ({})，将跳过本组多模态解析单元测试。错误: {}", baseUrl, e.getMessage());
+            log.warn("TCP 探活失败 ({})，将跳过本组多模态解析单元测试。", baseUrl, e);
             return false;
         }
     }
@@ -453,7 +451,7 @@ public class MultimodalDocumentParsingTest {
                     }
 
                     int hits = hitCounter.incrementAndGet();
-                    System.out.println("【Mock 服务端】收到第 " + hits + " 次请求尝试！");
+                    log.info("【Mock 服务端】收到第 {} 次请求尝试！", hits);
 
                     String response = "{\"error\": \"Mock 500 Internal Server Error\"}";
                     byte[] bytes = response.getBytes();
@@ -468,7 +466,7 @@ public class MultimodalDocumentParsingTest {
             });
 
             server.start();
-            System.out.println("🚀 Mock 500 模拟服务端已成功在 9999 端口启动...");
+            log.info("🚀 Mock 500 模拟服务端已成功在 9999 端口启动...");
         }
     }
 }

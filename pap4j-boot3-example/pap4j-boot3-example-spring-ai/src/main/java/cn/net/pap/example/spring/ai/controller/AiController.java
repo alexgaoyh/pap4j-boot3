@@ -2,6 +2,7 @@ package cn.net.pap.example.spring.ai.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,28 +39,43 @@ public class AiController {
 
     private static final Logger log = LoggerFactory.getLogger(AiController.class);
 
+    /** 参与 Query 改写的历史消息条数上限 */
+    private static final int HISTORY_CONTEXT_SIZE = 4;
+
+    /** 知识库首轮语义召回条数 */
+    private static final int KNOWLEDGE_TOP_K = 3;
+
+    /** Emoji 检索结果默认上限 */
+    private static final int DEFAULT_EMOJI_TOP_K = 10;
+
+    /** 跨文件 markdown 链接提取正则 */
+    private static final Pattern LINK_PATTERN = Pattern.compile("\\[([^\\]]+)\\]\\(([^)]+\\.md)\\)");
+
+    /** 合法知识文档文件名白名单（防御 filterExpression 注入） */
+    private static final Pattern SAFE_MD_FILE_PATTERN = Pattern.compile("^[A-Za-z0-9_.\\-/]+\\.md$");
+
     private final ChatClient chatClient;
     private final ChatClient queryRewriteChatClient;
     private final ChatMemory chatMemory;
     private final VectorStore knowledgeVectorStore;
     private final VectorStore emojiVectorStore;
     private final ObjectMapper objectMapper;
-
-    @Value("${ai.assistant.persona:Java 开发架构师}")
-    private String defaultPersona;
+    private final String defaultPersona;
 
     public AiController(@Qualifier("customChatClient") ChatClient customChatClient,
                         @Qualifier("queryRewriteChatClient") ChatClient queryRewriteChatClient,
                         ChatMemory chatMemory,
                         @Qualifier("knowledgeVectorStore") VectorStore knowledgeVectorStore,
                         @Qualifier("emojiVectorStore") VectorStore emojiVectorStore,
-                        ObjectMapper objectMapper) {
+                        ObjectMapper objectMapper,
+                        @Value("${ai.assistant.persona:Java 开发架构师}") String defaultPersona) {
         this.chatClient = customChatClient;
         this.queryRewriteChatClient = queryRewriteChatClient;
         this.chatMemory = chatMemory;
         this.knowledgeVectorStore = knowledgeVectorStore;
         this.emojiVectorStore = emojiVectorStore;
         this.objectMapper = objectMapper;
+        this.defaultPersona = defaultPersona;
     }
 
     /**
@@ -73,8 +89,8 @@ public class AiController {
 
             // 0. 从 ChatMemory 获取多轮历史上下文 (取最近 4 条消息用于 Query 改写)
             List<org.springframework.ai.chat.messages.Message> fullHistory = chatMemory.get(chatId);
-            List<org.springframework.ai.chat.messages.Message> history = (fullHistory != null && fullHistory.size() > 4)
-                    ? fullHistory.subList(fullHistory.size() - 4, fullHistory.size())
+            List<org.springframework.ai.chat.messages.Message> history = (fullHistory != null && fullHistory.size() > HISTORY_CONTEXT_SIZE)
+                    ? fullHistory.subList(fullHistory.size() - HISTORY_CONTEXT_SIZE, fullHistory.size())
                     : (fullHistory != null ? fullHistory : java.util.Collections.emptyList());
 
             // 1. Query 改写与 BM25 关键词提炼 (有历史会话时)
@@ -168,7 +184,7 @@ public class AiController {
         List<Document> firstDocs = new ArrayList<>(knowledgeVectorStore.similaritySearch(
                 SearchRequest.builder()
                         .query(searchQuery)
-                        .topK(3)
+                        .topK(KNOWLEDGE_TOP_K)
                         .build()
         ));
 
@@ -180,6 +196,8 @@ public class AiController {
         if (!linkedFiles.isEmpty()) {
             // 构建多文件精准过滤表达式，如：(source == 'file1.md' || source == 'file2.md')
             String fileConditions = linkedFiles.stream()
+                    // 防御性过滤：仅放行白名单内的合法文件名，杜绝 filterExpression 注入
+                    .filter(file -> SAFE_MD_FILE_PATTERN.matcher(file).matches())
                     .map(file -> "source == '" + file + "'")
                     .collect(Collectors.joining(" || "));
 
@@ -224,11 +242,8 @@ public class AiController {
      *    - 原理：第一阶段使用向量检索（方案A或B）大范围召回候选集（如前 50 个），第二阶段使用重排模型（如 bge-reranker）将用户查询词与候选集中的 Emoji 文本描述拼接后一起输入神经网络，利用多层交叉自注意力机制强行让每个字符进行对比对齐，算出最终的对齐匹配概率并重排。
      *    - 优缺点：精准度与相关性在所有方案中最高，对细微词义差别捕捉极佳；但二阶段的模型推理会显著增加检索的整体响应延迟，适合对准确度有极致要求的场景。
      */
-    @Operation(summary = "Emoji 语义检索接口")
-    @PostMapping("/emoji")
-    public Mono<List<EmojiResponse>> searchEmoji(@RequestBody EmojiRequest request) {
-        return Mono.fromCallable(() -> {
-            String systemPrompt = """
+    /** Emoji 检索关键词生成的系统提示词（提取为类常量，避免 searchEmoji 方法体过长） */
+    private static final String EMOJI_SYSTEM_PROMPT = """
                 你是 Unicode Emoji 语义检索关键词生成器。
                 你的任务：
                     根据用户输入的 UI 功能、按钮名称、业务场景或操作意图，
@@ -298,15 +313,19 @@ public class AiController {
                         删除 清除 移除 垃圾桶 废弃 叉号 禁止
                 """;
 
+    @Operation(summary = "Emoji 语义检索接口")
+    @PostMapping("/emoji")
+    public Mono<List<EmojiResponse>> searchEmoji(@RequestBody EmojiRequest request) {
+        return Mono.fromCallable(() -> {
             String rewrittenQuery = chatClient.prompt()
-                    .system(systemPrompt)
+                    .system(EMOJI_SYSTEM_PROMPT)
                     .user(request.prompt())
                     .call()
                     .content();
 
             log.info("用户 Emoji 查询: '{}', 提示词工程转换后的物理词汇: '{}'", request.prompt(), rewrittenQuery);
 
-            int limit = request.topK() > 0 ? request.topK() : 10;
+            int limit = request.topK() > 0 ? request.topK() : DEFAULT_EMOJI_TOP_K;
 
             // 使用转换后的词语去向量库中检索
             List<Document> docs = emojiVectorStore.similaritySearch(
@@ -330,17 +349,24 @@ public class AiController {
     /**
      * Emoji 检索请求 DTO
      */
-    public record EmojiRequest(String prompt, int topK) {}
+    public record EmojiRequest(
+            @Schema(description = "UI 功能 / 按钮名称 / 业务场景描述") String prompt,
+            @Schema(description = "返回候选数量上限") int topK) {}
 
     /**
      * Emoji 检索响应 DTO
      */
-    public record EmojiResponse(String emoji, String description, double score) {}
+    public record EmojiResponse(
+            @Schema(description = "Emoji 字符") String emoji,
+            @Schema(description = "Emoji 语义描述") String description,
+            @Schema(description = "相似度得分") double score) {}
 
     /**
      * 对话请求 DTO
      */
-    public record ChatRequest(String prompt, String chatId) {}
+    public record ChatRequest(
+            @Schema(description = "用户提问内容") String prompt,
+            @Schema(description = "会话 ID（用于多轮记忆）") String chatId) {}
 
     /**
      * 从文档列表中提取所有 markdown 跨文件链接的显示文本。
@@ -349,15 +375,20 @@ public class AiController {
      * 从而把关联文档也召回到上下文中。
      */
     private List<String> extractMarkdownLinkFiles(List<Document> docs) {
-        Pattern pattern = Pattern.compile("\\[([^\\]]+)\\]\\(([^)]+\\.md)\\)");
         return docs.stream()
                 .map(Document::getText)
                 .flatMap(text -> {
-                    Matcher matcher = pattern.matcher(text);
+                    Matcher matcher = LINK_PATTERN.matcher(text);
                     List<String> files = new ArrayList<>();
                     while (matcher.find()) {
                         // 提取链接的实际指向文件名，用于元数据精准召回
-                        files.add(matcher.group(2));
+                        String file = matcher.group(2);
+                        // 安全校验：仅放行白名单内的合法文档文件名，防止拼接进 filterExpression 造成注入逃逸
+                        if (SAFE_MD_FILE_PATTERN.matcher(file).matches()) {
+                            files.add(file);
+                        } else {
+                            log.warn("跳过不安全的跨文件链接目标: '{}'", file);
+                        }
                     }
                     return files.stream();
                 })
@@ -410,7 +441,7 @@ public class AiController {
             String keywords = node.path("bm25Keywords").asText("").trim();
             return new ProcessResult(rewritten, keywords);
         } catch (Exception e) {
-            log.warn("【Query 解析】解析模型 JSON 失败，返回原文本: {}, 异常信息: {}", jsonResponse, e.getMessage());
+            log.warn("【Query 解析】解析模型 JSON 失败，返回原文本: {}", jsonResponse, e);
             return null;
         }
     }

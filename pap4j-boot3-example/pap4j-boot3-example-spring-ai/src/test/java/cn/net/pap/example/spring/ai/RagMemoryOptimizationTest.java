@@ -24,7 +24,10 @@ import reactor.core.publisher.Flux;
 
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @SpringBootTest
@@ -193,7 +196,7 @@ public class RagMemoryOptimizationTest {
                 return true;
             }
         } catch (Exception e) {
-            log.warn("TCP 探活失败 ({})，将跳过本组评测单元测试。错误: {}", baseUrl, e.getMessage());
+            log.warn("TCP 探活失败 ({})，将跳过本组评测单元测试。", baseUrl, e);
             return false;
         }
     }
