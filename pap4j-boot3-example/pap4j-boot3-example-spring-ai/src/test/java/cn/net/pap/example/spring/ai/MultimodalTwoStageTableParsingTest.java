@@ -23,7 +23,9 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -40,6 +42,10 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *       返回表格的 {@code <table_location bbox="[xmin,ymin,xmax,ymax]"/>} 坐标占位符（不解析表格内部文字）。</li>
  *   <li><b>Stage 2（见 {@link #testTwoDimensionalTableGridJson()}）</b>：对纯表格图输出严格二维 JSON
  *       {@code {"rows":[["表头1","表头2"],["内容1","内容2"]]}}。</li>
+ *   <li><b>Stage 3（新增，见 {@link #testTwoDimensionalTableGridJsonWithOcrCoverage()}）</b>：rows + ocr 全量可见文字双输出，
+ *       由 Java 校验 rows 拼接文本是否整体遗漏 ocr 文字，防止「结构校验通过但整块内容被丢弃」；
+ *       修复轮采用「先判因再补」：模型须对每段遗漏文字在 repair 计划中判因（merge 并入已有单元格 / new_row 补成新行 / ignore 豁免），
+ *       Java 校验计划与输出自洽——新增行数不得超出 new_row 计划数，未分类片段判定修复计划不完整，从而杜绝「为补字凭空加行」。</li>
  * </ul>
  * 本类脱胎于 {@link MultimodalDocumentParsingTest}，针对其踩坑记录给出「模型只读字、结构由 Java 兜底」的替代契约。
  * </p>
@@ -225,6 +231,91 @@ public class MultimodalTwoStageTableParsingTest {
 
         """;
 
+    /** 精简 Prompt（新增）：rows 结构化二维数组 + ocr 全量可见文字 双输出契约，面向不同表格图像通用 */
+    private static final String PROMPT_GRID_OCR = """
+        你是表格 OCR 结构化助手。对图片中的表格，只输出如下严格 JSON（不输出解释、不输出代码块、不输出 Markdown 表格）：
+
+        {
+          "rows": [
+            ["表头1", "表头2"],
+            ["内容1", "内容2"]
+          ],
+          "ocr": [
+            "表头1",
+            "内容1",
+            "内容2"
+          ]
+        }
+
+        rows 规则：
+        - 结构化二维字符串数组，含表头行与全部数据行，每行列数必须完全一致。
+        - 合并单元格在覆盖的每个格子重复填入文字；空单元格填 ""。
+        - 若一个单元格含多行/多段文字（如指标名称下方还有工艺说明、适用条件），必须把全部内容合并进该单元格（用空格分隔），
+          合并进哪一格以图片实际位置为准，不得丢弃、不得拆成独立行。
+        - 逐字保留所有文字，不删改、不总结、不归纳。
+
+        ocr 规则：
+        - 按阅读顺序逐条列出表格内所有可见文字片段（每个单元格/每段文字一条），作为 rows 的全量底账。
+        - 只列图片中确实可见的文字，不得虚构、联想或猜测。
+        - 不遗漏、不合并、不省略。
+
+        完整性约束：
+        - rows 必须完整覆盖 ocr 中列出的每一段文字，任何一段遗漏都视为不合格。
+        - 输出前请自查：逐条比对 ocr 与 rows，确保无遗漏。
+
+        """;
+
+    /**
+     * 修复轮 Prompt（模板，${ROWS} / ${MISSING} 在运行时替换）：
+     * 先内嵌当前 rows（带行号列号）供模型定位，要求 merge 声明目标单元格 (row,col)，
+     * 并必须真的把遗漏文字拼进该单元格（示范合并结果），杜绝「声明 merge 却原样复读」。
+     */
+    private static final String PROMPT_REPAIR = """
+        你是表格 OCR 结构化助手。上一轮输出未通过完整性校验：rows 遗漏了部分可见文字。
+        这些文字属于已有单元格中的多行/多段内容，必须并入对应单元格，不得丢弃、不得新增行。
+
+        当前 rows（行号从 0 开始，第 0 行为表头；单元格内容完整展示）：
+        ${ROWS}
+
+        遗漏文字如下。每条都是独立的文字片段，必须分别并入各自所属的单元格：
+        - 不得把多条合并成一段；
+        - 不得整批塞进同一个单元格；
+        - 每段文字在图片中位于哪个单元格，就并入哪个单元格（以图片实际位置为准）。
+        ${MISSING}
+
+        请完成两步：
+        1. 在图片中定位每段遗漏文字所属的单元格（以当前 rows 的行号/列号为准）；
+        2. 输出修正后的 rows + ocr + repair 计划。
+
+        修正后的 rows 必须真的改变目标单元格：把遗漏文字拼进该单元格已有内容之后。
+        目标单元格以图片实际位置为准：遗漏文字视觉上位于哪一格，就并入哪一格
+        （可能是指标名称格、数值格或其他列，请以图片为准，不要仅凭下文示例猜测列位置）。
+        行数保持与当前 rows 完全一致（除非声明 new_row）。
+
+        【一致性强制校验】系统会逐条核对 repair 计划与输出 rows 是否一致：
+        - repair 中每条 merge 声明了 (row,col)，则输出 rows 中该单元格必须已经包含该 fragment
+          （即「原单元格内容 + fragment」，fragment 拼在末尾）；
+        - 若声明的单元格里没有该 fragment，本次输出判定为「未执行 merge」，不合格并重试；
+        - 输出 rows 不得与当前 rows 完全相同（完全一样 = 没有执行任何 merge）。
+
+        repair 计划示例（仅为 JSON 格式示范，merge 的 row/col 必须按图片判断，勿照抄）：
+        {
+          "repair": [
+            {"fragment": "某段遗漏文字", "action": "merge", "row": 3, "col": 1},
+            {"fragment": "另一段遗漏文字", "action": "ignore"}
+          ]
+        }
+
+        repair 规则：
+        - 每段遗漏文字必须恰好出现一次，fragment 与遗漏文字逐字一致；
+        - action 只能是 merge / new_row / ignore 三者之一；
+        - merge：必须给出 row 与 col，且修正后 rows 中该单元格必须逐字包含 fragment；
+        - new_row：确属一整行独立数据才用，补出的行保持等列数；
+        - ignore：核对图片后确认不在表格内。
+
+        只输出 JSON，不输出解释、不输出代码块。
+        """;
+
     /** Stage 1 Prompt：整页版面分析，只定位表格 bbox 坐标占位符，不解析表格内部文字 */
     private static final String PROMPT_STAGE1 = """
         你是一个专业的文档图像版面分析与结构化解析助手。
@@ -254,6 +345,9 @@ public class MultimodalTwoStageTableParsingTest {
     private static final Pattern TABLE_LOCATION_PATTERN = Pattern.compile(
             "<table_location\\s+id=[\"']?([^\"'\\s>]+)[\"']?\\s+bbox=[\"']?\\[?([0-9\\s,]+)\\]?[\"']?\\s*/?>");
 
+    /** OCR 覆盖度兜底判定的语义 token：连续的中文/字母/数字（含上/下标数字，如 ²³₁） */
+    private static final Pattern TOKEN_PATTERN = Pattern.compile("[\\p{L}\\p{N}]+");
+
     /** Stage 1 定位到的表格坐标（id + 归一化 bbox） */
     private record TableLocation(String id, String bbox) {
         @Override
@@ -266,7 +360,10 @@ public class MultimodalTwoStageTableParsingTest {
     public enum TableErrorType {
         JSON_SYNTAX("JSON 语法错误", "检查括号匹配（确保每对 [ ] 与 { } 闭合）、引号转义与多余逗号。"),
         ROW_COL_MISMATCH("行列数不一致", "核对每一行的单元格数量。所有行的列数必须与首行列数完全相同！合并单元格必须在覆盖的所有格子中重复填入文字，切勿漏列或擅自删减列数。"),
-        STRUCTURE_ERROR("数据结构错误", "确保输出格式为 {\"rows\": [[...], [...]]} 的严格二维字符串数组，单元格内必须是纯文本或数字，不能嵌套对象或数组。");
+        STRUCTURE_ERROR("数据结构错误", "确保输出格式为 {\"rows\": [[...], [...]]} 的严格二维字符串数组，单元格内必须是纯文本或数字，不能嵌套对象或数组。"),
+        OCR_CONTENT_MISSING("OCR 可见文字遗漏", "rows 未能完整覆盖图片中的全部可见文字，必须把遗漏的文字补回正确位置：优先并入所属的已有单元格；仅当某段遗漏文字确实构成一整行独立数据时才可补成新行；禁止删除行、重排行或凭空添加与遗漏无关的行。"),
+        ROW_COUNT_DRIFT("修复后行数漂移", "修复轮新增行数必须与 repair 计划中 new_row 的数量一致：计划未声明 new_row 的不得加行，每段 new_row 最多对应新增一行。"),
+        REPAIR_PLAN_INVALID("修复计划不完整", "每一段遗漏文字都必须在 repair 计划中分类（merge / new_row / ignore），action 只能取三者之一，fragment 必须与遗漏文字逐字一致。");
 
         private final String title;
         private final String guidance;
@@ -305,6 +402,9 @@ public class MultimodalTwoStageTableParsingTest {
     private final AiProperties aiProperties;
     private boolean isLlmServiceAccessible;
 
+    /** 最近一次解析的结果记录（含错误标志），供外部获取相对最好的一次结果 */
+    private TableParseResult lastParseResult;
+
     @Autowired
     public MultimodalTwoStageTableParsingTest(@Qualifier("customChatClient") ChatClient chatClient,
                                               ChatMemory chatMemory,
@@ -312,6 +412,11 @@ public class MultimodalTwoStageTableParsingTest {
         this.chatClient = chatClient;
         this.chatMemory = chatMemory;
         this.aiProperties = aiProperties;
+    }
+
+    /** 获取最近一次解析的相对最好结果（未完全收敛时 converged=false 并携带遗漏清单与错误信息） */
+    public TableParseResult getLastParseResult() {
+        return lastParseResult;
     }
 
     @BeforeEach
@@ -471,6 +576,314 @@ public class MultimodalTwoStageTableParsingTest {
     }
 
     /**
+     * <p>新增实验方法：rows 二维结构 + OCR 全量可见文字 双输出契约。</p>
+     * <p>背景：{@link #testTwoDimensionalTableGridJson()} 的结构校验只保证「行宽一致」，
+     * 无法发现「整块内容被静默丢弃」（如为满足列数约束而删行/删列文字）。
+     * 本方法让模型在 rows 之外再输出一份 {@code ocr} 全量可见文字清单，
+     * 由 Java 校验 rows 的拼接文本是否完整覆盖 ocr：发现遗漏即把具体缺字反馈给模型重试，
+     * 从而协助视觉模型补全内容，而非仅仅满足结构约束。</p>
+     */
+    @Test
+    @DisplayName("新增：rows 二维结构 + OCR 全量可见文字 双输出，校验 rows 是否整体遗漏 OCR 文字")
+    public void testTwoDimensionalTableGridJsonWithOcrCoverage() throws IOException {
+        assumeTrue(isLlmServiceAccessible, "Skipping test because LLM service is offline or inaccessible.");
+
+        // 1. 读取纯表格裁切图
+        Resource croppedResource = new ClassPathResource("cropped_table_1.jpg");
+        assertTrue(croppedResource.exists(), "类路径下未找到 cropped_table_1.jpg（纯表格裁切图）");
+        byte[] imageBytes = croppedResource.getContentAsByteArray();
+        log.info("【rows+OCR 双输出契约】输入纯表格图片: classpath:{} ({} bytes)", croppedResource.getFilename(), imageBytes.length);
+
+        String chatId = "test-grid-json-ocr-table-session" + System.currentTimeMillis();
+        chatMemory.clear(chatId);
+
+        // 2. PASS^N：结构校验 + OCR 覆盖校验 双重判定，失败则携带错误信息（含具体遗漏文字）重试
+        TableErrorType lastErrorType = null;
+        String lastError = null;
+        List<String> lastMissingOcr = null;
+        JsonNode rows = null;
+        List<String> ocrList = new ArrayList<>();
+        List<String> baselineOcr = new ArrayList<>(); // 首轮锁定的全量底账，后续覆盖校验一律以此为准，防修复轮缩水 ocr 绕过
+        int baselineRowCount = -1; // 首次结构合法输出的行数基准，修复轮行数变化必须可解释
+        boolean converged = false; // 是否在某一轮通过全部校验（结构 + OCR 覆盖）
+        long totalStartTime = System.currentTimeMillis();
+
+        // 相对最好结果的跟踪（缺字最少优先），未完全收敛时返回它并附错误标志
+        JsonNode bestRows = null;
+        List<String> bestMissing = new ArrayList<>();
+        int bestMissingCount = Integer.MAX_VALUE;
+        int bestAttempt = 0;
+        String bestError = null;
+
+        for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+            // 重试前清空 ChatMemory，切断模型对上一轮错误回答的复读惯性
+            chatMemory.clear(chatId);
+
+            String prompt;
+            if (attempt == 1) {
+                prompt = PROMPT_GRID_OCR;
+            } else if (lastErrorType == TableErrorType.JSON_SYNTAX
+                    || lastErrorType == TableErrorType.ROW_COL_MISMATCH
+                    || lastErrorType == TableErrorType.STRUCTURE_ERROR) {
+                // 结构类错误：回滚到基础契约 + 结构修复指导
+                String errorGuidance = String.format("【%s】：%s", lastErrorType.getTitle(), lastErrorType.getGuidance());
+                prompt = PROMPT_GRID_OCR + String.format("""
+
+                    --------------------------------------------------
+                    【重要提示：你上一轮的解析输出未通过系统校验，请针对性修正】
+
+                    未通过校验的具体错误原因：
+                    %s
+
+                    修复指导：
+                    %s
+
+                    请重新输出修正后的 rows + ocr JSON（只输出合法 JSON，不要包含 Markdown 代码块或任何解释）。
+                    --------------------------------------------------
+                    """,
+                        lastError,
+                        errorGuidance);
+            } else {
+                // 遗漏/修复计划类错误：统一走「先判因再定位再补」的 PROMPT_REPAIR，
+                // 内嵌当前 rows（带行号列号）供模型定位 merge 目标单元格
+                String missingList;
+                if (lastMissingOcr != null && !lastMissingOcr.isEmpty()) {
+                    // 逐条编号渲染，避免 `[a, b, c]` 一整块被模型当成单个 fragment
+                    StringBuilder sb = new StringBuilder();
+                    for (int i = 0; i < lastMissingOcr.size(); i++) {
+                        sb.append("  ").append(i + 1).append(". ").append(lastMissingOcr.get(i)).append("\n");
+                    }
+                    missingList = sb.toString();
+                } else {
+                    missingList = "(无)";
+                }
+                StringBuilder repairPrompt = new StringBuilder(
+                        PROMPT_REPAIR.replace("${ROWS}", formatRowsWithIndices(rows))
+                                     .replace("${MISSING}", missingList));
+                if (lastErrorType != TableErrorType.OCR_CONTENT_MISSING) {
+                    // 修复计划/行数一致性失败：附上校验失败原因，要求严格按 repair 规则重新定位与补字
+                    repairPrompt.append(String.format("""
+
+                        【你上一轮的输出未通过系统校验】
+                        %s
+                        请严格按照上述 repair 规则，重新定位每段遗漏文字的目标单元格（merge 声明 row/col）后再输出修正结果。
+                        """,
+                            lastError));
+                }
+                prompt = repairPrompt.toString();
+            }
+
+            long startTime = System.currentTimeMillis();
+            String result = chatClient.prompt()
+                    .user(u -> u.text(prompt)
+                                .media(MimeTypeUtils.IMAGE_JPEG, new ByteArrayResource(imageBytes)))
+                    .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
+                    .call()
+                    .content();
+            long cost = System.currentTimeMillis() - startTime;
+
+            log.info("【rows+OCR 双输出契约】第 {} 次调用完成，耗时: {} ms", attempt, cost);
+            log.info("\n========== 第 {} 次模型原始输出 ==========\n{}\n======================================", attempt, result);
+
+            if (result == null || result.isBlank()) {
+                lastError = "模型返回为空";
+                lastErrorType = null;
+                lastMissingOcr = null;
+                continue;
+            }
+
+            // 3a. 结构校验：解析 rows 二维数组（复用 parseGrid，仅校验 rows，容忍多余的 ocr / repair 字段）
+            try {
+                rows = parseGrid(result);
+                ocrList = parseOcrList(result);
+            } catch (GridParseException e) {
+                lastErrorType = e.getErrorType();
+                lastError = e.getMessage();
+                lastMissingOcr = null;
+                log.warn("【rows+OCR 双输出契约】第 {} 次输出未通过二维校验 [{}]: {}", attempt, lastErrorType.getTitle(), lastError);
+                continue;
+            }
+
+            if (ocrList.isEmpty()) {
+                log.warn("【rows+OCR 双输出契约】第 {} 次模型未返回 ocr 字段，覆盖校验退化为空（无法判定完整性）。", attempt);
+            }
+
+            // 记录首次结构合法输出作为行数基准 + 锁定基准 ocr（覆盖校验统一以基准为准，防修复轮缩水 ocr 绕过）
+            if (baselineRowCount == -1) {
+                baselineRowCount = rows.size();
+                baselineOcr = new ArrayList<>(ocrList);
+                log.info("【rows+OCR 双输出契约】已锁定基准 ocr（{} 条），后续覆盖校验均以此为准。", baselineOcr.size());
+            } else if (ocrList.size() < baselineOcr.size() * 0.8) {
+                log.warn("【rows+OCR 双输出契约】第 {} 次模型 ocr 缩水（{} 条 < 基准 {} 条），覆盖校验仍按基准 ocr 执行，防止绕过。",
+                        attempt, ocrList.size(), baselineOcr.size());
+            }
+
+            // 3b. 修复计划解析（修复轮：模型须对遗漏文字判因），校验 action 合法性
+            List<RepairPlanItem> plan = parseRepairPlan(result);
+            boolean hasInvalidAction = false;
+            Set<String> exemptFragments = new HashSet<>();
+            int planNewRowCount = 0;
+            for (RepairPlanItem item : plan) {
+                if (!isValidAction(item.action())) {
+                    hasInvalidAction = true;
+                } else if ("ignore".equals(item.action())) {
+                    exemptFragments.add(item.fragment());
+                } else if ("new_row".equals(item.action())) {
+                    planNewRowCount++;
+                }
+            }
+            if (hasInvalidAction) {
+                lastErrorType = TableErrorType.REPAIR_PLAN_INVALID;
+                lastError = "repair 计划存在非法 action（只允许 merge / new_row / ignore）";
+                log.warn("【rows+OCR 双输出契约】第 {} 次输出修复计划非法，准备重试: {}", attempt, lastError);
+                continue;
+            }
+
+            // 3c. OCR 覆盖校验（模型判为 ignore 的片段豁免覆盖要求；始终按基准 ocr 比对）
+            OcrCoverageReport report = checkOcrCoverage(rows, baselineOcr, exemptFragments);
+            log.info("\n===== 第 {} 次 OCR 覆盖度校验报告 =====", attempt);
+            log.info("OCR 片段总数: {}, 完整覆盖: {}, ignore 豁免: {}, 分段差异(非缺失): {}, 确定遗漏: {}",
+                    report.total(), report.covered(), report.ignored(), report.segmentedDiff().size(), report.missing().size());
+            if (!report.missing().isEmpty()) {
+                log.warn("确定遗漏（rows 整体缺字）:");
+                report.missing().forEach(f -> log.warn("   - {}", f));
+            }
+            if (!report.segmentedDiff().isEmpty()) {
+                log.info("分段差异（rows 已含全部 token，仅拆分/合并方式不同）: {}", report.segmentedDiff());
+            }
+
+            // 3d. 修复计划完整性：仍遗漏且未在计划中分类的文字 → 计划不完整（已修复的片段不作要求）
+            if (attempt > 1 && lastMissingOcr != null && !lastMissingOcr.isEmpty()) {
+                Set<String> planFragments = new HashSet<>();
+                for (RepairPlanItem item : plan) {
+                    planFragments.add(normalizeWhitespace(item.fragment()));
+                }
+                Set<String> stillMissingSet = new HashSet<>();
+                for (String m : report.missing()) {
+                    stillMissingSet.add(normalizeWhitespace(m));
+                }
+                boolean planIncomplete = false;
+                String planError = null;
+                for (String frag : lastMissingOcr) {
+                    if (!planFragments.contains(normalizeWhitespace(frag))
+                            && stillMissingSet.contains(normalizeWhitespace(frag))) {
+                        planIncomplete = true;
+                        planError = "遗漏文字未在 repair 计划中分类: " + frag;
+                        break;
+                    }
+                }
+                if (planIncomplete) {
+                    lastErrorType = TableErrorType.REPAIR_PLAN_INVALID;
+                    lastError = planError;
+                    log.warn("【rows+OCR 双输出契约】第 {} 次输出修复计划不完整，准备重试: {}", attempt, lastError);
+                    continue;
+                }
+            }
+
+            // 3d2. merge 目标校验（硬校验）：声明的 (row,col) 必须存在，且该单元格必须已包含 fragment——
+            //      只声明位置、rows 里却没有该文字 = 未真正执行 merge，判定不合格重试（配合提示词的一致性强制校验）
+            boolean mergeTargetInvalid = false;
+            String mergeTargetError = null;
+            for (RepairPlanItem item : plan) {
+                if (!"merge".equals(item.action())) {
+                    continue;
+                }
+                if (item.row() < 0 || item.row() >= rows.size()
+                        || item.col() < 0 || item.col() >= rows.get(item.row()).size()) {
+                    mergeTargetInvalid = true;
+                    mergeTargetError = "merge 目标越界: " + item.fragment() + " 声明 (" + item.row() + "," + item.col() + ") 超出当前 rows 范围";
+                    break;
+                }
+                JsonNode cellNode = rows.get(item.row()).get(item.col());
+                String cellText = normalizeWhitespace(cellNode.isTextual() ? cellNode.asText() : cellNode.toString());
+                if (!cellText.contains(normalizeWhitespace(item.fragment()))) {
+                    mergeTargetInvalid = true;
+                    mergeTargetError = "merge 未执行: fragment[" + item.fragment() + "] 未出现在声明的单元格 (" + item.row() + "," + item.col() + ")，必须把该文字真正拼进该单元格";
+                    break;
+                }
+            }
+            if (mergeTargetInvalid) {
+                lastErrorType = TableErrorType.REPAIR_PLAN_INVALID;
+                lastError = mergeTargetError;
+                log.warn("【rows+OCR 双输出契约】第 {} 次输出 merge 未执行，准备重试: {}", attempt, lastError);
+                continue;
+            }
+
+            // 3e. 行数一致性：新增行数不得超过 repair 计划中 new_row 的数量
+            if (attempt > 1 && rows.size() > baselineRowCount
+                    && (rows.size() - baselineRowCount) > planNewRowCount) {
+                lastErrorType = TableErrorType.ROW_COUNT_DRIFT;
+                lastError = String.format("新增行数=%d 超过 repair 计划中 new_row 数量=%d，计划未声明 new_row 的不得加行。",
+                        rows.size() - baselineRowCount, planNewRowCount);
+                lastMissingOcr = report.missing().isEmpty() ? null : report.missing();
+                log.warn("【rows+OCR 双输出契约】第 {} 次输出行数漂移（超出计划），准备重试: {}", attempt, lastError);
+                continue;
+            }
+            if (attempt > 1 && rows.size() < baselineRowCount) {
+                // 行数减少：可能是纠正首轮多余的错行，覆盖率通过则放行（仅告警，请人工复核）
+                log.warn("【rows+OCR 双输出契约】第 {} 次行数减少 {} → {}，按「纠正首轮多余行」处理，请人工复核。",
+                        attempt, baselineRowCount, rows.size());
+            }
+
+            // 3e2. 记录相对最好的一次结果（缺字最少优先），供未完全收敛时返回
+            int miss = report.missing().size();
+            if (miss < bestMissingCount) {
+                bestMissingCount = miss;
+                bestRows = rows;
+                bestMissing = new ArrayList<>(report.missing());
+                bestAttempt = attempt;
+                bestError = "rows 遗漏了 OCR 可见文字 " + miss + " 处: " + report.missing();
+            }
+
+            // 3f. 收敛判定
+            if (report.missing().isEmpty()) {
+                converged = true;
+                log.info("【rows+OCR 双输出契约】第 {} 次输出通过全部校验（结构 + 修复计划 + OCR 覆盖）", attempt);
+                break;
+            }
+
+            // 3g. 存在确定遗漏 → 记录为 OCR_CONTENT_MISSING，携带遗漏文字进入下一轮重试
+            lastErrorType = TableErrorType.OCR_CONTENT_MISSING;
+            lastMissingOcr = report.missing();
+            lastError = "rows 遗漏了 OCR 可见文字 " + report.missing().size() + " 处: " + report.missing();
+            log.warn("【rows+OCR 双输出契约】第 {} 次输出存在 OCR 遗漏，准备重试: {}", attempt, lastError);
+        }
+
+        long totalCost = System.currentTimeMillis() - totalStartTime;
+
+        // 4. 组装最终结果记录：未完全收敛时返回相对最好的一次，附错误标志与错误信息
+        TableParseResult finalResult;
+        if (bestRows != null) {
+            finalResult = new TableParseResult(bestRows, baselineOcr, bestRows.size(), bestRows.get(0).size(),
+                    converged, bestMissing, converged ? null : bestError, bestAttempt);
+        } else {
+            finalResult = null;
+        }
+        this.lastParseResult = finalResult;
+
+        // 只有一轮合法 JSON 都没有时才断言失败；否则记录最好结果 + 错误标志
+        assertNotNull(finalResult, "连续 " + MAX_ATTEMPTS + " 次调用均未产生合法的 rows+ocr 二维表格 JSON，最后错误: " + lastError);
+        assertTrue(finalResult.rowCount() >= 1, "二维表格至少应包含 1 行");
+        assertTrue(finalResult.colCount() >= 1, "二维表格至少应包含 1 列");
+
+        if (finalResult.converged()) {
+            log.info("\n==== 收敛结果：rows ({} 行 x {} 列)，总耗时 {} ms ====\n{}",
+                    finalResult.rowCount(), finalResult.colCount(), totalCost, formatGrid(finalResult.rows()));
+        } else {
+            log.warn("\n==== 未完全收敛：已记录相对最好的一次结果（第 {} 次，缺 {} 段）====\n错误信息：{}\nrows ({} 行 x {} 列)，总耗时 {} ms：\n{}",
+                    finalResult.attemptsUsed(), finalResult.missingOcr().size(), finalResult.errorMessage(),
+                    finalResult.rowCount(), finalResult.colCount(), totalCost, formatGrid(finalResult.rows()));
+        }
+        if (finalResult.baselineOcr() != null && !finalResult.baselineOcr().isEmpty()) {
+            log.info("==== 基准 OCR 全量可见文字 ({} 条，覆盖校验以此为准) ====\n{}",
+                    finalResult.baselineOcr().size(), formatOcrList(finalResult.baselineOcr()));
+        }
+        log.info("==== 解析状态：{} ====\n",
+                finalResult.converged() ? "完全收敛（无遗漏）"
+                        : "存在遗漏/错误（converged=false）：遗漏见 missingOcr，错误见 errorMessage，可通过 getLastParseResult() 获取");
+    }
+
+    /**
      * 从 Stage 1 输出中解析所有 {@code <table_location>} 表格坐标占位符。
      * 返回 id + 归一化 bbox 列表；输出不含任何占位标签时返回空列表。
      */
@@ -571,6 +984,241 @@ public class MultimodalTwoStageTableParsingTest {
             sb.append("  ").append(r).append(": [").append(String.join(", ", cells)).append("]\n");
         }
         return sb.toString();
+    }
+
+    /** 从模型输出中解析 ocr 字段（兼容数组或换行分隔的纯文本），无 ocr 时返回空列表 */
+    private List<String> parseOcrList(String rawContent) {
+        List<String> result = new ArrayList<>();
+        String content = stripCodeFences(rawContent);
+        JsonNode root;
+        try {
+            root = new ObjectMapper().readTree(content);
+        } catch (Exception e) {
+            return result;
+        }
+        if (root == null || !root.has("ocr")) {
+            return result;
+        }
+        JsonNode ocr = root.path("ocr");
+        if (ocr.isArray()) {
+            for (JsonNode node : ocr) {
+                if (node.isTextual() && !node.asText().isBlank()) {
+                    result.add(node.asText());
+                }
+            }
+        } else if (ocr.isTextual() && !ocr.asText().isBlank()) {
+            for (String line : ocr.asText().split("[\\r\\n]+")) {
+                if (!line.isBlank()) {
+                    result.add(line.trim());
+                }
+            }
+        }
+        return result;
+    }
+
+    /**
+     * 校验 rows 单元格文本是否完整覆盖 ocr 全量可见文字。
+     * 判定策略：
+     * 1) 一级判定：将 ocr 片段与 rows 拼接文本统一去除空白后做子串匹配；
+     * 2) 二级兜底：整体未命中的片段，若其每个语义 token 都已在 rows 中出现，判定为「分段差异」（拆分/合并方式不同，非真实缺失）；
+     *    否则判定为「确定遗漏」——rows 整体缺字，通常是整行/整块内容被丢弃。
+     * 3) ignore 豁免：片段被修复计划判为 ignore（模型核对后认为不在表格内）时，豁免覆盖要求，不计入遗漏。
+     */
+    private OcrCoverageReport checkOcrCoverage(JsonNode rows, List<String> ocrList, Set<String> exemptFragments) {
+        List<String> missing = new ArrayList<>();
+        List<String> segmentedDiff = new ArrayList<>();
+        if (ocrList == null || ocrList.isEmpty()) {
+            return new OcrCoverageReport(0, 0, 0, missing, segmentedDiff);
+        }
+
+        Set<String> exemptNorm = new HashSet<>();
+        if (exemptFragments != null) {
+            for (String f : exemptFragments) {
+                if (f != null) {
+                    exemptNorm.add(normalizeWhitespace(f));
+                }
+            }
+        }
+
+        String joinedRows = normalizeWhitespace(joinRowsText(rows));
+        Set<String> rowsTokens = tokenizeToSet(joinedRows);
+
+        int total = 0;
+        int covered = 0;
+        int ignored = 0;
+        for (String fragment : ocrList) {
+            if (fragment == null) continue;
+            String norm = normalizeWhitespace(fragment);
+            if (norm.isEmpty()) continue;
+            total++;
+            // 一级判定：片段整体（去空白）是否出现在 rows 拼接文本中
+            if (joinedRows.contains(norm)) {
+                covered++;
+                continue;
+            }
+            // 二级兜底：整体未命中但绝大多数 token 已在 rows 中出现 → 大概率是 ocr 分词/合并方式不同，非真实缺失
+            List<String> fragTokens = tokenize(norm);
+            if (!fragTokens.isEmpty() && tokenCoverageRatio(fragTokens, rowsTokens) >= 0.7) {
+                segmentedDiff.add(fragment);
+                continue;
+            }
+            // ignore 豁免：模型核对后判定不在表格内
+            if (exemptNorm.contains(norm)) {
+                ignored++;
+                continue;
+            }
+            // 存在 rows 中完全缺失的 token → 确定遗漏（可能是整行/整块被丢弃）
+            missing.add(fragment.trim());
+        }
+        return new OcrCoverageReport(total, covered, ignored, missing, segmentedDiff);
+    }
+
+    /** 拼接 rows 全部单元格文本，作为覆盖判定的检索底文本 */
+    private String joinRowsText(JsonNode rows) {
+        StringBuilder sb = new StringBuilder();
+        if (rows != null) {
+            for (JsonNode row : rows) {
+                sb.append(joinRowText(row));
+            }
+        }
+        return sb.toString();
+    }
+
+    /** 拼接单行全部单元格文本 */
+    private String joinRowText(JsonNode row) {
+        StringBuilder sb = new StringBuilder();
+        if (row == null || !row.isArray()) {
+            return "";
+        }
+        for (JsonNode cell : row) {
+            if (cell != null && cell.isValueNode()) {
+                sb.append(cell.isTextual() ? cell.asText() : cell.toString());
+            }
+        }
+        return sb.toString();
+    }
+
+    /** 从模型输出中解析 repair 修复计划（fragment + action + 可选 row/col），无 repair 字段时返回空列表 */
+    private List<RepairPlanItem> parseRepairPlan(String rawContent) {
+        List<RepairPlanItem> result = new ArrayList<>();
+        String content = stripCodeFences(rawContent);
+        JsonNode root;
+        try {
+            root = new ObjectMapper().readTree(content);
+        } catch (Exception e) {
+            return result;
+        }
+        if (root == null || !root.has("repair") || !root.path("repair").isArray()) {
+            return result;
+        }
+        for (JsonNode node : root.path("repair")) {
+            String fragment = node.path("fragment").isTextual() ? node.path("fragment").asText() : "";
+            String action = node.path("action").isTextual() ? node.path("action").asText() : "";
+            int row = node.path("row").isIntegralNumber() ? node.path("row").asInt() : -1;
+            int col = node.path("col").isIntegralNumber() ? node.path("col").asInt() : -1;
+            if (!fragment.isBlank() && !action.isBlank()) {
+                result.add(new RepairPlanItem(fragment, action, row, col));
+            }
+        }
+        return result;
+    }
+
+    /** repair 计划是否合法：action 只能是 merge / new_row / ignore 三者之一 */
+    private boolean isValidAction(String action) {
+        return "merge".equals(action) || "new_row".equals(action) || "ignore".equals(action);
+    }
+
+    /** repair 修复计划单条记录（merge 必须声明 row/col，0 起始；否则为 -1） */
+    private record RepairPlanItem(String fragment, String action, int row, int col) {}
+
+    /** 去除字符串所有空白，便于宽松的片段匹配 */
+    private static String normalizeWhitespace(String s) {
+        return s == null ? "" : s.replaceAll("\\s+", "");
+    }
+
+    /** 提取语义 token：连续的中文/字母/数字（含上/下标数字，如 ²³₁），用于覆盖度兜底判定 */
+    private static List<String> tokenize(String s) {
+        List<String> tokens = new ArrayList<>();
+        Matcher matcher = TOKEN_PATTERN.matcher(s);
+        while (matcher.find()) {
+            tokens.add(matcher.group());
+        }
+        return tokens;
+    }
+
+    private static Set<String> tokenizeToSet(String s) {
+        return new HashSet<>(tokenize(s));
+    }
+
+    /** 片段 token 在 rows token 集合中的覆盖率（0.0~1.0），用于容忍 ocr 分词噪声 */
+    private static double tokenCoverageRatio(List<String> fragTokens, Set<String> rowsTokens) {
+        if (fragTokens.isEmpty()) {
+            return 0;
+        }
+        int present = 0;
+        for (String token : fragTokens) {
+            if (rowsTokens.contains(token)) {
+                present++;
+            }
+        }
+        return (double) present / fragTokens.size();
+    }
+
+    /** 将 ocr 片段列表格式化为一目了然的文本，便于日志核验 */
+    private String formatOcrList(List<String> ocrList) {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < ocrList.size(); i++) {
+            sb.append("  ").append(i).append(": ").append(ocrList.get(i)).append("\n");
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 将 rows 渲染为带行号/列号的文本（单元格内容完整展示，禁止截断——截断的「…」会被模型原样抄进输出，破坏原文），
+     * 供 repair 提示词定位 merge 目标。
+     */
+    private String formatRowsWithIndices(JsonNode rows) {
+        StringBuilder sb = new StringBuilder();
+        if (rows == null) {
+            return "(无 rows)";
+        }
+        for (int r = 0; r < rows.size(); r++) {
+            JsonNode row = rows.get(r);
+            List<String> cells = new ArrayList<>();
+            for (int c = 0; c < row.size(); c++) {
+                String t = "";
+                if (row.get(c).isTextual()) {
+                    t = row.get(c).asText();
+                } else if (row.get(c).isValueNode()) {
+                    t = row.get(c).toString();
+                }
+                cells.add("[" + c + "]" + t);
+            }
+            sb.append("  行 ").append(r).append(": ").append(String.join(" | ", cells)).append("\n");
+        }
+        return sb.toString();
+    }
+
+    /** OCR 覆盖度校验报告（ignored = 被 repair 计划判为 ignore 而豁免覆盖的片段数） */
+    private record OcrCoverageReport(int total, int covered, int ignored, List<String> missing, List<String> segmentedDiff) {
+        @Override
+        public String toString() {
+            return String.format("{total=%d, covered=%d, ignored=%d, missing=%s, segmentedDiff=%s}",
+                    total, covered, ignored, missing, segmentedDiff);
+        }
+    }
+
+    /**
+     * 表格解析结果记录：保留相对最好的一次结果。
+     * converged=true 表示全部校验通过；否则 converged=false，missingOcr 为遗漏清单，errorMessage 为错误信息。
+     */
+    public record TableParseResult(JsonNode rows, List<String> baselineOcr, int rowCount, int colCount,
+                                   boolean converged, List<String> missingOcr, String errorMessage, int attemptsUsed) {
+        @Override
+        public String toString() {
+            return String.format("{converged=%s, rows=%d行x%d列, 缺字=%s, error=%s, attemptsUsed=%d}",
+                    converged, rowCount, colCount, missingOcr, errorMessage, attemptsUsed);
+        }
     }
 
     private boolean checkLlmAccessibility(AiProperties.ModelConfig modelConfig) {
