@@ -48,6 +48,10 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
  *       由 Java 校验 rows 拼接文本是否整体遗漏 ocr 文字，防止「结构校验通过但整块内容被丢弃」；
  *       修复轮采用「先判因再补」：模型须对每段遗漏文字在 repair 计划中判因（merge 并入已有单元格 / new_row 补成新行 / ignore 豁免），
  *       Java 校验计划与输出自洽——新增行数不得超出 new_row 计划数，未分类片段判定修复计划不完整，从而杜绝「为补字凭空加行」。</li>
+ *   <li><b>离线回归评分（见 {@link #testTwoDimensionalTableGridJsonWithOcrCoverage()} 末段）</b>：
+ *       对最终 rows 与 {@code cropped_table_1.json} 期望网格做纯确定性对比，
+ *       输出结构相似度 / 内容精确率·召回率·F1 / 编辑距离相似度五指标，
+ *       替代肉眼看日志对账（bootstrap 基线，不设硬断言，仅作回归参照）。</li>
  * </ul>
  * 本类脱胎于 {@link MultimodalDocumentParsingTest}，针对其踩坑记录给出「模型只读字、结构由 Java 兜底」的替代契约。
  * </p>
@@ -584,6 +588,11 @@ public class MultimodalTwoStageTableParsingTest {
      * 本方法让模型在 rows 之外再输出一份 {@code ocr} 全量可见文字清单，
      * 由 Java 校验 rows 的拼接文本是否完整覆盖 ocr：发现遗漏即把具体缺字反馈给模型重试，
      * 从而协助视觉模型补全内容，而非仅仅满足结构约束。</p>
+     * <p><b>Step 5（离线评分）</b>：收敛后与黄金样本 {@code cropped_table_1.json} 的期望网格对比，
+     * 输出结构相似度 / 内容精确率·召回率·F1 / 归一化编辑距离相似度五指标
+     * （实现见类尾「黄金样本评分逻辑」{@link #evaluate(java.util.List, java.util.List)}），
+     * 并对照参考门槛打 PASS/WARN 日志供人工回归对账。
+     * 期望网格为 bootstrap 基线（取自模型收敛输出，非人工真值），故此处不设硬断言。</p>
      */
     @Test
     @DisplayName("新增：rows 二维结构 + OCR 全量可见文字 双输出，校验 rows 是否整体遗漏 OCR 文字")
