@@ -23,8 +23,10 @@ import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -878,6 +880,24 @@ public class MultimodalTwoStageTableParsingTest {
             log.info("==== 基准 OCR 全量可见文字 ({} 条，覆盖校验以此为准) ====\n{}",
                     finalResult.baselineOcr().size(), formatOcrList(finalResult.baselineOcr()));
         }
+        // 5. 黄金样本对比：期望网格 vs 解析结果 → 结构 / 内容 / 编辑距离 三层量化指标。
+        //    【定位】离线回归评分：把每次解析的最终结果与人工标注的期望网格对比成数字，
+        //    用于验证后续 Prompt / 后处理改动是变好还是变坏，替代肉眼看日志对账。
+        List<List<String>> actualRows = toGrid(finalResult.rows());
+        List<List<String>> expectedRows = loadGoldenExpectedRows();
+        TableScore score = evaluate(expectedRows, actualRows);
+        log.info("\n{}", score.report());
+        // 【门槛说明】cropped_table_1 期望网格取自模型收敛输出（bootstrap 基线，非人工真值），
+        // 因此同一管线跑同一张图时分数偏高。此处不做断言、仅打日志对照参考门槛，
+        // 由人工比对实际分数与期望网格判定质量（当前属单元测试，不以硬断言卡死回归）。
+        log.info("评分对比（实际分数 vs 参考门槛）:");
+        log.info("  textRecall={} （参考门槛 >= 0.90）{}", score.textRecall(),
+                score.textRecall() >= 0.90 ? "PASS" : "WARN 偏低");
+        log.info("  structuralSimilarity={} （参考门槛 >= 0.75）{}", score.structuralSimilarity(),
+                score.structuralSimilarity() >= 0.75 ? "PASS" : "WARN 偏低");
+        log.info("  levenshteinSimilarity={} （参考门槛 >= 0.70）{}", score.levenshteinSimilarity(),
+                score.levenshteinSimilarity() >= 0.70 ? "PASS" : "WARN 偏低");
+
         log.info("==== 解析状态：{} ====\n",
                 finalResult.converged() ? "完全收敛（无遗漏）"
                         : "存在遗漏/错误（converged=false）：遗漏见 missingOcr，错误见 errorMessage，可通过 getLastParseResult() 获取");
@@ -1219,6 +1239,241 @@ public class MultimodalTwoStageTableParsingTest {
             return String.format("{converged=%s, rows=%d行x%d列, 缺字=%s, error=%s, attemptsUsed=%d}",
                     converged, rowCount, colCount, missingOcr, errorMessage, attemptsUsed);
         }
+    }
+
+    /**
+     * 将解析器输出的 JsonNode rows 转换为 {@code List<List<String>>} 网格，供黄金样本对比评分。
+     */
+    private List<List<String>> toGrid(JsonNode rows) {
+        List<List<String>> grid = new ArrayList<>();
+        if (rows == null || !rows.isArray()) {
+            return grid;
+        }
+        for (JsonNode row : rows) {
+            List<String> cells = new ArrayList<>();
+            for (JsonNode cell : row) {
+                cells.add(cell.isTextual() ? cell.asText() : cell.toString());
+            }
+            grid.add(cells);
+        }
+        return grid;
+    }
+
+    /**
+     * 从与图片同名的期望网格 JSON（{@code src/test/resources/cropped_table_1.json}）读取期望归一化网格。
+     * 期望网格与图片 {@code cropped_table_1.jpg} 同名存放，便于对应理解。
+     */
+    private List<List<String>> loadGoldenExpectedRows() {
+        try {
+            org.springframework.core.io.Resource resource = new org.springframework.core.io.ClassPathResource("cropped_table_1.json");
+            try (java.io.InputStream is = resource.getInputStream()) {
+                JsonNode root = new ObjectMapper().readTree(is);
+                return new ObjectMapper().convertValue(root.path("expectedRows"),
+                        new com.fasterxml.jackson.core.type.TypeReference<List<List<String>>>() {});
+            }
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("读取黄金样本期望网格失败", e);
+        }
+    }
+
+    // =====================================================================
+    // 黄金样本评分逻辑（纯确定性逻辑，无 LLM 依赖）
+    // =====================================================================
+
+    /** 三层指标评分结果 */
+    private record TableScore(
+            double structuralSimilarity,
+            double textRecall,
+            double textPrecision,
+            double textF1,
+            double levenshteinSimilarity) {
+
+        /** 渲染为一眼可读的评测报告文本 */
+        public String report() {
+            return """
+                    ================= 表格解析质量评分 =================
+                     结构相似度 (Structural)     : %.4f
+                     内容召回率 (Text Recall)    : %.4f
+                     内容精确率 (Text Precision) : %.4f
+                     内容 F1 (Text F1)           : %.4f
+                     编辑距离相似度 (Levenshtein) : %.4f
+                    ==================================================
+                    """.formatted(structuralSimilarity, textRecall, textPrecision, textF1, levenshteinSimilarity);
+        }
+    }
+
+    /**
+     * 计算期望网格与预测网格的三层指标：
+     * 结构相似度（行列）、内容召回率/精确率（丢字与幻觉）、归一化编辑距离相似度（整体还原度）。
+     */
+    private static TableScore evaluate(List<List<String>> expectedRows, List<List<String>> actualRows) {
+        double structural = structuralSimilarity(expectedRows, actualRows);
+        double[] pr = textPrecisionRecall(expectedRows, actualRows);
+        double precision = pr[0];
+        double recall = pr[1];
+        double f1 = f1(precision, recall);
+        double lev = levenshteinSimilarity(expectedRows, actualRows);
+        return new TableScore(structural, recall, precision, f1, lev);
+    }
+
+    /** 结构相似度：1 - (|Δ行| + |Δ列|) / (期望行数 + 期望列数)，预测与期望完全同形时为 1.0 */
+    private static double structuralSimilarity(List<List<String>> expectedRows, List<List<String>> actualRows) {
+        if (expectedRows == null || expectedRows.isEmpty()) {
+            return 0.0;
+        }
+        int expRows = expectedRows.size();
+        int expCols = expectedRows.get(0).size();
+        int actRows = (actualRows == null) ? 0 : actualRows.size();
+        int actCols = (actualRows == null || actualRows.isEmpty() || actualRows.get(0) == null)
+                ? 0 : actualRows.get(0).size();
+        int rowDiff = Math.abs(expRows - actRows);
+        int colDiff = Math.abs(expCols - actCols);
+        double sim = 1.0 - ((double) (rowDiff + colDiff) / (expRows + expCols));
+        return clamp01(sim);
+    }
+
+    /**
+     * 内容精确率 / 召回率（基于语义 token 的多重集合匹配，复用类级 {@link #TOKEN_PATTERN}）：
+     * recall = 期望单元格 token 中出现在预测网格里的比例（对准「丢字」）；
+     * precision = 预测单元格 token 中出现在期望网格里的比例（对准「幻觉/多写」）。
+     *
+     * @return double[0] = precision, double[1] = recall
+     */
+    private static double[] textPrecisionRecall(List<List<String>> expectedRows, List<List<String>> actualRows) {
+        Map<String, Integer> expectedTokens = tokenCounts(expectedRows);
+        Map<String, Integer> actualTokens = tokenCounts(actualRows);
+
+        int expectedTotal = sum(expectedTokens);
+        int actualTotal = sum(actualTokens);
+
+        int expectedMatched = countMatched(expectedTokens, actualTokens);
+        int actualMatched = countMatched(actualTokens, expectedTokens);
+
+        double precision = actualTotal == 0 ? 0.0 : (double) actualMatched / actualTotal;
+        double recall = expectedTotal == 0 ? 0.0 : (double) expectedMatched / expectedTotal;
+        return new double[] {clamp01(precision), clamp01(recall)};
+    }
+
+    /** 归一化编辑距离相似度：1 - Levenshtein(期望平铺, 预测平铺) / 最大长度 */
+    private static double levenshteinSimilarity(List<List<String>> expectedRows, List<List<String>> actualRows) {
+        String expectedFlat = flatten(expectedRows);
+        String actualFlat = flatten(actualRows);
+        int maxLen = Math.max(expectedFlat.length(), actualFlat.length());
+        if (maxLen == 0) {
+            return 1.0;
+        }
+        int dist = levenshteinDistance(expectedFlat, actualFlat);
+        return clamp01(1.0 - ((double) dist / maxLen));
+    }
+
+    /** 将网格按阅读顺序平铺为单一文本：单元格 " | " 分隔，行用换行分隔，内部空白压缩为单空格 */
+    private static String flatten(List<List<String>> grid) {
+        if (grid == null || grid.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder();
+        for (int r = 0; r < grid.size(); r++) {
+            if (r > 0) {
+                sb.append('\n');
+            }
+            List<String> row = grid.get(r);
+            for (int c = 0; c < row.size(); c++) {
+                if (c > 0) {
+                    sb.append(" | ");
+                }
+                sb.append(collapseWhitespace(row.get(c)));
+            }
+        }
+        return sb.toString();
+    }
+
+    /** 去除首尾空白并把连续空白折叠为单个空格（保留单元格内部语义词分隔） */
+    private static String collapseWhitespace(String s) {
+        if (s == null) {
+            return "";
+        }
+        return s.trim().replaceAll("\\s+", " ");
+    }
+
+    /** 统计网格内所有单元格的语义 token 频次（多重集合） */
+    private static Map<String, Integer> tokenCounts(List<List<String>> grid) {
+        Map<String, Integer> counts = new HashMap<>();
+        if (grid == null) {
+            return counts;
+        }
+        for (List<String> row : grid) {
+            if (row == null) {
+                continue;
+            }
+            for (String cell : row) {
+                if (cell == null) {
+                    continue;
+                }
+                Matcher matcher = TOKEN_PATTERN.matcher(cell);
+                while (matcher.find()) {
+                    counts.merge(matcher.group(), 1, Integer::sum);
+                }
+            }
+        }
+        return counts;
+    }
+
+    /** 源 token 在目标 token 多重集合中的命中数（尊重重复出现次数） */
+    private static int countMatched(Map<String, Integer> source, Map<String, Integer> target) {
+        int matched = 0;
+        Map<String, Integer> remaining = new HashMap<>(target);
+        for (Map.Entry<String, Integer> e : source.entrySet()) {
+            int available = remaining.getOrDefault(e.getKey(), 0);
+            int want = e.getValue();
+            int hit = Math.min(available, want);
+            matched += hit;
+            if (hit > 0) {
+                remaining.put(e.getKey(), available - hit);
+            }
+        }
+        return matched;
+    }
+
+    private static int sum(Map<String, Integer> counts) {
+        return counts.values().stream().mapToInt(Integer::intValue).sum();
+    }
+
+    private static double f1(double precision, double recall) {
+        double denom = precision + recall;
+        return denom == 0 ? 0.0 : 2.0 * precision * recall / denom;
+    }
+
+    private static double clamp01(double v) {
+        if (v < 0) {
+            return 0;
+        }
+        return Math.min(v, 1.0);
+    }
+
+    /** 经典 Levenshtein 编辑距离（DP，O(n*m)） */
+    private static int levenshteinDistance(String a, String b) {
+        if (a.isEmpty()) {
+            return b.length();
+        }
+        if (b.isEmpty()) {
+            return a.length();
+        }
+        int[] prev = new int[b.length() + 1];
+        int[] curr = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) {
+            prev[j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            curr[0] = i;
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = (a.charAt(i - 1) == b.charAt(j - 1)) ? 0 : 1;
+                curr[j] = Math.min(Math.min(curr[j - 1] + 1, prev[j] + 1), prev[j - 1] + cost);
+            }
+            int[] tmp = prev;
+            prev = curr;
+            curr = tmp;
+        }
+        return prev[b.length()];
     }
 
     private boolean checkLlmAccessibility(AiProperties.ModelConfig modelConfig) {
