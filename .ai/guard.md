@@ -11,6 +11,7 @@
         * 优先使用 `mvn`，若不存在则使用项目自带的包装器 `./mvnw`。
         * **参数包裹规则**: 在 Windows 环境下传递复杂的 Maven 参数（如测试类名、多模块指定等）时，**必须使用双引号 `"` 包裹参数**（例如 `"-Dtest=..."`），防止参数被 shell 引擎解析截断。该规则在 Git Bash 和 PowerShell 中均适用。
         * **文件编码与插件跳过强制**: 运行任何构建、编译或测试验证命令时，应优先调用 `.agent/` 目录下的专属脚本以自动注入参数；若直接使用 maven 命令行，必须同时显式附加 `"-Dfile.encoding=UTF-8"` 以及 `"-Dmaven.gitcommitid.skip=true"` 参数，以防止 Windows 默认的 GBK 环境导致控制台乱码，并严防冗余校验拖慢流程。
+        * **运行目录强制**: 所有 Maven reactor 命令（`-pl` / `-am`）**必须从仓库根目录执行**，严禁在子模块目录内运行。该规则在 Git Bash 和 PowerShell 中均适用。
 * **命名空间**: 仅使用 `jakarta.*`。严禁使用 `javax.*`（Jakarta EE 迁移，`javax.*` 在 SB3 中编译期即报错）。
 
 ## 2. Java 17 现代模式
