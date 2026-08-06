@@ -58,10 +58,10 @@ public class HtmlTableToMarkdownConverterTest {
         log.info("场景2 colspan:\n{}", md);
 
         String expected = """
-                | 项目 | 数值范围 | 数值范围 |
-                | --- | --- | --- |
-                | 指标A | 10 | 20 |
-                | 总计 | 30 | 30 |
+                | 项目 | 数值范围 |
+                | --- | --- |
+                | 指标A | 10 20 |
+                | 总计 | 30 |
                 """;
         assertEquals(expected.trim(), md.trim());
     }
@@ -165,11 +165,11 @@ public class HtmlTableToMarkdownConverterTest {
         log.info("场景6 复杂网格交叉:\n{}", md);
 
         String expected = """
-                | 科目 | 科目 | 分数 | 排名 |
-                | --- | --- | --- | --- |
-                | 理科 | 数学 | 95 | 综合排名区 |
-                | 理科 | 物理 | 88 | 综合排名区 |
-                | 文科综合 | 文科综合 | 82 | 综合排名区 |
+                | 科目 | 分数 | 排名 |
+                | --- | --- | --- |
+                | 理科 数学 | 95 | 综合排名区 |
+                | 理科 物理 | 88 | 综合排名区 |
+                | 文科综合 | 82 | 综合排名区 |
                 """;
         assertEquals(expected.trim(), md.trim());
     }
@@ -1145,5 +1145,17 @@ public class HtmlTableToMarkdownConverterTest {
         assertTrue(output.contains("Alice | 20"));
         // 验证代码块 ```html ... ``` 被完美剥离
         assertTrue(!output.contains("```html"));
+    }
+
+
+    @Test
+    @DisplayName("验证 HTML <table> 转换 Markdown 功能 (convertHtmlTablesToMarkdown)")
+    public void testConvertHtmlTablesToMarkdown2() {
+        String input = """
+                <table border=1 style='margin: auto; word-wrap: break-word;'><tr><td style='text-align: center; word-wrap: break-word;'>一级指标</td><td colspan="2">二级指标</td><td style='text-align: center; word-wrap: break-word;'>单位</td><td style='text-align: center; word-wrap: break-word;'>指标方向</td><td style='text-align: center; word-wrap: break-word;'>基准值</td><td style='text-align: center; word-wrap: break-word;'>判定依据</td><td style='text-align: center; word-wrap: break-word;'>所属生命周期阶段</td></tr><tr><td rowspan="2">资源属性</td><td colspan="2">单位产品氯化钾消耗量（折百）</td><td style='text-align: center; word-wrap: break-word;'>kg/t</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>1 335</td><td style='text-align: center; word-wrap: break-word;'>依据 A.1 计算</td><td rowspan="2">产品生产</td></tr><tr><td colspan="2">单位产品新鲜水耗（折百）</td><td style='text-align: center; word-wrap: break-word;'>t/t</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>4.5</td><td style='text-align: center; word-wrap: break-word;'>依据 A.2 计算</td></tr><tr><td rowspan="3">能源属性</td><td rowspan="3">单位产品综合能耗</td><td style='text-align: center; word-wrap: break-word;'>离子膜法液碱≥48.0%</td><td rowspan="3">kgce/t</td><td rowspan="3">≤</td><td style='text-align: center; word-wrap: break-word;'>375</td><td rowspan="3">依据 A.3 计算</td><td rowspan="3">产品生产</td></tr><tr><td style='text-align: center; word-wrap: break-word;'>离子膜法固碱≥90.0%</td><td style='text-align: center; word-wrap: break-word;'>475</td></tr><tr><td style='text-align: center; word-wrap: break-word;'>离子膜法固碱≥95.0%</td><td style='text-align: center; word-wrap: break-word;'>495</td></tr><tr><td rowspan="12">环境属性</td><td rowspan="3">单位产品废水排放量</td><td style='text-align: center; word-wrap: break-word;'>离子膜法液碱≥48.0%</td><td rowspan="3">$ m^{{3}}/t $</td><td rowspan="3">≤</td><td style='text-align: center; word-wrap: break-word;'>0.95</td><td rowspan="3">依据 A.4 计算</td><td rowspan="12">过程控制</td></tr><tr><td style='text-align: center; word-wrap: break-word;'>离子膜法固碱≥90.0%</td><td style='text-align: center; word-wrap: break-word;'>1</td></tr><tr><td style='text-align: center; word-wrap: break-word;'>离子膜法固碱≥95.0%</td><td style='text-align: center; word-wrap: break-word;'>1</td></tr><tr><td colspan="2">单位产品盐泥产生量（干基）</td><td style='text-align: center; word-wrap: break-word;'>kg/t</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>10</td><td style='text-align: center; word-wrap: break-word;'>依据 A.5 计算</td></tr><tr><td colspan="2">废水氨氮含量</td><td style='text-align: center; word-wrap: break-word;'>mg/L</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>7</td><td rowspan="7">GB 15581</td></tr><tr><td colspan="2">废水总氮含量</td><td style='text-align: center; word-wrap: break-word;'>mg/L</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>10</td></tr><tr><td colspan="2">废气中颗粒物含量</td><td style='text-align: center; word-wrap: break-word;'>$ mg/m^{{3}} $</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>20</td></tr><tr><td colspan="2">废气中二氧化硫含量</td><td style='text-align: center; word-wrap: break-word;'>$ mg/m^{{3}} $</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>40</td></tr><tr><td colspan="2">废气中氮氧化物含量</td><td style='text-align: center; word-wrap: break-word;'>$ mg/m^{{3}} $</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>110</td></tr><tr><td colspan="2">废气中氯气含量</td><td style='text-align: center; word-wrap: break-word;'>$ mg/m^{{3}} $</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>1</td></tr><tr><td colspan="2">废气中氯化氢含量</td><td style='text-align: center; word-wrap: break-word;'>$ mg/m^{{3}} $</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>18</td></tr><tr><td colspan="2">固废处置率</td><td style='text-align: center; word-wrap: break-word;'>%</td><td style='text-align: center; word-wrap: break-word;'>=</td><td style='text-align: center; word-wrap: break-word;'>100</td><td style='text-align: center; word-wrap: break-word;'>依据 A.6 计算</td></tr><tr><td style='text-align: center; word-wrap: break-word;'>产品属性</td><td colspan="2">重金属（以 Pb 计）（干基计）</td><td style='text-align: center; word-wrap: break-word;'>mg/kg</td><td style='text-align: center; word-wrap: break-word;'>≤</td><td style='text-align: center; word-wrap: break-word;'>6</td><td style='text-align: center; word-wrap: break-word;'>GB 25575</td><td style='text-align: center; word-wrap: break-word;'>产品生产</td></tr></table>
+                """;
+        String output = HtmlTableToMarkdownConverter.convertHtmlTablesToMarkdown(input);
+        assertNotNull(output);
+
     }
 }

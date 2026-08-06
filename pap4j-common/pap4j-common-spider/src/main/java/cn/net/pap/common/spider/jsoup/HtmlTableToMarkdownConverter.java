@@ -10,8 +10,10 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -128,16 +130,46 @@ public class HtmlTableToMarkdownConverter {
             finalHeaders.add(String.join("/", uniqueParts));
         }
 
+        // 合并「表头文本完全相同」的相邻列（colspan 展开产生的重复列）
+        // 例：二级指标(colspan=2) 展开成 [二级指标, 二级指标] → 合并回一列；数据子值内容零丢失。
+        List<int[]> mergeRuns = new ArrayList<>();
+        int s = 0;
+        while (s < finalHeaders.size()) {
+            int e = s;
+            while (e + 1 < finalHeaders.size()
+                    && !finalHeaders.get(s).isEmpty()
+                    && finalHeaders.get(e + 1).equals(finalHeaders.get(s))) {
+                e++;
+            }
+            if (e > s) {
+                mergeRuns.add(new int[]{s, e});
+            }
+            s = e + 1;
+        }
+        // 输出列序列：非合并列原样保留；合并段只保留段首列
+        Set<Integer> mergedAway = new HashSet<>();
+        for (int[] run : mergeRuns) {
+            for (int c = run[0] + 1; c <= run[1]; c++) {
+                mergedAway.add(c);
+            }
+        }
+        List<Integer> outCols = new ArrayList<>();
+        for (int c = 0; c < maxCols; c++) {
+            if (!mergedAway.contains(c)) {
+                outCols.add(c);
+            }
+        }
+
         // 输出扁平化后的第一行表头
         sb.append("|");
-        for (String header : finalHeaders) {
-            sb.append(" ").append(header).append(" |");
+        for (int c : outCols) {
+            sb.append(" ").append(finalHeaders.get(c)).append(" |");
         }
         sb.append("\n");
 
         // 输出 Markdown 分隔线
         sb.append("|");
-        for (int c = 0; c < maxCols; c++) {
+        for (int c : outCols) {
             sb.append(" --- |");
         }
         sb.append("\n");
@@ -146,8 +178,30 @@ public class HtmlTableToMarkdownConverter {
         for (int r = headerRowCount; r < totalRows; r++) {
             Map<Integer, String> colMap = grid.getOrDefault(r, Collections.emptyMap());
             sb.append("|");
-            for (int c = 0; c < maxCols; c++) {
-                String val = colMap.getOrDefault(c, "");
+            for (int c : outCols) {
+                // 若当前列是某合并段的段首，则拼接该段全部子值：全相同保留一份，不同用 " " 拼接
+                int[] run = null;
+                for (int[] cand : mergeRuns) {
+                    if (cand[0] == c) {
+                        run = cand;
+                        break;
+                    }
+                }
+                String val;
+                if (run != null) {
+                    List<String> parts = new ArrayList<>();
+                    for (int cc = run[0]; cc <= run[1]; cc++) {
+                        String v = colMap.getOrDefault(cc, "").trim();
+                        if (!v.isEmpty()) {
+                            parts.add(v);
+                        }
+                    }
+                    val = (parts.stream().distinct().count() <= 1)
+                            ? (parts.isEmpty() ? "" : parts.get(0))
+                            : String.join(" ", parts);
+                } else {
+                    val = colMap.getOrDefault(c, "");
+                }
                 sb.append(" ").append(val).append(" |");
             }
             sb.append("\n");
