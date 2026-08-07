@@ -687,15 +687,9 @@ public class HtmlTableToMarkdownConverterTest {
         String md = HtmlTableToMarkdownConverter.convert(html);
         log.info("场景24 缺列:\n{}", md);
 
-        // 短行末尾列置空，maxCols 保持 4
-        String expected = """
-                | A | B | C | D |
-                | --- | --- | --- | --- |
-                | A1 | B1 | C1 | D1 |
-                | A2 | B2 |  |  |
-                | A3跨2 | A3跨2 | B3 | C3 |
-                """;
-        assertEquals(expected.trim(), md.trim());
+        // 参差行（某行单元格少于最大列数）按严格对齐规则判定为无效表格，
+        // 与 validateMarkdownTableStructure 保持一致，convert 直接拒绝返回空串
+        assertEquals("", md);
     }
 
     // ================================================================
@@ -714,14 +708,8 @@ public class HtmlTableToMarkdownConverterTest {
         String md = HtmlTableToMarkdownConverter.convert(html);
         log.info("场景25 colspan越界:\n{}", md);
 
-        // colspan 超出列数时网格自动扩展，maxCols 增大
-        String expected = """
-                | 名称 | 属性1 | 属性2 |  |
-                | --- | --- | --- | --- |
-                | 条目A | 超宽合并（colspan=3 但只剩2列空间） | 超宽合并（colspan=3 但只剩2列空间） | 超宽合并（colspan=3 但只剩2列空间） |
-                | 条目B | X | Y |  |
-                """;
-        assertEquals(expected.trim(), md.trim());
+        // colspan 越界使表头行列数少于 maxCols（参差行），按严格对齐规则判定为无效表格直接拒绝
+        assertEquals("", md);
     }
 
     // ================================================================
@@ -734,19 +722,40 @@ public class HtmlTableToMarkdownConverterTest {
                 <table>
                   <tr><th>类别</th><th>子项</th><th>值</th></tr>
                   <tr><td rowspan="0">rowspan=0</td><td>子A</td><td>100</td></tr>
-                  <tr><td>子B</td><td>200</td></tr>
+                  <tr><td rowspan="0">rowspan=0-2</td><td>子B</td><td>200</td></tr>
                   <tr><td colspan="0">colspan=0</td><td>-</td><td>-</td></tr>
                   <tr><td rowspan="999">超大rowspan</td><td>测试1</td><td>X</td></tr>
-                  <tr><td>测试2</td><td>Y</td></tr>
                 </table>
                 """;
         String md = HtmlTableToMarkdownConverter.convert(html);
         log.info("场景26 异常span值:\n{}", md);
 
-        // 0 值应被钳制为 1，避免数据丢失
+        // 0 值应被钳制为 1，避免数据丢失（表格本身保持行列对齐，通过严格对齐校验）
         assertTrue(md.contains("rowspan=0"), "rowspan=0 的单元格内容应保留");
         assertTrue(md.contains("colspan=0"), "colspan=0 的单元格内容应保留");
         assertTrue(md.contains("超大rowspan"), "超大 rowspan 的单元格内容应保留");
+    }
+
+    // ================================================================
+    // 场景 26-补充: rowspan/colspan 属性值非法（空串 / 非数字 / 带空白）
+    // ================================================================
+    @Test
+    @DisplayName("场景26补充: rowspan/colspan 属性值非法不抛异常")
+    public void testInvalidSpanAttributeValues() {
+        String html = """
+                <table>
+                  <tr><th>类别</th><th>子项</th><th>值</th></tr>
+                  <tr><td rowspan="">rowspan空串</td><td>子A</td><td>100</td></tr>
+                  <tr><td rowspan="abc">rowspan非数字</td><td>子B</td><td>200</td></tr>
+                  <tr><td colspan="2 ">colspan带空白</td><td>300</td></tr>
+                </table>
+                """;
+        // 非法属性值兜底为 1，不应抛出 NumberFormatException 中断整表转换
+        String md = HtmlTableToMarkdownConverter.convert(html);
+        assertNotNull(md);
+        assertTrue(md.contains("rowspan空串"), "rowspan 空串应被兜底为 1 并保留内容");
+        assertTrue(md.contains("rowspan非数字"), "rowspan 非数字应被兜底为 1 并保留内容");
+        assertTrue(md.contains("colspan带空白"), "colspan 带空白应被解析并保留内容");
     }
 
     // ================================================================
@@ -1100,7 +1109,8 @@ public class HtmlTableToMarkdownConverterTest {
         assertNotNull(errorUnclosed);
         assertTrue(errorUnclosed.contains("检测到未完整闭合的 HTML 表格标签"));
 
-        // Case 4: 网格平铺展开后，数据行列数不对齐（例如 tr 少了一个 td）
+        // Case 4: 参差行（某行缺一个 td）—— 质量门禁，刻意比 convert 更严格
+        // convert 会宽容补空列，但参差行通常意味着模型漏了单元格（静默数据丢失），validate 判为失败
         String misalignedTable = """
                 <table>
                   <thead>
@@ -1116,6 +1126,38 @@ public class HtmlTableToMarkdownConverterTest {
         String errorMisaligned = HtmlTableToMarkdownConverter.validateMarkdownTableStructure(misalignedTable);
         assertNotNull(errorMisaligned);
         assertTrue(errorMisaligned.contains("Markdown 表格各行列数不一致"));
+    }
+
+    @Test
+    @DisplayName("对齐一致性: convert 与 validate 对同一输入的接受/拒绝判定一致")
+    public void testConvertAndValidateAlignmentConsistent() {
+        // 两个方法对同一输入必须给出一致的结论：
+        //   convert 返回非空 Markdown  <->  validate 返回 null（通过）
+        //   convert 返回空串            <->  validate 返回错误（拒绝）
+        String[] inputs = {
+                // 合法表格
+                "<table><tr><th>A</th><th>B</th></tr><tr><td>1</td><td>2</td></tr></table>",
+                // rowspan 合法
+                "<table><tr><th>部门</th><th>员工</th></tr><tr><td rowspan=\"2\">研发</td><td>张三</td></tr><tr><td>李四</td></tr></table>",
+                // colspan 合法（表头数据齐列）
+                "<table><tr><th colspan=\"2\">范围</th><th>说明</th></tr><tr><td>1</td><td>2</td><td>x</td></tr></table>",
+                // 参差行（缺列）—— 两边都应拒绝
+                "<table><tr><th>A</th><th>B</th></tr><tr><td>1</td></tr></table>",
+                // colspan 越界 —— 两边都应拒绝
+                "<table><tr><th>A</th><th>B</th></tr><tr><td colspan=\"3\">超宽</td></tr></table>",
+                // 无 table —— 两边都应拒绝
+                "<div>no table</div>",
+                // 整表隐藏 —— 两边都应拒绝
+                "<table hidden><tr><th>A</th></tr></table>",
+                // 全行隐藏 —— 两边都应拒绝
+                "<table><tr style=\"display:none\"><th>A</th><th>B</th></tr></table>",
+        };
+        for (String input : inputs) {
+            boolean convertAccepted = !HtmlTableToMarkdownConverter.convert(input).isBlank();
+            boolean validateAccepted = (HtmlTableToMarkdownConverter.validateMarkdownTableStructure(input) == null);
+            assertEquals(convertAccepted, validateAccepted,
+                    "convert 与 validate 判定不一致，输入: " + input);
+        }
     }
 
     @Test

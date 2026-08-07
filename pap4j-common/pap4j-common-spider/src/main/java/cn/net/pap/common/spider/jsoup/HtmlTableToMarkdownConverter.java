@@ -103,6 +103,15 @@ public class HtmlTableToMarkdownConverter {
 
         int totalRows = rows.size();
 
+        // 对齐校验：与 validateMarkdownTableStructure 保持一致的严格规则——参差行（某行单元格少于最大列数）
+        // 视为无效表格，直接拒绝（返回空串），避免产出含空洞的 Markdown 造成静默数据丢失
+        for (int r = 0; r < totalRows; r++) {
+            int colCount = grid.getOrDefault(r, Collections.emptyMap()).size();
+            if (colCount < maxCols) {
+                return "";
+            }
+        }
+
         // 构建 Markdown 字符串
         StringBuilder sb = new StringBuilder();
 
