@@ -84,11 +84,8 @@ public class HtmlTableToMarkdownConverter {
                     c++;
                 }
 
-                int rowspan = cell.hasAttr("rowspan") ? Integer.parseInt(cell.attr("rowspan")) : 1;
-                int colspan = cell.hasAttr("colspan") ? Integer.parseInt(cell.attr("colspan")) : 1;
-                // 钳制非法值：HTML 规范中 0 表示跨到行组/列组末尾，当前不支持，钳制为 1 避免数据丢失
-                if (rowspan < 1) rowspan = 1;
-                if (colspan < 1) colspan = 1;
+                int rowspan = parseSpanValue(cell, "rowspan");
+                int colspan = parseSpanValue(cell, "colspan");
                 String text = cleanCellText(cell);
 
                 // 将值平铺写入对应的行和列范围
@@ -231,6 +228,30 @@ public class HtmlTableToMarkdownConverter {
             }
         }
         return detected == 0 ? 1 : detected;
+    }
+
+    /**
+     * 安全解析 rowspan/colspan 属性值。
+     * <p>
+     * 脏数据防御：属性缺失、空串、非数字、带空白等一律兜底为 1，避免 NumberFormatException 中断整表转换。
+     * HTML 规范中 0 表示跨到行组/列组末尾，当前不支持，同样钳制为 1 避免数据丢失。
+     *
+     * @param cell     单元格元素
+     * @param attrName 属性名（rowspan 或 colspan）
+     * @return 解析后的跨度值，非法输入返回 1
+     */
+    private static int parseSpanValue(Element cell, String attrName) {
+        String raw = cell.attr(attrName);
+        if (raw == null || raw.isBlank()) {
+            return 1;
+        }
+        try {
+            int value = Integer.parseInt(raw.trim());
+            return value < 1 ? 1 : value;
+        } catch (NumberFormatException e) {
+            log.warn("解析表格 {} 属性失败，非法值 '{}' 按 1 处理", attrName, raw);
+            return 1;
+        }
     }
 
     /**
@@ -420,10 +441,8 @@ public class HtmlTableToMarkdownConverter {
                                 while (grid.computeIfAbsent(r, k -> new HashMap<>()).containsKey(c)) {
                                     c++;
                                 }
-                                int rowspan = cell.hasAttr("rowspan") ? Integer.parseInt(cell.attr("rowspan")) : 1;
-                                int colspan = cell.hasAttr("colspan") ? Integer.parseInt(cell.attr("colspan")) : 1;
-                                if (rowspan < 1) rowspan = 1;
-                                if (colspan < 1) colspan = 1;
+                                int rowspan = parseSpanValue(cell, "rowspan");
+                                int colspan = parseSpanValue(cell, "colspan");
                                 String text = cell.text();
                                 for (int i = 0; i < rowspan; i++) {
                                     for (int j = 0; j < colspan; j++) {
