@@ -50,15 +50,8 @@ public class HtmlTableToMarkdownConverter {
             return "";
         }
 
-        // 按照 standard logical order 重组所有直接隶属当前表格的行：thead -> direct tr -> tbody -> tfoot
-        Elements rows = new Elements();
-        rows.addAll(table.select("> thead > tr"));
-        rows.addAll(table.select("> tr")); // 处于 table 根节点下的直接 tr
-        rows.addAll(table.select("> tbody > tr"));
-        rows.addAll(table.select("> tfoot > tr"));
-
-        // 过滤隐藏行
-        rows.removeIf(HtmlTableToMarkdownConverter::isHidden);
+        // 按 standard logical order 重组当前表格的行（含隐藏过滤），供表头检测与网格平铺共用
+        Elements rows = collectTableRows(table);
 
         if (rows.isEmpty()) {
             return "";
@@ -67,49 +60,16 @@ public class HtmlTableToMarkdownConverter {
         // 智能探测表头行数：连续全部为 th 单元格的行均归为表头
         int headerRowCount = detectHeaderRowCount(rows);
 
-        // 用于模拟坐标网格：Map<rowIndex, Map<colIndex, cellValue>>
-        Map<Integer, Map<Integer, String>> grid = new HashMap<>();
-        int maxCols = 0;
-
-        for (int r = 0; r < rows.size(); r++) {
-            Element row = rows.get(r);
-            // 仅选取直接隶属于该行的列元素，且排除隐藏列，防御嵌套
-            Elements cells = row.select("> th, > td");
-            cells.removeIf(HtmlTableToMarkdownConverter::isHidden);
-
-            int c = 0;
-            for (Element cell : cells) {
-                // 探测当前行 r 是否已被上一行跨行 rowspan 侵占，跳过已被填充的列
-                while (grid.computeIfAbsent(r, k -> new HashMap<>()).containsKey(c)) {
-                    c++;
-                }
-
-                int rowspan = parseSpanValue(cell, "rowspan");
-                int colspan = parseSpanValue(cell, "colspan");
-                String text = cleanCellText(cell);
-
-                // 将值平铺写入对应的行和列范围
-                for (int i = 0; i < rowspan; i++) {
-                    for (int j = 0; j < colspan; j++) {
-                        int targetRow = r + i;
-                        int targetCol = c + j;
-                        grid.computeIfAbsent(targetRow, k -> new HashMap<>()).put(targetCol, text);
-                        maxCols = Math.max(maxCols, targetCol + 1);
-                    }
-                }
-                c += colspan;
-            }
-        }
+        // 平铺还原坐标网格：Map<rowIndex, Map<colIndex, cellValue>>
+        Map<Integer, Map<Integer, String>> grid = buildGrid(rows);
+        int maxCols = maxColsOf(grid);
 
         int totalRows = rows.size();
 
-        // 对齐校验：与 validateMarkdownTableStructure 保持一致的严格规则——参差行（某行单元格少于最大列数）
-        // 视为无效表格，直接拒绝（返回空串），避免产出含空洞的 Markdown 造成静默数据丢失
-        for (int r = 0; r < totalRows; r++) {
-            int colCount = grid.getOrDefault(r, Collections.emptyMap()).size();
-            if (colCount < maxCols) {
-                return "";
-            }
+        // 对齐校验：与 validateMarkdownTableStructure 共用同一严格规则（findMisalignedRow）——
+        // 参差行（某行单元格少于最大列数）视为无效表格，直接拒绝（返回空串），避免静默数据丢失
+        if (findMisalignedRow(grid, totalRows, maxCols) >= 0) {
+            return "";
         }
 
         // 构建 Markdown 字符串
@@ -261,6 +221,85 @@ public class HtmlTableToMarkdownConverter {
             log.warn("解析表格 {} 属性失败，非法值 '{}' 按 1 处理", attrName, raw);
             return 1;
         }
+    }
+
+    /**
+     * 按 standard logical order 重组表格直属行并过滤隐藏行，convert 与 validate 共用。
+     */
+    private static Elements collectTableRows(Element table) {
+        Elements rows = new Elements();
+        rows.addAll(table.select("> thead > tr"));
+        rows.addAll(table.select("> tr")); // 处于 table 根节点下的直接 tr
+        rows.addAll(table.select("> tbody > tr"));
+        rows.addAll(table.select("> tfoot > tr"));
+        rows.removeIf(HtmlTableToMarkdownConverter::isHidden);
+        return rows;
+    }
+
+    /**
+     * 将行集合平铺还原为二维坐标网格：Map&lt;rowIndex, Map&lt;colIndex, cellValue&gt;&gt;。
+     * <p>
+     * 模拟表格渲染器：仅选取直接隶属该行的 th/td（防御嵌套表格）、排除隐藏单元格，
+     * 探测被上一行 rowspan 侵占的列并跳过，将 rowspan/colspan 声明的覆盖范围平铺写满。
+     * convert 与 validateMarkdownTableStructure 共用，避免两处平铺实现漂移。
+     */
+    private static Map<Integer, Map<Integer, String>> buildGrid(Elements rows) {
+        Map<Integer, Map<Integer, String>> grid = new HashMap<>(16);
+        for (int r = 0; r < rows.size(); r++) {
+            Element row = rows.get(r);
+            Elements cells = row.select("> th, > td");
+            cells.removeIf(HtmlTableToMarkdownConverter::isHidden);
+
+            int c = 0;
+            for (Element cell : cells) {
+                // 探测当前行 r 是否已被上一行跨行 rowspan 侵占，跳过已被填充的列
+                while (grid.computeIfAbsent(r, k -> new HashMap<>()).containsKey(c)) {
+                    c++;
+                }
+
+                int rowspan = parseSpanValue(cell, "rowspan");
+                int colspan = parseSpanValue(cell, "colspan");
+                String text = cleanCellText(cell);
+
+                // 将值平铺写入对应的行和列范围
+                for (int i = 0; i < rowspan; i++) {
+                    for (int j = 0; j < colspan; j++) {
+                        grid.computeIfAbsent(r + i, k -> new HashMap<>()).put(c + j, text);
+                    }
+                }
+                c += colspan;
+            }
+        }
+        return grid;
+    }
+
+    /**
+     * 计算网格最大列数（所有已填充位置的最大列下标 + 1）。
+     */
+    private static int maxColsOf(Map<Integer, Map<Integer, String>> grid) {
+        int maxCols = 0;
+        for (Map<Integer, String> row : grid.values()) {
+            for (Integer col : row.keySet()) {
+                maxCols = Math.max(maxCols, col + 1);
+            }
+        }
+        return maxCols;
+    }
+
+    /**
+     * 查找首个参差行（该行已占用列数少于最大列数），供 convert 与 validateMarkdownTableStructure 共用。
+     * 这是两边对齐的严格规则：参差行通常意味着源表格缺列或模型漏了单元格。
+     *
+     * @return 参差行下标，全部对齐返回 -1
+     */
+    private static int findMisalignedRow(Map<Integer, Map<Integer, String>> grid, int totalRows, int maxCols) {
+        for (int r = 0; r < totalRows; r++) {
+            int colCount = grid.getOrDefault(r, Collections.emptyMap()).size();
+            if (colCount < maxCols) {
+                return r;
+            }
+        }
+        return -1;
     }
 
     /**
@@ -431,44 +470,17 @@ public class HtmlTableToMarkdownConverter {
                 Document doc = Jsoup.parse(tableHtml);
                 Element table = doc.selectFirst("table");
                 if (table != null) {
-                    Elements rows = new Elements();
-                    rows.addAll(table.select("> thead > tr"));
-                    rows.addAll(table.select("> tr"));
-                    rows.addAll(table.select("> tbody > tr"));
-                    rows.addAll(table.select("> tfoot > tr"));
-                    rows.removeIf(HtmlTableToMarkdownConverter::isHidden);
+                    Elements rows = collectTableRows(table);
 
                     if (!rows.isEmpty()) {
-                        Map<Integer, Map<Integer, String>> grid = new HashMap<>();
-                        int maxCols = 0;
-                        for (int r = 0; r < rows.size(); r++) {
-                            Element row = rows.get(r);
-                            Elements cells = row.select("> th, > td");
-                            cells.removeIf(HtmlTableToMarkdownConverter::isHidden);
-                            int c = 0;
-                            for (Element cell : cells) {
-                                while (grid.computeIfAbsent(r, k -> new HashMap<>()).containsKey(c)) {
-                                    c++;
-                                }
-                                int rowspan = parseSpanValue(cell, "rowspan");
-                                int colspan = parseSpanValue(cell, "colspan");
-                                String text = cell.text();
-                                for (int i = 0; i < rowspan; i++) {
-                                    for (int j = 0; j < colspan; j++) {
-                                        grid.computeIfAbsent(r + i, k -> new HashMap<>()).put(c + j, text);
-                                        maxCols = Math.max(maxCols, c + j + 1);
-                                    }
-                                }
-                                c += colspan;
-                            }
-                        }
-                        // 检查是否有行长度不一致
-                        for (int r = 0; r < rows.size(); r++) {
-                            int colCount = grid.getOrDefault(r, Collections.emptyMap()).size();
-                            if (colCount < maxCols) {
-                                return "Markdown 表格各行列数不一致！预期有 " + maxCols + " 列，但该行有 "
-                                        + colCount + " 列。不匹配的行数据: " + rows.get(r).text();
-                            }
+                        Map<Integer, Map<Integer, String>> grid = buildGrid(rows);
+                        int maxCols = maxColsOf(grid);
+                        // 与 convert 共用同一严格对齐规则（findMisalignedRow）：参差行判定为无效表格
+                        int misalignedRow = findMisalignedRow(grid, rows.size(), maxCols);
+                        if (misalignedRow >= 0) {
+                            return "Markdown 表格各行列数不一致！预期有 " + maxCols + " 列，但该行有 "
+                                    + grid.getOrDefault(misalignedRow, Collections.emptyMap()).size()
+                                    + " 列。不匹配的行数据: " + rows.get(misalignedRow).text();
                         }
                     }
                 }
