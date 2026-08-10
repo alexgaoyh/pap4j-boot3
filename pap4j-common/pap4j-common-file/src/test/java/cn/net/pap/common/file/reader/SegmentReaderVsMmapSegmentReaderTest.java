@@ -124,14 +124,25 @@ class SegmentReaderVsMmapSegmentReaderTest {
         }
         long scanMs = (System.nanoTime() - t1) / 1_000_000;
 
-        System.out.printf("[行索引逐行] 匹配 %d 处: %d ms, 示例 %s%n",
-                byIndex.size(), indexMs, sample(byIndex));
-        System.out.printf("[分块整扫]   匹配 %d 处: %d ms, 示例 %s%n",
-                byScan.size(), scanMs, sample(byScan));
-        System.out.printf("参照: 本机 rg(Claude Code 内置) 同文件单次定位 ≈ 79 ms%n");
+        // 方式二 fast：同样的解码器，行扫描改用向量化的 indexOf('\n')/indexOf(needle)
+        long t2 = System.nanoTime();
+        List<Integer> byScanFast;
+        try (SegmentReader reader = new SegmentReader(file)) {
+            byScanFast = searchByChunkScanFast(reader, needle);
+        }
+        long scanFastMs = (System.nanoTime() - t2) / 1_000_000;
 
-        // 两种方式结果一致，且确实是 100 处
+        System.out.printf("[行索引逐行]        匹配 %d 处: %d ms, 示例 %s%n",
+                byIndex.size(), indexMs, sample(byIndex));
+        System.out.printf("[分块整扫-逐字符]   匹配 %d 处: %d ms, 示例 %s%n",
+                byScan.size(), scanMs, sample(byScan));
+        System.out.printf("[分块整扫-indexOf]  匹配 %d 处: %d ms, 示例 %s%n",
+                byScanFast.size(), scanFastMs, sample(byScanFast));
+        System.out.printf("参照: 本机 rg(Claude Code 内置) 同文件单次定位 ≈ 79 ms（含进程启动税）%n");
+
+        // 三种方式结果一致，且确实是 100 处
         assertEquals(byIndex, byScan);
+        assertEquals(byIndex, byScanFast);
         assertEquals(100, byIndex.size());
         assertEquals(250_001, (int) byIndex.get(0));
         assertEquals(250_100, (int) byIndex.get(byIndex.size() - 1));
@@ -148,12 +159,20 @@ class SegmentReaderVsMmapSegmentReaderTest {
         Files.writeString(file, line1 + "\nsecond\n", StandardCharsets.UTF_8);
 
         try (SegmentReader reader = new SegmentReader(file)) {
-            // 正确解码：能找到含 𝄞 的那一行（第 1 行）
+            // 正确解码：能找到含 𝄞 的那一行（第 1 行），逐字符版 / indexOf 版都行
             assertEquals(List.of(1), searchByChunkScan(reader, supplementary));
+            assertEquals(List.of(1), searchByChunkScanFast(reader, supplementary));
             // 整行读回来内容完整，没有乱码
             assertTrue(reader.readLineRange(1, 1).contains(supplementary));
             assertTrue(reader.readLineRange(2, 1).contains("second"));
         }
+
+        // 原始两个类的 readLineRange：行对齐的整段一次性解码，天然 UTF-8 安全——
+        // '\n'(0x0A) 是独立字节、绝不可能被多字节序列占用，所以行边界即字符边界，
+        // 不会像"分块各自解码"那样劈开字符。用整行全等验证两类的行读取都不丢字。
+        String expectLine1 = "a".repeat(65535) + supplementary + "b\n";
+        assertEquals(expectLine1, SegmentReader.readLineRange(file, 1, 1));
+        assertEquals(expectLine1, MmapSegmentReader.readLineRange(file, 1, 1));
 
         // 常规位置：BMP 中文（3 字节）与扩展区字符都要能检索到
         Path file2 = tempDir.resolve("utf8-normal.txt");
@@ -161,6 +180,8 @@ class SegmentReaderVsMmapSegmentReaderTest {
         try (SegmentReader reader = new SegmentReader(file2)) {
             assertEquals(List.of(3), searchByChunkScan(reader, supplementary));
             assertEquals(List.of(2), searchByChunkScan(reader, "中"));
+            assertEquals(List.of(3), searchByChunkScanFast(reader, supplementary));
+            assertEquals(List.of(2), searchByChunkScanFast(reader, "中"));
         }
     }
 
@@ -238,6 +259,95 @@ class SegmentReaderVsMmapSegmentReaderTest {
             out.add(line); // 末行无换行
         }
         return out;
+    }
+
+    /**
+     * 方式二（indexOf 向量化版）：同样的字节分块 + 状态化解码器，但行扫描改用
+     * {@link String#indexOf(String, int)} / {@link String#indexOf(int, int)}。
+     * JDK 对这些内建是 SIMD 向量化的，替代逐字符循环里的"每字符分支 + StringBuilder.append"。
+     * 整行在块内时直接用 indexOf 判断命中，不拼行字符串；只有跨块的行才进 carry。
+     */
+    private static List<Integer> searchByChunkScanFast(SegmentReader reader, String needle) throws IOException {
+        List<Integer> out = new ArrayList<>();
+        CharsetDecoder decoder = StandardCharsets.UTF_8.newDecoder()
+                .onMalformedInput(CodingErrorAction.REPLACE)
+                .onUnmappableCharacter(CodingErrorAction.REPLACE);
+        byte[] pending = new byte[0];
+        CharBuffer outBuf = CharBuffer.allocate(64 * 1024);
+        long pos = 0;
+        int line = 1;
+        StringBuilder carry = new StringBuilder(80);
+        while (true) {
+            byte[] chunk = reader.readSegmentRaw(pos, 64 * 1024);
+            if (chunk.length == 0) {
+                break;
+            }
+            pos += chunk.length;
+            byte[] combined = concat(pending, chunk);
+            ByteBuffer in = ByteBuffer.wrap(combined);
+            CoderResult result;
+            do {
+                outBuf.clear();
+                result = decoder.decode(in, outBuf, false);
+                outBuf.flip();
+                line = scanLinesFast(outBuf.toString(), carry, line, needle, out);
+            } while (result.isOverflow());
+            pending = Arrays.copyOfRange(combined, in.position(), combined.length);
+        }
+        // EOF：残留的不完整 UTF-8 序列按"文件结束"解码
+        outBuf.clear();
+        decoder.decode(ByteBuffer.wrap(pending), outBuf, true);
+        outBuf.flip();
+        line = scanLinesFast(outBuf.toString(), carry, line, needle, out);
+        outBuf.clear();
+        decoder.flush(outBuf);
+        outBuf.flip();
+        line = scanLinesFast(outBuf.toString(), carry, line, needle, out);
+        if (carry.length() > 0 && carry.indexOf(needle) >= 0) {
+            out.add(line); // 末行无换行
+        }
+        return out;
+    }
+
+    /** 用向量化的 indexOf 扫一段已解码文本：'\n' 定位行边界，行内 bounded 判命中，返回最新行号。 */
+    private static int scanLinesFast(String text, StringBuilder carry, int line, String needle, List<Integer> out) {
+        int from = 0;
+        int nl;
+        while ((nl = text.indexOf('\n', from)) >= 0) {
+            if (carry.length() > 0) {
+                // 上一块没结束的行，续到这里第一个 '\n'
+                carry.append(text, from, nl);
+                if (carry.indexOf(needle) >= 0) {
+                    out.add(line);
+                }
+                carry.setLength(0);
+            } else if (containsNeedle(text, from, nl, needle)) {
+                out.add(line);
+            }
+            line++;
+            from = nl + 1;
+        }
+        carry.append(text, from, text.length()); // 本块末尾未结束的行，续给下一块
+        return line;
+    }
+
+    /**
+     * 判断 text[from, to) 行区间内是否包含 needle。
+     * <p>
+     * 关键：不能用 {@code text.indexOf(needle, from)}——它会一路搜到字符串末尾（到块尾），
+     * 每行都白扫大半个块。这里用"首字符 indexOf + regionMatches"把搜索限定在行内 [from, to)：
+     * 首字符 indexOf 是向量化的，regionMatches 只比较 needle 长度。
+     */
+    private static boolean containsNeedle(String text, int from, int to, String needle) {
+        char first = needle.charAt(0);
+        int i = text.indexOf(first, from);
+        while (i >= 0 && i < to) {
+            if (text.regionMatches(i, needle, 0, needle.length())) {
+                return true;
+            }
+            i = text.indexOf(first, i + 1);
+        }
+        return false;
     }
 
     /** 逐字符扫一段解码输出：普通字符进 carry，'\n' 结算当前行（命中记行号），返回最新行号。 */
