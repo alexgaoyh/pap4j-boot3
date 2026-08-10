@@ -358,6 +358,67 @@ public class StringUtilTest {
         assertFalse(c1 < 0);
     }
 
+    /**
+     * 对比"区间内子串查找"（判断 [from, to) 是否含 needle）的两种实现：
+     * 朴素版 {@link #naiveContains}（{@link String#indexOf(String, int)} 无界右扫）vs
+     * 正式方法 {@link StringUtil#containsInRange(String, int, int, String)}
+     * （首字符 indexOf + 区间边界 + regionMatches）。
+     */
+    @Test
+    public void containsInRangeCompareTest() {
+        // 100 行文本：needle 只在最后一行，让"判断第 1 行"时朴素版白扫到文件尾
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 100; i++) {
+            sb.append("line-").append(String.format("%04d", i)).append('\n');
+        }
+        String text = sb.toString();
+        String needle = "line-0099";
+        int line1End = text.indexOf('\n');              // 第 1 行行尾
+        int lastLineStart = text.lastIndexOf(needle);   // 最后一行起点
+
+        // 1. 正确性：两实现结果一致（第 1 行不命中、最后一行命中）
+        assertFalse(naiveContains(text, 0, line1End, needle));
+        assertFalse(StringUtil.containsInRange(text, 0, line1End, needle));
+        assertTrue(naiveContains(text, lastLineStart, text.length(), needle));
+        assertTrue(StringUtil.containsInRange(text, lastLineStart, text.length(), needle));
+
+        // 2. 边界：needle 起点在区间内但终点越界 → 朴素版误判，正式方法正确
+        String one = "line-0099 pad";
+        assertTrue(naiveContains(one, 0, 3, needle));    // indexOf 命中 0 < 3 → 误判
+        assertFalse(StringUtil.containsInRange(one, 0, 3, needle)); // 0+10 > 3，needle 放不进区间
+
+        // 3. 首字符出现两次：第一个 'l' 位置不是真命中，循环必须跳到第二个 'l' 才算中
+        String two = "line-line-0099";
+        assertTrue(naiveContains(two, 0, two.length(), needle));
+        assertTrue(StringUtil.containsInRange(two, 0, two.length(), needle));
+
+        // 4. 性能对比：needle 在第 100 行，反复判断第 1 行是否命中
+        long t0 = System.nanoTime();
+        for (int i = 0; i < 200_000; i++) {
+            naiveContains(text, 0, line1End, needle);
+        }
+        long naiveMs = (System.nanoTime() - t0) / 1_000_000;
+
+        long t1 = System.nanoTime();
+        for (int i = 0; i < 200_000; i++) {
+            StringUtil.containsInRange(text, 0, line1End, needle);
+        }
+        long boundedMs = (System.nanoTime() - t1) / 1_000_000;
+
+        log.info("朴素 indexOf(String, from) 版: {} ms", naiveMs);
+        log.info("StringUtil.containsInRange 版: {} ms", boundedMs);
+        assertTrue(boundedMs <= naiveMs,
+                "containsInRange 应至少不慢于朴素版: bounded=" + boundedMs + "ms, naive=" + naiveMs + "ms");
+    }
+
+    /**
+     * 朴素版：indexOf(String, from) 无界右扫，事后用 hit < to 判断是否在区间内。
+     */
+    private static boolean naiveContains(String text, int from, int to, String needle) {
+        int hit = text.indexOf(needle, from);
+        return hit >= 0 && hit < to;
+    }
+
     private int findValidUtf8End(byte[] bytes) {
         int length = bytes.length;
         if (length == 0) return 0;

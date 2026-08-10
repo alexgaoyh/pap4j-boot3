@@ -122,6 +122,44 @@ public class StringUtil {
     }
 
     /**
+     * <p>判断 {@code needle} 是否作为子串完整出现在 {@code text} 的 {@code [from, to)} 字符区间内。</p>
+     * <p>与 {@link String#indexOf(String, int)} 的区别：indexOf 只能指定起始位置、会一路搜到字符串
+     * 末尾；本方法多了右边界 {@code to}，搜索被限定在区间内，不会外溢到区间之后。</p>
+     * <p>实现：首字符 {@code indexOf} 找候选起点 + {@code i + needle.length() &lt;= to} 确认放得进区间 +
+     * {@link String#regionMatches(int, String, int, int)} 定长比较，零子串分配。典型场景：逐行/逐段
+     * 扫描大文本时判断"当前行/段是否含关键字"，避免搜索串到下一行。</p>
+     *
+     * @param text   被搜索的字符串；{@code null} 返回 {@code false}
+     * @param from   区间起点（含），会钳制到 {@code [0, text.length()]}
+     * @param to     区间终点（不含），会钳制到 {@code [0, text.length()]}
+     * @param needle 要查找的子串；{@code null} 返回 {@code false}，空串在非空区间内视为存在
+     * @return 区间内完整出现 {@code needle} 返回 {@code true}，否则 {@code false}
+     */
+    public static boolean containsInRange(String text, int from, int to, String needle) {
+        if (text == null || needle == null) {
+            return false;
+        }
+        from = Math.max(0, from);
+        to = Math.min(text.length(), to);
+        if (from >= to) {
+            return false;
+        }
+        if (needle.isEmpty()) {
+            return true; // 空串在任意非空区间起点处都存在
+        }
+        char first = needle.charAt(0);
+        int i = text.indexOf(first, from);
+        while (i >= 0 && i < to) {                 // 首字符必须在区间内，越过 to 立即停
+            if (i + needle.length() <= to          // 整个 needle 必须放得进区间
+                    && text.regionMatches(i, needle, 0, needle.length())) {
+                return true;
+            }
+            i = text.indexOf(first, i + 1);        // 首字符对但整词不对 → 找下一个首字符
+        }
+        return false;
+    }
+
+    /**
      * <p>使用给定的分隔符字符串中的所有字符作为分隔符来拆分输入字符串。</p>
      * <strong>示例:</strong>
      * <pre>{@code
