@@ -361,10 +361,23 @@ public final class FileSearch {
         List<Path> candidates = collectCandidates(root, opts);
         List<FileMatch> matches;
         if (!opts.parallel()) {
-            matches = candidates.stream()
-                    .map(p -> scanFile(p, root, opts, matcher))
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
+            // 顺序路径：按候选顺序边扫边累计行数预算，预算耗尽即停止扫描剩余候选
+            //（记账与 truncateToBudget 一致，后续候选在截断阶段贡献为 0）
+            long maxLines = opts.maxLines();
+            matches = new ArrayList<>();
+            long used = 0;
+            for (Path p : candidates) {
+                if (maxLines > 0 && used >= maxLines) {
+                    break;
+                }
+                FileMatch m = scanFile(p, root, opts, matcher);
+                if (m == null) {
+                    continue;
+                }
+                matches.add(m);
+                long contribution = maxLines > 0 ? Math.min(m.lines().size(), maxLines - used) : m.lines().size();
+                used += contribution;
+            }
         } else {
             matches = parallelProcess(candidates, p -> scanFile(p, root, opts, matcher));
         }

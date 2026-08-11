@@ -348,4 +348,24 @@ public class FileSearchTest {
         assertEquals(i, s);
         assertEquals(50, s.get(0).lines().size());
     }
+
+    @Test
+    void grep_sequential_budgetEarlyStop_matchesFullScanBaseline(@TempDir Path dir) throws IOException {
+        // 5 个文件、每个 10 行命中，maxLines=3：顺序路径首个文件即填满预算，后续文件不再扫描
+        for (int f = 0; f < 5; f++) {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 10; i++) {
+                sb.append("hit ").append(i).append('\n');
+            }
+            Files.writeString(dir.resolve("f" + f + ".txt"), sb.toString(), StandardCharsets.UTF_8);
+        }
+        FileSearch.SearchOptions opts = FileSearch.SearchOptions.ofKeywords("hit")
+                .withMaxLines(3).withParallel(false);
+        List<FileSearch.FileMatch> res = FileSearch.grep(dir, opts);
+        assertEquals(1, res.size());
+        assertEquals(3, res.get(0).lines().size());
+        // 与全量扫描（并行）的截断结果一致：顺序早停不改变输出
+        List<FileSearch.FileMatch> baseline = FileSearch.grep(dir, opts.withParallel(true));
+        assertEquals(baseline, res);
+    }
 }
