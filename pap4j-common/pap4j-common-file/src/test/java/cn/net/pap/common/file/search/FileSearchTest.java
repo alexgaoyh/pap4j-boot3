@@ -251,4 +251,80 @@ public class FileSearchTest {
         assertEquals(1, par.size());
         assertEquals(5, par.get(0).lines().size());
     }
+
+    private static void writeUtf16LeWithBom(Path file, String content) throws IOException {
+        byte[] bom = {(byte) 0xFF, (byte) 0xFE};
+        byte[] body = content.getBytes(StandardCharsets.UTF_16LE);
+        byte[] all = new byte[bom.length + body.length];
+        System.arraycopy(bom, 0, all, 0, bom.length);
+        System.arraycopy(body, 0, all, bom.length, body.length);
+        Files.write(file, all);
+    }
+
+    @Test
+    void findFiles_utf16WithBom_notFilteredAsBinary(@TempDir Path dir) throws IOException {
+        writeUtf16LeWithBom(dir.resolve("utf16.txt"), "hello utf16\n");
+        List<Path> files = FileSearch.findFiles(dir, FileSearch.SearchOptions.ofKeywords("hello"));
+        assertTrue(fileNames(files).contains("utf16.txt"));
+    }
+
+    @Test
+    void grep_utf16LeWithBom_searchedAsText(@TempDir Path dir) throws IOException {
+        writeUtf16LeWithBom(dir.resolve("utf16.txt"), "hello utf16 world\nsecond line\n");
+        List<FileSearch.FileMatch> res = FileSearch.grep(dir, FileSearch.SearchOptions.ofKeywords("utf16"));
+        assertEquals(1, res.size());
+        assertEquals(1L, res.get(0).lines().get(0).lineNumber());
+        assertEquals("hello utf16 world", res.get(0).lines().get(0).text());
+    }
+
+    @Test
+    void grep_utf16LeWithBom_streamingMatchesInline(@TempDir Path dir) throws IOException {
+        writeUtf16LeWithBom(dir.resolve("utf16.txt"), "alpha\nbeta utf16 here\ngamma\n");
+        FileSearch.SearchOptions opts = FileSearch.SearchOptions.ofKeywords("utf16").withInlineReadLimit(1);
+        List<FileSearch.FileMatch> res = FileSearch.grep(dir, opts);
+        assertEquals(1, res.size());
+        assertEquals(2L, res.get(0).lines().get(0).lineNumber());
+        assertEquals("beta utf16 here", res.get(0).lines().get(0).text());
+    }
+
+    @Test
+    void grep_binaryNulBeyondProbe_skippedInInlineAndStreaming(@TempDir Path dir) throws IOException {
+        // NUL 出现在第 9000 字节（超出旧实现的 8KB 探测范围）；新实现应全文判定为二进制并跳过
+        StringBuilder sb = new StringBuilder();
+        while (sb.length() < 9000) {
+            sb.append("hello plain text line\n");
+        }
+        sb.setLength(9000);
+        byte[] body = sb.toString().getBytes(StandardCharsets.UTF_8);
+        byte[] tail = "end".getBytes(StandardCharsets.UTF_8);
+        byte[] out = new byte[body.length + 1 + tail.length];
+        System.arraycopy(body, 0, out, 0, body.length);
+        System.arraycopy(tail, 0, out, body.length + 1, tail.length); // body.length 处留默认 0 → NUL
+        Files.write(dir.resolve("late.bin"), out);
+
+        assertTrue(FileSearch.grep(dir, FileSearch.SearchOptions.ofKeywords("hello")).isEmpty());
+        assertTrue(FileSearch.grep(dir, FileSearch.SearchOptions.ofKeywords("hello").withInlineReadLimit(1)).isEmpty());
+    }
+
+    @Test
+    void grep_skipBinaryOff_searchesBinaryContent(@TempDir Path dir) throws IOException {
+        Path f = dir.resolve("data.bin");
+        Files.writeString(f, "hello binary" + (char) 0 + "world\n", StandardCharsets.UTF_8);
+        List<FileSearch.FileMatch> res = FileSearch.grep(dir,
+                FileSearch.SearchOptions.ofKeywords("hello").withSkipBinary(false));
+        assertEquals(1, res.size());
+        assertTrue(res.get(0).lines().get(0).text().startsWith("hello binary"));
+    }
+
+    @Test
+    void shutdownSearchExecutor_idempotentAndRecreatable() throws IOException {
+        // 触发线程池懒创建
+        FileSearch.grep(root, FileSearch.SearchOptions.ofKeywords("hello"));
+        // 显式关闭（幂等：重复调用不抛异常、不报错）
+        FileSearch.shutdownSearchExecutor();
+        FileSearch.shutdownSearchExecutor();
+        // 关闭后再次检索应仍可用（searchExecutor 按需懒重建）
+        List<FileSearch.FileMatch> res = FileSearch.grep(root, FileSearch.SearchOptions.ofKeywords("hello"));
+        assertEquals(4, res.size());
+    }
 }
