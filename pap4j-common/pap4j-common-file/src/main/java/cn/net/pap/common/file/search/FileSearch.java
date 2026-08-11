@@ -737,8 +737,8 @@ public final class FileSearch {
             if (opts.skipBinary() && isBinaryFile(file)) {
                 return null;
             }
-            // 第一趟：流式扫描，收集命中行号（1-based）
-            List<Integer> matchedLines = new ArrayList<>();
+            // 第一趟：流式扫描，收集命中行号（1-based），采用无装箱原生的 IntArrayList 存储以节省堆内存
+            IntArrayList matchedLines = new IntArrayList(32);
             try (BufferedReader reader = openReader(file)) {
                 String line;
                 int no = 0;
@@ -755,6 +755,10 @@ public final class FileSearch {
                     }
                     if (matcher.matches(line)) {
                         matchedLines.add(no);
+                        // 预算提前熔断：单文件流式命中行数达到 maxLines 时立即停止第一趟扫描
+                        if (opts.maxLines() > 0 && matchedLines.size() >= opts.maxLines()) {
+                            break;
+                        }
                     }
                 }
             }
@@ -764,7 +768,9 @@ public final class FileSearch {
             // 扩展上下文行：命中行前后各 contextLines 行也纳入结果（越界行号由下方范围判断剔除）
             TreeSet<Integer> wanted = new TreeSet<>();
             int context = opts.contextLines();
-            for (int ln : matchedLines) {
+            int matchedCount = matchedLines.size();
+            for (int i = 0; i < matchedCount; i++) {
+                int ln = matchedLines.get(i);
                 for (int k = ln - context; k <= ln + context; k++) {
                     if (k >= 1) {
                         wanted.add(k);
@@ -1116,5 +1122,36 @@ public final class FileSearch {
         String name = file.getFileName().toString();
         int dot = name.lastIndexOf('.');
         return dot < 0 ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
+    }
+
+    /** 专用于行号收集的原生 int[] 动态数组，规避 List<Integer> 的装箱与对象开销。 */
+    private static final class IntArrayList {
+        private int[] data;
+        private int size;
+
+        IntArrayList(int initialCapacity) {
+            this.data = new int[initialCapacity];
+        }
+
+        void add(int val) {
+            if (size == data.length) {
+                int[] next = new int[data.length << 1];   // 始终翻倍扩容，摊还 O(1)
+                System.arraycopy(data, 0, next, 0, size);
+                this.data = next;
+            }
+            data[size++] = val;
+        }
+
+        boolean isEmpty() {
+            return size == 0;
+        }
+
+        int size() {
+            return size;
+        }
+
+        int get(int index) {
+            return data[index];
+        }
     }
 }

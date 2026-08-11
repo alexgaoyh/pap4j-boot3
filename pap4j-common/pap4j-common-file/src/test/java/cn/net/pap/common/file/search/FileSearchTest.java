@@ -327,4 +327,25 @@ public class FileSearchTest {
         List<FileSearch.FileMatch> res = FileSearch.grep(root, FileSearch.SearchOptions.ofKeywords("hello"));
         assertEquals(4, res.size());
     }
+
+    @Test
+    void grep_streaming_maxLinesBreak_matchesInline(@TempDir Path dir) throws IOException {
+        // 单文件命中数远超 maxLines，强制流式（inlineReadLimit=1）触发第一趟提前熔断；
+        // 断言熔断后输出与整读路径逐字节一致、且恰好填满行数预算
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 500; i++) {
+            sb.append("hit line ").append(i).append('\n');
+        }
+        Files.writeString(dir.resolve("big.txt"), sb.toString(), StandardCharsets.UTF_8);
+
+        FileSearch.SearchOptions streaming = FileSearch.SearchOptions.ofKeywords("hit")
+                .withInlineReadLimit(1).withMaxLines(50).withContextLines(3);
+        FileSearch.SearchOptions inline = streaming.withInlineReadLimit(Long.MAX_VALUE);
+
+        List<FileSearch.FileMatch> s = FileSearch.grep(dir, streaming);
+        List<FileSearch.FileMatch> i = FileSearch.grep(dir, inline);
+        assertEquals(1, s.size());
+        assertEquals(i, s);
+        assertEquals(50, s.get(0).lines().size());
+    }
 }
