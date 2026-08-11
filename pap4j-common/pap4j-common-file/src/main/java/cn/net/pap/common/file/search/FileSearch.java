@@ -726,8 +726,11 @@ public final class FileSearch {
      *   <li>第一趟：逐行判断是否存在命中，仅收集命中行号（1-based）；</li>
      *   <li>第二趟：只抽取「命中行 ± 上下文」所需行号的文本。</li>
      * </ul>
+     * 零上下文（{@code contextLines == 0}，默认）时降级为<b>单趟</b>：第一趟直接产出命中行文本，
+     * 省去第二趟重读，大文件 IO 减半。
+     * <p>
      * 行语义与 rg 一致（按行匹配）；与整读路径的唯一语义差异：跨行的多行正则（如包含 {@code \n}）
-     * 无法在流式模式下命中。两趟均按 BOM 探测到的编码（UTF-8 / UTF-16LE / UTF-16BE）解码，
+     * 无法在流式模式下命中。每趟均按 BOM 探测到的编码（UTF-8 / UTF-16LE / UTF-16BE）解码，
      * 并会剥掉首行行首的 BOM 字符（U+FEFF）。
      * <p>
      * 前置条件：{@code detectCharset=false}（编码检测路径必须整读，走 {@code scanFile}）。
@@ -737,8 +740,10 @@ public final class FileSearch {
             if (opts.skipBinary() && isBinaryFile(file)) {
                 return null;
             }
-            // 第一趟：流式扫描，收集命中行号（1-based），采用无装箱原生的 IntArrayList 存储以节省堆内存
-            IntArrayList matchedLines = new IntArrayList(32);
+            boolean singlePass = opts.contextLines() == 0;
+            List<LineMatch> lines = new ArrayList<>();
+            IntArrayList matchedLines = singlePass ? null : new IntArrayList(32);
+            // 单趟：零上下文时第一趟直接产出命中行，省去第二趟重读（大文件 IO 减半）
             try (BufferedReader reader = openReader(file)) {
                 String line;
                 int no = 0;
@@ -754,45 +759,55 @@ public final class FileSearch {
                         return null;
                     }
                     if (matcher.matches(line)) {
-                        matchedLines.add(no);
-                        // 预算提前熔断：单文件流式命中行数达到 maxLines 时立即停止第一趟扫描
-                        if (opts.maxLines() > 0 && matchedLines.size() >= opts.maxLines()) {
+                        if (singlePass) {
+                            lines.add(new LineMatch((long) no, line));
+                        } else {
+                            matchedLines.add(no);
+                        }
+                        // 预算提前熔断：命中行数达到 maxLines 时立即停止扫描
+                        int hitCount = singlePass ? lines.size() : matchedLines.size();
+                        if (opts.maxLines() > 0 && hitCount >= opts.maxLines()) {
                             break;
                         }
                     }
                 }
             }
-            if (matchedLines.isEmpty()) {
-                return null;
-            }
-            // 扩展上下文行：命中行前后各 contextLines 行也纳入结果（越界行号由下方范围判断剔除）
-            TreeSet<Integer> wanted = new TreeSet<>();
-            int context = opts.contextLines();
-            int matchedCount = matchedLines.size();
-            for (int i = 0; i < matchedCount; i++) {
-                int ln = matchedLines.get(i);
-                for (int k = ln - context; k <= ln + context; k++) {
-                    if (k >= 1) {
-                        wanted.add(k);
+            if (singlePass) {
+                if (lines.isEmpty()) {
+                    return null;
+                }
+            } else {
+                if (matchedLines.isEmpty()) {
+                    return null;
+                }
+                // 扩展上下文行：命中行前后各 contextLines 行也纳入结果（越界行号由下方范围判断剔除）
+                TreeSet<Integer> wanted = new TreeSet<>();
+                int context = opts.contextLines();
+                int matchedCount = matchedLines.size();
+                for (int i = 0; i < matchedCount; i++) {
+                    int ln = matchedLines.get(i);
+                    for (int k = ln - context; k <= ln + context; k++) {
+                        if (k >= 1) {
+                            wanted.add(k);
+                        }
                     }
                 }
-            }
-            // 第二趟：流式抽取所需行
-            List<LineMatch> lines = new ArrayList<>(wanted.size());
-            Integer[] wantedArr = wanted.toArray(new Integer[0]);
-            int next = 0;
-            try (BufferedReader reader = openReader(file)) {
-                String line;
-                int no = 0;
-                while (next < wantedArr.length && (line = reader.readLine()) != null) {
-                    no++;
-                    // 首行若以 BOM 字符（U+FEFF）开头则先剥掉再匹配/抽取（Reader 不会自动去除 BOM）
-                    if (no == 1 && !line.isEmpty() && line.charAt(0) == '﻿') {
-                        line = line.substring(1);
-                    }
-                    if (no == wantedArr[next]) {
-                        lines.add(new LineMatch((long) no, line));
-                        next++;
+                // 第二趟：流式抽取所需行
+                Integer[] wantedArr = wanted.toArray(new Integer[0]);
+                int next = 0;
+                try (BufferedReader reader = openReader(file)) {
+                    String line;
+                    int no = 0;
+                    while (next < wantedArr.length && (line = reader.readLine()) != null) {
+                        no++;
+                        // 首行若以 BOM 字符（U+FEFF）开头则先剥掉再匹配/抽取（Reader 不会自动去除 BOM）
+                        if (no == 1 && !line.isEmpty() && line.charAt(0) == '﻿') {
+                            line = line.substring(1);
+                        }
+                        if (no == wantedArr[next]) {
+                            lines.add(new LineMatch((long) no, line));
+                            next++;
+                        }
                     }
                 }
             }
