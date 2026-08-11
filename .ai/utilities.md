@@ -34,6 +34,7 @@
 *   [ChineseWordSorterUtil](../pap4j-common/pap4j-common-file/src/main/java/cn/net/pap/common/file/chinese/ChineseWordSorterUtil.java): 字典序（UTF-16）分流写入中文词库并自动维护排序。（测试验证见 [ChineseWordSorterUtilTest](../pap4j-common/pap4j-common-file/src/test/java/cn/net/pap/common/file/ChineseWordSorterUtilTest.java)）
 *   [BinaryConvertUtil](../pap4j-common/pap4j-common-file/src/main/java/cn/net/pap/common/file/util/BinaryConvertUtil.java): 十进制与 Base62 高进制数值的快速编解码转换。（测试验证见 [BinaryConvertUtilTest](../pap4j-common/pap4j-common-file/src/test/java/cn/net/pap/common/file/BinaryConvertUtilTest.java)）
 *   [FileOperUtils](../pap4j-common/pap4j-common-datastructure/src/main/java/cn/net/pap/common/datastructure/file/FileOperUtils.java): 递归删除目录与清空子文件树的安全文件操作工具。
+*   [FileSearch](../pap4j-common/pap4j-common-file/src/main/java/cn/net/pap/common/file/search/FileSearch.java): 对标 ripgrep 的进程内文件检索工具，支持 Glob 路径过滤、单/多关键词（indexOf / Aho-Corasick）与正则内容检索、gitignore 与二进制跳过、上下文行与总行数预算截断、跨文件并行扫描及大文件流式匹配。（测试验证见 [FileSearchTest](../pap4j-common/pap4j-common-file/src/test/java/cn/net/pap/common/file/search/FileSearchTest.java)）
 
 ## 🕸️ XML & XPath
 *   [StaxXmlUtil](../pap4j-common/pap4j-common-file/src/main/java/cn/net/pap/common/file/xml/StaxXmlUtil.java): 流式游标解析大 XML 文件。（测试验证见 [StaxXmlUtilTest](../pap4j-common/pap4j-common-file/src/test/java/cn/net/pap/common/file/StaxXmlUtilTest.java)）
