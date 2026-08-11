@@ -45,6 +45,7 @@
 * **Optional**: 仅用于返回值。严禁作为参数或字段。
 * **比较规范**: 使用 `Objects.equals(a, b)` 进行空安全比对。
 * **格式约束**: 严禁使用通配符导入 (`import java.util.*`)。所有重写方法必须标注 `@Override`。
+* **Javadoc 规范**: 公共 API 文档必须用 `/** */` Javadoc（标签齐全），勿用行尾 `//` 代替；HTML/标签可正常使用，但文本勿出现会截断注释的 `*/` 序列。
 * **集合**:
     * 指定初始容量（如 `new HashMap<>(16)`）。
     * 返回 `Collections.emptyList()` 而非 `new ArrayList<>()`。
