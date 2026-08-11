@@ -321,7 +321,9 @@ public final class FileSearch {
     }
 
     /**
-     * 只发现符合条件的文件路径（对标 {@code rg -l}）。
+     * 只发现符合条件的文件路径，不做关键词/正则内容匹配（仅按路径与属性过滤，
+     * skipBinary 开启时会探测文件头以判定二进制）。
+     * 对标 {@code rg --files}；默认行为差异：本方法默认不遵循 .gitignore、默认跳过二进制文件。
      *
      * @param root 检索根目录
      * @param opts 检索选项
