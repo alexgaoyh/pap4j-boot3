@@ -3,6 +3,7 @@ package cn.net.pap.common.qlexpress.parser;
 import cn.net.pap.common.qlexpress.Express4RunnerUtil;
 import cn.net.pap.common.qlexpress.dto.FunctionalExtractionResultDTO;
 import cn.net.pap.common.qlexpress.dto.FunctionalExtractionRuleDTO;
+import cn.net.pap.common.qlexpress.dto.RuleExecStatus;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -10,11 +11,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 
 import java.math.BigDecimal;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
@@ -389,6 +392,119 @@ public class JsonFunctionalExtractorTest {
         // 验证统计
         assertEquals(9, fields.get("totalCategories"));
         assertEquals(true, fields.get("hasMobile"));
+    }
+
+    @Test
+    @Order(8)
+    @DisplayName("场景6：规则执行状态审计 - 全部成功")
+    public void testExtractPopulatesStatusesOnSuccess() {
+        String jsonData = """
+                {
+                  "user": {
+                    "name": "zhangsan",
+                    "level": "VIP"
+                  },
+                  "amount": 500
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("userName", "json.user.name"),
+                new FunctionalExtractionRuleDTO("isHighAmount", "json.amount > 300 ? 'YES' : 'NO'")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+
+        assertEquals(2, result.statuses().size());
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
+        assertEquals("zhangsan", result.extractedFields().get("userName"));
+        assertEquals("YES", result.extractedFields().get("isHighAmount"));
+    }
+
+    @Test
+    @Order(9)
+    @DisplayName("场景7：规则执行状态审计 - 单条失败不影响其余（错误隔离）")
+    public void testExtractRecordsFailedRuleStatus() {
+        String jsonData = """
+                {
+                  "user": {
+                    "name": "zhangsan",
+                    "phone": "13812345678"
+                  }
+                }
+                """;
+
+        // SUBSTRING 越界必失败，验证失败可溯源且不影响其他规则
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("userName", "json.user.name"),
+                new FunctionalExtractionRuleDTO("badSubstring", "SUBSTRING(json.user.phone, 0, 99)")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+
+        assertEquals(2, result.statuses().size());
+        RuleExecStatus ok = result.statuses().get(0);
+        RuleExecStatus failed = result.statuses().get(1);
+
+        assertTrue(ok.success());
+        assertEquals("userName", ok.targetField());
+        assertFalse(failed.success());
+        assertEquals("badSubstring", failed.targetField());
+        assertTrue(failed.errorMsg() != null && !failed.errorMsg().isBlank());
+
+        // 失败规则不产出字段，成功规则照常产出
+        assertFalse(result.extractedFields().containsKey("badSubstring"));
+        assertEquals("zhangsan", result.extractedFields().get("userName"));
+    }
+
+    @Test
+    @Order(10)
+    @DisplayName("场景8：规则预校验 - 合法规则集通过")
+    public void testCheckRulesAcceptsValidRules() {
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("id", "$.orderId"),
+                new FunctionalExtractionRuleDTO("userName", "json.user.name"),
+                new FunctionalExtractionRuleDTO("itemCount", "LIST_SIZE(json.items)"),
+                new FunctionalExtractionRuleDTO("userRoles", "LIST_JOIN(json.user.roles, '|')")
+        );
+
+        Express4RunnerUtil.checkRules(rules);
+    }
+
+    @Test
+    @Order(11)
+    @DisplayName("场景9：规则预校验 - QL 语法错误被拒绝")
+    public void testCheckRulesRejectsInvalidQl() {
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("bad", "json.user.name +")
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> Express4RunnerUtil.checkRules(rules));
+    }
+
+    @Test
+    @Order(12)
+    @DisplayName("场景10：规则预校验 - JsonPath 语法错误被拒绝")
+    public void testCheckRulesRejectsInvalidJsonPath() {
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("bad", "$..[")
+        );
+
+        assertThrows(IllegalArgumentException.class, () -> Express4RunnerUtil.checkRules(rules));
+    }
+
+    @Test
+    @Order(13)
+    @DisplayName("场景11：结果 DTO 向后兼容 - 2 参构造器 statuses 为空")
+    public void testResultDtoBackwardCompatConstructor() {
+        Map<String, Object> fields = new HashMap<>();
+        fields.put("id", "ORD-1");
+
+        FunctionalExtractionResultDTO dto = new FunctionalExtractionResultDTO(fields, "{\"id\":\"ORD-1\"}");
+
+        assertTrue(dto.statuses().isEmpty());
+        assertEquals("ORD-1", dto.extractedFields().get("id"));
+        assertEquals("{\"id\":\"ORD-1\"}", dto.rawPayload());
     }
 
 }

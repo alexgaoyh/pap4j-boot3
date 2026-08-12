@@ -2,6 +2,7 @@ package cn.net.pap.common.qlexpress;
 
 import cn.net.pap.common.qlexpress.dto.FunctionalExtractionResultDTO;
 import cn.net.pap.common.qlexpress.dto.FunctionalExtractionRuleDTO;
+import cn.net.pap.common.qlexpress.dto.RuleExecStatus;
 import cn.net.pap.common.qlexpress.operator.DivideOperator;
 import cn.net.pap.common.qlexpress.operator.IsBlankOperator;
 import cn.net.pap.common.qlexpress.operator.JsonPathOperator;
@@ -20,6 +21,7 @@ import com.jayway.jsonpath.JsonPath;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -28,6 +30,9 @@ import java.util.Map;
 public class Express4RunnerUtil {
 
     private static final Logger log = LoggerFactory.getLogger(Express4RunnerUtil.class);
+
+    /** JsonPath 表达式前缀，用于引擎路由判定。 */
+    private static final String JSON_PATH_PREFIX = "$";
 
     public static final Express4Runner runner = new Express4Runner(InitOptions.DEFAULT_OPTIONS);
 
@@ -57,6 +62,7 @@ public class Express4RunnerUtil {
      */
     public static FunctionalExtractionResultDTO extract(String jsonData, List<FunctionalExtractionRuleDTO> rules) {
         Map<String, Object> extractedFields = new LinkedHashMap<>();
+        List<RuleExecStatus> statuses = new ArrayList<>(rules.size());
         Object document = JsonPath.parse(jsonData).json();
 
         for (FunctionalExtractionRuleDTO rule : rules) {
@@ -65,12 +71,14 @@ public class Express4RunnerUtil {
                 if (value != null) {
                     extractedFields.put(rule.targetField(), value);
                 }
+                statuses.add(new RuleExecStatus(rule.targetField(), true, null));
             } catch (Exception e) {
                 log.error("Failed to execute extraction rule for field: {}", rule.targetField(), e);
+                statuses.add(new RuleExecStatus(rule.targetField(), false, e.getMessage()));
             }
         }
 
-        return new FunctionalExtractionResultDTO(extractedFields, jsonData);
+        return new FunctionalExtractionResultDTO(extractedFields, jsonData, statuses);
     }
 
     private static Object executeRule(String jsonData, Object document, FunctionalExtractionRuleDTO rule) throws Exception {
@@ -88,6 +96,32 @@ public class Express4RunnerUtil {
 
         // QLExpress 4 执行
         return runner.execute(expr, context, QLOptions.DEFAULT_OPTIONS).getResult();
+    }
+
+    /**
+     * <p>规则集发布前静态校验：QL 表达式走 {@code runner.check}，以 {@code $} 开头的 JsonPath 走 {@code JsonPath.compile}。</p>
+     * <p>路由判定与 {@link #executeRule(String, Object, FunctionalExtractionRuleDTO)} 保持一致。</p>
+     *
+     * @param rules 待校验规则集
+     * @throws IllegalArgumentException 存在语法非法的规则时抛出，携带目标字段与表达式
+     */
+    public static void checkRules(List<FunctionalExtractionRuleDTO> rules) {
+        if (rules == null || rules.isEmpty()) {
+            return;
+        }
+        for (FunctionalExtractionRuleDTO rule : rules) {
+            String expr = rule.expression() == null ? "" : rule.expression().trim();
+            try {
+                if (expr.startsWith(JSON_PATH_PREFIX)) {
+                    JsonPath.compile(expr);
+                } else {
+                    runner.check(expr);
+                }
+            } catch (Exception e) {
+                throw new IllegalArgumentException(
+                        "Invalid rule [targetField=" + rule.targetField() + "]: " + expr, e);
+            }
+        }
     }
 
 }
