@@ -3,13 +3,32 @@ package cn.net.pap.common.qlexpress;
 import cn.net.pap.common.qlexpress.dto.FunctionalExtractionResultDTO;
 import cn.net.pap.common.qlexpress.dto.FunctionalExtractionRuleDTO;
 import cn.net.pap.common.qlexpress.dto.RuleExecStatus;
+import cn.net.pap.common.qlexpress.operator.DateAddOperator;
+import cn.net.pap.common.qlexpress.operator.DateDiffOperator;
+import cn.net.pap.common.qlexpress.operator.DictMapOperator;
 import cn.net.pap.common.qlexpress.operator.DivideOperator;
+import cn.net.pap.common.qlexpress.operator.FormatDateOperator;
+import cn.net.pap.common.qlexpress.operator.HashMaskOperator;
 import cn.net.pap.common.qlexpress.operator.IsBlankOperator;
 import cn.net.pap.common.qlexpress.operator.JsonPathOperator;
+import cn.net.pap.common.qlexpress.operator.ListAvgOperator;
+import cn.net.pap.common.qlexpress.operator.ListContainsOperator;
+import cn.net.pap.common.qlexpress.operator.ListDistinctOperator;
 import cn.net.pap.common.qlexpress.operator.ListJoinOperator;
+import cn.net.pap.common.qlexpress.operator.ListMaxOperator;
+import cn.net.pap.common.qlexpress.operator.ListMinOperator;
 import cn.net.pap.common.qlexpress.operator.ListSizeOperator;
+import cn.net.pap.common.qlexpress.operator.ListSumOperator;
+import cn.net.pap.common.qlexpress.operator.MaskOperator;
+import cn.net.pap.common.qlexpress.operator.RegexExtractOperator;
+import cn.net.pap.common.qlexpress.operator.RegexReplaceOperator;
+import cn.net.pap.common.qlexpress.operator.RegexTestOperator;
 import cn.net.pap.common.qlexpress.operator.SubstringOperator;
 import cn.net.pap.common.qlexpress.operator.TernaryOperator;
+import cn.net.pap.common.qlexpress.operator.ToBooleanOperator;
+import cn.net.pap.common.qlexpress.operator.ToDecimalOperator;
+import cn.net.pap.common.qlexpress.operator.ToIntOperator;
+import cn.net.pap.common.qlexpress.operator.ToStringOperator;
 import cn.net.pap.common.qlexpress.operator.TreeFlattenOperator;
 import cn.net.pap.common.qlexpress.operator.TreeLeafFlattenOperator;
 import cn.net.pap.common.qlexpress.operator.TrimOperator;
@@ -50,11 +69,31 @@ public class Express4RunnerUtil {
         runner.addFunction("JSON_PATH", new JsonPathOperator());
         runner.addFunction("LIST_JOIN", new ListJoinOperator());
         runner.addFunction("LIST_SIZE", new ListSizeOperator());
+        runner.addFunction("LIST_SUM", new ListSumOperator());
+        runner.addFunction("LIST_AVG", new ListAvgOperator());
+        runner.addFunction("LIST_MAX", new ListMaxOperator());
+        runner.addFunction("LIST_MIN", new ListMinOperator());
+        runner.addFunction("LIST_DISTINCT", new ListDistinctOperator());
+        runner.addFunction("LIST_CONTAINS", new ListContainsOperator());
+        runner.addFunction("REGEX_TEST", new RegexTestOperator());
+        runner.addFunction("REGEX_EXTRACT", new RegexExtractOperator());
+        runner.addFunction("REGEX_REPLACE", new RegexReplaceOperator());
+        runner.addFunction("MASK", new MaskOperator());
+        runner.addFunction("HASH_MASK", new HashMaskOperator());
+        runner.addFunction("DICT_MAP", new DictMapOperator());
+        runner.addFunction("TO_INT", new ToIntOperator());
+        runner.addFunction("TO_STRING", new ToStringOperator());
+        runner.addFunction("TO_DECIMAL", new ToDecimalOperator());
+        runner.addFunction("TO_BOOLEAN", new ToBooleanOperator());
+        runner.addFunction("FORMAT_DATE", new FormatDateOperator());
+        runner.addFunction("DATE_ADD", new DateAddOperator());
+        runner.addFunction("DATE_DIFF", new DateDiffOperator());
     }
 
 
     /**
      * 根据提取规则从 JSON 数据中提取核心字段。
+     * <p>契约：成功执行的规则恒产出其 targetField（值可能为 null）；执行失败的规则不产出字段，失败信息记录在 {@code statuses} 中。</p>
      *
      * @param jsonData 原始 JSON 数据字符串
      * @param rules    提取规则列表
@@ -68,9 +107,7 @@ public class Express4RunnerUtil {
         for (FunctionalExtractionRuleDTO rule : rules) {
             try {
                 Object value = executeRule(jsonData, document, rule);
-                if (value != null) {
-                    extractedFields.put(rule.targetField(), value);
-                }
+                extractedFields.put(rule.targetField(), value);
                 statuses.add(new RuleExecStatus(rule.targetField(), true, null));
             } catch (Exception e) {
                 log.error("Failed to execute extraction rule for field: {}", rule.targetField(), e);

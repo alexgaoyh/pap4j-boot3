@@ -17,6 +17,7 @@ import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -505,6 +506,348 @@ public class JsonFunctionalExtractorTest {
         assertTrue(dto.statuses().isEmpty());
         assertEquals("ORD-1", dto.extractedFields().get("id"));
         assertEquals("{\"id\":\"ORD-1\"}", dto.rawPayload());
+    }
+
+    @Test
+    @Order(14)
+    @DisplayName("场景12：集合聚合算子（求和/均值/极值，含数字字符串与 null 跳过）")
+    public void testListAggregationOperators() {
+        String jsonData = """
+                {
+                  "items": [
+                    {"name": "A", "price": 100, "qty": 2},
+                    {"name": "B", "price": 300, "qty": 1},
+                    {"name": "C", "price": 50, "qty": 3}
+                  ],
+                  "mixedNums": [10, "20", 30.5, null],
+                  "dates": ["2024-03-15", "2024-01-01", "2024-02-20"]
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("totalPrice", "LIST_SUM(JSON_PATH(json, '$.items[*].price'))"),
+                new FunctionalExtractionRuleDTO("avgPrice", "LIST_AVG(JSON_PATH(json, '$.items[*].price'))"),
+                new FunctionalExtractionRuleDTO("maxPrice", "LIST_MAX(JSON_PATH(json, '$.items[*].price'))"),
+                new FunctionalExtractionRuleDTO("minPrice", "LIST_MIN(JSON_PATH(json, '$.items[*].price'))"),
+                new FunctionalExtractionRuleDTO("mixedSum", "LIST_SUM(json.mixedNums)"),
+                new FunctionalExtractionRuleDTO("latestDate", "LIST_MAX(json.dates)")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+
+        // 100 + 300 + 50 = 450
+        assertEquals(0, new BigDecimal("450").compareTo((BigDecimal) fields.get("totalPrice")));
+        // (100 + 300 + 50) / 3 = 150.0000（scale=4, HALF_UP）
+        assertEquals(0, new BigDecimal("150").compareTo((BigDecimal) fields.get("avgPrice")));
+        // 极值保留原元素类型（JSON 数字 → Integer/Long）
+        assertEquals(300, ((Number) fields.get("maxPrice")).intValue());
+        assertEquals(50, ((Number) fields.get("minPrice")).intValue());
+        // null 跳过 + 数字字符串强转：10 + 20 + 30.5 = 60.5
+        assertEquals(0, new BigDecimal("60.5").compareTo((BigDecimal) fields.get("mixedSum")));
+        // 通用 Comparable：ISO 日期字符串取最大
+        assertEquals("2024-03-15", fields.get("latestDate"));
+
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
+    }
+
+    @Test
+    @Order(15)
+    @DisplayName("场景13：集合聚合 - 空集合 / null 语义")
+    public void testListAggregationEmptyAndNull() {
+        String jsonData = """
+                {
+                  "emptyArr": [],
+                  "nullField": null,
+                  "onlyNulls": [null, null]
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("emptySum", "LIST_SUM(json.emptyArr)"),
+                new FunctionalExtractionRuleDTO("nullSum", "LIST_SUM(json.nullField)"),
+                new FunctionalExtractionRuleDTO("emptyAvg", "LIST_AVG(json.emptyArr)"),
+                new FunctionalExtractionRuleDTO("nullMax", "LIST_MAX(json.nullField)"),
+                new FunctionalExtractionRuleDTO("onlyNullsMin", "LIST_MIN(json.onlyNulls)")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+
+        // SUM 空集 → 0；AVG/MAX/MIN 空集 → null（字段产出为 null，规则执行成功）
+        assertEquals(0, new BigDecimal("0").compareTo((BigDecimal) fields.get("emptySum")));
+        assertEquals(0, new BigDecimal("0").compareTo((BigDecimal) fields.get("nullSum")));
+        assertNull(fields.get("emptyAvg"));
+        assertNull(fields.get("nullMax"));
+        assertNull(fields.get("onlyNullsMin"));
+
+        // null 结果是合法结果而非失败——审计里应全部 success
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
+    }
+
+    @Test
+    @Order(16)
+    @DisplayName("场景14：集合聚合 - 非法元素与混合类型经审计暴露（错误隔离）")
+    public void testListAggregationRejectsGarbage() {
+        String jsonData = """
+                {
+                  "nums": [10, "abc", 30],
+                  "mixed": [10, "abc"],
+                  "ok": [1, 2, 3]
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("badSum", "LIST_SUM(json.nums)"),
+                new FunctionalExtractionRuleDTO("badMax", "LIST_MAX(json.mixed)"),
+                new FunctionalExtractionRuleDTO("okSum", "LIST_SUM(json.ok)")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+        List<RuleExecStatus> statuses = result.statuses();
+
+        // 正常规则不受影响
+        assertEquals(0, new BigDecimal("6").compareTo((BigDecimal) fields.get("okSum")));
+        // 非法元素（'abc'）/ 混合类型（Integer vs String）→ 该规则失败、不产出字段
+        assertFalse(fields.containsKey("badSum"));
+        assertFalse(fields.containsKey("badMax"));
+
+        RuleExecStatus badSum = statuses.stream()
+                .filter(s -> "badSum".equals(s.targetField())).findFirst().orElseThrow();
+        RuleExecStatus badMax = statuses.stream()
+                .filter(s -> "badMax".equals(s.targetField())).findFirst().orElseThrow();
+        RuleExecStatus okSum = statuses.stream()
+                .filter(s -> "okSum".equals(s.targetField())).findFirst().orElseThrow();
+
+        assertFalse(badSum.success());
+        assertTrue(badSum.errorMsg() != null && !badSum.errorMsg().isBlank());
+        assertFalse(badMax.success());
+        assertTrue(okSum.success());
+    }
+
+    @Test
+    @Order(17)
+    @DisplayName("场景15：集合去重与包含")
+    public void testListDistinctAndContains() {
+        String jsonData = """
+                {
+                  "tags": ["prod", "web", "prod", "web", "high"],
+                  "nullList": null
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("distinctTags", "LIST_DISTINCT(json.tags)"),
+                new FunctionalExtractionRuleDTO("hasWeb", "LIST_CONTAINS(json.tags, 'web')"),
+                new FunctionalExtractionRuleDTO("hasNone", "LIST_CONTAINS(json.tags, 'none')"),
+                new FunctionalExtractionRuleDTO("nullContains", "LIST_CONTAINS(json.nullList, 'x')")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+
+        assertEquals(List.of("prod", "web", "high"), fields.get("distinctTags"));
+        assertEquals(true, fields.get("hasWeb"));
+        assertEquals(false, fields.get("hasNone"));
+        assertEquals(false, fields.get("nullContains"));
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
+    }
+
+    @Test
+    @Order(18)
+    @DisplayName("场景16：正则三件套（校验/提取/替换）")
+    public void testRegexOperators() {
+        String jsonData = """
+                {
+                  "phone": "13812345678",
+                  "badPhone": "23812345678",
+                  "email": "zhangsan@example.com",
+                  "text": "a  b   c"
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("phoneValid", "REGEX_TEST(json.phone, '^1[3-9]\\\\d{9}$')"),
+                new FunctionalExtractionRuleDTO("badPhoneValid", "REGEX_TEST(json.badPhone, '^1[3-9]\\\\d{9}$')"),
+                new FunctionalExtractionRuleDTO("emailUser", "REGEX_EXTRACT(json.email, '(\\\\w+)@(\\\\w+\\\\.\\\\w+)', 1)"),
+                new FunctionalExtractionRuleDTO("emailFull", "REGEX_EXTRACT(json.email, '(\\\\w+)@(\\\\w+\\\\.\\\\w+)')"),
+                new FunctionalExtractionRuleDTO("cleanText", "REGEX_REPLACE(json.text, '\\\\s+', ' ')")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+
+        assertEquals(true, fields.get("phoneValid"));
+        assertEquals(false, fields.get("badPhoneValid"));
+        assertEquals("zhangsan", fields.get("emailUser"));
+        assertEquals("zhangsan@example.com", fields.get("emailFull"));
+        assertEquals("a b c", fields.get("cleanText"));
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
+    }
+
+    @Test
+    @Order(19)
+    @DisplayName("场景17：声明式脱敏与哈希指纹")
+    public void testMaskAndHashOperators() {
+        String jsonData = """
+                {
+                  "phone": "13812345678",
+                  "idCard": "110101199001011234",
+                  "shortVal": "ab"
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("maskedPhone", "MASK(json.phone, 3, 4)"),
+                new FunctionalExtractionRuleDTO("maskedId", "MASK(json.idCard, 6, 4)"),
+                new FunctionalExtractionRuleDTO("maskedCustom", "MASK(json.phone, 3, 4, '#')"),
+                new FunctionalExtractionRuleDTO("shortPassthrough", "MASK(json.shortVal, 1, 1)"),
+                new FunctionalExtractionRuleDTO("md5", "HASH_MASK(json.phone, 'MD5')"),
+                new FunctionalExtractionRuleDTO("md5Again", "HASH_MASK(json.phone, 'MD5')"),
+                new FunctionalExtractionRuleDTO("sha256", "HASH_MASK(json.phone, 'SHA-256')"),
+                new FunctionalExtractionRuleDTO("shaSalted", "HASH_MASK(json.phone, 'SHA-256', 'dgn')")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+
+        assertEquals("138****5678", fields.get("maskedPhone"));
+        assertEquals("110101********1234", fields.get("maskedId"));
+        assertEquals("138####5678", fields.get("maskedCustom"));
+        // 过短（1 + 1 >= 2）→ 返回原值
+        assertEquals("ab", fields.get("shortPassthrough"));
+
+        String md5 = (String) fields.get("md5");
+        String sha256 = (String) fields.get("sha256");
+        // 确定性：同值同哈希
+        assertEquals(md5, fields.get("md5Again"));
+        // 长度：MD5 32 位、SHA-256 64 位十六进制
+        assertEquals(32, md5.length());
+        assertEquals(64, sha256.length());
+        // 不同算法 / 加盐 → 结果不同
+        assertFalse(md5.equals(sha256));
+        assertFalse(md5.equals(fields.get("shaSalted")));
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
+    }
+
+    @Test
+    @Order(20)
+    @DisplayName("场景18：字典/码值翻译（含数字键回退）")
+    public void testDictMapOperator() {
+        String jsonData = """
+                {
+                  "status": 1,
+                  "level": "VIP",
+                  "unknown": 9
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("statusName", "DICT_MAP(json.status, {'1':'已下单','2':'已支付'})"),
+                new FunctionalExtractionRuleDTO("levelName", "DICT_MAP(json.level, {'VIP':'金卡','NORMAL':'普通'})"),
+                new FunctionalExtractionRuleDTO("unknownName", "DICT_MAP(json.unknown, {'1':'已下单','2':'已支付'})")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+
+        // JSON 数字 1 → 回退字符串键 "1"
+        assertEquals("已下单", fields.get("statusName"));
+        assertEquals("金卡", fields.get("levelName"));
+        // 未命中 → 字段产出为 null
+        assertNull(fields.get("unknownName"));
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
+    }
+
+    @Test
+    @Order(21)
+    @DisplayName("场景19：类型强转 TO_INT/TO_STRING/TO_DECIMAL/TO_BOOLEAN")
+    public void testTypeCoercionOperators() {
+        String jsonData = """
+                {
+                  "numStr": "42",
+                  "price": "3.14",
+                  "amount": 500,
+                  "badInt": "abc",
+                  "flag": "是",
+                  "zero": 0,
+                  "flagYes": "yes",
+                  "missing": null
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("intFromStr", "TO_INT(json.numStr)"),
+                new FunctionalExtractionRuleDTO("intWithDefault", "TO_INT(json.badInt, 0)"),
+                new FunctionalExtractionRuleDTO("intFromMissingDefault", "TO_INT(json.missing, 9)"),
+                new FunctionalExtractionRuleDTO("intFromMissing", "TO_INT(json.missing)"),
+                new FunctionalExtractionRuleDTO("strFromNum", "TO_STRING(json.amount)"),
+                new FunctionalExtractionRuleDTO("decimalFromStr", "TO_DECIMAL(json.price)"),
+                new FunctionalExtractionRuleDTO("boolFromCn", "TO_BOOLEAN(json.flag)"),
+                new FunctionalExtractionRuleDTO("boolFromZero", "TO_BOOLEAN(json.zero)"),
+                new FunctionalExtractionRuleDTO("boolFromYes", "TO_BOOLEAN(json.flagYes)"),
+                new FunctionalExtractionRuleDTO("badBoolDefault", "TO_BOOLEAN(json.badInt, false)")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+
+        assertEquals(42, fields.get("intFromStr"));
+        assertEquals(0, fields.get("intWithDefault"));
+        assertEquals(9, fields.get("intFromMissingDefault"));
+        // null 无默认值 → 字段产出为 null
+        assertNull(fields.get("intFromMissing"));
+        assertEquals("500", fields.get("strFromNum"));
+        assertEquals(0, new BigDecimal("3.14").compareTo((BigDecimal) fields.get("decimalFromStr")));
+        assertEquals(true, fields.get("boolFromCn"));
+        assertEquals(false, fields.get("boolFromZero"));
+        assertEquals(true, fields.get("boolFromYes"));
+        assertEquals(false, fields.get("badBoolDefault"));
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
+    }
+
+    @Test
+    @Order(22)
+    @DisplayName("场景20：日期算子（格式化/加减/差值，不引入 NOW）")
+    public void testDateOperators() {
+        String jsonData = """
+                {
+                  "date": "2024-03-15",
+                  "dateTime": "2024-03-15 10:30:00",
+                  "start": "2024-03-01",
+                  "end": "2024-03-15",
+                  "epochSeconds": 1710379800,
+                  "epochMillis": 1710379800000
+                }
+                """;
+
+        List<FunctionalExtractionRuleDTO> rules = List.of(
+                new FunctionalExtractionRuleDTO("formatted", "FORMAT_DATE(json.date, 'yyyy/MM/dd')"),
+                new FunctionalExtractionRuleDTO("dateFromDateTime", "FORMAT_DATE(json.dateTime, 'yyyy-MM-dd')"),
+                new FunctionalExtractionRuleDTO("addedDays", "DATE_ADD(json.date, 30, 'days')"),
+                new FunctionalExtractionRuleDTO("addedHours", "DATE_ADD(json.dateTime, 1, 'hours')"),
+                new FunctionalExtractionRuleDTO("epochAddDay", "DATE_ADD(json.epochSeconds, 1, 'days')"),
+                new FunctionalExtractionRuleDTO("dateDiffDays", "DATE_DIFF(json.end, json.start, 'days')"),
+                new FunctionalExtractionRuleDTO("dateDiffMonths", "DATE_DIFF(json.end, json.start, 'months')")
+        );
+
+        FunctionalExtractionResultDTO result = Express4RunnerUtil.extract(jsonData, rules);
+        Map<String, Object> fields = result.extractedFields();
+
+        assertEquals("2024/03/15", fields.get("formatted"));
+        assertEquals("2024-03-15", fields.get("dateFromDateTime"));
+        // 日期字符串 + 30 天 → ISO 日期（粒度保持）
+        assertEquals("2024-04-14", fields.get("addedDays"));
+        // 日期时间字符串 + 1 小时 → ISO 日期时间（粒度保持）
+        assertEquals("2024-03-15T11:30:00", fields.get("addedHours"));
+        // epoch 秒 + 1 天 → 原单位数字（epoch 往返与时区无关）
+        assertEquals(1710379800L + 86400L, ((Number) fields.get("epochAddDay")).longValue());
+        // 结束 - 开始：2024-03-15 - 2024-03-01 = 14 天
+        assertEquals(14L, ((Number) fields.get("dateDiffDays")).longValue());
+        assertEquals(0L, ((Number) fields.get("dateDiffMonths")).longValue());
+
+        assertTrue(result.statuses().stream().allMatch(RuleExecStatus::success));
     }
 
 }

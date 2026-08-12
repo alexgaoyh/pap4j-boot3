@@ -156,6 +156,314 @@ knowledge_units:
     hallucination_prevention:
       - "严禁使用 list.size()，必须使用 LIST_SIZE(list) 以防止 NPE。"
 
+  - title: LIST_SUM (数值列表求和)
+    module: CollectionOps
+    engine: QLExpress
+    type: custom_function
+    keywords: [sum, 求和, 聚合, 数组]
+    description: >
+      对数值列表求和。null 元素跳过，数字字符串（如 "10"）会强转参与计算；空列表返回 0。
+    signature: "LIST_SUM(list)"
+    parameters:
+      - name: list
+        type: Collection/Array
+        description: 数值集合，支持 Collection / 数组 / Iterable
+    examples:
+      - script: "LIST_SUM(JSON_PATH(json, '$.items[*].price'))"
+        explanation: "汇总所有商品价格。"
+    hallucination_prevention:
+      - "严禁使用 list.stream().sum() 等 Java 原生调用，必须使用 LIST_SUM。"
+      - "空列表返回 0，而非 null。"
+      - "集合中存在非数字元素（如 'abc'）会抛错，需先清洗或校验。"
+
+  - title: LIST_AVG (数值列表均值)
+    module: CollectionOps
+    engine: QLExpress
+    type: custom_function
+    keywords: [avg, 均值, 平均, 聚合]
+    description: >
+      对数值列表求算术平均，结果固定保留 4 位小数（HALF_UP）。null 元素跳过，数字字符串参与计算。
+    signature: "LIST_AVG(list)"
+    parameters:
+      - name: list
+        type: Collection/Array
+        description: 数值集合，支持 Collection / 数组 / Iterable
+    examples:
+      - script: "LIST_AVG(JSON_PATH(json, '$.items[*].price'))"
+        explanation: "计算所有商品的平均价格。"
+    hallucination_prevention:
+      - "空列表返回 null（而非 0），语义为「无均值」。"
+      - "结果固定 4 位小数四舍五入，不要用 / 运算符代替。"
+
+  - title: LIST_MAX (列表最大值)
+    module: CollectionOps
+    engine: QLExpress
+    type: custom_function
+    keywords: [max, 最大值, 最新, 聚合]
+    description: >
+      返回列表中的最大值，元素须互为 Comparable（数字或字符串均可，ISO 日期字符串可直接取最新）。
+    signature: "LIST_MAX(list)"
+    parameters:
+      - name: list
+        type: Collection/Array
+        description: 集合，支持 Collection / 数组 / Iterable
+    examples:
+      - script: "LIST_MAX(JSON_PATH(json, '$.logs[*].timestamp'))"
+        explanation: "获取最新日志时间戳。"
+    hallucination_prevention:
+      - "空列表返回 null。"
+      - "数字与字符串混存会抛错（不可比较），需先统一类型。"
+
+  - title: LIST_MIN (列表最小值)
+    module: CollectionOps
+    engine: QLExpress
+    type: custom_function
+    keywords: [min, 最小值, 最早, 聚合]
+    description: >
+      返回列表中的最小值，元素须互为 Comparable。
+    signature: "LIST_MIN(list)"
+    parameters:
+      - name: list
+        type: Collection/Array
+        description: 集合，支持 Collection / 数组 / Iterable
+    examples:
+      - script: "LIST_MIN(json.prices)"
+        explanation: "获取价格列表中的最小值。"
+    hallucination_prevention:
+      - "空列表返回 null。"
+      - "数字与字符串混存会抛错（不可比较）。"
+
+  - title: LIST_DISTINCT (列表去重)
+    module: CollectionOps
+    engine: QLExpress
+    type: custom_function
+    keywords: [distinct, 去重, 唯一]
+    description: >
+      列表去重，保留首次出现顺序，null 元素最多保留一个。
+    signature: "LIST_DISTINCT(list)"
+    examples:
+      - script: "LIST_DISTINCT(json.tags)"
+        explanation: "去除标签中的重复项。"
+    hallucination_prevention:
+      - "严禁使用 Java 原生 stream distinct，必须使用 LIST_DISTINCT。"
+      - "null 列表返回空列表而非报错。"
+
+  - title: LIST_CONTAINS (列表包含判断)
+    module: CollectionOps
+    engine: QLExpress
+    type: custom_function
+    keywords: [contains, 包含, 判断]
+    description: >
+      判断列表中是否包含目标值，null 安全比对。
+    signature: "LIST_CONTAINS(list, value)"
+    examples:
+      - script: "LIST_CONTAINS(json.tags, 'web') ? 'WEB' : 'OTHER'"
+        explanation: "判断标签是否包含 'web'。"
+    hallucination_prevention:
+      - "null 列表返回 false 而非抛错。"
+
+  - title: REGEX_TEST (正则格式校验)
+    module: StringProcessing
+    engine: QLExpress
+    type: custom_function
+    keywords: [正则, 校验, 格式, 匹配]
+    description: >
+      正则校验，返回是否匹配。采用子串匹配语义，整串校验需加 ^ $ 锚点。
+    signature: "REGEX_TEST(string value, string pattern)"
+    examples:
+      - script: "REGEX_TEST(json.phone, '^1[3-9]\\d{9}$') ? 'VALID' : 'INVALID'"
+        explanation: "校验手机号格式。"
+    hallucination_prevention:
+      - "正则中的反斜杠必须转义为双反斜杠（如 \\d 写成 '\\\\d'）。"
+      - "值为 null 返回 false，勿对 null 做匹配。"
+      - "整串校验务必在正则首尾加 ^ 与 $ 锚点。"
+
+  - title: REGEX_EXTRACT (正则提取)
+    module: StringProcessing
+    engine: QLExpress
+    type: custom_function
+    keywords: [正则, 提取, 捕获组]
+    description: >
+      提取首次匹配的文本（默认整个匹配，可选捕获组号），无匹配返回 null。
+    signature: "REGEX_EXTRACT(string value, string pattern, [int group])"
+    examples:
+      - script: "REGEX_EXTRACT(json.email, '(\\w+)@(\\w+\\.\\w+)', 1)"
+        explanation: "提取邮箱用户名。"
+    hallucination_prevention:
+      - "分组号从 1 开始，越界会抛错；group 缺省为 0（整个匹配）。"
+      - "正则中的反斜杠必须转义为双反斜杠。"
+
+  - title: REGEX_REPLACE (正则替换)
+    module: StringProcessing
+    engine: QLExpress
+    type: custom_function
+    keywords: [正则, 替换, 清洗]
+    description: >
+      正则替换，replacement 中 $1 表示第 1 个捕获组；replacement 为 null 视为删除匹配。
+    signature: "REGEX_REPLACE(string value, string pattern, string replacement)"
+    examples:
+      - script: "REGEX_REPLACE(json.text, '\\s+', ' ')"
+        explanation: "将连续空白折叠为单个空格。"
+    hallucination_prevention:
+      - "正则中的反斜杠必须转义为双反斜杠。"
+      - "值为 null 返回 null。"
+
+  - title: MASK (声明式脱敏)
+    module: DataSecurity
+    engine: QLExpress
+    type: custom_function
+    keywords: [脱敏, 掩码, 遮蔽, 手机号, 身份证]
+    description: >
+      保留前 N 位与后 M 位，中间用掩码字符填充。当前缀+后缀保留位数不小于长度时返回原值。
+    signature: "MASK(string value, int prefixKeep, int suffixKeep, [char maskChar])"
+    parameters:
+      - name: maskChar
+        type: char
+        description: 掩码字符，默认 '*'
+    examples:
+      - script: "MASK(json.phone, 3, 4)"
+        explanation: "手机号脱敏为 138****5678。"
+    hallucination_prevention:
+      - "过短字符串（前缀+后缀 ≥ 长度）返回原值，属预期行为，勿误判为未脱敏。"
+      - "身份证等长字段建议 MASK(value, 6, 4)。"
+
+  - title: HASH_MASK (不可逆脱敏/指纹)
+    module: DataSecurity
+    engine: QLExpress
+    type: custom_function
+    keywords: [哈希, 指纹, 不可逆脱敏, md5, sha]
+    description: >
+      对值做哈希生成不可逆脱敏值/指纹，输出小写十六进制。salt 拼接在值前防彩虹表。固定盐值保证同值同哈希。
+    signature: "HASH_MASK(string value, string algorithm, [string salt])"
+    parameters:
+      - name: algorithm
+        type: string
+        description: MD5 / SHA-256 / SHA-512，日常脱敏建议 SHA-256
+    examples:
+      - script: "HASH_MASK(json.phone, 'SHA-256', 'dgn-salt')"
+        explanation: "手机号不可逆脱敏。"
+    hallucination_prevention:
+      - "MD5 仅用于脱敏/指纹，不用于安全认证场景。"
+      - "不加 salt 时，常见值（手机号等）可被彩虹表反推，敏感字段务必加盐。"
+      - "值为 null 返回 null。"
+
+  - title: DICT_MAP (码值/字典翻译)
+    module: Standardization
+    engine: QLExpress
+    type: custom_function
+    keywords: [字典, 码值, 翻译, 映射]
+    description: >
+      按映射表翻译码值。数字值会回退到字符串键匹配（JSON 数字 1 可命中字典键 '1'）；未命中返回 null。
+    signature: "DICT_MAP(value, map mapping)"
+    examples:
+      - script: "DICT_MAP(json.status, {'1':'已下单','2':'已支付','3':'已取消'})"
+        explanation: "订单状态码翻译。"
+    hallucination_prevention:
+      - "映射表必须用 {} 字面量构建，键与值均用引号包裹。"
+      - "未命中返回 null，可用 COALESCE 或 TERNARY 提供兜底值。"
+
+  - title: TO_INT (类型强转-整型)
+    module: TypeCoercion
+    engine: QLExpress
+    type: custom_function
+    keywords: [强转, 整型, int, 类型标准化]
+    description: >
+      转换为 int：Number 取整数值，数字字符串按 BigDecimal 截断取整。可选默认值兜底。
+    signature: "TO_INT(value, [default])"
+    examples:
+      - script: "TO_INT(json.count, 0)"
+        explanation: "转换为 int，失败或 null 时返回 0。"
+    hallucination_prevention:
+      - "小数数字字符串会截断取整（如 '42.9' → 42）。"
+      - "未给默认值时，null 返回 null、转换失败抛错（经审计暴露）。"
+
+  - title: TO_STRING (类型强转-字符串)
+    module: TypeCoercion
+    engine: QLExpress
+    type: custom_function
+    keywords: [强转, 字符串, 类型标准化]
+    description: >
+      转换为字符串（调用 toString，不做 trim）。可选默认值兜底。
+    signature: "TO_STRING(value, [default])"
+    examples:
+      - script: "TO_STRING(json.amount)"
+        explanation: "数值转字符串。"
+    hallucination_prevention:
+      - "需要去空格时先 TRIM 再转或转后 TRIM。"
+
+  - title: TO_DECIMAL (类型强转-高精度小数)
+    module: TypeCoercion
+    engine: QLExpress
+    type: custom_function
+    keywords: [强转, 小数, bigdecimal, 类型标准化]
+    description: >
+      转换为 BigDecimal，数字字符串按字符串构造避免精度损失。可选默认值兜底。
+    signature: "TO_DECIMAL(value, [default])"
+    examples:
+      - script: "TO_DECIMAL(json.amount, 0)"
+        explanation: "转换为高精度小数，失败或 null 时返回 0。"
+    hallucination_prevention:
+      - "金额计算统一用 TO_DECIMAL 后参与运算，勿用 double。"
+
+  - title: TO_BOOLEAN (类型强转-布尔)
+    module: TypeCoercion
+    engine: QLExpress
+    type: custom_function
+    keywords: [强转, 布尔, boolean, 类型标准化]
+    description: >
+      转换为布尔：字符串按词表识别 true/false、yes/no、y/n、t/f、是/否（ASCII 忽略大小写），数字按非零为 true。可选默认值兜底。
+    signature: "TO_BOOLEAN(value, [default])"
+    examples:
+      - script: "TO_BOOLEAN(json.isActive, false)"
+        explanation: "转换为布尔，失败或 null 时返回 false。"
+    hallucination_prevention:
+      - "无法识别的字符串（如 'abc'）在未给默认值时抛错。"
+      - "'1'/'0'、'yes'/'no'、'是'/'否' 均可识别。"
+
+  - title: FORMAT_DATE (日期格式化)
+    module: DateProcessing
+    engine: QLExpress
+    type: custom_function
+    keywords: [日期, 格式化, format]
+    description: >
+      将日期值按指定格式输出为字符串。支持字符串日期、epoch 秒/毫秒、LocalDateTime 等输入。
+    signature: "FORMAT_DATE(value, string pattern)"
+    examples:
+      - script: "FORMAT_DATE(json.date, 'yyyy/MM/dd')"
+        explanation: "2024-03-15 → 2024/03/15。"
+    hallucination_prevention:
+      - "无法解析的日期会抛错（经审计暴露），勿用字符串拼接处理日期。"
+
+  - title: DATE_ADD (日期加减)
+    module: DateProcessing
+    engine: QLExpress
+    type: custom_function
+    keywords: [日期, 加减, 偏移, add]
+    description: >
+      日期加减指定数量，单位 days/hours/minutes/seconds/weeks/months/years（默认 days）。输出保持输入粒度：日期字符串→ISO 日期、日期时间→ISO 日期时间、epoch→原单位数字。
+    signature: "DATE_ADD(value, int amount, [string unit])"
+    examples:
+      - script: "DATE_ADD(json.date, 30, 'days')"
+        explanation: "日期加 30 天。"
+    hallucination_prevention:
+      - "单位 'm' 指分钟而非月，月必须写全 'months'。"
+      - "严禁引入 NOW()/当前时间类函数——规则必须同输入同输出（确定性），相对时间由平台注入上下文变量。"
+
+  - title: DATE_DIFF (日期差值)
+    module: DateProcessing
+    engine: QLExpress
+    type: custom_function
+    keywords: [日期, 差值, 时效, diff]
+    description: >
+      计算两个日期的差值（结束 - 开始），单位 days/hours/minutes/seconds/weeks/months/years（默认 days），返回整数。
+    signature: "DATE_DIFF(endValue, startValue, [string unit])"
+    examples:
+      - script: "DATE_DIFF(json.endDate, json.startDate, 'days')"
+        explanation: "计算两个日期相隔的天数。"
+    hallucination_prevention:
+      - "参数顺序为 结束-开始（同 SQL DATEDIFF），结果为正表示结束晚于开始。"
+      - "任一日期为 null 返回 null。"
+
   - title: LIST_JOIN (集合元素拼接)
     module: CollectionOps
     engine: QLExpress
@@ -230,7 +538,7 @@ knowledge_units:
     module: Core
     engine: QLExpress
     type: syntax
-    keywords: [${}, 动态替换, 占位符]
+    keywords: ["${}", 动态替换, 占位符]
     description: >
       使用 ${varName} 语法在脚本执行前注入外部动态变量。
     examples:
