@@ -27,6 +27,9 @@ globs: "*"
    - `example-devtools` (`pap4j-boot3-example/pap4j-boot3-example-devtools`)
 
 ### 步骤 2：起草 Conventional Commit 消息 (Commit Draft)
+
+> **🌐 语言默认（强制）**：提交信息（subject、body、footer）**默认一律使用英文撰写**，与 Conventional Commits 国际惯例对齐，保证 Git 历史与 Changelog 可读性。仅当开发者显式要求"中文提交信息"时，才输出中文。
+
 根据改动意图分类（`feat`, `fix`, `docs`, `refactor`, `test`, `chore` 等），起草符合规范的标准提交信息：
 
 ```text
