@@ -401,6 +401,141 @@
         .delete-tag-btn:hover {
             color: #ff8a8a !important;
         }
+
+        /* ===== 数据生成与提取验证工作台 ===== */
+        .tab-active {
+            background: var(--accent-primary) !important;
+            border-color: var(--accent-primary) !important;
+            color: #fff !important;
+        }
+        .workbench {
+            width: 100%;
+            max-width: none;
+            min-width: 0;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1.5rem;
+        }
+        .workbench .panel {
+            min-width: 0;
+            max-width: 100%;
+        }
+        .workbench-cols {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            align-items: stretch;
+            min-width: 0;
+        }
+        @media (max-width: 1100px) {
+            .workbench-cols {
+                grid-template-columns: 1fr;
+            }
+        }
+        .table-wrap {
+            max-width: 100%;
+            overflow-x: auto;
+            overflow-y: auto;
+            max-height: 40vh;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        .data-table {
+            width: 100%;
+            min-width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+        .data-table th, .data-table td {
+            border: 1px solid var(--border-color);
+            padding: 0.35rem 0.5rem;
+            text-align: left;
+            white-space: nowrap;
+        }
+        .data-table th {
+            background: rgba(15, 23, 42, 0.7);
+            position: sticky;
+            top: 0;
+        }
+        .data-table tbody tr:hover td {
+            background: rgba(99, 102, 241, 0.08);
+        }
+        .row-expanded td {
+            background: rgba(16, 185, 129, 0.08);
+        }
+        .json-pre {
+            white-space: pre-wrap;
+            word-break: break-all;
+            font-family: monospace;
+            font-size: 0.72rem;
+            color: #34d399;
+        }
+        .rule-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .rule-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        .func-ref {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+        .func-ref-head {
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+        .func-ref-body {
+            max-height: 30vh;
+            overflow-y: auto;
+            border-top: 1px solid var(--border-color);
+        }
+        .func-item {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.35rem 0.75rem;
+            font-size: 0.75rem;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+            cursor: pointer;
+            align-items: baseline;
+        }
+        .func-item:hover {
+            background: rgba(99, 102, 241, 0.12);
+        }
+        .func-name {
+            color: var(--accent-info);
+            font-weight: 600;
+            min-width: 130px;
+            font-family: monospace;
+        }
+        .func-sig {
+            color: #a5b4fc;
+            font-family: monospace;
+            white-space: nowrap;
+        }
+        .func-desc {
+            color: var(--text-secondary);
+        }
+        .stats-bar {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+        .stat-tag {
+            font-size: 0.75rem;
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            background: rgba(99, 102, 241, 0.12);
+            color: #a5b4fc;
+        }
     </style>
 </head>
 <body>
@@ -443,7 +578,14 @@
             </div>
         </header>
 
-        <main>
+        <!-- 页签栏：Schema 设计 / 数据生成与提取验证 -->
+        <div style="display: flex; gap: 0.5rem; padding: 0.6rem 2rem; border-bottom: 1px solid var(--border-color); background: #1e293b; align-items: center; flex-wrap: wrap;">
+            <button class="btn-outline" style="font-size: 0.85rem; padding: 0.3rem 0.9rem;" :class="{ 'tab-active': activeTab === 'design' }" @click="activeTab = 'design'">① Schema 设计</button>
+            <button class="btn-outline" style="font-size: 0.85rem; padding: 0.3rem 0.9rem;" :class="{ 'tab-active': activeTab === 'workbench' }" @click="activeTab = 'workbench'">② 数据生成与提取验证</button>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); margin-left: auto;">基于当前 Schema 随机生成数据 → 书写 JsonPath/QLExpress 提取表达式 → 逐条验证</span>
+        </div>
+
+        <main v-show="activeTab === 'design'">
             <!-- Left Side: Visual Editor -->
             <div class="panel">
                 <div class="panel-title">
@@ -817,6 +959,107 @@
                         <li style="color: var(--accent-success);">✔ Recursion: self_ref (树形递归 `$ref: "#"`)</li>
                     </ul>
                 </div>
+            </div>
+        </main>
+
+        <!-- 数据生成与提取验证工作台 -->
+        <main v-show="activeTab === 'workbench'" class="workbench">
+            <!-- ① 数据生成区 -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>① 随机数据生成（基于当前 Schema）</span>
+                    <div style="display: flex; gap: 0.4rem; align-items: center;">
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">条数</label>
+                        <input type="number" class="input-text" style="width: 70px;" v-model.number="mockCount" min="1" max="200">
+                        <label style="font-size: 0.8rem; color: var(--text-secondary);">seed</label>
+                        <input type="number" class="input-text" style="width: 90px;" v-model.number="mockSeed" placeholder="可空">
+                        <button class="btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;" :disabled="generating" @click="doGenerate">{{ generating ? '生成中…' : '⚡ 生成数据' }}</button>
+                        <button class="btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;" @click="copyRecords">📋 复制JSON</button>
+                    </div>
+                </div>
+                <div v-if="genMessage" style="font-size: 0.8rem; color: var(--accent-success);">{{ genMessage }}</div>
+                <div v-if="workbenchError" style="font-size: 0.8rem; color: var(--accent-danger); background: rgba(239, 68, 68, 0.1); padding: 0.4rem 0.6rem; border-radius: 4px;">⚠ {{ workbenchError }}</div>
+                <div v-if="generatedRecords.length" class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr><th>#</th><th v-for="c in dataColumns" :key="c">{{ c }}</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="(rec, idx) in generatedRecords" :key="idx" @click="toggleRow(idx)" :class="{ 'row-expanded': expandedRow === idx }">
+                            <td>{{ idx }}</td>
+                            <td v-for="c in dataColumns" :key="c">{{ cellText(rec[c]) }}</td>
+                        </tr>
+                        <tr v-if="expandedRow !== null">
+                            <td colspan="99"><pre class="json-pre">{{ JSON.stringify(generatedRecords[expandedRow], null, 2) }}</pre></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-else style="font-size: 0.8rem; color: var(--text-secondary);">尚未生成数据，点击上方「⚡ 生成数据」。</div>
+            </div>
+
+            <!-- 提取规则书写 + 提取结果：左右两栏 -->
+            <div class="workbench-cols">
+
+            <!-- ② 提取规则区 -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>② 提取规则书写（JsonPath / QLExpress）</span>
+                    <div style="display: flex; gap: 0.4rem;">
+                        <button class="btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;" :disabled="rulesChecking" @click="doCheckRules">{{ rulesChecking ? '校验中…' : '✔ 校验规则' }}</button>
+                        <button class="btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.8rem; background: var(--accent-info);" :disabled="extracting" @click="doExtract">{{ extracting ? '提取中…' : '▶ 执行提取' }}</button>
+                        <button class="btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.8rem;" @click="addRule">➕ 新增规则</button>
+                    </div>
+                </div>
+                <div v-if="checkMessage" style="font-size: 0.8rem;" :style="checkMessage.startsWith('✔') ? { color: 'var(--accent-success)' } : { color: 'var(--accent-danger)' }">{{ checkMessage }}</div>
+                <div class="rule-list">
+                    <div v-for="(rule, idx) in workbenchRules" :key="idx" class="rule-row">
+                        <input type="text" class="input-text" placeholder="targetField 如 status" v-model="rule.targetField" style="width: 130px;">
+                        <input type="text" class="input-text" placeholder="表达式，如 $.status 或 UPPER(json.customer)" v-model="rule.expression" style="flex: 1;">
+                        <button class="btn-icon" @click="removeRule(idx)" title="删除规则">✕</button>
+                    </div>
+                </div>
+                <div class="func-ref">
+                    <div class="func-ref-head" @click="showFunctionRef = !showFunctionRef">
+                        <span>[函数参考 {{ showFunctionRef ? '▾' : '▸' }}] qlexpress 自定义 + 默认函数，点击签名插入新规则行</span>
+                    </div>
+                    <div v-show="showFunctionRef" class="func-ref-body">
+                        <div v-for="fn in funcCatalog" :key="fn.name" class="func-item" @click="insertFunction(fn)">
+                            <span class="func-name">{{ fn.name }}</span>
+                            <span class="func-sig">{{ fn.signature }}</span>
+                            <span class="func-desc">{{ fn.desc }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ③ 结果展示区 -->
+            <div class="panel">
+                <div class="panel-title">
+                    <span>③ 提取结果（行=记录，列=规则 targetField，失败红色✘）</span>
+                </div>
+                <div v-if="extractResults.length" class="stats-bar">
+                    <span v-for="(s, tf) in extractStats" :key="tf" class="stat-tag">{{ tf }}: {{ s.success }}/{{ s.total }} 成功</span>
+                </div>
+                <div v-if="extractResults.length" class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                        <tr><th>#</th><th v-for="r in ruleFields" :key="r">{{ r }}</th></tr>
+                        </thead>
+                        <tbody>
+                        <tr v-for="rr in extractResults" :key="rr.recordIndex">
+                            <td>{{ rr.recordIndex }}</td>
+                            <td v-for="r in ruleFields" :key="r">
+                                <span v-if="statusOf(rr, r)" :title="statusOf(rr, r)" style="color: var(--accent-danger); cursor: help;">✘ {{ statusOf(rr, r) }}</span>
+                                <span v-else style="color: var(--accent-success);">{{ cellText(rr.values[r]) }}</span>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div v-else style="font-size: 0.8rem; color: var(--text-secondary);">执行提取后在此展示逐行结果与批量统计。</div>
+            </div>
+
             </div>
         </main>
 
@@ -2038,6 +2281,199 @@
                         .catch(err => alert('复制失败: ' + err));
                 };
 
+                // ===== 数据生成与提取验证工作台 =====
+                const activeTab = ref('design');
+                const mockCount = ref(20);
+                const mockSeed = ref(null);
+                const generatedRecords = ref([]);
+                const generating = ref(false);
+                const genMessage = ref('');
+                const workbenchError = ref('');
+                const expandedRow = ref(null);
+                const workbenchRules = ref([
+                    { targetField: 'status', expression: '$..status' },
+                    { targetField: 'customer', expression: "UPPER(json.customer)" }
+                ]);
+                const showFunctionRef = ref(true);
+                const rulesChecking = ref(false);
+                const extracting = ref(false);
+                const checkMessage = ref('');
+                const extractResults = ref([]);
+                const extractStats = ref({});
+
+                const funcCatalog = [
+                    { name: 'DIV2', signature: 'DIV2(a, b)', desc: '安全除法，保留2位小数' },
+                    { name: 'ISBLANK', signature: 'ISBLANK(v)', desc: '判断空或空白' },
+                    { name: 'UPPER', signature: 'UPPER(v)', desc: '转大写' },
+                    { name: 'TRIM', signature: 'TRIM(v)', desc: '去除首尾空白' },
+                    { name: 'SUBSTRING', signature: 'SUBSTRING(str, start[, end])', desc: '截取子串' },
+                    { name: 'TERNARY', signature: 'TERNARY(cond, a, b)', desc: '三目运算' },
+                    { name: 'JSON_PATH', signature: "JSON_PATH(json, '$.x')", desc: 'JsonPath 动态取值' },
+                    { name: 'LIST_JOIN', signature: 'LIST_JOIN(list[, sep])', desc: '列表拼接为字符串' },
+                    { name: 'LIST_SIZE', signature: 'LIST_SIZE(list)', desc: '列表长度' },
+                    { name: 'LIST_SUM', signature: 'LIST_SUM(list)', desc: '列表求和（数值）' },
+                    { name: 'LIST_AVG', signature: 'LIST_AVG(list)', desc: '列表均值' },
+                    { name: 'LIST_MAX', signature: 'LIST_MAX(list)', desc: '列表最大值' },
+                    { name: 'LIST_MIN', signature: 'LIST_MIN(list)', desc: '列表最小值' },
+                    { name: 'LIST_DISTINCT', signature: 'LIST_DISTINCT(list)', desc: '列表去重' },
+                    { name: 'LIST_CONTAINS', signature: 'LIST_CONTAINS(list, v)', desc: '列表是否包含' },
+                    { name: 'REGEX_TEST', signature: 'REGEX_TEST(str, pattern)', desc: '正则匹配' },
+                    { name: 'REGEX_EXTRACT', signature: 'REGEX_EXTRACT(str, pattern[, group])', desc: '正则提取首个匹配' },
+                    { name: 'REGEX_REPLACE', signature: 'REGEX_REPLACE(str, pattern, repl)', desc: '正则替换' },
+                    { name: 'MASK', signature: 'MASK(v, prefixKeep, suffixKeep[, maskChar])', desc: '敏感信息脱敏' },
+                    { name: 'HASH_MASK', signature: 'HASH_MASK(v, algorithm[, salt])', desc: '哈希指纹（MD5/SHA-256/SHA-512）' },
+                    { name: 'DICT_MAP', signature: 'DICT_MAP(v, {...})', desc: '字典翻译：值→文案' },
+                    { name: 'TO_INT', signature: 'TO_INT(v[, default])', desc: '转整数' },
+                    { name: 'TO_STRING', signature: 'TO_STRING(v[, default])', desc: '转字符串' },
+                    { name: 'TO_DECIMAL', signature: 'TO_DECIMAL(v[, default])', desc: '转小数' },
+                    { name: 'TO_BOOLEAN', signature: 'TO_BOOLEAN(v[, default])', desc: '转布尔' },
+                    { name: 'FORMAT_DATE', signature: "FORMAT_DATE(v, 'yyyy-MM-dd')", desc: '日期格式化' },
+                    { name: 'DATE_ADD', signature: 'DATE_ADD(v, amount[, unit])', desc: '日期加减（天/月/年…）' },
+                    { name: 'DATE_DIFF', signature: 'DATE_DIFF(end, start[, unit])', desc: '日期差' },
+                    { name: 'TREE_FLATTEN', signature: "TREE_FLATTEN(root, 'childrenKey', 'valueKey'[, sep])", desc: '树扁平化（全节点路径）' },
+                    { name: 'TREE_LEAF_FLATTEN', signature: "TREE_LEAF_FLATTEN(root, 'childrenKey', 'valueKey'[, sep])", desc: '树扁平化（仅叶子路径）' }
+                ];
+
+                const dataColumns = computed(() => {
+                    const cols = [];
+                    for (const rec of generatedRecords.value) {
+                        for (const k of Object.keys(rec)) {
+                            if (!cols.includes(k)) cols.push(k);
+                        }
+                    }
+                    return cols.slice(0, 12);
+                });
+
+                const ruleFields = computed(() => {
+                    const fields = [];
+                    for (const r of workbenchRules.value) {
+                        const tf = (r.targetField || '').trim();
+                        if (tf && !fields.includes(tf)) fields.push(tf);
+                    }
+                    return fields;
+                });
+
+                const cellText = (v) => {
+                    if (v === null || v === undefined) return 'null';
+                    if (typeof v === 'object') return JSON.stringify(v);
+                    return String(v);
+                };
+
+                const statusOf = (rr, field) => {
+                    const st = (rr.statuses || []).find(s => s.targetField === field);
+                    if (st && !st.success) return st.errorMsg || '执行失败';
+                    return '';
+                };
+
+                const toggleRow = (idx) => {
+                    expandedRow.value = expandedRow.value === idx ? null : idx;
+                };
+
+                const apiPost = async (path, body) => {
+                    const resp = await fetch(path, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(body)
+                    });
+                    if (!resp.ok) {
+                        let msg = 'HTTP ' + resp.status;
+                        try {
+                            const t = await resp.text();
+                            if (t && t.trim()) msg = t;
+                        } catch (e) { /* ignore */ }
+                        throw new Error(msg);
+                    }
+                    return resp.json();
+                };
+
+                const doGenerate = async () => {
+                    generating.value = true;
+                    genMessage.value = '';
+                    workbenchError.value = '';
+                    try {
+                        const resp = await apiPost('/api/schema-workbench/generate', {
+                            schemaJson: jsonSchemaStr.value,
+                            count: mockCount.value || 10,
+                            seed: mockSeed.value || null
+                        });
+                        generatedRecords.value = resp.records || [];
+                        extractResults.value = [];
+                        extractStats.value = {};
+                        genMessage.value = '已生成 ' + generatedRecords.value.length + ' 条符合 Schema 约束的数据';
+                    } catch (e) {
+                        workbenchError.value = '生成失败: ' + e.message;
+                    } finally {
+                        generating.value = false;
+                    }
+                };
+
+                const copyRecords = () => {
+                    navigator.clipboard.writeText(JSON.stringify(generatedRecords.value, null, 2))
+                        .then(() => genMessage.value = '已复制生成数据到剪贴板')
+                        .catch(e => workbenchError.value = '复制失败: ' + e);
+                };
+
+                const addRule = () => workbenchRules.value.push({ targetField: '', expression: '' });
+                const removeRule = (idx) => workbenchRules.value.splice(idx, 1);
+                const insertFunction = (fn) => workbenchRules.value.push({ targetField: '', expression: fn.signature });
+
+                const doCheckRules = async () => {
+                    rulesChecking.value = true;
+                    checkMessage.value = '';
+                    try {
+                        const rules = workbenchRules.value
+                            .filter(r => (r.targetField || '').trim() && (r.expression || '').trim())
+                            .map(r => ({ targetField: r.targetField.trim(), expression: r.expression.trim() }));
+                        if (rules.length === 0) {
+                            checkMessage.value = '请至少填写一条规则';
+                            return;
+                        }
+                        await apiPost('/api/schema-workbench/check-rules', rules);
+                        checkMessage.value = '✔ 规则语法校验通过';
+                    } catch (e) {
+                        checkMessage.value = '✘ 校验失败: ' + e.message;
+                    } finally {
+                        rulesChecking.value = false;
+                    }
+                };
+
+                const doExtract = async () => {
+                    extracting.value = true;
+                    checkMessage.value = '';
+                    workbenchError.value = '';
+                    try {
+                        const rules = workbenchRules.value
+                            .filter(r => (r.targetField || '').trim() && (r.expression || '').trim())
+                            .map(r => ({ targetField: r.targetField.trim(), expression: r.expression.trim() }));
+                        if (rules.length === 0) {
+                            workbenchError.value = '请至少填写一条规则';
+                            return;
+                        }
+                        if (generatedRecords.value.length === 0) {
+                            workbenchError.value = '请先生成数据';
+                            return;
+                        }
+                        const resp = await apiPost('/api/schema-workbench/extract', {
+                            records: generatedRecords.value,
+                            rules
+                        });
+                        extractResults.value = resp.results || [];
+                        const stats = {};
+                        for (const rr of extractResults.value) {
+                            for (const st of (rr.statuses || [])) {
+                                if (!stats[st.targetField]) stats[st.targetField] = { success: 0, total: 0 };
+                                stats[st.targetField].total++;
+                                if (st.success) stats[st.targetField].success++;
+                            }
+                        }
+                        extractStats.value = stats;
+                    } catch (e) {
+                        workbenchError.value = '提取失败: ' + e.message;
+                    } finally {
+                        extracting.value = false;
+                    }
+                };
+
                 return {
                     schemaKey,
                     schemaName,
@@ -2071,7 +2507,35 @@
                     showRootAdvanced,
                     activeRootBranchIdx,
                     addRootBranch,
-                    deleteRootBranch
+                    deleteRootBranch,
+                    activeTab,
+                    mockCount,
+                    mockSeed,
+                    generatedRecords,
+                    generating,
+                    genMessage,
+                    workbenchError,
+                    expandedRow,
+                    workbenchRules,
+                    showFunctionRef,
+                    rulesChecking,
+                    extracting,
+                    checkMessage,
+                    extractResults,
+                    extractStats,
+                    funcCatalog,
+                    dataColumns,
+                    ruleFields,
+                    cellText,
+                    statusOf,
+                    toggleRow,
+                    doGenerate,
+                    copyRecords,
+                    addRule,
+                    removeRule,
+                    insertFunction,
+                    doCheckRules,
+                    doExtract
                 };
             }
         });
