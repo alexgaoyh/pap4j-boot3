@@ -5,7 +5,11 @@ import com.ibm.icu.text.BreakIterator;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.nodes.Range;
+import org.jsoup.parser.Parser;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -18,6 +22,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public class JsoupUtil {
+
+    private static final Logger logger = LoggerFactory.getLogger(JsoupUtil.class);
 
     /**
      * 拼接生成 HTML
@@ -255,6 +261,134 @@ public class JsoupUtil {
         }
 
         return doc.body().html();
+    }
+
+
+    /**
+     * 从 HTML 中移除 data-type={@code dataType} 的 span 标签（保留标签内的文本内容）。
+     *
+     * 通过 Jsoup 的位置追踪获取开/闭标签在原始字符串中的字符偏移，直接在原串上做剪切，不经过 Jsoup 序列化，避免触发 HTML 规范化破坏原文。
+     * 遇到结构异常（span 包裹块级元素、未闭合等）、区间重叠、或剥离后仍有残留时，原样返回入参，不做任何修改。
+     *
+     * @param html     待处理的 HTML 原文
+     * @param dataType span 的 data-type 属性值，用于定位需要剥离的 span
+     * @return 剥离匹配 span 标签后的 HTML；无需处理或处理失败时返回原 HTML
+     */
+    public static String unwrapDataTypeSpans(String html, String dataType) {
+        if (html == null || html.isEmpty()) {
+            return html;
+        }
+        if (dataType == null || dataType.isEmpty()) {
+            return html;
+        }
+
+        // 没有目标关键字，跳过 Jsoup 解析
+        if (!html.contains(dataType)) {
+            return html;
+        }
+
+        try {
+            Parser parser = Parser.htmlParser().setTrackPosition(true);
+            Document doc = parser.parseInput(html, "");
+
+            String dataTypeSelector = "span[data-type=" + dataType + "]";
+            List<int[]> ranges = collectRemoveRanges(doc, dataTypeSelector);
+            if (ranges == null || ranges.isEmpty()) {
+                return html;
+            }
+
+            String cleaned = removeRanges(html, ranges, dataType);
+            if (cleaned == null) {
+                return html;
+            }
+
+            return verifyCleaned(cleaned, dataTypeSelector, dataType) ? cleaned : html;
+        } catch (Throwable e) {
+            logger.warn("[JsoupUtil] 剥离 data-type={} 标签异常，降级返回原 HTML", dataType, e);
+            return html;
+        }
+    }
+
+    /**
+     * 收集匹配 span 的开/闭标签在原始字符串中的字符区间 [start, end)。
+     *
+     * @return 区间列表；开/闭数量不平衡时返回 {@code null}（存在删一半风险）
+     */
+    private static List<int[]> collectRemoveRanges(Document doc, String dataTypeSelector) {
+        Elements spans = doc.select(dataTypeSelector);
+        if (spans.isEmpty()) {
+            return new ArrayList<>();
+        }
+
+        List<int[]> rangesToRemove = new ArrayList<>();
+        int openCount = 0, closeCount = 0;
+        for (Element span : spans) {
+            // 开标签 <span ...>
+            Range startRange = span.sourceRange();
+            if (startRange.isTracked() && startRange.end().pos() > startRange.start().pos()) {
+                rangesToRemove.add(new int[]{startRange.start().pos(), startRange.end().pos()});
+                openCount++;
+            }
+            // 闭标签 </span>；isImplicit 表示由块级元素或未闭合 span 触发的隐式关闭，跳过
+            // end > start 与开标签保持对称，防止逆序区间在拼接时产生重复字符
+            Range endRange = span.endSourceRange();
+            if (endRange.isTracked() && !endRange.isImplicit()
+                && endRange.end().pos() > endRange.start().pos()) {
+                rangesToRemove.add(new int[]{endRange.start().pos(), endRange.end().pos()});
+                closeCount++;
+            }
+        }
+
+        if (rangesToRemove.isEmpty()) {
+            return rangesToRemove;
+        }
+
+        // 开闭数量不一致，说明有 span 只能定位到开标签（闭标签被隐式关闭或缺失），
+        // 继续擦除会留下悬空 </span>，整体放弃
+        if (openCount != closeCount) {
+            logger.warn("[JsoupUtil] data-type span 开/闭标签区间数不平衡(开={} 闭={})，存在删一半风险，降级返回原 HTML",
+                    openCount, closeCount);
+            return null;
+        }
+        return rangesToRemove;
+    }
+
+    /**
+     * 按偏移跳过需删除区间，其余字符从原始字符串直接复制。
+     *
+     * @return 剪切后的字符串；区间重叠或逆序时返回 {@code null}
+     */
+    static String removeRanges(String html, List<int[]> ranges, String dataType) {
+        // 按偏移排序，保证后续顺序拼接正确
+        ranges.sort((a, b) -> Integer.compare(a[0], b[0]));
+
+        StringBuilder sb = new StringBuilder(html.length());
+        int lastIndex = 0;
+        for (int[] range : ranges) {
+            // 起点不早于已处理位置，且终点必须严格推进；否则说明区间重叠或逆序，放弃本次清洗
+            if (range[0] >= lastIndex && range[1] > lastIndex) {
+                sb.append(html, lastIndex, range[0]);
+                lastIndex = range[1];
+            } else {
+                logger.warn("[JsoupUtil] 剥离 data-type={} 区间重叠/逆序，擦除不完整，降级返回原 HTML", dataType);
+                return null;
+            }
+        }
+        if (lastIndex < html.length()) {
+            sb.append(html, lastIndex, html.length());
+        }
+        return sb.toString();
+    }
+
+    /**
+     * 复查清理结果，确认不再残留匹配的 span。
+     */
+    static boolean verifyCleaned(String cleaned, String dataTypeSelector, String dataType) {
+        if (!Jsoup.parse(cleaned).select(dataTypeSelector).isEmpty()) {
+            logger.warn("[JsoupUtil] 剥离后仍检测到 data-type={} span，清洗不完整，降级返回原 HTML", dataType);
+            return false;
+        }
+        return true;
     }
 
 }
