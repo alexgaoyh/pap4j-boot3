@@ -15,6 +15,10 @@
     <!-- 引入 highlight.js (使用全量或常用语言包) -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/styles/atom-one-dark.min.css">
     <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
+    <!-- 引入 KaTeX 数学渲染（LaTeX 公式）：CSS + JS + marked 数学扩展（先 katex JS 后扩展，扩展依赖 global.katex） -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.47/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked-katex-extension@5.1.10/lib/index.umd.js"></script>
     <style>
         body { height: 100vh; margin: 0; display: flex; font-family: sans-serif; }
         .chat-container { flex: 1; display: flex; flex-direction: column; height: 100%; background: #ffffff; }
@@ -138,6 +142,12 @@
     };
 
     marked.use({ renderer: renderer, breaks: true, gfm: true });
+
+    // 注册 KaTeX 数学渲染扩展（tokenizer 级，先于其他 inline 规则整块捕获 $...$ / $$...$$，避免 LaTeX 反斜杠被 marked 转义破坏）
+    // throwOnError:false → 流式过程中遇到不完整/非法公式时渲染原文，不抛异常中断聊天
+    if (typeof markedKatex !== 'undefined') {
+        marked.use(markedKatex({ throwOnError: false }));
+    }
 
     function copyCode(btn) {
         const code = btn.parentElement.nextElementSibling.innerText;
