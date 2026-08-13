@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class JsoupUtil {
@@ -265,25 +266,34 @@ public class JsoupUtil {
 
 
     /**
-     * 从 HTML 中移除 data-type={@code dataType} 的 span 标签（保留标签内的文本内容）。
+     * 从 HTML 中移除指定属性匹配的 span 标签（保留标签内的文本内容）。
      *
-     * 通过 Jsoup 的位置追踪获取开/闭标签在原始字符串中的字符偏移，直接在原串上做剪切，不经过 Jsoup 序列化，避免触发 HTML 规范化破坏原文。
-     * 遇到结构异常（span 包裹块级元素、未闭合等）、区间重叠、或剥离后仍有残留时，原样返回入参，不做任何修改。
+     * <p>通过 Jsoup 的位置追踪获取开/闭标签在原始字符串中的字符偏移，直接在原串上做剪切，不经过 Jsoup 序列化，避免触发 HTML 规范化破坏原文。</p>
      *
-     * @param html     待处理的 HTML 原文
-     * @param dataType span 的 data-type 属性值，用于定位需要剥离的 span
+     * <p>匹配分两层：属性名按 HTML 规范大小写不敏感（{@code DATA-TYPE}、{@code Data-Type} 等同）；
+     * 属性值则在 jsoup 解析后的值上做等值比较（jsoup 会 trim 值两侧空白）、大小写敏感
+     * （{@code TO_CITATION} 不等于 {@code to_citation}）。与属性书写顺序、单双引号写法、值内实体编码等无关。</p>
+     *
+     * <p>遇到未闭合 span、开/闭标签区间不平衡、区间重叠/逆序、剥离后仍有残留，或解析异常时，原样返回入参，不做任何修改。</p>
+     *
+     * @param html      待处理的 HTML 原文
+     * @param attrName  要匹配的 span 属性名，如 {@code data-type}
+     * @param attrValue 该属性需等于的值，如 {@code to_citation}
      * @return 剥离匹配 span 标签后的 HTML；无需处理或处理失败时返回原 HTML
      */
-    public static String unwrapDataTypeSpans(String html, String dataType) {
+    public static String unwrapAttributeSpans(String html, String attrName, String attrValue) {
         if (html == null || html.isEmpty()) {
             return html;
         }
-        if (dataType == null || dataType.isEmpty()) {
+        if (attrName == null || attrName.isEmpty()) {
+            return html;
+        }
+        if (attrValue == null || attrValue.isEmpty()) {
             return html;
         }
 
-        // 没有目标关键字，跳过 Jsoup 解析
-        if (!html.contains(dataType)) {
+        // 快速短路：原文中不存在该属性名（属性名大小写不敏感，取值无关），跳过 Jsoup 解析
+        if (!Pattern.compile(Pattern.quote(attrName), Pattern.CASE_INSENSITIVE).matcher(html).find()) {
             return html;
         }
 
@@ -291,46 +301,47 @@ public class JsoupUtil {
             Parser parser = Parser.htmlParser().setTrackPosition(true);
             Document doc = parser.parseInput(html, "");
 
-            String dataTypeSelector = "span[data-type=" + dataType + "]";
-            List<int[]> ranges = collectRemoveRanges(doc, dataTypeSelector);
+            List<int[]> ranges = collectRemoveRanges(doc, attrName, attrValue);
             if (ranges == null || ranges.isEmpty()) {
                 return html;
             }
 
-            String cleaned = removeRanges(html, ranges, dataType);
+            String cleaned = removeRanges(html, ranges, attrValue);
             if (cleaned == null) {
                 return html;
             }
 
-            return verifyCleaned(cleaned, dataTypeSelector, dataType) ? cleaned : html;
+            return verifyCleaned(cleaned, attrName, attrValue) ? cleaned : html;
         } catch (Throwable e) {
-            logger.warn("[JsoupUtil] 剥离 data-type={} 标签异常，降级返回原 HTML", dataType, e);
+            logger.warn("[JsoupUtil] 剥离 {}={} 标签异常，降级返回原 HTML", attrName, attrValue, e);
             return html;
         }
     }
 
     /**
-     * 收集匹配 span 的开/闭标签在原始字符串中的字符区间 [start, end)。
+     * 收集属性值等于 {@code attrValue} 的 span 的开/闭标签在原始字符串中的字符区间 [start, end)。
+     *
+     * <p>用属性值等值比较（大小写敏感）替代 CSS 选择器，避免属性值含选择器元字符时被拼串改写语义，
+     * 同时天然兼容值内实体编码（{@code attr()} 返回解码后的值）。</p>
      *
      * @return 区间列表；开/闭数量不平衡时返回 {@code null}（存在删一半风险）
      */
-    private static List<int[]> collectRemoveRanges(Document doc, String dataTypeSelector) {
-        Elements spans = doc.select(dataTypeSelector);
-        if (spans.isEmpty()) {
-            return new ArrayList<>();
-        }
-
+    private static List<int[]> collectRemoveRanges(Document doc, String attrName, String attrValue) {
+        String normalizedAttrName = attrName.toLowerCase(Locale.ROOT);
         List<int[]> rangesToRemove = new ArrayList<>();
         int openCount = 0, closeCount = 0;
-        for (Element span : spans) {
+        for (Element span : doc.getElementsByTag("span")) {
+            if (!attrValue.equals(span.attr(normalizedAttrName))) {
+                continue;
+            }
             // 开标签 <span ...>
             Range startRange = span.sourceRange();
             if (startRange.isTracked() && startRange.end().pos() > startRange.start().pos()) {
                 rangesToRemove.add(new int[]{startRange.start().pos(), startRange.end().pos()});
                 openCount++;
             }
-            // 闭标签 </span>；isImplicit 表示由块级元素或未闭合 span 触发的隐式关闭，跳过
-            // end > start 与开标签保持对称，防止逆序区间在拼接时产生重复字符
+            // 闭标签 </span>；isImplicit 表示隐式关闭（jsoup 生成零长度区间，如未闭合到 EOF、被父元素提前关闭、自闭合写法），跳过
+            // end > start 为防御性检查：jsoup 当前版本隐式区间均零长度且已被上句过滤，此处兜底保证区间恒为正长度，防逆序区间拼接重复字符
             Range endRange = span.endSourceRange();
             if (endRange.isTracked() && !endRange.isImplicit()
                 && endRange.end().pos() > endRange.start().pos()) {
@@ -346,8 +357,8 @@ public class JsoupUtil {
         // 开闭数量不一致，说明有 span 只能定位到开标签（闭标签被隐式关闭或缺失），
         // 继续擦除会留下悬空 </span>，整体放弃
         if (openCount != closeCount) {
-            logger.warn("[JsoupUtil] data-type span 开/闭标签区间数不平衡(开={} 闭={})，存在删一半风险，降级返回原 HTML",
-                    openCount, closeCount);
+            logger.warn("[JsoupUtil] {} span 开/闭标签区间数不平衡(开={} 闭={})，存在删一半风险，降级返回原 HTML",
+                    attrName, openCount, closeCount);
             return null;
         }
         return rangesToRemove;
@@ -358,7 +369,7 @@ public class JsoupUtil {
      *
      * @return 剪切后的字符串；区间重叠或逆序时返回 {@code null}
      */
-    static String removeRanges(String html, List<int[]> ranges, String dataType) {
+    static String removeRanges(String html, List<int[]> ranges, String attrValue) {
         // 按偏移排序，保证后续顺序拼接正确
         ranges.sort((a, b) -> Integer.compare(a[0], b[0]));
 
@@ -370,7 +381,7 @@ public class JsoupUtil {
                 sb.append(html, lastIndex, range[0]);
                 lastIndex = range[1];
             } else {
-                logger.warn("[JsoupUtil] 剥离 data-type={} 区间重叠/逆序，擦除不完整，降级返回原 HTML", dataType);
+                logger.warn("[JsoupUtil] 剥离 {} 区间重叠/逆序，擦除不完整，降级返回原 HTML", attrValue);
                 return null;
             }
         }
@@ -381,12 +392,16 @@ public class JsoupUtil {
     }
 
     /**
-     * 复查清理结果，确认不再残留匹配的 span。
+     * 复查清理结果，确认不再残留属性值等于 {@code attrValue} 的 span。
      */
-    static boolean verifyCleaned(String cleaned, String dataTypeSelector, String dataType) {
-        if (!Jsoup.parse(cleaned).select(dataTypeSelector).isEmpty()) {
-            logger.warn("[JsoupUtil] 剥离后仍检测到 data-type={} span，清洗不完整，降级返回原 HTML", dataType);
-            return false;
+    static boolean verifyCleaned(String cleaned, String attrName, String attrValue) {
+        String normalizedAttrName = attrName.toLowerCase(Locale.ROOT);
+        Document doc = Jsoup.parse(cleaned);
+        for (Element span : doc.getElementsByTag("span")) {
+            if (attrValue.equals(span.attr(normalizedAttrName))) {
+                logger.warn("[JsoupUtil] 剥离后仍检测到 {}={} span，清洗不完整，降级返回原 HTML", attrName, attrValue);
+                return false;
+            }
         }
         return true;
     }
