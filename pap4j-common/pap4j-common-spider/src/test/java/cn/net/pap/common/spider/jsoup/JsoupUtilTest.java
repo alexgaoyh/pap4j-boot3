@@ -165,6 +165,14 @@ public class JsoupUtilTest {
                 JsoupUtil.unwrapAttributeSpans(html, "data-type", "to_citation"));
     }
 
+    @Test
+    void unwrapPreservesCrlfNewlines() {
+        String html = "<div>line1\r\n<span data-type=\"to_citation\">  keep   spacing  </span>\r\nline3</div>";
+        assertEquals("<div>line1\r\n  keep   spacing  \r\nline3</div>",
+                JsoupUtil.unwrapAttributeSpans(html, "data-type", "to_citation"));
+    }
+
+
     // ==================== 降级 / 无操作（返回原 HTML） ====================
 
     @Test
