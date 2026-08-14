@@ -133,11 +133,42 @@
             background: rgba(15, 23, 42, 0.4);
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            padding: 0.5rem 0.75rem;
-            display: grid;
-            grid-template-columns: 1.5fr 1fr 1fr auto;
-            gap: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            display: flex;
+            gap: 0.4rem;
             align-items: center;
+        }
+
+        .node-header .collapse-btn {
+            width: 22px;
+            height: 22px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: var(--accent-info);
+            flex-shrink: 0;
+        }
+
+        .node-header .input-text {
+            flex: 1.2;
+            min-width: 100px;
+        }
+
+        .node-header .select-type {
+            flex: 1;
+            min-width: 120px;
+            max-width: 170px;
+        }
+
+        .node-header .node-ops {
+            display: flex;
+            gap: 0.3rem;
+            align-items: center;
+            margin-left: auto;
+            flex-shrink: 0;
         }
 
         .node-header.active-object {
@@ -536,6 +567,52 @@
             background: rgba(99, 102, 241, 0.12);
             color: #a5b4fc;
         }
+
+        /* ===== 新增：树高亮、诊断与工具栏样式 ===== */
+        .search-matched {
+            border-color: var(--accent-info) !important;
+            box-shadow: 0 0 8px rgba(6, 182, 212, 0.4);
+            background: rgba(6, 182, 212, 0.12) !important;
+        }
+        .diagnostic-badge {
+            font-size: 0.7rem;
+            color: var(--accent-warning);
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px dashed var(--accent-warning);
+            padding: 0.1rem 0.35rem;
+            border-radius: 4px;
+            font-weight: 500;
+            white-space: nowrap;
+        }
+        .tree-toolbar {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            padding: 0.5rem 0.75rem;
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            flex-wrap: wrap;
+        }
+        .json-path-tag {
+            cursor: pointer;
+            padding: 0.1rem 0.35rem;
+            border-radius: 3px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+            font-size: 0.72rem;
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        .json-path-tag:hover {
+            background: rgba(99, 102, 241, 0.3);
+            color: #ffffff;
+            border-color: var(--accent-primary);
+        }
     </style>
 </head>
 <body>
@@ -610,6 +687,14 @@
                             <option value="oneOf">oneOf (oneOf 联合多态)</option>
                         </select>
                     </div>
+                </div>
+
+                <!-- Tree Toolbar: Search, Collapse/Expand, Export Config -->
+                <div class="tree-toolbar">
+                    <input type="text" class="input-text" style="max-width: 220px;" placeholder="🔍 检索字段 (Key / Title)..." v-model="treeSearchKeyword">
+                    <button class="btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" @click="setAllNodesCollapsed(rootNode, false)">📂 展开全部</button>
+                    <button class="btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" @click="setAllNodesCollapsed(rootNode, true)">📁 折叠全部</button>
+                    <button class="btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; color: var(--accent-info); border-color: var(--accent-info);" @click="exportConfigJson">📤 导出配置JSON</button>
                 </div>
 
                 <!-- Schema Node Tree Root -->
@@ -982,7 +1067,7 @@
                 <div v-if="generatedRecords.length" class="table-wrap">
                     <table class="data-table">
                         <thead>
-                        <tr><th>#</th><th v-for="c in dataColumns" :key="c">{{ c }}</th></tr>
+                        <tr><th>#</th><th v-for="c in dataColumns" :key="c"><span class="json-path-tag" @click.stop="quickExtractField(c)" title="点击一键自动生成 JsonPath 提取规则">{{ c }} ⚡</span></th></tr>
                         </thead>
                         <tbody>
                         <tr v-for="(rec, idx) in generatedRecords" :key="idx" @click="toggleRow(idx)" :class="{ 'row-expanded': expandedRow === idx }">
@@ -1089,13 +1174,23 @@
     <!-- Node Template Component -->
     <template id="schema-node-template">
         <div class="node">
-            <div class="node-header" :class="{ 'active-object': node.type === 'object' || node.type === 'array' || node.type === 'oneOf' }">
+            <div class="node-header" :class="{ 'active-object': node.type === 'object' || node.type === 'array' || node.type === 'oneOf', 'search-matched': isSearchMatched }">
+                <!-- Collapse / Expand toggle button -->
+                <button v-if="node.type === 'object' || node.type === 'array' || node.type === 'oneOf'" 
+                        class="btn-icon collapse-btn" 
+                        @click="node.collapsed = !node.collapsed" :title="node.collapsed ? '点击展开节点' : '点击折叠节点'">
+                    {{ node.collapsed ? '▶' : '▼' }}
+                </button>
+
                 <!-- Field name key -->
                 <input type="text" class="input-text" v-model="node.key" placeholder="字段标识(Key)" title="字段Key" v-if="parent.type !== 'oneOf'">
-                <span v-else style="font-size: 0.75rem; color: var(--accent-warning); padding: 0 0.5rem;">多态分支</span>
+                <span v-else style="font-size: 0.75rem; color: var(--accent-warning); padding: 0 0.5rem; flex-shrink: 0;">多态分支</span>
 
                 <!-- Display name / title -->
                 <input type="text" class="input-text" v-model="node.title" placeholder="显示名称(Title)" title="显示标题">
+
+                <!-- Diagnostic Error Warning Badge -->
+                <span v-if="diagnosticError" class="diagnostic-badge" :title="diagnosticError">⚠️ {{ diagnosticError }}</span>
                 
                 <!-- Field type selection -->
                 <select class="select-type" v-model="node.type">
@@ -1109,7 +1204,7 @@
                 </select>
 
                 <!-- Operations -->
-                <div style="display: flex; gap: 0.2,; align-items: center;">
+                <div class="node-ops">
                     <label class="checkbox-label" title="是否必填" v-if="parent.type !== 'oneOf'">
                         <input type="checkbox" v-model="node.required"> 必填
                     </label>
@@ -1184,6 +1279,10 @@
                         <label>最大值 (maximum)</label>
                         <input type="number" step="any" class="input-text" v-model.number="node.maximum" placeholder="无">
                     </div>
+                    <div class="advanced-group" style="grid-column: span 2;">
+                        <label>枚举列表 (enum, 英文逗号分隔)</label>
+                        <input type="text" class="input-text" v-model="node.enumList" placeholder="e.g. 10, 20, 30">
+                    </div>
                 </template>
 
                 <!-- Object / Nested configuration -->
@@ -1212,6 +1311,9 @@
                     </div>
                 </template>
             </div>
+
+            <!-- Wrap children in v-show="!node.collapsed" for collapse/expand functionality -->
+            <div v-show="!node.collapsed">
 
             <!-- Nested properties for objects -->
             <div v-if="node.type === 'object'" style="margin-top: 0.4rem;">
@@ -1285,11 +1387,12 @@
                     </div>
                 </div>
             </div>
+            </div> <!-- Close v-show="!node.collapsed" -->
         </div>
     </template>
 
     <script>
-        const { createApp, ref, computed, watch } = Vue;
+        const { createApp, ref, computed, watch, provide, inject } = Vue;
 
         // Custom Component for Node
         const SchemaNodeComponent = {
@@ -1297,10 +1400,37 @@
             template: '#schema-node-template',
             props: ['node', 'parent'],
             emits: ['delete-node'],
-            setup() {
+            setup(props) {
                 const showAdvanced = ref(false);
                 const activeBranchIdx = ref(0);
-                return { showAdvanced, activeBranchIdx };
+                const treeSearchKeyword = inject('treeSearchKeyword', ref(''));
+
+                const isSearchMatched = computed(() => {
+                    const kw = (treeSearchKeyword.value || '').trim().toLowerCase();
+                    if (!kw) return false;
+                    const k = (props.node.key || '').toLowerCase();
+                    const t = (props.node.title || '').toLowerCase();
+                    return k.includes(kw) || t.includes(kw);
+                });
+
+                const diagnosticError = computed(() => {
+                    const n = props.node;
+                    if (props.parent && props.parent.type !== 'oneOf' && (!n.key || !n.key.trim())) {
+                        return 'Key 不能为空';
+                    }
+                    if (n.type === 'string' && n.minLength !== '' && n.maxLength !== '' && parseInt(n.minLength) > parseInt(n.maxLength)) {
+                        return 'minLength > maxLength';
+                    }
+                    if ((n.type === 'number' || n.type === 'integer') && n.minimum !== '' && n.maximum !== '' && parseFloat(n.minimum) > parseFloat(n.maximum)) {
+                        return 'minimum > maximum';
+                    }
+                    if (n.type === 'array' && n.minItems !== '' && n.maxItems !== '' && parseInt(n.minItems) > parseInt(n.maxItems)) {
+                        return 'minItems > maxItems';
+                    }
+                    return '';
+                });
+
+                return { showAdvanced, activeBranchIdx, isSearchMatched, diagnosticError };
             },
             watch: {
                 'node.type'(newType) {
@@ -1742,8 +1872,64 @@
                 const ruleMode = ref('switch'); // Modes: 'switch' (Switch-Case Router) or 'independent' (Independent If-Then)
                 const selectedTemplateKey = ref('ecommerce');
                 
-                // Temp custom templates list
+                // Tree Search Keyword & Provide
+                const treeSearchKeyword = ref('');
+                provide('treeSearchKeyword', treeSearchKeyword);
+
+                // Temp custom templates list (In-memory)
                 const customTemplates = ref([]);
+
+                // Helper to expand/collapse all nodes recursively
+                const setAllNodesCollapsed = (nodeObj, collapsedState) => {
+                    if (!nodeObj) return;
+                    if (nodeObj.type === 'object' || nodeObj.type === 'array' || nodeObj.type === 'oneOf') {
+                        nodeObj.collapsed = collapsedState;
+                    }
+                    if (Array.isArray(nodeObj.properties)) {
+                        nodeObj.properties.forEach(child => setAllNodesCollapsed(child, collapsedState));
+                    }
+                    if (Array.isArray(nodeObj.branches)) {
+                        nodeObj.branches.forEach(b => {
+                            if (Array.isArray(b.properties)) {
+                                b.properties.forEach(child => setAllNodesCollapsed(child, collapsedState));
+                            }
+                        });
+                    }
+                };
+
+                // Helper to export configuration JSON
+                const exportConfigJson = () => {
+                    const exportData = {
+                        version: 'Draft-07-Editor-v1.2',
+                        exportTime: new Date().toISOString(),
+                        schemaKey: schemaKey.value,
+                        schemaName: schemaName.value,
+                        ruleMode: ruleMode.value,
+                        switchKey: switchKey.value,
+                        rootNode: rootNode.value,
+                        switchCases: switchCases.value,
+                        switchDefaultRules: switchDefaultRules.value,
+                        conditionalRules: conditionalRules.value,
+                        customTemplates: customTemplates.value
+                    };
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${schemaKey.value || 'schema'}_config.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+
+                // Helper to quick extract JsonPath field from data table
+                const quickExtractField = (colName) => {
+                    const path = `$.${colName}`;
+                    const exists = workbenchRules.value.some(r => r.targetField === colName);
+                    if (!exists) {
+                        workbenchRules.value.push({ targetField: colName, expression: path });
+                    }
+                    genMessage.value = `✔ 已一键生成提取规则: ${colName} -> ${path}`;
+                };
 
                 // Default is Ecommerce
                 const rootNode = ref(JSON.parse(JSON.stringify(ECOMMERCE_TEMPLATE)));
@@ -2054,8 +2240,19 @@
                     if (node.description && node.description.trim() !== '') {
                         schema.description = node.description;
                     }
-                    if (node.defaultValue && node.defaultValue.trim() !== '') {
-                        schema.default = node.defaultValue;
+                    if (node.defaultValue !== undefined && node.defaultValue !== null && String(node.defaultValue).trim() !== '') {
+                        const strVal = String(node.defaultValue).trim();
+                        if (node.type === 'integer') {
+                            const parsed = parseInt(strVal, 10);
+                            schema.default = isNaN(parsed) ? strVal : parsed;
+                        } else if (node.type === 'number') {
+                            const parsed = parseFloat(strVal);
+                            schema.default = isNaN(parsed) ? strVal : parsed;
+                        } else if (node.type === 'boolean') {
+                            schema.default = strVal.toLowerCase() === 'true';
+                        } else {
+                            schema.default = strVal;
+                        }
                     }
 
                     // Add type specific validation constraints
@@ -2081,6 +2278,14 @@
                         }
                         if (node.maximum !== undefined && node.maximum !== null && node.maximum !== '') {
                             schema.maximum = parseFloat(node.maximum);
+                        }
+                        if (node.enumList && node.enumList.trim() !== '') {
+                            const parts = node.enumList.split(',').map(s => s.trim()).filter(s => s !== '');
+                            if (node.type === 'integer') {
+                                schema.enum = parts.map(s => parseInt(s, 10)).filter(v => !isNaN(v));
+                            } else {
+                                schema.enum = parts.map(s => parseFloat(s)).filter(v => !isNaN(v));
+                            }
                         }
                     } else if (node.type === 'oneOf') {
                         // Polymorphism oneOf structure
@@ -2534,6 +2739,10 @@
                     addRule,
                     removeRule,
                     insertFunction,
+                    treeSearchKeyword,
+                    setAllNodesCollapsed,
+                    exportConfigJson,
+                    quickExtractField,
                     doCheckRules,
                     doExtract
                 };
