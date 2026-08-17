@@ -35,12 +35,12 @@ import java.util.Set;
  * </table>
  *
  * <h3>日期/时间使用约定:</h3>
- * <p>时间字段按语义分为两类，各使用一套贯穿 Java / MySQL / ES 的格式约定，本工具生成的 ES 格式与之对齐：</p>
+ * <p>时间字段按语义分两类，本工具生成的 ES 格式与之对齐：</p>
  * <ul>
- *   <li><b>绝对时刻</b>（{@code format: date-time}，如支付时间、创建时间）：代表某个瞬间，必须携带时区。Java 侧用 {@code Instant}，DB 侧用 {@code DATETIME(3)} 存 UTC，线上传输为 RFC 3339 带时区（如 {@code 2026-08-17T01:30:00.000Z}）。ES 使用默认格式 {@code strict_date_optional_time||epoch_millis}，带时间部分的值必须带时区，否则被 ES 拒收而非静默按 UTC 猜测。</li>
- *   <li><b>自然日期</b>（{@code format: date}，如生日、下单日）：仅表示日历上的某一天，没有时区概念。Java 侧用 {@code LocalDate}，DB 侧用 {@code DATE}。ES 格式限制为 {@code strict_date}（严格 ISO {@code yyyy-MM-dd}），不接受时间部分。</li>
+ *   <li><b>绝对时刻</b>（{@code format: date-time}，如支付时间、创建时间）：Java {@code Instant}，DB 毫秒时间戳列存本地墙钟（Asia/Shanghai），传输 RFC 3339 带 {@code +08:00}（如 {@code 2026-08-17T09:30:00.000+08:00}）。ES 用默认格式 {@code strict_date_optional_time||epoch_millis}，带时间部分的值必须带时区，否则被 ES 拒收（fail loud）。</li>
+ *   <li><b>自然日期</b>（{@code format: date}，如生日、下单日）：仅表示日历上的一天，无时区概念。Java {@code LocalDate}，DB {@code DATE}，ES 限制为 {@code strict_date}（严格 {@code yyyy-MM-dd}）。</li>
  * </ul>
- * <p>时区责任由应用层收口：存储、传输一律 UTC 或带偏移，只有展示层按用户时区换算。违反上述约定的输入会被 ES 拒收（fail loud），而非被静默置空或偏移。</p>
+ * <p>全链路统一 Asia/Shanghai：{@code hibernate.jdbc.time_zone}、连接串 {@code connectionTimeZone}、server 会话时区、JVM 默认时区四处一致；存储/传输均带 {@code +08:00} 偏移，展示层无需换算。</p>
  *
  * <h3>高阶机制与边界防御:</h3>
  * <ul>

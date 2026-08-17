@@ -1,4 +1,4 @@
-﻿# 项目守卫：技术标准与约束 (Project Guard)
+# 项目守卫：技术标准与约束 (Project Guard)
 
 本文件定义了 `pap4j-boot3` 项目的严格技术边界和安全规则。AI 代理必须遵守这些规则，以确保系统的稳定性和安全性。
 
@@ -94,7 +94,13 @@
 *   **禁止在 Entity 上直接暴露给接口层**：Controller 层严禁直接接收或返回 Entity 对象，必须通过 DTO/VO 转换。
 
 
-## 8. 典型反面教材 (Anti-Patterns)
+## 8. 日期/时间规范 (Date & Time Convention)
+
+- **绝对时刻**（支付时间、创建时间等瞬间）：`Instant`（`OffsetDateTime` 须归一化到 `+08:00`；禁 `LocalDateTime`/`ZonedDateTime`）+ 毫秒时间戳列（MySQL `DATETIME(3)` / PG·Kingbase·Oracle `TIMESTAMP(3)` / SQL Server `DATETIME2(3)`）+ ES `strict_date_optional_time||epoch_millis`。
+- **自然日期**（生日、下单日等）：`LocalDate` + DB `DATE` + ES `strict_date`（`yyyy-MM-dd`），与时区无关。
+- **全链路统一 `Asia/Shanghai`**：`hibernate.jdbc.time_zone`、MySQL 连接串 `connectionTimeZone`、server 会话 `time_zone`、JVM 默认时区四处一致（**缺一即静默偏移 8 小时**）；传输 RFC 3339 带 `+08:00`（禁裸本地时间），前端直接渲染。H2/Kingbase 不认 MySQL 时区参数，仅对齐 `hibernate.jdbc.time_zone` 即可。
+
+## 9. 典型反面教材 (Anti-Patterns)
 为了确保规则的绝对清晰，以下列出绝对禁止的写法及其对应的正确做法：
 
 *   **错误注入 (依赖注入)**
@@ -125,7 +131,7 @@
     *   ✅ 正确: 在确认数据已同步落库、计数值归零或状态失效后，通过线程安全的方式（如 Map 的 `computeIfPresent` 移除机制）将 Key 彻底从容器中移除，或使用带有淘汰策略的本地缓存库（如 Caffeine）来管理容器的生命周期。
 
 
-## 9. 代码审计强制清单 (Mandatory Audit Checklist)
+## 10. 代码审计强制清单 (Mandatory Audit Checklist)
 在进行代码审查或执行 **`[Edit]`** 前，AI 必须对照以下清单进行深度"自检"，并在回复中列出：
 1. **并发安全**: 是否存在 `new Thread()` 或未指定容量的无界 `LinkedBlockingQueue`？
 2. **日志规范**: 日志打印是否使用了 `+` 拼接字符串而非 SLF4J 占位符？
@@ -146,7 +152,7 @@
 15. **防御性安全 (配置与依赖)**: 是否禁用了默认弱口令、关闭了高危配置（如多语句堆叠执行），且三方依赖无已知安全漏洞？
 16. **Javadoc 规范**: 新增或修改的 `public` 类、接口及 `public`/`protected` 方法，是否编写了完整规范的 Javadoc（必须包含详细语义说明及完整的 `@param`、`@return`、`@throws` 标签，严禁使用行尾 `//` 代替或省略标签）？
 
-## 10. AI 自我纠错指导原则 (AI Self-Correction Principles)
+## 11. AI 自我纠错指导原则 (AI Self-Correction Principles)
 * **本地单元测试执行规范**:
   * 运行单元测试时，为避免复杂的命令行转义错误以及自动激活 `agent` 调试 Profile，**优先**使用 `.agent/` 目录下的专属脚本。若因特殊情况无法使用脚本，则退而使用原生 Maven 命令行（必须附带 `"-Dfile.encoding=UTF-8"` 与 `"-Dmaven.gitcommitid.skip=true"`）：
     * **Windows（Git Bash / PowerShell 通用）**: 优先使用 `./.agent/agent-test.cmd -pl <module-name> test`（例如：`./.agent/agent-test.cmd -pl pap4j-boot3-example/pap4j-boot3-example-dynamic-form test`）。`.cmd` 脚本在 Git Bash 和 PowerShell 中均可执行。
