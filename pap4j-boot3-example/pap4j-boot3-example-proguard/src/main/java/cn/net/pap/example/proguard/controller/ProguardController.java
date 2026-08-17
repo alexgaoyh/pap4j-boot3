@@ -30,6 +30,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -239,6 +240,10 @@ public class ProguardController {
         ObjectNode objectNode = mapper.valueToTree(abstractMap);
         proguard.setAbstractObj(objectNode);
         proguard.setAbstractList(arrayNode);
+
+        LocalDate bizDate = LocalDate.now();
+        proguard.setBizDate(bizDate);
+        proguard.setEventTime(new Date().toInstant());
 
         return new ResponseEntity<>(proguardService.saveProguardWithIdxSeq(proguard), HttpStatus.OK);
     }

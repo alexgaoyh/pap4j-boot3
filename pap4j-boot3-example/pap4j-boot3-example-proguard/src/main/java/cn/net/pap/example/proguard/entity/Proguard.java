@@ -10,7 +10,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.*;
 import org.hibernate.annotations.Comment;
 import org.hibernate.annotations.Type;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,7 +23,7 @@ import java.util.Map;
 @Entity
 @Table(name = "proguard")
 @org.hibernate.envers.Audited
-@EntityListeners(EntityDebugLoggerListener.class)
+@EntityListeners({EntityDebugLoggerListener.class, AuditingEntityListener.class})
 public class Proguard {
 
     @Id
@@ -73,6 +77,28 @@ public class Proguard {
 
     @org.hibernate.annotations.TenantId
     private String tenantId;
+
+    /**
+     * 创建时间（绝对时刻：Instant + TIMESTAMP(3) 存上海墙钟，全链路 Asia/Shanghai，持久化自动填充）
+     */
+    @CreatedDate
+    @Column(columnDefinition = "TIMESTAMP(3)")
+    @Comment(value = "创建时间（绝对时刻：Instant + TIMESTAMP(3) 存上海墙钟，持久化自动填充）")
+    private Instant createdTime;
+
+    /**
+     * 业务日期（自然日期：LocalDate + DATE，与时区无关，调用方显式设置）
+     */
+    @Column(columnDefinition = "DATE")
+    @Comment(value = "业务日期（自然日期：LocalDate + DATE，与时区无关）")
+    private LocalDate bizDate;
+
+    /**
+     * 事件时间（绝对时刻：调用方显式传入的 Instant，验证"带偏移输入 → 上海墙钟存储 → 读回同一瞬间"；非审计自动填充）
+     */
+    @Column(columnDefinition = "TIMESTAMP(3)")
+    @Comment(value = "事件时间（绝对时刻：调用方显式传入的 Instant，验证带偏移输入 → 上海墙钟存储）")
+    private Instant eventTime;
 
     public Long getProguardId() {
         return proguardId;
@@ -154,6 +180,30 @@ public class Proguard {
         this.tenantId = tenantId;
     }
 
+    public Instant getCreatedTime() {
+        return createdTime;
+    }
+
+    public void setCreatedTime(Instant createdTime) {
+        this.createdTime = createdTime;
+    }
+
+    public LocalDate getBizDate() {
+        return bizDate;
+    }
+
+    public void setBizDate(LocalDate bizDate) {
+        this.bizDate = bizDate;
+    }
+
+    public Instant getEventTime() {
+        return eventTime;
+    }
+
+    public void setEventTime(Instant eventTime) {
+        this.eventTime = eventTime;
+    }
+
     @Override
     public String toString() {
         return "Proguard{" +
@@ -165,6 +215,9 @@ public class Proguard {
                 ", abstractList=" + abstractList +
                 ", abstractObj=" + abstractObj +
                 ", jsonSchema='" + jsonSchema + '\'' +
+                ", createdTime=" + createdTime +
+                ", bizDate=" + bizDate +
+                ", eventTime=" + eventTime +
                 ", tenantId='" + tenantId + '\'' +
                 '}';
     }

@@ -29,6 +29,8 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.Instant;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -231,7 +233,17 @@ public class ProguardTest {
         proguard.setAbstractObj(objectNode);
         proguard.setAbstractList(arrayNode);
 
+        // 时间约定示例：createdTime 由 @CreatedDate 持久化自动填充（绝对时刻·存上海墙钟）；bizDate 显式设置（自然日期·与时区无关）
+        LocalDate bizDate = LocalDate.now();   // 先捕获一次，设置与断言用同一变量，与运行日期无关
+        proguard.setBizDate(bizDate);
+
         proguardRepository.saveAndFlush(proguard);
+
+        // 读回验证：绝对时刻自动填充且不晚于 now；自然日期精确往返；手动传入的绝对时刻精确还原
+        Proguard dbRecord = proguardRepository.getProguardByProguardId(proguardId);
+        assertNotNull(dbRecord.getCreatedTime());                       // 审计自动填充，非空
+        assertFalse(dbRecord.getCreatedTime().isAfter(Instant.now()));  // 为创建时刻，不晚于 now
+        assertEquals(bizDate, dbRecord.getBizDate());                   // 自然日期精确往返
 
         proguard.setProguardName("update");
         proguardRepository.saveAndFlush(proguard);
