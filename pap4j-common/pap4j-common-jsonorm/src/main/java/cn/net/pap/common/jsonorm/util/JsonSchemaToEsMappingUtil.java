@@ -251,8 +251,10 @@ public final class JsonSchemaToEsMappingUtil {
             Map<String, Object> itemMapping = mapUnion(key, itemSchema, ctx, depth);
             if (itemMapping.containsKey("properties")) {
                 nested.put("properties", itemMapping.get("properties"));
+                return nested;
             }
-            return nested;
+            // 多态降级为 flattened（含标量分支或字段类型冲突）时直接透传，不再留裸 nested
+            return itemMapping;
         }
 
         JsonNode itemProps = itemSchema.get("properties");

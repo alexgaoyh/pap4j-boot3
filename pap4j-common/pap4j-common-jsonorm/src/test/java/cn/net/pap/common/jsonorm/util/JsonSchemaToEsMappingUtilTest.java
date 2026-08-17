@@ -57,6 +57,35 @@ class JsonSchemaToEsMappingUtilTest {
                       }
                     }
                   ]
+                },
+                "order_date": { "type": "string", "format": "date" },
+                "is_paid": { "type": "boolean" },
+                "discount": { "type": "number", "enum": [0.0, 0.05, 0.1] },
+                "currency": { "const": "CNY" },
+                "tags": { "type": "array", "items": { "type": "string" } },
+                "coords": { "type": "array", "items": [ { "type": "number" }, { "type": "number" } ] },
+                "custom_attributes": { "type": "array", "items": { "type": "object" } },
+                "order_items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "sku": { "type": "string" },
+                      "qty": { "type": "integer" },
+                      "unit_price": { "type": "number" }
+                    }
+                  }
+                },
+                "customer": { "$ref": "#/$defs/customer" }
+              },
+              "$defs": {
+                "customer": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "vip_level": { "type": "integer", "enum": [1, 2, 3] }
+                  }
                 }
               }
             }
@@ -73,7 +102,42 @@ class JsonSchemaToEsMappingUtilTest {
                 "dept_id": { "type": "integer", "minimum": 1000 },
                 "dept_name": { "type": "string" },
                 "leader": { "type": "string" },
+                "active": { "type": "boolean" },
+                "level": { "type": "integer", "enum": [1, 2, 3, 4] },
+                "tags": { "type": "array", "items": { "type": "string" } },
                 "children": { "type": "array", "items": { "$ref": "#" } }
+              }
+            }
+            """;
+
+    private static final String PRODUCT_SCHEMA = """
+            {
+              "type": "object",
+              "title": "商品模型",
+              "additionalProperties": false,
+              "properties": {
+                "sku": { "type": "string" },
+                "price": { "type": "number" },
+                "available": { "type": "boolean" },
+                "stock": { "type": "integer" },
+                "phone_support": { "type": "string", "format": "phone" },
+                "specs": { "properties": { "color": { "type": "string" }, "size": { "type": "string" } } },
+                "photo_ids": { "items": { "type": "string" } },
+                "freeform": {},
+                "attributes": { "type": "array" },
+                "promo": {
+                  "type": "object",
+                  "properties": { "active": { "type": "boolean" }, "price": { "type": "number" } },
+                  "if": { "properties": { "active": { "const": true } } },
+                  "then": { "properties": { "promo_price": { "type": "number" }, "price": { "type": "number" } } },
+                  "else": { "properties": { "markdown": { "type": "boolean" } } }
+                },
+                "vendor": {
+                  "oneOf": [
+                    { "type": "object", "properties": { "name": { "type": "string" } } },
+                    { "type": "null" }
+                  ]
+                }
               }
             }
             """;
@@ -107,6 +171,24 @@ class JsonSchemaToEsMappingUtilTest {
         // fail loud: 不再输出 ignore_malformed，非法日期由 ES 拒收
         assertTrue(mapping.at("/mappings/properties/payment_details/properties/payment_time/ignore_malformed").isMissingNode());
         assertEquals("keyword", mapping.at("/mappings/properties/payment_details/properties/card_type/type").asText());
+
+        // 补充字段覆盖: 自然日期 / boolean / number-enum→double / const / 标量数组 / tuple 数组 / 无结构对象数组 / nested 对象数组 / $ref
+        assertEquals("date", mapping.at("/mappings/properties/order_date/type").asText());
+        assertEquals("strict_date", mapping.at("/mappings/properties/order_date/format").asText());
+        assertEquals("boolean", mapping.at("/mappings/properties/is_paid/type").asText());
+        assertEquals("double", mapping.at("/mappings/properties/discount/type").asText());
+        assertEquals("keyword", mapping.at("/mappings/properties/currency/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/tags/type").asText());
+        assertEquals("double", mapping.at("/mappings/properties/coords/type").asText());
+        assertEquals("flattened", mapping.at("/mappings/properties/custom_attributes/type").asText());
+        assertEquals("nested", mapping.at("/mappings/properties/order_items/type").asText());
+        assertEquals("false", mapping.at("/mappings/properties/order_items/dynamic").asText());
+        assertEquals("text", mapping.at("/mappings/properties/order_items/properties/sku/type").asText());
+        assertEquals("long", mapping.at("/mappings/properties/order_items/properties/qty/type").asText());
+        assertEquals("double", mapping.at("/mappings/properties/order_items/properties/unit_price/type").asText());
+        assertEquals("object", mapping.at("/mappings/properties/customer/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/customer/properties/name/type").asText());
+        assertEquals("long", mapping.at("/mappings/properties/customer/properties/vip_level/type").asText());
     }
 
     @Test
@@ -122,6 +204,45 @@ class JsonSchemaToEsMappingUtilTest {
         assertEquals("nested", mapping.at("/mappings/properties/children/properties/children/properties/children/type").asText());
         assertEquals("long", mapping.at("/mappings/properties/children/properties/dept_id/type").asText());
         assertEquals("false", mapping.at("/mappings/properties/children/dynamic").asText());
+
+        // 递归节点补充字段: boolean / integer-enum→long / 标量数组（根层与子层均出现）
+        assertEquals("boolean", mapping.at("/mappings/properties/active/type").asText());
+        assertEquals("long", mapping.at("/mappings/properties/level/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/tags/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/children/properties/tags/type").asText());
+    }
+
+    @Test
+    void testProductCatalogSchemaMapping() throws Exception {
+        JsonNode mapping = generate(PRODUCT_SCHEMA);
+
+        // 常规类型
+        assertEquals("text", mapping.at("/mappings/properties/sku/type").asText());
+        assertEquals("double", mapping.at("/mappings/properties/price/type").asText());
+        assertEquals("boolean", mapping.at("/mappings/properties/available/type").asText());
+        assertEquals("long", mapping.at("/mappings/properties/stock/type").asText());
+
+        // 未知 format → keyword（mapString default 分支）
+        assertEquals("keyword", mapping.at("/mappings/properties/phone_support/type").asText());
+
+        // 无 type 推断: 有 properties → object；有 items → array；空 schema → text
+        assertEquals("object", mapping.at("/mappings/properties/specs/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/specs/properties/color/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/photo_ids/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/freeform/type").asText());
+
+        // 数组无 items → text
+        assertEquals("text", mapping.at("/mappings/properties/attributes/type").asText());
+
+        // if/then/else: then 重复 base 的 price → base 优先(跳过)，promo_price/markdown 正常合并
+        assertEquals("object", mapping.at("/mappings/properties/promo/type").asText());
+        assertEquals("double", mapping.at("/mappings/properties/promo/properties/price/type").asText());
+        assertEquals("double", mapping.at("/mappings/properties/promo/properties/promo_price/type").asText());
+        assertEquals("boolean", mapping.at("/mappings/properties/promo/properties/markdown/type").asText());
+
+        // oneOf 含 null 分支 → isAllObjectBranches 跳过 null，仅合并 object 分支
+        assertEquals("object", mapping.at("/mappings/properties/vendor/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/vendor/properties/name/type").asText());
     }
 
     @Test
@@ -246,6 +367,38 @@ class JsonSchemaToEsMappingUtilTest {
         JsonNode res = generate(selfRef);
         assertEquals("object", res.at("/mappings/properties/parent/type").asText());
         assertEquals("flattened", res.at("/mappings/properties/parent/properties/parent/properties/parent/properties/parent/properties/parent/properties/parent/properties/parent/properties/parent/type").asText());
+    }
+
+    @Test
+    void testArrayItemsOneOfMapping() throws Exception {
+        // 标量 oneOf 元素 → 数组降级 flattened（修复：不再产出裸 nested）
+        String scalarOneOfArray = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "values": { "type": "array", "items": { "oneOf": [ { "type": "string" }, { "type": "number" } ] } }
+                  }
+                }
+                """;
+        JsonNode scalar = generate(scalarOneOfArray);
+        assertEquals("flattened", scalar.at("/mappings/properties/values/type").asText());
+
+        // object oneOf 元素 → 仍为 nested，properties 为分支并集（回归保护）
+        String objectOneOfArray = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "contacts": { "type": "array", "items": { "oneOf": [
+                      { "type": "object", "properties": { "phone": { "type": "string" } } },
+                      { "type": "object", "properties": { "email": { "type": "string" } } }
+                    ] } }
+                  }
+                }
+                """;
+        JsonNode obj = generate(objectOneOfArray);
+        assertEquals("nested", obj.at("/mappings/properties/contacts/type").asText());
+        assertEquals("text", obj.at("/mappings/properties/contacts/properties/phone/type").asText());
+        assertEquals("text", obj.at("/mappings/properties/contacts/properties/email/type").asText());
     }
 
     @Test
