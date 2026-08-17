@@ -20,8 +20,8 @@ import java.util.Set;
  *   <caption>JSON Schema 与 ES Mapping 类型映射关系</caption>
  *   <tr><th>JSON Schema 节点特征</th><th>ES Mapping 目标类型</th><th>转换与设计说明</th></tr>
  *   <tr><td>{@code string} (普通文本)</td><td>{@code text + keyword} 复合字段</td><td>主字段 text 配置 standard 分词器(占位)，子字段 keyword 带 ignore_above: 1024</td></tr>
- *   <tr><td>{@code string} + {@code format: date-time}</td><td>{@code date}</td><td>显式指定 yyyy-MM-dd'T'HH:mm:ss||strict_date_optional_time 并开启 ignore_malformed</td></tr>
- *   <tr><td>{@code string} + {@code format: date}</td><td>{@code date}</td><td>显式指定 yyyy-MM-dd 格式</td></tr>
+ *   <tr><td>{@code string} + {@code format: date-time}</td><td>{@code date}</td><td>绝对时刻：ES 默认格式 strict_date_optional_time||epoch_millis，输入须为 RFC 3339 带时区或 epoch；带时间部分的值必须带时区，否则被 ES 拒收</td></tr>
+ *   <tr><td>{@code string} + {@code format: date}</td><td>{@code date}</td><td>自然日期：格式限制为 strict_date（严格 ISO yyyy-MM-dd），仅接受纯日期</td></tr>
  *   <tr><td>{@code string} + {@code format: ipv4/ipv6}</td><td>{@code ip}</td><td>原生 IP 地址类型，支持网段与范围检索</td></tr>
  *   <tr><td>{@code string} + 标识/时间类 format</td><td>{@code keyword}</td><td>email、uuid、uri、uri-reference、hostname、time 等不分词字段</td></tr>
  *   <tr><td>{@code integer}</td><td>{@code long}</td><td>整数类型统一提升为 64 位 long，避免精度溢出</td></tr>
@@ -33,6 +33,14 @@ import java.util.Set;
  *   <tr><td>{@code object} (结构确定)</td><td>{@code object}</td><td>逐属性展开下钻映射</td></tr>
  *   <tr><td>变长对象 / 多态冲突节点</td><td>{@code flattened}</td><td>无 properties 的变长 Map 或 oneOf 类型冲突字段降级为 flattened，作用域收敛至最小子树</td></tr>
  * </table>
+ *
+ * <h3>日期/时间使用约定:</h3>
+ * <p>时间字段按语义分为两类，各使用一套贯穿 Java / MySQL / ES 的格式约定，本工具生成的 ES 格式与之对齐：</p>
+ * <ul>
+ *   <li><b>绝对时刻</b>（{@code format: date-time}，如支付时间、创建时间）：代表某个瞬间，必须携带时区。Java 侧用 {@code Instant}，DB 侧用 {@code DATETIME(3)} 存 UTC，线上传输为 RFC 3339 带时区（如 {@code 2026-08-17T01:30:00.000Z}）。ES 使用默认格式 {@code strict_date_optional_time||epoch_millis}，带时间部分的值必须带时区，否则被 ES 拒收而非静默按 UTC 猜测。</li>
+ *   <li><b>自然日期</b>（{@code format: date}，如生日、下单日）：仅表示日历上的某一天，没有时区概念。Java 侧用 {@code LocalDate}，DB 侧用 {@code DATE}。ES 格式限制为 {@code strict_date}（严格 ISO {@code yyyy-MM-dd}），不接受时间部分。</li>
+ * </ul>
+ * <p>时区责任由应用层收口：存储、传输一律 UTC 或带偏移，只有展示层按用户时区换算。违反上述约定的输入会被 ES 拒收（fail loud），而非被静默置空或偏移。</p>
  *
  * <h3>高阶机制与边界防御:</h3>
  * <ul>
@@ -58,9 +66,6 @@ public final class JsonSchemaToEsMappingUtil {
 
     /** 默认全文检索分词器(占位): 后续可按需替换为 ik_max_word 等中文分词器。 */
     private static final String DEFAULT_ANALYZER = "standard";
-
-    /** 日期时间格式 pattern，兼容无时区 ISO 串与严格可选时间格式。 */
-    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss||strict_date_optional_time";
 
     private JsonSchemaToEsMappingUtil() {
     }
@@ -309,8 +314,10 @@ public final class JsonSchemaToEsMappingUtil {
         String format = schema.hasNonNull("format") ? schema.get("format").asText() : null;
         if (format == null) return textField();
         return switch (format) {
-            case "date-time" -> Map.of("type", "date", "format", DATE_TIME_FORMAT, "ignore_malformed", true);
-            case "date" -> Map.of("type", "date", "format", "yyyy-MM-dd");
+            // 绝对时刻: ES 默认格式 strict_date_optional_time||epoch_millis，输入须为 RFC 3339 带时区或 epoch，带时间部分的值必须带时区
+            case "date-time" -> Map.of("type", "date", "format", "strict_date_optional_time||epoch_millis");
+            // 自然日期: 格式限制为 strict_date（严格 ISO yyyy-MM-dd），仅接受纯日期
+            case "date" -> Map.of("type", "date", "format", "strict_date");
             case "ipv4", "ipv6" -> Map.of("type", "ip");
             case "time", "email", "uuid", "uri", "uri-reference", "hostname" -> keywordField();
             default -> keywordField();

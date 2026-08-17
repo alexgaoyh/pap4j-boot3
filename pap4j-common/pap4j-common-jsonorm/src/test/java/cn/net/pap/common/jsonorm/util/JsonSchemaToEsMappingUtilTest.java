@@ -103,8 +103,9 @@ class JsonSchemaToEsMappingUtilTest {
         assertEquals("object", mapping.at("/mappings/properties/payment_details/type").asText());
         assertEquals("text", mapping.at("/mappings/properties/payment_details/properties/wechat_unionid/type").asText());
         assertEquals("date", mapping.at("/mappings/properties/payment_details/properties/payment_time/type").asText());
-        assertEquals("yyyy-MM-dd'T'HH:mm:ss||strict_date_optional_time", mapping.at("/mappings/properties/payment_details/properties/payment_time/format").asText());
-        assertTrue(mapping.at("/mappings/properties/payment_details/properties/payment_time/ignore_malformed").asBoolean());
+        assertEquals("strict_date_optional_time||epoch_millis", mapping.at("/mappings/properties/payment_details/properties/payment_time/format").asText());
+        // fail loud: 不再输出 ignore_malformed，非法日期由 ES 拒收
+        assertTrue(mapping.at("/mappings/properties/payment_details/properties/payment_time/ignore_malformed").isMissingNode());
         assertEquals("keyword", mapping.at("/mappings/properties/payment_details/properties/card_type/type").asText());
     }
 
@@ -182,7 +183,7 @@ class JsonSchemaToEsMappingUtilTest {
                 """;
         JsonNode mapping = generate(schema);
         assertEquals("date", mapping.at("/mappings/properties/birth_date/type").asText());
-        assertEquals("yyyy-MM-dd", mapping.at("/mappings/properties/birth_date/format").asText());
+        assertEquals("strict_date", mapping.at("/mappings/properties/birth_date/format").asText());
         assertEquals("ip", mapping.at("/mappings/properties/client_ip/type").asText());
         assertEquals("ip", mapping.at("/mappings/properties/ipv6_addr/type").asText());
         assertEquals("keyword", mapping.at("/mappings/properties/start_time/type").asText());
