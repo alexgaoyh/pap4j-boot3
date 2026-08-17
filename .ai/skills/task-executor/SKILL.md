@@ -65,7 +65,8 @@ globs: "*"
 | | `persistence` | JPA / MyBatis / 事务 |
 | | `api-contract` | Controller 接口 / OpenAPI |
 | | `algorithm` | 性能敏感算法 |
-| 影响面 | `public-api` | 修改 `pap4j-common` 的 public 方法签名 |
+| 影响面 | `breaking-api` | 破坏性契约变更：修改 `pap4j-common` 的 public 方法签名/接口定义，或跨模块调用协议（签名/返回值/throws 变更） |
+| | `additive-api` | 非破坏性契约新增：新增 `pap4j-common` 的 public 方法 / 接口 |
 | | `internal-only` | 内部实现变更，不对外暴露 |
 
 **输出示例**：
@@ -92,8 +93,8 @@ globs: "*"
 - [ ] 8. 当前重试轮数 ≤ 2（未超上限）
 
 **涉及跨模块 / pap4j-common 时追加**：
-- [ ] 9. public 方法签名保持向后兼容（不破坏下游调用方）
-- [ ] 10. 新增 public 方法已确认走 `[QuickPlan]` 或 `[Plan]`
+- [ ] 9. public 方法向后兼容（不破坏下游调用方的签名与异常契约）
+- [ ] 10. 新增或修改 public API 已补齐完整 Javadoc（含 @param/@return/@throws 标签）
 
 **涉及持久层时追加**：
 - [ ] 11. 无 `@OneToMany` / `@ManyToMany` / `@ManyToOne` / `@OneToOne` 关联注解
@@ -125,22 +126,22 @@ globs: "*"
 
 ### 第 3 步：前置门控（Gate）
 
-基于任务画像判断是否触发强阻断：
+基于任务画像标签判定（**严格对齐 `AI.md` 强阻断 #1-#6**）：
 
 ```text
 if 满足以下任一条件:
-   - 跨模块变更（cross-module / involves-common）
-   - 底层算法优化（algorithm）
-   - 多文件联动 ≥3 个 src/main/java 源文件
-   - Maven 依赖 / Spring Boot 配置变更
-   - 持久层红线违规
-   - 修改 pap4j-common 的 public 方法签名
+   - impact == 'breaking-api'     # 破坏性契约变更（修改已有 public 签名/接口/返回值/throws）
+   - area in ('algorithm', 'concurrency')  # 底层/高并发核心算法与性能重构、ForkJoinPool·线程池等核心并发组件调整（对应 AI.md #2）
+   - 联动修改 src/main 源文件 ≥ 3 个 # 多文件联动
+   - type == 'config-change'      # Maven 依赖或全局配置变更
+   - 涉及持久层/事务禁令红线       # JPA 关联注解 / 非 Service 层事务
 then
    → [Plan] 模式 — 输出设计方案
    → 调用 grill-me 技能发起质询（并发/边界/幂等/兼容）
    → 等待开发者确认方案
 else
    → [QuickPlan] — 一句话说明变更范围后直接进入执行
+     （包含 additive-api 新增方法、internal-only 内部实现优化等）
 ```
 
 **产出**：确认的设计方案 + 目标文件列表。
