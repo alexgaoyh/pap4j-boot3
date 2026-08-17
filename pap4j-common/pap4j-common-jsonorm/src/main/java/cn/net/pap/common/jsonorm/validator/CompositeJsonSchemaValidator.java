@@ -22,6 +22,11 @@ public class CompositeJsonSchemaValidator {
         this.jsonSchemaExtraValidators = jsonSchemaExtraValidators;
     }
 
+    /**
+     * 先执行标准 JSON Schema 验证，再依次执行自定义验证器
+     *
+     * @param instance 待校验的数据实例
+     */
     public void validate(Object instance) {
         schema.validate(instance);
 

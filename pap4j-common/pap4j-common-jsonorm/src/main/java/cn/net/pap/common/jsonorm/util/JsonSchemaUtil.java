@@ -27,9 +27,9 @@ public class JsonSchemaUtil {
     /**
      * toSchema
      *
-     * @param clazz
-     * @return
-     * @throws Exception
+     * @param clazz 目标类型
+     * @return 生成的 JSON Schema 字符串
+     * @throws Exception 生成失败时抛出
      */
     public static String toSchema(Class clazz) throws Exception {
         Map<String, Object> returnMap = new HashMap<String, Object>();
@@ -97,10 +97,10 @@ public class JsonSchemaUtil {
     /**
      * json schema to create table sql
      *
-     * @param tableName
-     * @param jsonSchema
-     * @return
-     * @throws Exception
+     * @param tableName  目标表名
+     * @param jsonSchema JSON Schema 内容
+     * @return 建表 SQL 语句
+     * @throws Exception 转换失败时抛出
      */
     public static String generateCreateTable(String tableName, String jsonSchema) throws Exception {
         ObjectMapper mapper = JsonMapper.builder().addModule(new AfterburnerModule()).build();

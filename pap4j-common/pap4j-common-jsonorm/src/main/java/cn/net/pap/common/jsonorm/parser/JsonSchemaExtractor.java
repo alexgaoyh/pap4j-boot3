@@ -242,6 +242,9 @@ public class JsonSchemaExtractor {
      *   <li><b>1:N 关系 (List):</b> 整体序列化为 JSON 字符串存储。</li>
      *   <li><b>基本类型:</b> 保持原始类型。</li>
      * </ul>
+     *
+     * @param coreFields 结构化提取的核心字段映射
+     * @return 平铺后的字段名到值的映射
      */
     public Map<String, Object> toFlattenedStorageMap(Map<String, Object> coreFields) {
         Map<String, Object> flattenedMap = new LinkedHashMap<>();
@@ -272,6 +275,9 @@ public class JsonSchemaExtractor {
 
     /**
      * <p>将投影结果转换为存储格式（仅处理顶级 Key，Value 为 JSON 字符串或基本类型字符串）。</p>
+     *
+     * @param coreFields 投影结果的核心字段映射
+     * @return 存储格式的字段名到值映射
      */
     public Map<String, String> toStorageReadyMap(Map<String, Object> coreFields) {
         Map<String, String> storageMap = new LinkedHashMap<>();

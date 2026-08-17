@@ -10,9 +10,9 @@ public class JsonlUtil {
     /**
      * 写入最后一行
      *
-     * @param filePath
-     * @param jsonData
-     * @return
+     * @param filePath 文件路径
+     * @param jsonData 要写入的 JSON 数据
+     * @return 写入成功返回 true，失败返回 false
      */
     public static boolean writeLastLine(String filePath, String jsonData) {
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath, true))) {
@@ -27,8 +27,8 @@ public class JsonlUtil {
     /**
      * 读最后一行
      *
-     * @param filePath
-     * @return
+     * @param filePath 文件路径
+     * @return 文件最后一行的内容，文件不存在或为空时返回 null
      */
     public static String readLastLine(String filePath) {
         File file = new File(filePath);

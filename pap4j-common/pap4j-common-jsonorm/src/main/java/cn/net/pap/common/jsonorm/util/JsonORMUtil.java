@@ -33,9 +33,9 @@ public class JsonORMUtil {
     /**
      * 文档读取 - 读取文本内容
      *
-     * @param file
-     * @return
-     * @throws IOException
+     * @param file 待读取的文件
+     * @return 文件文本内容
+     * @throws IOException 读取文件失败时抛出
      */
     public static String readFileToString(File file) throws IOException {
         String JSON = "";
@@ -56,8 +56,8 @@ public class JsonORMUtil {
      * 入参： [{key1=value1, key2=value2}, {key1=value1, key2=value2, key3=value3}, {key1=value1}]
      * 出参： {key1=value1}
      *
-     * @param mapList
-     * @return
+     * @param mapList 待遍历的 map 列表
+     * @return 所有 map 中 key-value 完全一致的公共项
      */
     public static Map<String, Object> findUniqueKeyValuePairs(List<Map<String, Object>> mapList) {
         Map<String, Object> returnMap = new LinkedHashMap<>();
@@ -84,10 +84,11 @@ public class JsonORMUtil {
 
     /**
      * 将 业务数据-jsonNode 按照 业务-表结构映射规则-mappingORMDTO 进行封装处理，转换为结构化操作数据
-     * @param mappingORMDTO
-     * @param jsonNode
-     * @return
-     * @throws Exception
+     *
+     * @param mappingORMDTO 业务-表结构映射规则
+     * @param jsonNode      业务数据
+     * @return 结构化操作数据列表
+     * @throws Exception 转换失败时抛出
      */
     public static List<TableFieldValueDTO> geneTableFieldValueDTOList(MappingORMDTO mappingORMDTO, JsonNode jsonNode) throws Exception {
         List<TableFieldValueDTO> tableFieldValueDTOList = new ArrayList<>();
@@ -136,9 +137,10 @@ public class JsonORMUtil {
 
     /**
      * 刷新生成的 TableFieldValueDTO 对象，根据主键和外键标识，将主键和外键的关联关系添加进来。
-     * @param tableFieldValueDTOList
-     * @return
-     * @throws Exception
+     *
+     * @param tableFieldValueDTOList 生成的 TableFieldValueDTO 列表
+     * @return 刷新外键关联后的列表
+     * @throws Exception 刷新失败时抛出
      */
     public static List<TableFieldValueDTO> refreshTableFieldValueDTOListInsert(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
         List<TableFieldValueDTO> returnList = deepCopyList(tableFieldValueDTOList, TableFieldValueDTO.class);
@@ -171,10 +173,10 @@ public class JsonORMUtil {
 
     /**
      * 刷新生成的 TableFieldValueDTO 对象，根据主键和外键标识，将主键和外键的关联关系添加进来。
-     * @param tableFieldValueDTOList
+     * @param tableFieldValueDTOList 生成的 TableFieldValueDTO 列表
      * @param usingInputPK  true代表使用前端传递过来的主键值(更新操作使用先删除再插入，此时可以传递true使用前端传值)；  false代表使用服务端的主键生成策略
-     * @return
-     * @throws Exception
+     * @return 刷新外键关联后的列表
+     * @throws Exception 刷新失败时抛出
      */
     public static List<TableFieldValueDTO> refreshTableFieldValueDTOListInsert(List<TableFieldValueDTO> tableFieldValueDTOList, Boolean usingInputPK) throws Exception {
         if(usingInputPK == false) {
@@ -212,9 +214,10 @@ public class JsonORMUtil {
 
     /**
      * 如果是一对多关系的更新操作，那么多方的数据部分需要进行删除，这里将多方数据删除后新增，这里维护对应需要删除的数据。
-     * @param tableFieldValueDTOList
-     * @return
-     * @throws Exception
+     *
+     * @param tableFieldValueDTOList 生成的 TableFieldValueDTO 列表
+     * @return 需要删除的数据描述
+     * @throws Exception 刷新失败时抛出
      */
     public static DelDetailTableValueDTO<String> refreshTableFieldValueDTOListUpdate2Del(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
         DelDetailTableValueDTO<String> unNecessaryTableValueDTO = new DelDetailTableValueDTO<String>();
@@ -248,6 +251,13 @@ public class JsonORMUtil {
         return unNecessaryTableValueDTO;
     }
 
+    /**
+     * 删除操作时，维护对应需要删除的数据
+     *
+     * @param tableFieldValueDTOList 生成的 TableFieldValueDTO 列表
+     * @return 需要删除的数据列表
+     * @throws Exception 刷新失败时抛出
+     */
     public static List<DelDetailTableValueDTO<String>> refreshTableFieldValueDTOListDelete(List<TableFieldValueDTO> tableFieldValueDTOList) throws Exception {
         List<DelDetailTableValueDTO<String>> unNecessaryTableValueDTOList = new ArrayList<DelDetailTableValueDTO<String>>();
 
@@ -328,7 +338,7 @@ public class JsonORMUtil {
      * @param tableName       操作表名
      * @param mappingTableDTO 业务 - 表结构 映射关系
      * @param values          传递过来的数据值
-     * @return
+     * @return 维护好的 TableFieldValueDTO
      */
     public static TableFieldValueDTO geneTableFieldValueDTO(String tableName, MappingTableDTO mappingTableDTO, Map<String, Object> values) {
         TableFieldValueDTO tableFieldValueDTO = new TableFieldValueDTO();
@@ -359,10 +369,10 @@ public class JsonORMUtil {
     /**
      * 如果存在外键设置，那么需要过滤一下平铺的map，把纯主表的map对象进行移除
      *
-     * @param tableName
-     * @param mappingTableDTO
-     * @param flattenedMapList
-     * @return
+     * @param tableName        操作表名
+     * @param mappingTableDTO  业务 - 表结构 映射关系
+     * @param flattenedMapList 平铺后的 map 列表
+     * @return 过滤后的 map 列表
      */
     public static List<Map<String, Object>> withFKFilter(String tableName, MappingTableDTO mappingTableDTO, List<Map<String, Object>> flattenedMapList) {
         List<Map<String, Object>> filterMapList = new ArrayList<>();
@@ -379,9 +389,10 @@ public class JsonORMUtil {
 
     /**
      * 数据完整性检测，业务字段数据和规则是否匹配
-     * @param fieldList
-     * @param values
-     * @return
+     *
+     * @param fieldList 需要的字段列表
+     * @param values    待检测的数据
+     * @return 是否包含全部字段
      */
     public static Boolean checkMapAllInFieldList(List<String> fieldList, Map<String, Object> values) {
         Boolean checkFlag = true;
@@ -398,10 +409,12 @@ public class JsonORMUtil {
 
     /**
      * List 深拷贝
-     * @param originalList
-     * @return
-     * @param <T>
-     * @throws IOException
+     *
+     * @param <T>          列表元素类型
+     * @param originalList 原始列表
+     * @param clazz        元素类型
+     * @return 深拷贝后的列表
+     * @throws IOException 序列化失败时抛出
      */
     public static <T> List<T> deepCopyList(List<T> originalList, Class<T> clazz) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -413,9 +426,10 @@ public class JsonORMUtil {
 
     /**
      * 使用 jackson 把 JSON 对象中特定节点的值都查询出来， 可用于参数校验、参数提取
-     * @param node
-     * @param targetKey
-     * @return
+     *
+     * @param node      待查询的 JSON 节点
+     * @param targetKey 目标字段名
+     * @return 匹配到的字段值列表
      */
     public static List<String> extractKeyValues(JsonNode node, String targetKey) {
         List<String> values = new ArrayList<>();
@@ -441,8 +455,8 @@ public class JsonORMUtil {
     /**
      * json 转平铺
      *
-     * @param jsonNode
-     * @return
+     * @param jsonNode 待平铺的 JSON 节点
+     * @return 平铺后的键值 map 列表
      */
     public static List<Map<String, Object>> flattenJson(JsonNode jsonNode) {
         List<Map<String, Object>> result = new ArrayList<>();

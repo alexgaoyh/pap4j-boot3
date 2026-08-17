@@ -297,6 +297,9 @@ public class JsonRecursiveParser {
 
     /**
      * 将对象转换为JSON字符串（用于测试）
+     *
+     * @param object 待转换的对象
+     * @return 对象的 JSON 字符串表示
      */
     public static String toJson(Object object) {
         try {

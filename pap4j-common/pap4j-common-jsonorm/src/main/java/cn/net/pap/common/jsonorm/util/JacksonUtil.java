@@ -38,10 +38,10 @@ public class JacksonUtil {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * ObjectMapper
+     * 创建带有动态字段排除能力的 ObjectMapper
      *
-     * @param fieldsToExclude
-     * @return
+     * @param fieldsToExclude 需要排除的字段名列表
+     * @return 配置好的 ObjectMapper
      */
     public static ObjectMapper createObjectMapper(List<String> fieldsToExclude) {
         ObjectMapper mapper = new ObjectMapper();
@@ -160,9 +160,13 @@ public class JacksonUtil {
 
     /**
      * 批量处理大JSON数组，避免内存溢出
-     * JacksonUtil.parseLargeJsonInBatches(filename, batch -> {
-     * log.info("Processing batch with {} items", batch.size());
+     * 用法示例：JacksonUtil.parseLargeJsonInBatches(filename, batch -> {
+     *     log.info("Processing batch with {} items", batch.size());
      * });
+     *
+     * @param filePath       JSON 文件路径
+     * @param batchProcessor 批处理回调
+     * @throws IOException 读取文件失败时抛出
      */
     public static void parseLargeJsonInBatches(String filePath, Consumer<List<Map<String, Object>>> batchProcessor) throws IOException {
         ObjectMapper mapper = new ObjectMapper();
@@ -425,12 +429,12 @@ public class JacksonUtil {
     /**
      * 从超大 JSON 数组文件中，流式读取指定下标范围的元素 支持 根节点不是是数组，从根节点过滤
      *
-     * @param filePath
-     * @param fieldPath
-     * @param startIndex
-     * @param endIndex
-     * @return
-     * @throws Exception
+     * @param filePath   文件路径
+     * @param fieldPath  数组字段路径
+     * @param startIndex 起始下标（含）
+     * @param endIndex   结束下标（不含）
+     * @return 区间内的元素列表
+     * @throws Exception 解析失败时抛出
      */
     public static List<JsonNode> readJsonArrayRange(String filePath, String fieldPath, int startIndex, int endIndex) throws Exception {
 
@@ -481,12 +485,12 @@ public class JacksonUtil {
      * 根为对象，某字段是大数组。读取该数组的 [startIndex, endIndex) 切片，并保留根对象其它字段。
      * 仅分片读取数组，同时保留根对象的其他字段， 特定字段数组部分的实现，调用前面的代码进行复用
      *
-     * @param filePath
-     * @param arrayField
-     * @param startIndex
-     * @param endIndex
-     * @return
-     * @throws Exception
+     * @param filePath    文件路径
+     * @param arrayField  数组字段名
+     * @param startIndex  起始下标（含）
+     * @param endIndex    结束下标（不含）
+     * @return 包含截取结果的根对象节点
+     * @throws Exception 解析失败时抛出
      */
     public static ObjectNode readObjectWithArraySlice(String filePath, String arrayField, int startIndex, int endIndex) throws Exception {
         ObjectNode result = objectMapper.createObjectNode();
@@ -554,11 +558,12 @@ public class JacksonUtil {
 
     /**
      * 节点求和
-     * @param filePath
-     * @param fieldPath
-     * @param targetField
-     * @return
-     * @throws Exception
+     *
+     * @param filePath    文件路径
+     * @param fieldPath   数组字段路径
+     * @param targetField 要求和的字段名
+     * @return 求和结果
+     * @throws Exception 解析失败时抛出
      */
     public static Number sumJsonArrayField(String filePath, String fieldPath, String targetField) throws Exception {
         JsonFactory factory = new JsonFactory();

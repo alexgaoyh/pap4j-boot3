@@ -12,9 +12,10 @@ public class SqlUtil {
 
     /**
      * 生成 insert 语句
-     * @param tableName
-     * @param valueMap
-     * @return
+     *
+     * @param tableName 目标表名
+     * @param valueMap  字段名到值的映射
+     * @return 生成的 INSERT 语句
      */
     public static String geneInsertStatement(String tableName, Map<String, Object> valueMap) {
         // 验证输入
@@ -45,8 +46,11 @@ public class SqlUtil {
 
     /**
      * 生成删除语句
-     * @param tableName
-     * @return
+     *
+     * @param tableName 目标表名
+     * @param pk        主键字段名
+     * @param pkValue   主键值
+     * @return 生成的 DELETE 语句
      */
     public static String generateDeleteStatement(String tableName, String pk, Object pkValue) {
         // 验证输入
@@ -77,8 +81,11 @@ public class SqlUtil {
 
     /**
      * 生成查询语句
-     * @param tableName
-     * @return
+     *
+     * @param tableName     目标表名
+     * @param fieldNameList 查询字段名列表
+     * @param valueMap      字段名到值的映射（查询条件）
+     * @return 生成的 SELECT 语句
      */
     public static String generateSelectStatement(String tableName, List<String> fieldNameList, Map<String, Object> valueMap) {
         // 验证输入

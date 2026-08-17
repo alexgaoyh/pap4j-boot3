@@ -66,6 +66,11 @@ public class OptimizedJsonParser {
 
     /**
      * 带常量池优化的反序列化方法
+     *
+     * @param <T>       反序列化目标类型
+     * @param json      JSON 字符串
+     * @param valueType 目标类型
+     * @return 反序列化后的对象
      */
     public static <T> T parseWithOptimization(String json, Class<T> valueType) throws IOException {
         return OBJECT_MAPPER.readValue(json, valueType);
@@ -73,6 +78,9 @@ public class OptimizedJsonParser {
 
     /**
      * 流式解析JSON文件，适用于大文件
+     *
+     * @param jsonFile 待解析的 JSON 文件
+     * @param handler  流式 token 处理器
      */
     public static void parseLargeFileWithOptimization(File jsonFile, JsonHandler handler) throws IOException {
         JsonFactory factory = new JsonFactory();
@@ -103,6 +111,9 @@ public class OptimizedJsonParser {
 
     /**
      * 字符串池化方法
+     *
+     * @param value 原始字符串
+     * @return 池化后的字符串
      */
     public static String poolString(String value) {
         if (value == null) {
@@ -113,6 +124,8 @@ public class OptimizedJsonParser {
 
     /**
      * 添加预定义字符串常量
+     *
+     * @param constant 待添加的字符串常量
      */
     public static void addStringConstant(String constant) {
         if (constant != null) {
@@ -139,6 +152,9 @@ public class OptimizedJsonParser {
 
     /**
      * 整数池化方法
+     *
+     * @param value 原始整数值
+     * @return 池化后的整数
      */
     public static Integer poolInteger(int value) {
         return INTEGER_CONSTANT_POOL.computeIfAbsent(value, k -> value);
@@ -146,6 +162,8 @@ public class OptimizedJsonParser {
 
     /**
      * 添加预定义整数常量
+     *
+     * @param constant 待添加的整数常量
      */
     public static void addIntegerConstant(int constant) {
         INTEGER_CONSTANT_POOL.put(constant, constant);
@@ -170,6 +188,9 @@ public class OptimizedJsonParser {
 
     /**
      * 长整型池化方法
+     *
+     * @param value 原始长整型值
+     * @return 池化后的长整型
      */
     public static Long poolLong(long value) {
         return LONG_CONSTANT_POOL.computeIfAbsent(value, k -> value);
@@ -177,6 +198,8 @@ public class OptimizedJsonParser {
 
     /**
      * 添加预定义长整型常量
+     *
+     * @param constant 待添加的长整型常量
      */
     public static void addLongConstant(long constant) {
         LONG_CONSTANT_POOL.put(constant, constant);
@@ -201,6 +224,9 @@ public class OptimizedJsonParser {
 
     /**
      * 双精度浮点数池化方法
+     *
+     * @param value 原始双精度浮点值
+     * @return 池化后的双精度浮点数
      */
     public static Double poolDouble(double value) {
         return DOUBLE_CONSTANT_POOL.computeIfAbsent(value, k -> value);
@@ -208,6 +234,8 @@ public class OptimizedJsonParser {
 
     /**
      * 添加预定义双精度浮点数常量
+     *
+     * @param constant 待添加的双精度浮点常量
      */
     public static void addDoubleConstant(double constant) {
         DOUBLE_CONSTANT_POOL.put(constant, constant);

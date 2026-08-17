@@ -97,8 +97,9 @@ public class XmlRecursiveParser {
 
     /**
      * 解析过的结果，重新转换为 xml 字符串
-     * @param parsedData
-     * @return
+     *
+     * @param parsedData 解析后的结构化数据列表
+     * @return 生成的 xml 字符串
      */
     public static String convertToXmlString(List<Map<String, Object>> parsedData) {
         if (parsedData == null || parsedData.isEmpty()) {
@@ -199,6 +200,12 @@ public class XmlRecursiveParser {
     }
 
 
+    /**
+     * 以节点名称分组方式解析 XML 字符串为通用结构
+     *
+     * @param xmlString 待解析的 XML 字符串
+     * @return 通用结构列表
+     */
     public static List<Map<String, Object>> parseToUniversalList2(String xmlString) {
         try {
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -270,6 +277,13 @@ public class XmlRecursiveParser {
         return map;
     }
 
+    /**
+     * 按路径规则从解析结果中提取数据
+     *
+     * @param result   解析结果列表
+     * @param pathRule 路径规则，如 $[0].key
+     * @return 提取到的值，未命中返回 null
+     */
     public static Object extract2(List<Map<String, Object>> result, String pathRule) {
         String[] parts = pathRule.split("\\.");
         Object current = result;

@@ -6,6 +6,7 @@ import java.util.List;
 /**
  * 在做更新操作的时候，如果出现一对多的关系，则可以把多的数据都删了，然后再插入，这里记录需要做删除操作的数据
  *
+ * @param <T> 主键值的类型
  */
 public class DelDetailTableValueDTO<T> implements Serializable {
 

@@ -148,6 +148,12 @@ public class ValidateUtil {
         return !validate(date, TIME_STAMP_PATTERN);
     }
 
+    /**
+     * 校验是否为合法的 IP 地址（支持 IPv4 / IPv6）
+     *
+     * @param ip 待校验的 IP 字符串
+     * @return 合法返回 true，否则返回 false
+     */
     public static boolean isIP(String ip) {
         if (isEmpty(ip)) {
             return false;
@@ -229,6 +235,12 @@ public class ValidateUtil {
         return !isTime(time);
     }
 
+    /**
+     * 判断字符串是否包含中文字符
+     *
+     * @param str 待检测的字符串
+     * @return 包含中文字符返回 true，否则返回 false；为空时返回 true
+     */
     public static boolean isContainsChinese(String str) {
         if (isEmpty(str)) {
             return true;

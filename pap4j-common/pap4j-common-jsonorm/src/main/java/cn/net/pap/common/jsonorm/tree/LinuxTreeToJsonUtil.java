@@ -43,6 +43,12 @@ public class LinuxTreeToJsonUtil {
         private String type;
         private List<TreeNode> children;
 
+        /**
+         * 构造树节点
+         *
+         * @param name 节点名称
+         * @param type 节点类型
+         */
         public TreeNode(String name, String type) {
             this.name = name;
             this.type = type;
@@ -74,6 +80,13 @@ public class LinuxTreeToJsonUtil {
         }
     }
 
+    /**
+     * 解析 tree 命令输出文件为树结构
+     *
+     * @param filename tree 输出文件路径
+     * @return 树根节点，文件为空时返回 null
+     * @throws IOException 读取文件失败时抛出
+     */
     public static TreeNode parseTreeFile(String filename) throws IOException {
         List<String> lines = new ArrayList<>();
 
@@ -220,6 +233,9 @@ public class LinuxTreeToJsonUtil {
 
     /**
      * 转换为JSON
+     *
+     * @param node 树节点
+     * @return 生成的 JSON 节点
      */
     public static ObjectNode convertToJson(TreeNode node) {
         ObjectMapper mapper = new ObjectMapper();

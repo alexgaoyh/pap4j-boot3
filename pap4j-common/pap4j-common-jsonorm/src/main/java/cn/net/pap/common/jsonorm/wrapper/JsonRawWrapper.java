@@ -29,6 +29,10 @@ public class JsonRawWrapper {
 
     /**
      * 包装对象，使指定字段按原始 JSON 输出
+     *
+     * @param value         待包装的对象
+     * @param rawFieldNames 需要按原始 JSON 输出的字段名
+     * @return 包装后的 MappingJacksonValue
      */
     public static MappingJacksonValue wrap(Object value, String... rawFieldNames) {
         return wrap(value, Set.of(rawFieldNames));
@@ -36,6 +40,10 @@ public class JsonRawWrapper {
 
     /**
      * 包装对象，使指定字段按原始 JSON 输出
+     *
+     * @param value     待包装的对象
+     * @param rawFields 需要按原始 JSON 输出的字段名集合
+     * @return 包装后的 MappingJacksonValue
      */
     public static MappingJacksonValue wrap(Object value, Set<String> rawFields) {
         ObjectMapper mapper = buildRawFieldMapper(rawFields);

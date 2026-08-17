@@ -10,8 +10,8 @@ package cn.net.pap.common.jsonorm.dto;
  *                   <li>数组索引：<code>location[0]</code></li>
  *                   <li>正则匹配：<code>attributes.&lt;pattern:^ext_.*&gt;</code></li>
  *                 </ul>
- * @param jsonType JSON Schema 中的原始类型，如 <code>string</code>, <code>number</code>, <code>object</code> 等。
- * @param javaType 映射到 Java 运行时的类型名称，如 <code>BigDecimal</code>, <code>Long</code>, <code>String</code> 等。
+ * @param jsonType JSON Schema 中的原始类型，如 string, number, object 等。
+ * @param javaType 映射到 Java 运行时的类型名称，如 BigDecimal, Long, String 等。
  * @author
  * @since 2026-05-26
  */

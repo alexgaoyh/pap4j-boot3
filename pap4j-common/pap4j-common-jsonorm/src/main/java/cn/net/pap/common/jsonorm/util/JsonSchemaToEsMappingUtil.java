@@ -12,29 +12,80 @@ import java.util.Map;
 import java.util.Set;
 
 /**
- * <p>JSON Schema (Draft-07) → Elasticsearch Mapping 转换器。</p>
- * <p>依据 {@code JSON_SCHEMA_ES_MAPPING_GUIDE.md} 规则,将 JSON Schema 递归转换为 ES index mapping (settings + mappings)。</p>
+ * <p><b>JSON Schema (Draft-07) → Elasticsearch Index Mapping 转换工具。</b></p>
+ * <p>将结构化 JSON Schema 递归转换为可直接用于 Elasticsearch {@code PUT /index} 请求的索引定义结构 ({@code settings + mappings})。</p>
+ *
+ * <h3>核心转换规约:</h3>
+ * <table border="1">
+ *   <caption>JSON Schema 与 ES Mapping 类型映射关系</caption>
+ *   <tr><th>JSON Schema 节点特征</th><th>ES Mapping 目标类型</th><th>转换与设计说明</th></tr>
+ *   <tr><td>{@code string} (普通文本)</td><td>{@code text + keyword} 复合字段</td><td>主字段 text 配置 standard 分词器(占位)，子字段 keyword 带 ignore_above: 1024</td></tr>
+ *   <tr><td>{@code string} + {@code format: date-time}</td><td>{@code date}</td><td>显式指定 yyyy-MM-dd'T'HH:mm:ss||strict_date_optional_time 并开启 ignore_malformed</td></tr>
+ *   <tr><td>{@code string} + {@code format: date}</td><td>{@code date}</td><td>显式指定 yyyy-MM-dd 格式</td></tr>
+ *   <tr><td>{@code string} + {@code format: ipv4/ipv6}</td><td>{@code ip}</td><td>原生 IP 地址类型，支持网段与范围检索</td></tr>
+ *   <tr><td>{@code string} + 标识/时间类 format</td><td>{@code keyword}</td><td>email、uuid、uri、uri-reference、hostname、time 等不分词字段</td></tr>
+ *   <tr><td>{@code integer}</td><td>{@code long}</td><td>整数类型统一提升为 64 位 long，避免精度溢出</td></tr>
+ *   <tr><td>{@code number} (默认)</td><td>{@code double}</td><td>普通浮点数值映射为 double</td></tr>
+ *   <tr><td>{@code number} (显式指定金额字段)</td><td>{@code scaled_float}</td><td>高精度金额存储，按 scaling_factor (默认 10000) 放大为定点整数</td></tr>
+ *   <tr><td>{@code boolean}</td><td>{@code boolean}</td><td>布尔类型映射</td></tr>
+ *   <tr><td>{@code enum} / {@code const}</td><td>强类型还原</td><td>按枚举值推导类型(数值/布尔还原强类型，字符串/混合枚举落 keyword)</td></tr>
+ *   <tr><td>{@code array} + {@code items: object}</td><td>{@code nested}</td><td>对象数组一律提升为 nested，维护数组内跨属性查询的独立性</td></tr>
+ *   <tr><td>{@code object} (结构确定)</td><td>{@code object}</td><td>逐属性展开下钻映射</td></tr>
+ *   <tr><td>变长对象 / 多态冲突节点</td><td>{@code flattened}</td><td>无 properties 的变长 Map 或 oneOf 类型冲突字段降级为 flattened，作用域收敛至最小子树</td></tr>
+ * </table>
+ *
+ * <h3>高阶机制与边界防御:</h3>
+ * <ul>
+ *   <li><b>$ref 引用解析</b>: 支持 {@code #} 根自引用与 {@code #/$defs/x}、{@code #/definitions/x} 局部指针解包；若检测到纯别名指针循环（如 A→B→A），直接抛出异常拦截。</li>
+ *   <li><b>递归深度熔断</b>: 结构化递归（如部门树、评论树）在达到最大递归深度（{@link #MAX_DEPTH} 8 层）时终止继续下钻，并附加 {@code dynamic: "false"} 阻止未知深层字段动态膨胀。</li>
+ *   <li><b>多态分支合并 (oneOf / anyOf)</b>: 全 object 分支取属性并集 (Union All)；若包含标量分支或存在同名字段类型冲突，安全降级为 flattened。</li>
+ *   <li><b>条件分支合并 (if-then-else)</b>: 自动提取 then/else 中扩展定义的可选属性，打平合并进主 mapping。</li>
+ *   <li><b>命名安全约束</b>: 拒绝包含点号 {@code .}（防范对象路径解析歧义）及以 {@code _} 或 {@code @} 开头（防范 ES 保留元数据冲突）的字段名。</li>
+ * </ul>
  */
 public final class JsonSchemaToEsMappingUtil {
 
-    // 设计说明:JSON Schema / ES mapping 规范关键字(如 "oneOf"、"items"、"nested"、"scaled_float")
-    // 属于输入/输出格式的领域词汇,按内联字面量书写;真正的魔法数值(1024/10000/8/date pattern 等)抽 static final 常量。
     private static final ObjectMapper MAPPER = new ObjectMapper();
+
+    /** 自引用递归展开的最大深度(默认 8 层)，超过后终止递归下钻。 */
     private static final int MAX_DEPTH = 8;
+
+    /** keyword 字段统一截断长度(1024 字符)，超出部分不索引以防撑爆 Lucene 词项。 */
     private static final int KEYWORD_IGNORE_ABOVE = 1024;
+
+    /** 默认金额缩放因子: 保留 4 位小数精度(10000)。 */
     private static final int DEFAULT_MONEY_FACTOR = 10000;
+
+    /** 默认全文检索分词器(占位): 后续可按需替换为 ik_max_word 等中文分词器。 */
     private static final String DEFAULT_ANALYZER = "standard";
+
+    /** 日期时间格式 pattern，兼容无时区 ISO 串与严格可选时间格式。 */
     private static final String DATE_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss||strict_date_optional_time";
 
     private JsonSchemaToEsMappingUtil() {
     }
 
-    /** 将 JSON Schema 字符串转换为 ES 索引创建请求体。 */
+    /**
+     * 将 JSON Schema 字符串转换为 ES 索引创建请求体。
+     * <p>未指定金额字段，所有 {@code number} 类型默认映射为 {@code double}。</p>
+     *
+     * @param schemaJson 标准 JSON Schema (Draft-07) 字符串，不能为空
+     * @return 包含 {@code settings} 和 {@code mappings} 的 Map 结构，可直接序列化用于 {@code PUT /index}
+     * @throws IllegalArgumentException 当 schemaJson 为空、JSON 语法错误、根节点非 object 类型或包含非法字段名时抛出
+     */
     public static Map<String, Object> generateIndexMapping(String schemaJson) {
         return generateIndexMapping(schemaJson, null, DEFAULT_MONEY_FACTOR);
     }
 
-    /** 将 JSON Schema 字符串转换为 ES 索引创建请求体(支持自定义金额字段与缩放因子)。 */
+    /**
+     * 将 JSON Schema 字符串转换为 ES 索引创建请求体（支持显式指定金额字段与精度缩放因子）。
+     *
+     * @param schemaJson         标准 JSON Schema (Draft-07) 字符串，不能为空
+     * @param moneyFields        需要作为金额高精度存储的精确字段名集合（如 {@code Set.of("total_price", "amount")}）；为空时数值均按 {@code double} 处理
+     * @param moneyScalingFactor 自定义金额缩放倍数（如 100 或 10000）；若小于等于 0 则使用默认值 10000（4 位精度）
+     * @return 包含 {@code settings} 和 {@code mappings} 的 Map 结构
+     * @throws IllegalArgumentException 当 schemaJson 为空、JSON 语法错误、根节点非 object 类型或包含非法字段名时抛出
+     */
     public static Map<String, Object> generateIndexMapping(String schemaJson, Set<String> moneyFields, int moneyScalingFactor) {
         if (schemaJson == null || schemaJson.isBlank()) {
             throw new IllegalArgumentException("schemaJson 不能为空");
@@ -46,12 +97,26 @@ public final class JsonSchemaToEsMappingUtil {
         }
     }
 
-    /** 将 JSON Schema 节点转换为 ES 索引创建请求体。 */
+    /**
+     * 将已解析的 JSON Schema 节点转换为 ES 索引创建请求体。
+     *
+     * @param schema 已解析的 JSON Schema 根节点，不能为空
+     * @return 包含 {@code settings} 和 {@code mappings} 的 Map 结构
+     * @throws IllegalArgumentException 当 schema 为空、根节点非 object 类型、多态根分支非 object 或包含非法字段名时抛出
+     */
     public static Map<String, Object> generateIndexMapping(JsonNode schema) {
         return generateIndexMapping(schema, null, DEFAULT_MONEY_FACTOR);
     }
 
-    /** 将 JSON Schema 节点转换为 ES 索引创建请求体(支持自定义金额字段与缩放因子)。 */
+    /**
+     * 将已解析的 JSON Schema 节点转换为 ES 索引创建请求体（支持显式指定金额字段与精度缩放因子）。
+     *
+     * @param schema             已解析的 JSON Schema 根节点，不能为空
+     * @param moneyFields        需要作为金额高精度存储的精确字段名集合；为空时数值均按 {@code double} 处理
+     * @param moneyScalingFactor 自定义金额缩放倍数；若小于等于 0 则使用默认值 10000
+     * @return 包含 {@code settings} 和 {@code mappings} 的 Map 结构
+     * @throws IllegalArgumentException 当 schema 为空、根节点非 object 类型、多态根分支非 object 或包含非法字段名时抛出
+     */
     public static Map<String, Object> generateIndexMapping(JsonNode schema, Set<String> moneyFields, int moneyScalingFactor) {
         if (schema == null || schema.isNull()) {
             throw new IllegalArgumentException("Schema 不能为空");
@@ -86,7 +151,13 @@ public final class JsonSchemaToEsMappingUtil {
         return body;
     }
 
-    /** 将生成的 mapping 结构序列化为格式化 JSON 字符串。 */
+    /**
+     * 将生成的 Index Mapping Map 结构序列化为带缩进格式的 JSON 字符串。
+     *
+     * @param indexMapping 转换生成的 ES Mapping Map 对象
+     * @return 格式化后的 JSON 字符串
+     * @throws IllegalStateException 当 Jackson 序列化失败时抛出
+     */
     public static String toJson(Map<String, Object> indexMapping) {
         try {
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(indexMapping);
