@@ -45,6 +45,7 @@ import java.util.Set;
  * <h3>高阶机制与边界防御:</h3>
  * <ul>
  *   <li><b>$ref 引用解析</b>: 支持 {@code #} 根自引用与 {@code #/$defs/x}、{@code #/definitions/x} 局部指针解包；若检测到纯别名指针循环（如 A→B→A），直接抛出异常拦截。</li>
+ *   <li><b>组合与继承解析 (allOf)</b>: 递归合并 allOf 中父类、混入模型（含 $ref 引用）的所有 properties；本地属性拥有最高覆盖优先级；同级 allOf 分支间若产生类型冲突统一降级为 flattened；递归受 {@link #MAX_DEPTH} 熔断保护。</li>
  *   <li><b>递归深度熔断</b>: 结构化递归（如部门树、评论树）在达到最大递归深度（{@link #MAX_DEPTH} 8 层）时终止继续下钻，并附加 {@code dynamic: "false"} 阻止未知深层字段动态膨胀。</li>
  *   <li><b>多态分支合并 (oneOf / anyOf)</b>: 全 object 分支取属性并集 (Union All)；若包含标量分支或存在同名字段类型冲突，安全降级为 flattened。</li>
  *   <li><b>条件分支合并 (if-then-else)</b>: 自动提取 then/else 中扩展定义的可选属性，打平合并进主 mapping。</li>
@@ -127,7 +128,7 @@ public final class JsonSchemaToEsMappingUtil {
             throw new IllegalArgumentException("Schema 不能为空");
         }
         String rootType = resolveType(schema);
-        boolean objectLike = "object".equals(rootType) || schema.has("properties") || schema.has("oneOf") || schema.has("anyOf");
+        boolean objectLike = "object".equals(rootType) || schema.has("properties") || schema.has("allOf") || schema.has("oneOf") || schema.has("anyOf");
         if (!objectLike) {
             throw new IllegalArgumentException("根节点必须是 object 类型的 schema,实际类型: " + (rootType == null ? "unknown" : rootType));
         }
@@ -147,7 +148,9 @@ public final class JsonSchemaToEsMappingUtil {
             if (rootObject.containsKey("dynamic")) {
                 mappings.put("dynamic", rootObject.get("dynamic"));
             }
-            mappings.put("properties", rootObject.get("properties"));
+            if (rootObject.containsKey("properties")) {
+                mappings.put("properties", rootObject.get("properties"));
+            }
         }
 
         Map<String, Object> body = new LinkedHashMap<>(4);
@@ -189,7 +192,7 @@ public final class JsonSchemaToEsMappingUtil {
 
         String type = resolveType(schema);
         if (type == null) {
-            if (schema.has("properties")) type = "object";
+            if (schema.has("properties") || schema.has("allOf")) type = "object";
             else if (schema.has("items")) type = "array";
             else return textField();
         }
@@ -212,19 +215,73 @@ public final class JsonSchemaToEsMappingUtil {
     }
 
     private static Map<String, Object> mapObject(String key, JsonNode schema, MappingContext ctx, int depth) {
-        JsonNode properties = schema.get("properties");
-        if (properties == null || !properties.isObject() || properties.isEmpty() || depth >= MAX_DEPTH) {
+        if (depth >= MAX_DEPTH) {
             return Map.of("type", "flattened");
         }
+        JsonNode properties = schema.get("properties");
+        boolean hasProps = properties != null && properties.isObject() && !properties.isEmpty();
+        boolean hasAllOf = schema.hasNonNull("allOf") && schema.get("allOf").isArray() && !schema.get("allOf").isEmpty();
+        boolean hasIfElse = schema.hasNonNull("then") || schema.hasNonNull("else");
+
+        if (!hasProps && !hasAllOf && !hasIfElse) {
+            return Map.of("type", "flattened");
+        }
+
+        Map<String, Object> props = new LinkedHashMap<>(4);
+        Set<String> localKeys = new HashSet<>(4);
+        if (hasProps) {
+            props.putAll(buildProperties(properties, ctx, depth + 1));
+            localKeys.addAll(props.keySet());
+        }
+
+        mergeAllOf(props, schema, ctx, depth + 1, localKeys);
+        mergeIfThenElse(props, schema, ctx, depth + 1);
+
+        if (props.isEmpty()) {
+            return Map.of("type", "flattened");
+        }
+
         Map<String, Object> fieldMapping = new LinkedHashMap<>(4);
         fieldMapping.put("type", "object");
         if (isAdditionalPropertiesFalse(schema)) {
             fieldMapping.put("dynamic", "false");
         }
-        Map<String, Object> props = buildProperties(properties, ctx, depth + 1);
-        mergeIfThenElse(props, schema, ctx, depth + 1);
         fieldMapping.put("properties", props);
         return fieldMapping;
+    }
+
+    private static void mergeAllOf(Map<String, Object> props, JsonNode schema, MappingContext ctx, int depth, Set<String> localKeys) {
+        if (depth >= MAX_DEPTH) return;
+        JsonNode allOf = schema.get("allOf");
+        if (allOf == null || !allOf.isArray()) return;
+        for (JsonNode branch : allOf) {
+            JsonNode resolved = resolveRef(branch, ctx.root);
+            if (resolved.hasNonNull("allOf")) {
+                mergeAllOf(props, resolved, ctx, depth + 1, localKeys);
+            }
+            JsonNode branchProps = resolved.get("properties");
+            if (branchProps != null && branchProps.isObject()) {
+                for (Iterator<Map.Entry<String, JsonNode>> it = branchProps.fields(); it.hasNext(); ) {
+                    Map.Entry<String, JsonNode> entry = it.next();
+                    String fieldKey = entry.getKey();
+                    // 本地显式定义的属性拥有最高优先级，不被父类/混入属性覆盖
+                    if (localKeys.contains(fieldKey)) {
+                        continue;
+                    }
+                    validateFieldName(fieldKey);
+                    Map<String, Object> child = resolveNode(fieldKey, entry.getValue(), ctx, depth + 1);
+                    if (child != null && !child.isEmpty()) {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> prev = (Map<String, Object>) props.putIfAbsent(fieldKey, child);
+                        // 同级 allOf 分支间发生类型冲突，统一降级为 flattened (与 oneOf 保持一致)
+                        if (prev != null && !prev.equals(child)) {
+                            props.put(fieldKey, Map.of("type", "flattened"));
+                        }
+                    }
+                }
+            }
+            mergeIfThenElse(props, resolved, ctx, depth + 1);
+        }
     }
 
     private static Map<String, Object> mapArray(String key, JsonNode schema, MappingContext ctx, int depth) {
@@ -234,7 +291,7 @@ public final class JsonSchemaToEsMappingUtil {
 
         JsonNode itemSchema = resolveRef(items, ctx.root);
         String itemType = resolveType(itemSchema);
-        boolean itemIsObject = "object".equals(itemType) || (itemType == null && (itemSchema.has("properties") || itemSchema.has("oneOf") || itemSchema.has("anyOf")));
+        boolean itemIsObject = "object".equals(itemType) || (itemType == null && (itemSchema.has("properties") || itemSchema.has("allOf") || itemSchema.has("oneOf") || itemSchema.has("anyOf")));
         if (!itemIsObject) {
             Map<String, Object> elementMapping = resolveNode(key, itemSchema, ctx, depth);
             return elementMapping == null ? keywordField() : elementMapping;
@@ -257,11 +314,11 @@ public final class JsonSchemaToEsMappingUtil {
             return itemMapping;
         }
 
-        JsonNode itemProps = itemSchema.get("properties");
-        if (itemProps == null || !itemProps.isObject() || itemProps.isEmpty()) {
+        Map<String, Object> itemObjMapping = mapObject(key, itemSchema, ctx, depth);
+        if ("flattened".equals(itemObjMapping.get("type")) || !itemObjMapping.containsKey("properties")) {
             return Map.of("type", "flattened");
         }
-        nested.put("properties", buildProperties(itemProps, ctx, depth + 1));
+        nested.put("properties", itemObjMapping.get("properties"));
         return nested;
     }
 
@@ -274,9 +331,11 @@ public final class JsonSchemaToEsMappingUtil {
         List<Map<String, Object>> branchMappings = new ArrayList<>(branches.size());
         for (JsonNode branch : branches) {
             JsonNode b = resolveRef(branch, ctx.root);
-            JsonNode props = b.get("properties");
-            if (props != null && props.isObject() && !props.isEmpty()) {
-                branchMappings.add(buildProperties(props, ctx, depth + 1));
+            Map<String, Object> branchObj = mapObject(key, b, ctx, depth);
+            if (branchObj.containsKey("properties")) {
+                @SuppressWarnings("unchecked")
+                Map<String, Object> props = (Map<String, Object>) branchObj.get("properties");
+                branchMappings.add(props);
             }
         }
         if (branchMappings.isEmpty()) return Map.of("type", "flattened");
@@ -304,8 +363,8 @@ public final class JsonSchemaToEsMappingUtil {
             JsonNode b = resolveRef(branch, root);
             String bt = resolveType(b);
             if ("null".equals(bt)) continue;
-            boolean objectLike = "object".equals(bt) || (bt == null && b.has("properties"));
-            if (!objectLike || !b.has("properties") || !b.get("properties").isObject() || b.get("properties").isEmpty()) {
+            boolean objectLike = "object".equals(bt) || (bt == null && (b.has("properties") || b.has("allOf")));
+            if (!objectLike || (!b.has("properties") && !b.has("allOf"))) {
                 return false;
             }
         }
@@ -402,6 +461,7 @@ public final class JsonSchemaToEsMappingUtil {
     }
 
     private static void mergeIfThenElse(Map<String, Object> props, JsonNode schema, MappingContext ctx, int depth) {
+        if (depth >= MAX_DEPTH) return;
         for (String branchKey : List.of("then", "else")) {
             JsonNode branch = schema.get(branchKey);
             if (branch == null || !branch.has("properties") || !branch.get("properties").isObject()) continue;

@@ -549,6 +549,212 @@ class JsonSchemaToEsMappingUtilTest {
         assertEquals("flattened", mapping.at("/mappings/properties/a/properties/b/properties/a/properties/b/properties/a/properties/b/properties/a/properties/b/type").asText());
     }
 
+    @Test
+    void testAllOfSchemaCompositionAndInheritanceWithLocalOverride() throws Exception {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "user": {
+                      "type": "object",
+                      "properties": {
+                        "vip_level": { "type": "integer" },
+                        "created_at": { "type": "string", "format": "date" }
+                      },
+                      "allOf": [
+                        { "$ref": "#/$defs/BaseEntity" },
+                        { "$ref": "#/$defs/ContactInfo" }
+                      ]
+                    }
+                  },
+                  "$defs": {
+                    "BaseEntity": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string" },
+                        "created_at": { "type": "string", "format": "date-time" }
+                      }
+                    },
+                    "ContactInfo": {
+                      "type": "object",
+                      "properties": {
+                        "email": { "type": "string", "format": "email" },
+                        "phone": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+                """;
+        JsonNode mapping = generate(schema);
+        // user should be an object mapping
+        assertEquals("object", mapping.at("/mappings/properties/user/type").asText());
+        // inherited from BaseEntity
+        assertEquals("text", mapping.at("/mappings/properties/user/properties/id/type").asText());
+        // inherited from ContactInfo
+        assertEquals("keyword", mapping.at("/mappings/properties/user/properties/email/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/user/properties/phone/type").asText());
+        // local properties
+        assertEquals("long", mapping.at("/mappings/properties/user/properties/vip_level/type").asText());
+        // local created_at (format: date) overrides BaseEntity's created_at (format: date-time)
+        assertEquals("date", mapping.at("/mappings/properties/user/properties/created_at/type").asText());
+        assertEquals("strict_date", mapping.at("/mappings/properties/user/properties/created_at/format").asText());
+    }
+
+    @Test
+    void testAllOfPeerBranchConflictDegradesToFlattened() throws Exception {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "profile": {
+                      "allOf": [
+                        { "properties": { "status": { "type": "integer" }, "name": { "type": "string" } } },
+                        { "properties": { "status": { "type": "string" }, "age": { "type": "integer" } } }
+                      ]
+                    }
+                  }
+                }
+                """;
+        JsonNode mapping = generate(schema);
+        assertEquals("object", mapping.at("/mappings/properties/profile/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/profile/properties/name/type").asText());
+        assertEquals("long", mapping.at("/mappings/properties/profile/properties/age/type").asText());
+        // conflicting status field (integer vs string) degrades to flattened (consistent with oneOf)
+        assertEquals("flattened", mapping.at("/mappings/properties/profile/properties/status/type").asText());
+    }
+
+    @Test
+    void testNestedAllOfDeepInheritance() throws Exception {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "audit_record": {
+                      "allOf": [
+                        { "$ref": "#/$defs/MidLevel" },
+                        { "properties": { "action": { "type": "string" } } }
+                      ]
+                    }
+                  },
+                  "$defs": {
+                    "GrandBase": {
+                      "properties": { "trace_id": { "type": "string" } }
+                    },
+                    "MidLevel": {
+                      "allOf": [
+                        { "$ref": "#/$defs/GrandBase" },
+                        { "properties": { "operator_id": { "type": "integer" } } }
+                      ]
+                    }
+                  }
+                }
+                """;
+        JsonNode mapping = generate(schema);
+        assertEquals("object", mapping.at("/mappings/properties/audit_record/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/audit_record/properties/trace_id/type").asText());
+        assertEquals("long", mapping.at("/mappings/properties/audit_record/properties/operator_id/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/audit_record/properties/action/type").asText());
+    }
+
+    @Test
+    void testAllOfWithOneOfMixed() throws Exception {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "payload": {
+                      "allOf": [
+                        { "properties": { "common_id": { "type": "string" } } },
+                        {
+                          "oneOf": [
+                            { "properties": { "wx_openid": { "type": "string" } } },
+                            { "properties": { "ali_uid": { "type": "string" } } }
+                          ]
+                        }
+                      ]
+                    }
+                  }
+                }
+                """;
+        JsonNode mapping = generate(schema);
+        assertEquals("object", mapping.at("/mappings/properties/payload/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/payload/properties/common_id/type").asText());
+    }
+
+    @Test
+    void testScalarAllOfFallsBackToFlattened() throws Exception {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "unstructured": {
+                      "allOf": [
+                        { "type": "string" },
+                        { "type": "integer" }
+                      ]
+                    }
+                  }
+                }
+                """;
+        JsonNode mapping = generate(schema);
+        assertEquals("flattened", mapping.at("/mappings/properties/unstructured/type").asText());
+    }
+
+    @Test
+    void testRootLevelAllOf() throws Exception {
+        String schema = """
+                {
+                  "allOf": [
+                    {
+                      "properties": {
+                        "org_id": { "type": "integer" }
+                      }
+                    },
+                    {
+                      "properties": {
+                        "org_name": { "type": "string" }
+                      }
+                    }
+                  ]
+                }
+                """;
+        JsonNode mapping = generate(schema);
+        assertEquals("long", mapping.at("/mappings/properties/org_id/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/org_name/type").asText());
+    }
+
+    @Test
+    void testArrayItemsWithAllOf() throws Exception {
+        String schema = """
+                {
+                  "type": "object",
+                  "properties": {
+                    "items_list": {
+                      "type": "array",
+                      "items": {
+                        "allOf": [
+                          {
+                            "properties": {
+                              "sku_id": { "type": "string" }
+                            }
+                          },
+                          {
+                            "properties": {
+                              "price": { "type": "number" }
+                            }
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+                """;
+        JsonNode mapping = generate(schema);
+        assertEquals("nested", mapping.at("/mappings/properties/items_list/type").asText());
+        assertEquals("text", mapping.at("/mappings/properties/items_list/properties/sku_id/type").asText());
+        assertEquals("double", mapping.at("/mappings/properties/items_list/properties/price/type").asText());
+    }
+
     private static JsonNode generate(String schemaJson) throws Exception {
         return generate(schemaJson, null, 10000);
     }
