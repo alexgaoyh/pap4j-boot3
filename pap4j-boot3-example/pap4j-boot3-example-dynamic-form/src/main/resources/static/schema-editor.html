@@ -1099,7 +1099,8 @@
                 <div v-if="checkMessage" style="font-size: 0.8rem;" :style="checkMessage.startsWith('✔') ? { color: 'var(--accent-success)' } : { color: 'var(--accent-danger)' }">{{ checkMessage }}</div>
                 <div class="rule-list">
                     <div v-for="(rule, idx) in workbenchRules" :key="idx" class="rule-row">
-                        <input type="text" class="input-text" placeholder="targetField 如 status" v-model="rule.targetField" style="width: 130px;">
+                        <input type="text" class="input-text" placeholder="写入字段 targetField 如 status" v-model="rule.targetField" style="width: 130px;">
+                        <input type="text" class="input-text" placeholder="备注(列表列头展示)如 状态" v-model="rule.remark" style="width: 130px;">
                         <input type="text" class="input-text" placeholder="表达式，如 $.status 或 UPPER(json.customer)" v-model="rule.expression" style="flex: 1;">
                         <button class="btn-icon" @click="removeRule(idx)" title="删除规则">✕</button>
                     </div>
@@ -1122,6 +1123,9 @@
             <div class="panel">
                 <div class="panel-title">
                     <span>③ 提取结果（行=记录，列=规则 targetField，失败红色✘）</span>
+                    <button class="btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.8rem; border-color: var(--accent-info); color: var(--accent-info);" @click="printOneToMany" title="将 JSON Schema(主) 与全部提取明细(从) 封装为一对多 JSON 打印到控制台">
+                        🖨️ 打印一对多配置
+                    </button>
                 </div>
                 <div v-if="extractResults.length" class="stats-bar">
                     <span v-for="(s, tf) in extractStats" :key="tf" class="stat-tag">{{ tf }}: {{ s.success }}/{{ s.total }} 成功</span>
@@ -1926,7 +1930,7 @@
                     const path = `$.${colName}`;
                     const exists = workbenchRules.value.some(r => r.targetField === colName);
                     if (!exists) {
-                        workbenchRules.value.push({ targetField: colName, expression: path });
+                        workbenchRules.value.push({ targetField: colName, remark: colName, expression: path });
                     }
                     genMessage.value = `✔ 已一键生成提取规则: ${colName} -> ${path}`;
                 };
@@ -2496,8 +2500,8 @@
                 const workbenchError = ref('');
                 const expandedRow = ref(null);
                 const workbenchRules = ref([
-                    { targetField: 'status', expression: '$..status' },
-                    { targetField: 'customer', expression: "UPPER(json.customer)" }
+                    { targetField: 'status', remark: '状态', expression: '$..status' },
+                    { targetField: 'customer', remark: '客户', expression: "UPPER(json.customer)" }
                 ]);
                 const showFunctionRef = ref(true);
                 const rulesChecking = ref(false);
@@ -2618,9 +2622,9 @@
                         .catch(e => workbenchError.value = '复制失败: ' + e);
                 };
 
-                const addRule = () => workbenchRules.value.push({ targetField: '', expression: '' });
+                const addRule = () => workbenchRules.value.push({ targetField: '', remark: '', expression: '' });
                 const removeRule = (idx) => workbenchRules.value.splice(idx, 1);
-                const insertFunction = (fn) => workbenchRules.value.push({ targetField: '', expression: fn.signature });
+                const insertFunction = (fn) => workbenchRules.value.push({ targetField: '', remark: '', expression: fn.signature });
 
                 const doCheckRules = async () => {
                     rulesChecking.value = true;
@@ -2677,6 +2681,56 @@
                     } finally {
                         extracting.value = false;
                     }
+                };
+
+                // ===== 一对多配置封装与打印（schema 为主，提取明细为从） =====
+                // 提取明细 detail list：每条含 名字(name=写入到哪个字段 targetField) + 备注(remark=列表展示时显示什么) + 表达式(expression)
+                const buildDetailList = () => {
+                    const details = [];
+                    for (const r of workbenchRules.value) {
+                        const name = (r.targetField || '').trim();
+                        if (!name) continue;
+                        details.push({
+                            name: name,
+                            remark: (r.remark || '').trim(),
+                            expression: (r.expression || '').trim()
+                        });
+                    }
+                    return details;
+                };
+
+                const buildOneToManyPayload = () => {
+                    const payload = {
+                        master: {
+                            schemaKey: schemaKey.value,
+                            schemaName: schemaName.value,
+                            schema: jsonSchemaObj.value
+                        },
+                        detailList: buildDetailList()
+                    };
+                    // 经过数据提取验证之后：若有提取结果，附带逐记录逐规则的值与状态，便于其他模块直接消费
+                    if (extractResults.value.length) {
+                        payload.extractResult = extractResults.value.map(rr => ({
+                            recordIndex: rr.recordIndex,
+                            values: rr.values,
+                            statuses: rr.statuses
+                        }));
+                    }
+                    return payload;
+                };
+
+                const printOneToMany = () => {
+                    const detailList = buildDetailList();
+                    if (detailList.length === 0) {
+                        workbenchError.value = '请先填写至少一条提取规则（写入字段 targetField 必填）再打印';
+                        return;
+                    }
+                    const payload = buildOneToManyPayload();
+                    // 挂载到 window，供控制台 / 后续模块直接取用
+                    window.__oneToManyConfig = payload;
+                    console.log('[数据治理] 一对多配置 => master(1) + detailList(N)');
+                    console.log(JSON.stringify(payload, null, 2));
+                    genMessage.value = '✔ 一对多配置已打印到浏览器控制台 (F12 → Console)，明细 ' + detailList.length + ' 条';
                 };
 
                 return {
@@ -2744,7 +2798,10 @@
                     exportConfigJson,
                     quickExtractField,
                     doCheckRules,
-                    doExtract
+                    doExtract,
+                    buildDetailList,
+                    buildOneToManyPayload,
+                    printOneToMany
                 };
             }
         });
