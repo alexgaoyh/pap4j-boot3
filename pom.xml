@@ -567,6 +567,11 @@
                 <maven-checkstyle-plugin.skip>true</maven-checkstyle-plugin.skip>
                 <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
                 <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+                <!-- AI 专属（-Pagent）跑测试时，将 fork JVM 的控制台日志（stdout/stderr）重定向到 target/surefire-reports/*-output.txt，
+                     消除测试自身输出噪音，减少进入上下文的内容；IDEA 本地与默认 CI（不带 -Pagent）完全不受影响。
+                     【写测试红线】：判对错必须以显式断言（Assert/fail）为准；若代码内部吞异常仅打 log，测试仍会伪绿且控制台无报错（错误日志仅静默落盘至 -output.txt）。
+                     【排错机制】：基础断言失败直出控制台；深层崩溃的 Caused-by 链仍会打印在控制台报告；需要未裁剪完整堆栈或失败周边上下文时，用 agent-diagnose 读取 -output.txt。 -->
+                <maven.test.redirectTestOutputToFile>true</maven.test.redirectTestOutputToFile>
             </properties>
         </profile>
     </profiles>
