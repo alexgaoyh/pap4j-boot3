@@ -42,6 +42,7 @@ public class SplitRecordCrudServiceImpl implements ISplitRecordCrudService {
     @Override
     public void createTableIfNotExists(String tableName) {
         String safeTable = requireTable(tableName);
+        // 生产环境尽量不用自增：不同数据库自增语法不一致，为保证跨库规则一致
         String ddl = """
                 CREATE TABLE IF NOT EXISTS %s (
                     id BIGINT AUTO_INCREMENT PRIMARY KEY,
