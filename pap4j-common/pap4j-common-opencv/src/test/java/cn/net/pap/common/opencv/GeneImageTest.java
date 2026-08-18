@@ -311,17 +311,96 @@ public class GeneImageTest {
         }
     }
 
+    @Test
+    public void testGetExifDPI() throws Exception {
+        File file = TestResourceUtil.getFile("exif_dpi_300.jpg");
+        Integer dpi = getDPI(file.getAbsolutePath());
+        log.info("exif_dpi_300.jpg DPI: {}", dpi);
+        assertTrue(dpi != null && dpi == 300, "exif_dpi_300.jpg DPI 应为 300");
+    }
+
     /**
-     * 引入 commons-imaging 后，获得原始图像的 DPI
-     * @param imageAbsPath
-     * @return
+     * 获取图像的 DPI（先尝试从 ImageInfo/JFIF 获取，若为 -1 则从 EXIF 获取）
+     * @param imageAbsPath 图像绝对路径
+     * @return DPI 值，若无法获取则返回 -1
      * @throws Exception
      */
     private static Integer getDPI(String imageAbsPath) throws Exception {
-        ImageInfo imageInfo = Imaging.getImageInfo(new File(imageAbsPath));
-        int physicalWidthDpi = imageInfo.getPhysicalWidthDpi();
-        int physicalHeightDpi = imageInfo.getPhysicalHeightDpi();
-        return Math.max(physicalWidthDpi, physicalHeightDpi);
+        File file = new File(imageAbsPath);
+        // 1. 优先尝试从 Commons Imaging 的 ImageInfo (JFIF) 获取
+        try {
+            ImageInfo imageInfo = Imaging.getImageInfo(file);
+            int physicalWidthDpi = imageInfo.getPhysicalWidthDpi();
+            int physicalHeightDpi = imageInfo.getPhysicalHeightDpi();
+            int dpi = Math.max(physicalWidthDpi, physicalHeightDpi);
+            if (dpi > 0) {
+                return dpi;
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get DPI from ImageInfo: {}", e.getMessage());
+        }
+
+        // 2. 若 JFIF 中未定义 DPI（返回 -1），则尝试从 EXIF 元数据中获取
+        try {
+            org.apache.commons.imaging.common.ImageMetadata metadata = Imaging.getMetadata(file);
+            if (metadata instanceof org.apache.commons.imaging.formats.jpeg.JpegImageMetadata) {
+                org.apache.commons.imaging.formats.jpeg.JpegImageMetadata jpegMetadata =
+                        (org.apache.commons.imaging.formats.jpeg.JpegImageMetadata) metadata;
+                org.apache.commons.imaging.formats.tiff.TiffImageMetadata exif = jpegMetadata.getExif();
+                if (exif != null) {
+                    org.apache.commons.imaging.formats.tiff.TiffField xResField =
+                            exif.findField(org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants.TIFF_TAG_XRESOLUTION);
+                    org.apache.commons.imaging.formats.tiff.TiffField yResField =
+                            exif.findField(org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants.TIFF_TAG_YRESOLUTION);
+                    org.apache.commons.imaging.formats.tiff.TiffField unitField =
+                            exif.findField(org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants.TIFF_TAG_RESOLUTION_UNIT);
+
+                    double xRes = xResField != null ? xResField.getDoubleValue() : -1;
+                    double yRes = yResField != null ? yResField.getDoubleValue() : -1;
+                    int unit = unitField != null ? unitField.getIntValue() : 2; // 2: inches, 3: centimeters
+
+                    double maxRes = Math.max(xRes, yRes);
+                    if (maxRes > 0) {
+                        if (unit == 3) {
+                            // 厘米转英寸 (1 inch = 2.54 cm)
+                            maxRes = maxRes * 2.54;
+                        }
+                        return (int) Math.round(maxRes);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get DPI from EXIF via Commons Imaging: {}", e.getMessage());
+        }
+
+        // 3. 备选：使用 metadata-extractor 获取
+        try {
+            com.drew.metadata.Metadata drewMetadata = com.drew.imaging.ImageMetadataReader.readMetadata(file);
+            com.drew.metadata.exif.ExifIFD0Directory exifDir =
+                    drewMetadata.getFirstDirectoryOfType(com.drew.metadata.exif.ExifIFD0Directory.class);
+            if (exifDir != null) {
+                Double xRes = exifDir.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_X_RESOLUTION)
+                        ? exifDir.getDoubleObject(com.drew.metadata.exif.ExifIFD0Directory.TAG_X_RESOLUTION) : null;
+                Double yRes = exifDir.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_Y_RESOLUTION)
+                        ? exifDir.getDoubleObject(com.drew.metadata.exif.ExifIFD0Directory.TAG_Y_RESOLUTION) : null;
+                Integer unit = exifDir.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_RESOLUTION_UNIT)
+                        ? exifDir.getInteger(com.drew.metadata.exif.ExifIFD0Directory.TAG_RESOLUTION_UNIT) : 2;
+
+                double x = xRes != null ? xRes : -1;
+                double y = yRes != null ? yRes : -1;
+                double maxRes = Math.max(x, y);
+                if (maxRes > 0) {
+                    if (unit != null && unit == 3) {
+                        maxRes = maxRes * 2.54;
+                    }
+                    return (int) Math.round(maxRes);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to get DPI from metadata-extractor: {}", e.getMessage());
+        }
+
+        return -1;
     }
 
     private static void createImageWithDPI(String imagePath, int number, int dpi) throws Exception {
