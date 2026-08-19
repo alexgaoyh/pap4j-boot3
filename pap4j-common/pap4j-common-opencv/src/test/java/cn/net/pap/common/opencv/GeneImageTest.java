@@ -1,7 +1,15 @@
 package cn.net.pap.common.opencv;
 
+import com.drew.imaging.ImageMetadataReader;
+import com.drew.metadata.Metadata;
+import com.drew.metadata.exif.ExifIFD0Directory;
 import org.apache.commons.imaging.ImageInfo;
 import org.apache.commons.imaging.Imaging;
+import org.apache.commons.imaging.common.ImageMetadata;
+import org.apache.commons.imaging.formats.jpeg.JpegImageMetadata;
+import org.apache.commons.imaging.formats.tiff.TiffField;
+import org.apache.commons.imaging.formats.tiff.TiffImageMetadata;
+import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -11,6 +19,7 @@ import org.junit.jupiter.api.Test;
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -31,6 +40,7 @@ public class GeneImageTest {
     private static final int SIZE = 200;
     private static final int FONT_SIZE = 120;
     private static final String[] CHARACTERS = {"一", "丶", "冖", "丷", "冫", "乛", "亠", "亻", "丿", "亅"};
+    private static final double CM_PER_INCH = 2.54;
 
     @Test
     void generateImages() throws IOException {
@@ -302,8 +312,9 @@ public class GeneImageTest {
         File file = TestResourceUtil.getFile("1.jpg");
         try {
             createImageWithDPI(file.getAbsolutePath(), 1, 300);
-            Integer dpi = getDPI(file.getAbsolutePath());
+            int dpi = getDPI(file.getAbsolutePath());
             log.info("{}", dpi);
+            assertTrue(dpi == 300, "生成的 300DPI 图像读回应为 300，实际为 " + dpi);
         } finally {
             if (file != null && file.exists()) {
                 file.delete();
@@ -314,22 +325,36 @@ public class GeneImageTest {
     @Test
     public void testGetExifDPI() throws Exception {
         File file = TestResourceUtil.getFile("exif_dpi_300.jpg");
-        Integer dpi = getDPI(file.getAbsolutePath());
+        int dpi = getDPI(file.getAbsolutePath());
         log.info("exif_dpi_300.jpg DPI: {}", dpi);
-        assertTrue(dpi != null && dpi == 300, "exif_dpi_300.jpg DPI 应为 300");
+        assertTrue(dpi == 300, "exif_dpi_300.jpg DPI 应为 300");
     }
 
     /**
-     * 获取图像的 DPI（先尝试从 ImageInfo/JFIF 获取，若为 -1 则从 EXIF 获取）
+     * 获取图像的 DPI。解析顺序：JFIF 头 → EXIF（Commons Imaging 与 metadata-extractor 互备兜底），只读一次文件字节。
      * @param imageAbsPath 图像绝对路径
      * @return DPI 值，若无法获取则返回 -1
-     * @throws Exception
      */
-    private static Integer getDPI(String imageAbsPath) throws Exception {
-        File file = new File(imageAbsPath);
-        // 1. 优先尝试从 Commons Imaging 的 ImageInfo (JFIF) 获取
+    private static int getDPI(String imageAbsPath) {
+        if (imageAbsPath == null) {
+            return -1;
+        }
+        Path path = Paths.get(imageAbsPath);
+        if (!Files.isRegularFile(path)) {
+            log.warn("image not found or not a regular file: {}", imageAbsPath);
+            return -1;
+        }
+        byte[] bytes;
         try {
-            ImageInfo imageInfo = Imaging.getImageInfo(file);
+            bytes = Files.readAllBytes(path);
+        } catch (IOException e) {
+            log.warn("Failed to read image {}: {}", imageAbsPath, e.getMessage());
+            return -1;
+        }
+
+        // 1. 优先从 JFIF 头获取 DPI（Commons Imaging ImageInfo）
+        try {
+            ImageInfo imageInfo = Imaging.getImageInfo(bytes);
             int physicalWidthDpi = imageInfo.getPhysicalWidthDpi();
             int physicalHeightDpi = imageInfo.getPhysicalHeightDpi();
             int dpi = Math.max(physicalWidthDpi, physicalHeightDpi);
@@ -340,32 +365,24 @@ public class GeneImageTest {
             log.warn("Failed to get DPI from ImageInfo: {}", e.getMessage());
         }
 
-        // 2. 若 JFIF 中未定义 DPI（返回 -1），则尝试从 EXIF 元数据中获取
+        // 2. 若 ImageInfo 中未定义 DPI（返回 -1），则尝试从 EXIF 元数据中获取
         try {
-            org.apache.commons.imaging.common.ImageMetadata metadata = Imaging.getMetadata(file);
-            if (metadata instanceof org.apache.commons.imaging.formats.jpeg.JpegImageMetadata) {
-                org.apache.commons.imaging.formats.jpeg.JpegImageMetadata jpegMetadata =
-                        (org.apache.commons.imaging.formats.jpeg.JpegImageMetadata) metadata;
-                org.apache.commons.imaging.formats.tiff.TiffImageMetadata exif = jpegMetadata.getExif();
+            ImageMetadata metadata = Imaging.getMetadata(bytes);
+            if (metadata instanceof JpegImageMetadata) {
+                JpegImageMetadata jpegMetadata = (JpegImageMetadata) metadata;
+                TiffImageMetadata exif = jpegMetadata.getExif();
                 if (exif != null) {
-                    org.apache.commons.imaging.formats.tiff.TiffField xResField =
-                            exif.findField(org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants.TIFF_TAG_XRESOLUTION);
-                    org.apache.commons.imaging.formats.tiff.TiffField yResField =
-                            exif.findField(org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants.TIFF_TAG_YRESOLUTION);
-                    org.apache.commons.imaging.formats.tiff.TiffField unitField =
-                            exif.findField(org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants.TIFF_TAG_RESOLUTION_UNIT);
+                    TiffField xResField = exif.findField(TiffTagConstants.TIFF_TAG_XRESOLUTION);
+                    TiffField yResField = exif.findField(TiffTagConstants.TIFF_TAG_YRESOLUTION);
+                    TiffField unitField = exif.findField(TiffTagConstants.TIFF_TAG_RESOLUTION_UNIT);
 
                     double xRes = xResField != null ? xResField.getDoubleValue() : -1;
                     double yRes = yResField != null ? yResField.getDoubleValue() : -1;
                     int unit = unitField != null ? unitField.getIntValue() : 2; // 2: inches, 3: centimeters
 
-                    double maxRes = Math.max(xRes, yRes);
-                    if (maxRes > 0) {
-                        if (unit == 3) {
-                            // 厘米转英寸 (1 inch = 2.54 cm)
-                            maxRes = maxRes * 2.54;
-                        }
-                        return (int) Math.round(maxRes);
+                    int dpi = toDpi(xRes, yRes, unit);
+                    if (dpi >= 0) {
+                        return dpi;
                     }
                 }
             }
@@ -373,33 +390,47 @@ public class GeneImageTest {
             log.warn("Failed to get DPI from EXIF via Commons Imaging: {}", e.getMessage());
         }
 
-        // 3. 备选：使用 metadata-extractor 获取
+        // 3. 兜底：从 EXIF 获取（metadata-extractor，与第 2 层双库互备）
         try {
-            com.drew.metadata.Metadata drewMetadata = com.drew.imaging.ImageMetadataReader.readMetadata(file);
-            com.drew.metadata.exif.ExifIFD0Directory exifDir =
-                    drewMetadata.getFirstDirectoryOfType(com.drew.metadata.exif.ExifIFD0Directory.class);
+            Metadata drewMetadata = ImageMetadataReader.readMetadata(new ByteArrayInputStream(bytes));
+            ExifIFD0Directory exifDir = drewMetadata.getFirstDirectoryOfType(ExifIFD0Directory.class);
             if (exifDir != null) {
-                Double xRes = exifDir.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_X_RESOLUTION)
-                        ? exifDir.getDoubleObject(com.drew.metadata.exif.ExifIFD0Directory.TAG_X_RESOLUTION) : null;
-                Double yRes = exifDir.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_Y_RESOLUTION)
-                        ? exifDir.getDoubleObject(com.drew.metadata.exif.ExifIFD0Directory.TAG_Y_RESOLUTION) : null;
-                Integer unit = exifDir.containsTag(com.drew.metadata.exif.ExifIFD0Directory.TAG_RESOLUTION_UNIT)
-                        ? exifDir.getInteger(com.drew.metadata.exif.ExifIFD0Directory.TAG_RESOLUTION_UNIT) : 2;
+                Double xRes = exifDir.containsTag(ExifIFD0Directory.TAG_X_RESOLUTION)
+                        ? exifDir.getDoubleObject(ExifIFD0Directory.TAG_X_RESOLUTION) : null;
+                Double yRes = exifDir.containsTag(ExifIFD0Directory.TAG_Y_RESOLUTION)
+                        ? exifDir.getDoubleObject(ExifIFD0Directory.TAG_Y_RESOLUTION) : null;
+                int unit = exifDir.containsTag(ExifIFD0Directory.TAG_RESOLUTION_UNIT)
+                        ? exifDir.getInteger(ExifIFD0Directory.TAG_RESOLUTION_UNIT) : 2;
 
                 double x = xRes != null ? xRes : -1;
                 double y = yRes != null ? yRes : -1;
-                double maxRes = Math.max(x, y);
-                if (maxRes > 0) {
-                    if (unit != null && unit == 3) {
-                        maxRes = maxRes * 2.54;
-                    }
-                    return (int) Math.round(maxRes);
+                int dpi = toDpi(x, y, unit);
+                if (dpi >= 0) {
+                    return dpi;
                 }
             }
         } catch (Exception e) {
             log.warn("Failed to get DPI from metadata-extractor: {}", e.getMessage());
         }
 
+        return -1;
+    }
+
+    /**
+     * 取 X/Y 分辨率较大值，并按 EXIF 单位换算到英寸（unit=2: 英寸，unit=3: 厘米，1 inch = 2.54 cm）
+     * @param x X 方向分辨率
+     * @param y Y 方向分辨率
+     * @param unit EXIF 分辨率单位（2: 英寸，3: 厘米）
+     * @return 换算后的 DPI；max<=0 时返回 -1
+     */
+    private static int toDpi(double x, double y, int unit) {
+        double maxRes = Math.max(x, y);
+        if (maxRes > 0) {
+            if (unit == 3) {
+                maxRes = maxRes * CM_PER_INCH;
+            }
+            return (int) Math.round(maxRes);
+        }
         return -1;
     }
 
