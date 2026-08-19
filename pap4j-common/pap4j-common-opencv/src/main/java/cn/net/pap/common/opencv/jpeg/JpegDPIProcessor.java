@@ -48,7 +48,13 @@ public class JpegDPIProcessor {
                 writer.setOutput(stream);
                 writer.write(metadata, new IIOImage(image, null, metadata), writeParams);
             } finally {
-                stream.close();
+                if (stream != null) {
+                    stream.close();
+                }
+                if (writer != null) {
+                    // 显式释放底层 Native 图形资源，防止堆外内存泄露
+                    writer.dispose();
+                }
             }
             return out.toByteArray();
         }
