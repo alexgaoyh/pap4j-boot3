@@ -65,6 +65,7 @@
 *   [OCRUtils](../pap4j-common/pap4j-common-tesseract/src/main/java/cn/net/pap/common/tesseract/util/OCRUtils.java): Tesseract 本地 OCR 识别。（测试验证见 [OCRUtilsTest](../pap4j-common/pap4j-common-tesseract/src/test/java/cn/net/pap/common/tesseract/util/OCRUtilsTest.java)）
 *   [BoofcvUtil](../pap4j-common/pap4j-common-boofcv/src/main/java/cn/net/pap/common/boofcv/BoofcvUtil.java): BoofCV 工业级视觉特征与图像处理包。（测试验证见 [BoofcvUtilTest](../pap4j-common/pap4j-common-boofcv/src/test/java/cn/net/pap/common/boofcv/BoofcvUtilTest.java)）
 *   [CannyEdgeUtilss](../pap4j-common/pap4j-common-boofcv/src/main/java/cn/net/pap/common/boofcv/CannyEdgeUtilss.java): 视觉边缘检测算法。
+*   [MultiPageTiffUtil](../pap4j-common/pap4j-common-md5-jmh/src/main/java/cn/net/pap/common/md5/jmh/util/MultiPageTiffUtil.java): 多页 TIFF 生成与转换：图片列表→多页 TIFF（可指定压缩方式/JPEG 质量）、多页 TIFF→按页导出 JPG；支持逐页流式、CCITT 二值校验、alpha 铺底、原子替换。（测试验证见 [MultiPageTiffUtilTest](../pap4j-common/pap4j-common-md5-jmh/src/test/java/cn/net/pap/common/md5/jmh/MultiPageTiffUtilTest.java)）
 
 ## 📄 Office Excel & PDF
 *   [ExcelUtil](../pap4j-common/pap4j-common-excel/src/main/java/cn/net/pap/common/excel/ExcelUtil.java): POI / EasyExcel 读写封装。（测试验证见 [ExcelUtilTest](../pap4j-common/pap4j-common-excel/src/test/java/cn/net/pap/common/excel/ExcelUtilTest.java)）
