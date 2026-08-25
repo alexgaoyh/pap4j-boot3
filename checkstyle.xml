@@ -34,11 +34,36 @@
             <property name="message" value="禁止使用 Executors.newSingleThreadExecutor，建议使用 ThreadPoolExecutor 自定义线程池参数以避免 OOM 风险。"/>
             <property name="ignoreComments" value="true"/>
         </module>
+
+        <!-- 禁止直接实例化 FTPClient：无法保证底层 Socket/数据连接被正常关闭，必须使用 try-with-resources 的 AutoCloseableFTPClient -->
+        <module name="IllegalInstantiation">
+            <property name="id" value="FTPClient-Direct-Instantiation-Forbidden"/>
+            <property name="classes" value="org.apache.commons.net.ftp.FTPClient"/>
+        </module>
         <!-- 禁止单独定义 AutoCloseableFTPClient 变量。为了确保资源正常关闭，必须使用 try-with-resources 语法，例如: try (AutoCloseableFTPClient ftp = new AutoCloseableFTPClient()) -->
         <module name="MatchXpath">
             <property name="id" value="AutoCloseableFTPClient-Must-Use-With-Try"/>
             <property name="query" value="//VARIABLE_DEF[./TYPE/IDENT[@text='AutoCloseableFTPClient'] and not(ancestor::RESOURCE)]"/>
             <message key="matchxpath.match" value="禁止单独定义 AutoCloseableFTPClient 变量。为了确保资源正常关闭，必须使用 try-with-resources 语法，例如: try (AutoCloseableFTPClient ftp = new AutoCloseableFTPClient())"/>
+        </module>
+        <!-- 禁止进入 FTP 主动模式：commons-net 默认是主动模式且 connect() 会重置回主动模式，因此必须显式调用 enterLocalPassiveMode() -->
+        <module name="MatchXpath">
+            <property name="id" value="FTPClient-ActiveMode-Forbidden"/>
+            <property name="query" value="//METHOD_CALL[.//IDENT[@text='enterLocalActiveMode']]"/>
+            <message key="matchxpath.match" value="禁止调用 enterLocalActiveMode() 进入 FTP 主动模式，必须使用被动模式 enterLocalPassiveMode()，避免端口区间与 NAT 网络问题。"/>
+        </module>
+        <!-- 强制：凡是 new 出 AutoCloseableFTPClient 的方法，必须在该方法内调用 enterLocalPassiveMode()（且要在 connect() 之后调用）。
+             FTPClient 已被 FTPClient-Direct-Instantiation-Forbidden 禁止直接实例化，因此这里只需覆盖唯一合法的构造点 AutoCloseableFTPClient。
+             锚点用构造节点 LITERAL_NEW 本身（不依赖外层变量声明结构），try-with-resources 与普通变量声明都能覆盖。 -->
+        <module name="MatchXpath">
+            <property name="id" value="FTPClient-Must-Use-Passive-Mode"/>
+            <property name="query" value="
+                //LITERAL_NEW[
+                    ./IDENT[@text='AutoCloseableFTPClient']
+                    and not(ancestor::SLIST[1]//METHOD_CALL[.//IDENT[@text='enterLocalPassiveMode']])
+                ]
+            "/>
+            <message key="matchxpath.match" value="new AutoCloseableFTPClient 的方法内必须调用 enterLocalPassiveMode()（且要在 connect() 之后调用，因为 connect() 会把模式重置回主动模式），避免静默使用主动模式。"/>
         </module>
         <!-- 强力防御：常见 I/O 及数据库资源必须使用 try-with-resources 声明 -->
         <!-- 特殊说明：对于某些需要手动释放的场景（如由 Spring TransactionManager 托管的连接），可通过声明全限定类名（例如 java.sql.Connection ）合法绕过检测。 -->
