@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * FTP Directory Copy Unit Test.
@@ -179,6 +180,8 @@ public class FtpDirectoryCopyTest {
                     try (ByteArrayInputStream bis = new ByteArrayInputStream(bytes)) {
                         client.storeFile(subDestPath, bis);
                     }
+                } else {
+                    fail("下载失败: " + subSrcPath + ", " + ftpReplySummary(client));
                 }
             }
         }
@@ -411,7 +414,24 @@ public class FtpDirectoryCopyTest {
     private byte[] downloadBytes(FTPClient client, String path) throws IOException {
         client.changeWorkingDirectory("/");
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
-        client.retrieveFile(path, bos);
+        boolean success = client.retrieveFile(path, bos);
+        if (!success) {
+            fail("下载失败: " + path + ", " + ftpReplySummary(client));
+        }
         return bos.toByteArray();
+    }
+
+    /**
+     * 生成 FTP 客户端最近一次服务器应答的摘要。retrieveFile 只返回 true/false，
+     * 失败的真实原因（被占用=450、不存在/无权限=550、传输中断=426 等）只能从应答码判断。
+     */
+    private String ftpReplySummary(FTPClient client) {
+        if (client == null || !client.isConnected()) {
+            return "replyCode=(none), replyString=(client not connected)";
+        }
+        int code = client.getReplyCode();
+        String reply = client.getReplyString();
+        String collapsed = reply == null ? "(null)" : reply.trim().replaceAll("\\s+", " ");
+        return "replyCode=" + code + ", replyString=" + (collapsed.isEmpty() ? "(empty)" : collapsed);
     }
 }

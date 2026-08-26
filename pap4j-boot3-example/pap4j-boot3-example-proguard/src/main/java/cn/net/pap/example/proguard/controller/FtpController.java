@@ -122,15 +122,19 @@ public class FtpController {
                         remaining -= read;
                     }
                     response.flushBuffer();
+                } else {
+                    log.warn("从 FTP 获取文件流失败(空流): {}, {}", VIDEO_PATH, ftpReplySummary(client));
                 }
             }
 
             // 流关闭后，再调用 completePendingCommand 接收 226 响应（close() 不会自动做这一步）
             if (client.isConnected()) {
                 try {
-                    client.completePendingCommand();
-                } catch (IOException ignored) {
-                    log.warn("Failed to complete pending command", ignored);
+                    if (!client.completePendingCommand()) {
+                        log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                    }
+                } catch (IOException e) {
+                    log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                 }
             }
             // 登出 + 断开由 AutoCloseableFTPClient.close() 统一完成
@@ -162,11 +166,12 @@ public class FtpController {
                 String reply = client.getReplyString();
 
                 if (reply == null || !reply.startsWith("213 ")) {
-                    log.warn("FTP 服务器不支持 SIZE 命令或文件不存在: {}", VIDEO_PATH);
+                    log.warn("FTP SIZE 命令未返回 213 应答: {}, serverReply={}", VIDEO_PATH,
+                            reply == null ? "(null)" : reply.trim());
 
                     FTPFile[] files = client.listFiles(VIDEO_PATH);
                     if (files == null || files.length == 0) {
-                        log.warn("通过 listFiles 亦未找到文件: {}", VIDEO_PATH);
+                        log.warn("通过 listFiles 亦未找到文件: {}, {}", VIDEO_PATH, ftpReplySummary(client));
                         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                         return;
                     }
@@ -217,7 +222,7 @@ public class FtpController {
                 client.setRestartOffset(start);
                 try (InputStream in = client.retrieveFileStream(VIDEO_PATH)) {
                     if (in == null) {
-                        log.warn("从 FTP 获取文件流失败: {}", VIDEO_PATH);
+                        log.warn("从 FTP 获取文件流失败: {}, {}", VIDEO_PATH, ftpReplySummary(client));
                         if (!response.isCommitted()) {
                             response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                         }
@@ -287,6 +292,26 @@ public class FtpController {
         return false;
     }
 
+    /**
+     * 生成 FTP 客户端最近一次服务器应答的摘要。
+     *
+     * <p>retrieveFile / retrieveFileStream 只返回 true/false 或 null，失败的真实原因（文件被占用=450、
+     * 服务器认为不存在或权限不足=550、传输中断=426 等）只存在于控制通道的应答码里。失败分支务必把应答码
+     * 一并记录，否则多种失败会统一表现为「未找到」，无法定案。</p>
+     *
+     * @param client FTP 客户端
+     * @return 例如 replyCode=550, replyString=550 File unavailable. (permission)
+     */
+    private String ftpReplySummary(AutoCloseableFTPClient client) {
+        if (client == null || !client.isConnected()) {
+            return "replyCode=(none), replyString=(client not connected)";
+        }
+        int code = client.getReplyCode();
+        String reply = client.getReplyString();
+        String collapsed = reply == null ? "(null)" : reply.trim().replaceAll("\\s+", " ");
+        return "replyCode=" + code + ", replyString=" + (collapsed.isEmpty() ? "(empty)" : collapsed);
+    }
+
     @Operation(summary = "流式读取并显示 JPG 图片")
     @GetMapping("/streamjpg")
     public void streamJpg(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -326,6 +351,7 @@ public class FtpController {
                     response.flushBuffer();
                 } else {
                     // 如果在 FTP 上找不到图片，返回 404
+                    log.warn("从 FTP 获取图片流失败(SITE_IMGSEND 未返回 150): {}, {}", JPG_PATH, ftpReplySummary(client));
                     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 }
             }
@@ -333,9 +359,11 @@ public class FtpController {
             if (client.isConnected()) {
                 // 流关闭后，调用 completePendingCommand 接收 226 响应
                 try {
-                    client.completePendingCommand();
-                } catch (IOException ignored) {
-                    log.warn("Failed to complete pending command", ignored);
+                    if (!client.completePendingCommand()) {
+                        log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                    }
+                } catch (IOException e) {
+                    log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                 }
             }
         } catch (Exception e) {
@@ -388,6 +416,7 @@ public class FtpController {
                         }
                     }
                 } else {
+                    log.warn("从 FTP 获取图片流失败: {}, {}", picPath, ftpReplySummary(client));
                     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 }
             }
@@ -395,9 +424,11 @@ public class FtpController {
             if (client.isConnected()) {
                 // 流关闭后，调用 completePendingCommand 接收 226 响应
                 try {
-                    client.completePendingCommand();
-                } catch (IOException ignored) {
-                    log.warn("Failed to complete pending command", ignored);
+                    if (!client.completePendingCommand()) {
+                        log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                    }
+                } catch (IOException e) {
+                    log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                 }
             }
         } catch (Exception e) {
