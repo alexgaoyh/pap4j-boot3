@@ -25,6 +25,47 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.Locale;
 
+/**
+ * FTP 流传输测试控制器，集中演示 Apache Commons Net {@code FTPClient} 的正确用法。
+ *
+ * <p><b>背景</b>：生产环境「成品导出图片报未找到」的根因，是下载失败被压成了一个布尔值——真实原因
+ * （文件被占用 450、不存在/无权限 550、传输中断 426）都在控制通道的应答码里，却被一律翻译成「未找到 / 404」。
+ * 下面的规则围绕一件事：<b>把一次 FTP 传输做完整，把失败原因说清楚</b>。</p>
+ *
+ * <h2>一、传输收尾：一次传输怎么算做完</h2>
+ * <ol>
+ *   <li><b>取流必须完整收尾</b>：{@code retrieveFileStream} 打开数据通道后，必须 ① 关闭流 ② 调用
+ *       {@code completePendingCommand()} 收 226 应答。缺任一步，连接就停在「传输未完成」：轻则不可复用，
+ *       重则控制通道错位（下一条命令读到旧应答）、数据 socket 变孤儿、服务器端一直攥着文件。</li>
+ *   <li><b>中断必须发 ABOR，不能只断开</b>：客户端断开、读取异常、解码失败提前返回时，都要发 ABOR 让服务器立即释放文件
+ *       （本类用 {@code needsAbort} + finally 实现）。典型触发是 HTTP 预览时浏览器取消/提前停读。若泄漏连接一直攥着锁，
+ *       别的连接重试同一文件会<b>确定性</b>地 450/550 busy——不是瞬时抖动，重试救不回。</li>
+ * </ol>
+ *
+ * <h2>二、方法选择与失败处理</h2>
+ * <ol start="3">
+ *   <li><b>区分原子方法与流式方法</b>：{@code storeFile / retrieveFile / appendFile}（配 InputStream/OutputStream）是原子的——
+ *       内部完整 copy 并等 226，返回 true 即已落盘；{@code storeFileStream / retrieveFileStream} 只给裸流，关流和收尾必须自己管。
+ *       用流式方法却漏收尾，是服务器上出现 0 字节/半截文件的常见来源。</li>
+ *   <li><b>失败按应答码分流，并透出重试信息</b>：应答码是一对多（550 既可能不存在也可能权限不足），一个状态码承载不了。
+ *       本类用 {@link #ftpFailureHttpStatus} 映射（550/551/553→404 或 403、450/451/421→503、425/426/530→502），
+ *       用 {@link #markFtpFailureHeaders} 透出 {@code X-Ftp-Reply} / {@code X-Ftp-Retryable}，
+ *       可重试判定见 {@link #isFtpReplyRetryable}（仅 450/451/421/425/426 可重试，550/553 永久失败）。</li>
+ *   <li><b>下载成功 ≠ 内容完整</b>：{@code retrieveFile} 返回 true 且收 226，本地也可能是 0 字节占位或半截文件——它不校验内容，
+ *       坏文件照常返回 true。生产下载要校验实际字节数；「事后能打开」不等于「导出那一刻文件是好的」。</li>
+ * </ol>
+ *
+ * <h2>三、资源与重试</h2>
+ * <ol start="6">
+ *   <li><b>异常路径也要释放连接与流</b>：连接要放 finally（{@code destory/disconnect}），只放 try 尾部会泄漏；
+ *       中途异常要关流并复位（ABOR），否则脏控制通道污染共享连接；不读完也不收尾就断开，数据 socket 会变孤儿。
+ *       优先用 {@code AutoCloseableFTPClient}（close() 统一登出断开），别散落 {@code new FTPClient()}。</li>
+ *   <li><b>重试只对「返回 false」生效，永久失败不重试</b>：任务抛异常应继续计数重试而非直接放弃（否则瞬时 IOException
+ *       让「重试 N 次」第一次就结束）；550 这类永久失败重试无意义，只对可恢复应答（见第 4 条）重试。</li>
+ * </ol>
+ *
+ * @see cn.net.pap.example.proguard.autoclose.AutoCloseableFTPClient
+ */
 @RestController
 @RequestMapping("/ftp")
 @Tag(name = "FTP 流传输测试接口", description = "演示通过 FTP 协议进行视频断点续传流和图片流式读取与展示的接口")
