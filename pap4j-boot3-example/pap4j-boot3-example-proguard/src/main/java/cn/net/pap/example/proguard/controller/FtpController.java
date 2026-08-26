@@ -23,6 +23,7 @@ import java.awt.image.BufferedImage;
 import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/ftp")
@@ -110,38 +111,57 @@ public class FtpController {
             client.enterLocalPassiveMode();
             client.setFileType(FTP.BINARY_FILE_TYPE);
 
-            client.setRestartOffset(start);
-            try (InputStream in = client.retrieveFileStream(VIDEO_PATH)) {
-                if (in != null) {
-                    byte[] buffer = new byte[BUFFER_SIZE];
-                    long remaining = contentLength;
-                    int read;
+            // 是否需要向服务端补发 ABOR（若流正常读完并完成 226/426 收尾，则置为 false）
+            boolean needsAbort = true;
+            try {
+                client.setRestartOffset(start);
+                try (InputStream in = client.retrieveFileStream(VIDEO_PATH)) {
+                    if (in != null) {
+                        byte[] buffer = new byte[BUFFER_SIZE];
+                        long remaining = contentLength;
+                        int read;
 
-                    while (remaining > 0 && (read = in.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
-                        response.getOutputStream().write(buffer, 0, read);
-                        remaining -= read;
+                        while (remaining > 0 && (read = in.read(buffer, 0, (int) Math.min(buffer.length, remaining))) != -1) {
+                            response.getOutputStream().write(buffer, 0, read);
+                            remaining -= read;
+                        }
+                        response.flushBuffer();
+                    } else {
+                        log.warn("从 FTP 获取文件流失败(空流): {}, {}", VIDEO_PATH, ftpReplySummary(client));
+                        markFtpFailureHeaders(response, client);
+                        return;
                     }
-                    response.flushBuffer();
-                } else {
-                    log.warn("从 FTP 获取文件流失败(空流): {}, {}", VIDEO_PATH, ftpReplySummary(client));
                 }
-            }
 
-            // 流关闭后，再调用 completePendingCommand 接收 226 响应（close() 不会自动做这一步）
-            if (client.isConnected()) {
-                try {
-                    if (!client.completePendingCommand()) {
-                        log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                // 流关闭后，再调用 completePendingCommand 接收 226 响应（close() 不会自动做这一步）
+                if (client.isConnected()) {
+                    try {
+                        if (!client.completePendingCommand()) {
+                            log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                        }
+                    } catch (IOException e) {
+                        log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                     }
-                } catch (IOException e) {
-                    log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
+                }
+                // 控制通道已完成应答消费（无论 226 还是 426），服务端均已释放文件，无需再发 ABOR
+                needsAbort = false;
+            } finally {
+                // 传输未正常收尾（如客户端中断）：发 ABOR 让服务器释放文件，避免被攥住
+                if (needsAbort && client.isConnected()) {
+                    try {
+                        client.abort();
+                    } catch (Exception ignored) {
+                        log.debug("发送 FTP ABOR 命令失败: {}", ignored.getMessage());
+                    }
                 }
             }
             // 登出 + 断开由 AutoCloseableFTPClient.close() 统一完成
         } catch (Exception e) {
             if (!isClientAbort(e)) {
                 log.error("FTP streaming failed: ", e);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
+                if (!response.isCommitted()) {
+                    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
+                }
             }
         }
     }
@@ -223,9 +243,7 @@ public class FtpController {
                 try (InputStream in = client.retrieveFileStream(VIDEO_PATH)) {
                     if (in == null) {
                         log.warn("从 FTP 获取文件流失败: {}, {}", VIDEO_PATH, ftpReplySummary(client));
-                        if (!response.isCommitted()) {
-                            response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-                        }
+                        markFtpFailureHeaders(response, client);
                         return;
                     }
 
@@ -312,64 +330,131 @@ public class FtpController {
         return "replyCode=" + code + ", replyString=" + (collapsed.isEmpty() ? "(empty)" : collapsed);
     }
 
+    /**
+     * 取流失败(流未打开)时，按 FTP 应答码映射恰当的 HTTP 状态。
+     * 550/551/553 才是「不存在」（含权限不足=403），450/451/421 是忙=503，425/426/530 等是上游传输失败=502。
+     * 一律 404 会把「图在但拿不出来」伪装成「图不存在」，重蹈「未找到」误报的覆辙。
+     */
+    private int ftpFailureHttpStatus(AutoCloseableFTPClient client) {
+        if (client == null || !client.isConnected()) {
+            return HttpServletResponse.SC_BAD_GATEWAY;
+        }
+        int code = client.getReplyCode();
+        if (code == 550 || code == 551 || code == 553) {
+            String reply = client.getReplyString();
+            if (reply != null && reply.toLowerCase(Locale.ROOT).contains("denied")) {
+                return HttpServletResponse.SC_FORBIDDEN;
+            }
+            return HttpServletResponse.SC_NOT_FOUND;
+        }
+        if (code == 450 || code == 451 || code == 421) {
+            return HttpServletResponse.SC_SERVICE_UNAVAILABLE;
+        }
+        // 425/426/530/未知 → 上游 FTP 传输失败
+        return HttpServletResponse.SC_BAD_GATEWAY;
+    }
+
+    /**
+     * 该 FTP 应答是否值得重试：450/451/421/425/426 是瞬时可恢复（占用/忙/传输中断），550/553 是永久失败。
+     */
+    private boolean isFtpReplyRetryable(AutoCloseableFTPClient client) {
+        if (client == null || !client.isConnected()) {
+            return false;
+        }
+        int code = client.getReplyCode();
+        return code == 450 || code == 451 || code == 421 || code == 425 || code == 426;
+    }
+
+    /**
+     * 取流失败时：透出 FTP 原始应答与「是否可重试」到响应头，并设置按应答码分流的 HTTP 状态。
+     * FTP 应答码是一对多，只回一个状态码会丢失重试决策所需的信息。
+     */
+    private void markFtpFailureHeaders(HttpServletResponse response, AutoCloseableFTPClient client) {
+        if (response.isCommitted() || client == null || !client.isConnected()) {
+            return;
+        }
+        // 清除先前可能设置的过期响应头（如预设的 Content-Type/Content-Length/Content-Range/200/206 状态），避免协议体长度失配
+        response.reset();
+        response.setHeader("X-Ftp-Reply", ftpReplySummary(client));
+        response.setHeader("X-Ftp-Retryable", String.valueOf(isFtpReplyRetryable(client)));
+        response.setStatus(ftpFailureHttpStatus(client));
+    }
+
     @Operation(summary = "流式读取并显示 JPG 图片")
     @GetMapping("/streamjpg")
     public void streamJpg(HttpServletRequest request, HttpServletResponse response) throws IOException {
-        response.setContentType(MediaType.IMAGE_JPEG_VALUE);
         try (AutoCloseableFTPClient client = new AutoCloseableFTPClient()) {
             client.connect(FTP_HOST, FTP_PORT);
             client.login(FTP_USER, FTP_PASS);
             client.enterLocalPassiveMode();
             client.setFileType(FTP.BINARY_FILE_TYPE);
-            try (InputStream in = client.retrieveImgSendFileStream(JPG_PATH)) {
-                if (in != null) {
-                    String replyString = client.getReplyString();
-                    // 解析宽高信息
-                    int width = 0;
-                    int height = 0;
-                    if (replyString != null && replyString.startsWith("150")) {
-                        // 解析格式: "150 width:height"
-                        String[] parts = replyString.split(" ");
-                        if (parts.length > 1) {
-                            String metadata = parts[1];
-                            String[] dimensions = metadata.split(":");
-                            if (dimensions.length == 2) {
-                                try {
-                                    width = Integer.parseInt(dimensions[0]);
-                                    height = Integer.parseInt(dimensions[1]);
-                                } catch (NumberFormatException ignored) {
-                                    // 解析失败，保持默认值
+            // 是否需要向服务端补发 ABOR（若流正常读完并完成 226/426 收尾，则置为 false）
+            boolean needsAbort = true;
+            try {
+                try (InputStream in = client.retrieveImgSendFileStream(JPG_PATH)) {
+                    if (in != null) {
+                        String replyString = client.getReplyString();
+                        // 解析宽高信息
+                        int width = 0;
+                        int height = 0;
+                        if (replyString != null && replyString.startsWith("150")) {
+                            // 解析格式: "150 width:height"
+                            String[] parts = replyString.split(" ");
+                            if (parts.length > 1) {
+                                String metadata = parts[1];
+                                String[] dimensions = metadata.split(":");
+                                if (dimensions.length == 2) {
+                                    try {
+                                        width = Integer.parseInt(dimensions[0]);
+                                        height = Integer.parseInt(dimensions[1]);
+                                    } catch (NumberFormatException ignored) {
+                                        // 解析失败，保持默认值
+                                    }
                                 }
                             }
                         }
-                    }
-                    response.setHeader("X-Image-Width", String.valueOf(width));
-                    response.setHeader("X-Image-Height", String.valueOf(height));
+                        response.setHeader("X-Image-Width", String.valueOf(width));
+                        response.setHeader("X-Image-Height", String.valueOf(height));
 
-                    // 将图片流写入响应
-                    IOUtils.copy(in, response.getOutputStream());
-                    response.flushBuffer();
-                } else {
-                    // 如果在 FTP 上找不到图片，返回 404
-                    log.warn("从 FTP 获取图片流失败(SITE_IMGSEND 未返回 150): {}, {}", JPG_PATH, ftpReplySummary(client));
-                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+                        // 将图片流写入响应
+                        response.setContentType(MediaType.IMAGE_JPEG_VALUE);
+                        IOUtils.copy(in, response.getOutputStream());
+                        response.flushBuffer();
+                    } else {
+                        log.warn("从 FTP 获取图片流失败(SITE_IMGSEND 未返回 150): {}, {}", JPG_PATH, ftpReplySummary(client));
+                        markFtpFailureHeaders(response, client);
+                        return;
+                    }
                 }
-            }
 
-            if (client.isConnected()) {
-                // 流关闭后，调用 completePendingCommand 接收 226 响应
-                try {
-                    if (!client.completePendingCommand()) {
-                        log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                if (client.isConnected()) {
+                    // 流关闭后，调用 completePendingCommand 接收 226 响应
+                    try {
+                        if (!client.completePendingCommand()) {
+                            log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                        }
+                    } catch (IOException e) {
+                        log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                     }
-                } catch (IOException e) {
-                    log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
+                }
+                // 控制通道已完成应答消费（无论 226 还是 426），服务端均已释放文件，无需再发 ABOR
+                needsAbort = false;
+            } finally {
+                // 传输未正常收尾（如客户端中断）：发 ABOR 让服务器释放文件，避免被攥住
+                if (needsAbort && client.isConnected()) {
+                    try {
+                        client.abort();
+                    } catch (Exception ignored) {
+                        log.debug("发送 FTP ABOR 命令失败: {}", ignored.getMessage());
+                    }
                 }
             }
         } catch (Exception e) {
             if (!isClientAbort(e)) {
                 log.error("FTP streaming failed: ", e);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
+                if (!response.isCommitted()) {
+                    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
+                }
             }
         }
     }
@@ -384,57 +469,87 @@ public class FtpController {
     @Operation(summary = "流式读取指定路径的 JPG 图片", description = "从 FTP 动态读取指定路径的图片资源流，并作为 jpeg 格式写回客户端响应。")
     @GetMapping("/streamdefaultjpg")
     public void streamDefaultJpg(HttpServletRequest request, HttpServletResponse response, @Parameter(description = "图片相对路径") @RequestParam String picPath) throws IOException {
-        response.setContentType(MediaType.IMAGE_JPEG_VALUE);
+        // 入参校验：拦截空/空白/路径穿越，避免任意 FTP 路径注入
+        if (picPath == null || picPath.isBlank() || picPath.contains("..")) {
+            response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+            return;
+        }
+
         try (AutoCloseableFTPClient client = new AutoCloseableFTPClient()) {
             client.setControlEncoding("UTF-8");
             client.connect(FTP_HOST, FTP_PORT);
             client.login(FTP_USER, FTP_PASS);
             client.enterLocalPassiveMode();
             client.setFileType(FTP.BINARY_FILE_TYPE);
-            try (InputStream in = client.retrieveFileStream(picPath)) {
-                if (in != null) {
-                    // 不要再转成 byte[]，利用包装流防止大图 OOM，同时让 ImageIO 自动判断格式
-                    try (BufferedInputStream bis = new BufferedInputStream(in)) {
-                        BufferedImage bufferedImage = ImageIO.read(bis);
+            // 是否需要向服务端补发 ABOR（若流正常读完并完成 226/426 收尾，则置为 false）
+            boolean needsAbort = true;
+            try {
+                try (InputStream in = client.retrieveFileStream(picPath)) {
+                    if (in != null) {
+                        // 不要再转成 byte[]，利用包装流防止大图 OOM，同时让 ImageIO 自动判断格式
+                        try (BufferedInputStream bis = new BufferedInputStream(in)) {
+                            BufferedImage bufferedImage = ImageIO.read(bis);
 
-                        if (bufferedImage != null) {
-                            // 解决部分 CMYK 或 Alpha 通道写出 JPG 报错/变色的万能画板法
-                            BufferedImage rgbImage = new BufferedImage(bufferedImage.getWidth(), bufferedImage.getHeight(), BufferedImage.TYPE_INT_RGB);
+                            if (bufferedImage != null) {
+                                // 解决部分 CMYK 或 Alpha 通道写出 JPG 报错/变色的万能画板法
+                                BufferedImage rgbImage = new BufferedImage(bufferedImage.getWidth(), bufferedImage.getHeight(), BufferedImage.TYPE_INT_RGB);
 
-                            Graphics2D g = rgbImage.createGraphics();
-                            // 设置白色底色，防止带有透明通道的图片变成背景全黑
-                            g.setColor(Color.WHITE);
-                            g.fillRect(0, 0, bufferedImage.getWidth(), bufferedImage.getHeight());
-                            // 绘制原图
-                            g.drawImage(bufferedImage, 0, 0, null);
-                            g.dispose();
+                                Graphics2D g = rgbImage.createGraphics();
+                                // 设置白色底色，防止带有透明通道的图片变成背景全黑
+                                g.setColor(Color.WHITE);
+                                g.fillRect(0, 0, bufferedImage.getWidth(), bufferedImage.getHeight());
+                                // 绘制原图
+                                g.drawImage(bufferedImage, 0, 0, null);
+                                g.dispose();
 
-                            // 输出为标准 JPG
-                            ImageIO.write(rgbImage, "jpg", response.getOutputStream());
-                        } else {
-                            response.setStatus(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+                                // 输出为标准 JPG
+                                response.setContentType(MediaType.IMAGE_JPEG_VALUE);
+                                ImageIO.write(rgbImage, "jpg", response.getOutputStream());
+                            } else {
+                                // 下载成功但 ImageIO 解不出 → 上游内容问题，502 而非 415（415 是请求媒体类型问题）
+                                // 必须 return：ImageIO.read 未读尽数据流，交由 finally 发 ABOR 释放，避免连接/文件状态残留
+                                log.warn("从 FTP 下载成功但 ImageIO 无法解码: {}", picPath);
+                                if (!response.isCommitted()) {
+                                    response.setStatus(HttpServletResponse.SC_BAD_GATEWAY);
+                                }
+                                return;
+                            }
                         }
+                    } else {
+                        log.warn("从 FTP 获取图片流失败: {}, {}", picPath, ftpReplySummary(client));
+                        markFtpFailureHeaders(response, client);
+                        return;
                     }
-                } else {
-                    log.warn("从 FTP 获取图片流失败: {}, {}", picPath, ftpReplySummary(client));
-                    response.setStatus(HttpServletResponse.SC_NOT_FOUND);
                 }
-            }
 
-            if (client.isConnected()) {
-                // 流关闭后，调用 completePendingCommand 接收 226 响应
-                try {
-                    if (!client.completePendingCommand()) {
-                        log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                if (client.isConnected()) {
+                    // 流关闭后，调用 completePendingCommand 接收 226 响应
+                    try {
+                        if (!client.completePendingCommand()) {
+                            log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
+                        }
+                    } catch (IOException e) {
+                        log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                     }
-                } catch (IOException e) {
-                    log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
+                }
+                // 控制通道已完成应答消费（无论 226 还是 426），服务端均已释放文件，无需再发 ABOR
+                needsAbort = false;
+            } finally {
+                // 传输未正常收尾（如客户端中断）：发 ABOR 让服务器释放文件，避免被攥住
+                if (needsAbort && client.isConnected()) {
+                    try {
+                        client.abort();
+                    } catch (Exception ignored) {
+                        log.debug("发送 FTP ABOR 命令失败: {}", ignored.getMessage());
+                    }
                 }
             }
         } catch (Exception e) {
             if (!isClientAbort(e)) {
                 log.error("FTP streaming failed: ", e);
-                response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
+                if (!response.isCommitted()) {
+                    response.sendError(HttpServletResponse.SC_INTERNAL_SERVER_ERROR, "FTP streaming failed");
+                }
             }
         }
     }
