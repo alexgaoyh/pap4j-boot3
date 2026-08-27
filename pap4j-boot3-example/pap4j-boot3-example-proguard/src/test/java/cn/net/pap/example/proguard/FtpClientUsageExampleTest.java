@@ -626,6 +626,48 @@ public class FtpClientUsageExampleTest {
     }
 
     /**
+     * 技术点：文件「写进行中」时，另一个独立连接 retrieveFile 同一文件会返回 false（FileZilla 0.9.60）。
+     *
+     * <p>连接 A 通过 storeFileStream 写文件但未收尾（传输进行中、数据连接未关），服务端持有写句柄；
+     * 独立连接 B retrieveFile 同一文件得到 550，返回 false——即「导出/落盘进行中时读它报未找到」的根因。
+     * 需注意与 pap4j-boot3-example-ftp-server 结论不同 </p>
+     *
+     * @throws IOException FTP 命令失败
+     */
+    @Test
+    void testStorInProgressMakesRetrieveReturnFalse() throws IOException {
+        String filePath = TEST_DIR + "/stor-lock.bin";
+        byte[] content = new byte[4096];
+        new Random(31).nextBytes(content);
+
+        // A：通过 storeFileStream 开始写文件（传输进行中，数据连接未关 → 文件被写锁）
+        AutoCloseableFTPClient a = openClient();
+        Assumptions.assumeTrue(a != null, "FTP 服务不可用，跳过测试");
+        try {
+            OutputStream out = a.storeFileStream(filePath);
+            assertNotNull(out, "storeFileStream 应成功: " + ftpReplySummary(a));
+            try {
+                out.write(content); // 写一部分但不关流 → 传输进行中
+
+                // B：独立连接 retrieveFile 同一文件 → 写锁下应失败（FileZilla 550）
+                AutoCloseableFTPClient b = openClient();
+                Assumptions.assumeTrue(b != null, "FTP 服务不可用，跳过测试");
+                try {
+                    boolean ok = b.retrieveFile(filePath, new ByteArrayOutputStream());
+                    log.info("[FtpUsage] 写进行中 B retrieveFile={}, {}", ok, ftpReplySummary(b));
+                } finally {
+                    b.close();
+                }
+            } finally {
+                out.close(); // 关闭数据连接，让 A 的传输正常收尾
+            }
+            assertTrue(a.completePendingCommand(), "A 写完收尾应成功: " + ftpReplySummary(a));
+        } finally {
+            a.close();
+        }
+    }
+
+    /**
      * 技术点：目录与文件操作。
      *
      * <p>makeDirectory / rename / deleteFile / removeDirectory / listFiles 的完整组合，
