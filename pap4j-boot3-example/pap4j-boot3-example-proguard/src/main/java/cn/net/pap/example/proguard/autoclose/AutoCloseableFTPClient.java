@@ -44,7 +44,6 @@ import java.net.Socket;
  * <p><b>高频下载建议形态</b>：FileZilla Server 升级到 1.9+ + 复用单条控制连接（默认）+ 超时三件套；
  * 本开关保持默认关闭即可。</p>
  *
- * @see cn.net.pap.example.proguard.FtpTimeWaitLoopDownloadTest
  */
 public class AutoCloseableFTPClient extends FTPClient implements AutoCloseable {
 
