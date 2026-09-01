@@ -20,7 +20,7 @@ import java.net.Socket;
  * <p><b>注意：上传（STOR/STOU/APPE）的数据连接不会被 RST</b>——客户端必须用 FIN/EOF 告知服务端传输完成，
  * RST 会导致服务端 426「Connection closed; aborted transfer」中断上传。</p>
  *
- * <h2>实测结论：TIME_WAIT 从来不是高频 FTP 下载的瓶颈（红鲱鱼）</h2>
+ * <h2>实测结论一：TIME_WAIT 不是「服务端停滞」这道墙的原因（红鲱鱼）</h2>
  * <ul>
  *   <li>铁证一：FileZilla Server 0.9.60 上开启 RST、TIME_WAIT 归零后，Read timed out 依旧在 ~2k 次下载处出现
  *       ——TIME_WAIT 并非失败原因。</li>
@@ -31,18 +31,28 @@ import java.net.Socket;
  *       升级到 1.x 后，复用单条控制连接可稳定跑满 60000 次无超时。</li>
  * </ul>
  *
- * <p><b>因此本开关不是高频下载的解法</b>，仅保留两类用途：
- * <ol>
- *   <li><b>诊断开关</b>：开启 RST 做对照，可区分「客户端端口耗尽（SocketException: Cannot assign requested address）」
- *       与「服务端停滞（Read timed out）」两类失败。</li>
- *   <li><b>保险</b>：TIME_WAIT 由「先发 FIN 的一方」承担（RFC 793）。FileZilla 通常先关连接 → TIME_WAIT 落在服务端、
- *       客户端端口即用即放；但客户端一旦抢到先发 FIN（实测在 0.9.60 调大线程数时发生过），自身也会积累 TIME_WAIT，
- *       高速建连下可能把客户端动态端口池打满。此时开启本开关，客户端 close 发 RST 而非 FIN，不进 TIME_WAIT、
- *       不锁端口，可避免端口耗尽。</li>
- * </ol></p>
+ * <h2>实测结论二：客户端端口耗尽（Address already in use / Cannot assign requested address）是真实风险</h2>
+ * <ul>
+ *   <li>回环（127.0.0.1）下，客户端源端口与服务端 PASV 端口<b>共用同一个动态端口池</b>（本机 13977）。
+ *       FileZilla 通常是主动关闭方 → PASV 端口进 TIME_WAIT 120s，成为共享池的最大消耗者；高速建连
+ *       （~170/s 时稳态需 ~20400 个 PASV 端口，超过池容量）叠加<b>连续 drainWaitMs=0 压测的残留 TIME_WAIT</b>，
+ *       共享池可被打满 → 客户端数据连接 connect() 报 <b>java.net.BindException: Address already in use</b>。
+ *       <b>已实测复现</b>：无 RST 版本在 ~5.3 万次迭代处失败（复用单条控制连接、每轮新开数据连接）。</li>
+ *   <li>RST 数据连接代码（{@code _openDataConnection_} 的 SO_LINGER=0）的价值正在于此：客户端读到 EOF 后 close() 发 RST →
+ *       服务端 PASV socket 被立即丢弃、<b>不进 TIME_WAIT</b> → 释放共享池的最大消耗者，从根本上防「Address already in use」。</li>
+ *   <li>压测方法论上，每轮压测前等 2 分钟（drainWaitMs=120000）排空残留 TIME_WAIT，是防止残留叠加打满共享池的必要手段。</li>
+ * </ul>
  *
- * <p><b>高频下载建议形态</b>：FileZilla Server 升级到 1.9+ + 复用单条控制连接（默认）+ 超时三件套；
- * 本开关保持默认关闭即可。</p>
+ * <p><b>因此本开关不是「服务端停滞」的解法</b>（那道墙由服务端升级解决），其价值在于：</p>
+ * <ol>
+ *   <li><b>诊断开关</b>：开 RST 对照，区分「客户端端口耗尽（Address already in use / Cannot assign requested address）」
+ *       与「服务端停滞（Read timed out）」两类失败。</li>
+ *   <li><b>防回环共享池端口耗尽</b>：RST 让客户端数据连接 close 发 RST，释放服务端 PASV 端口的 TIME_WAIT 占用，
+ *       避免共享池被打满导致客户端 connect() 报 Address already in use。</li>
+ * </ol>
+ *
+ * <p><b>高频下载建议形态</b>：FileZilla Server 升级到 1.9+ + 复用单条控制连接（默认）+ 超时三件套 +
+ * 压测前 drainWaitMs 排空残留 TIME_WAIT；本开关默认关闭，仅在需要防回环共享池端口耗尽或做诊断对照时开启。</p>
  *
  */
 public class AutoCloseableFTPClient extends FTPClient implements AutoCloseable {
