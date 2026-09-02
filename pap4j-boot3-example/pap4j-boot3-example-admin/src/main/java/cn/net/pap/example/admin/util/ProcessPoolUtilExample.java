@@ -14,6 +14,7 @@ public class ProcessPoolUtilExample {
         try {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
+            log.error("Task sleep interrupted", e);
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
@@ -35,6 +36,7 @@ public class ProcessPoolUtilExample {
                 sum += Integer.parseInt(arg);
             } catch (NumberFormatException e) {
                 // 非数字忽略
+                log.error("Invalid number format, ignoring argument", e);
             }
         }
         return sum;

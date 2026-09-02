@@ -76,6 +76,7 @@ public class JsoupUtil {
             doc.body().appendChild(span);
             return doc.body().html();
         } catch (IllegalAccessException e) {
+            logger.error("转换 DTO 到 span 失败", e);
             return "";
         }
     }

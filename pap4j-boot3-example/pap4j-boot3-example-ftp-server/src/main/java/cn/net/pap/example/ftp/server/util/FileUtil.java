@@ -14,6 +14,8 @@ import java.nio.file.Paths;
  */
 public class FileUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FileUtil.class);
+
     /**
      * <p>文件编码</p>
      *
@@ -83,6 +85,7 @@ public class FileUtil {
             return score;
         } catch (CharacterCodingException e) {
             // 如果解码失败，返回负分
+            log.error("Charset decode failed", e);
             return -1;
         }
     }

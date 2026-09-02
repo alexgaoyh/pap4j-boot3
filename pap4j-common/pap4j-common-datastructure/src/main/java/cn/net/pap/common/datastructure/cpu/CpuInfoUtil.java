@@ -38,6 +38,7 @@ public class CpuInfoUtil {
                 available = true;
             }
         } catch (Exception e) {
+            log.error("无法检测 com.sun.management.OperatingSystemMXBean, 将禁用 CPU 核心探测", e);
             sunOsBeanClass = null;
             getProcessCpuLoadMethod = null;
         }

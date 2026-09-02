@@ -31,6 +31,8 @@ import java.util.Map;
 @ConditionalOnClass(RedisOperations.class)
 public class CacheableFieldAspect {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CacheableFieldAspect.class);
+
     private final CacheManager cacheManager;
 
     public CacheableFieldAspect(CacheManager cacheManager) {
@@ -156,6 +158,7 @@ public class CacheableFieldAspect {
 
             return null;
         } catch (Exception e) {
+            log.error("Error extracting fields for caching", e);
             throw new RuntimeException("Error extracting fields for caching", e);
         }
     }
@@ -180,6 +183,7 @@ public class CacheableFieldAspect {
             }
 
         } catch (Exception e) {
+            log.error("Error extracting fields for caching", e);
             throw new RuntimeException("Error extracting fields for caching", e);
         }
     }

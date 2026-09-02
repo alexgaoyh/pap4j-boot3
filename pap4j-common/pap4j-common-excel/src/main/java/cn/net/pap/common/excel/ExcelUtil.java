@@ -222,10 +222,13 @@ public class ExcelUtil {
             }
 
         } catch (FileNotFoundException e) {
+            log.error("未找到 Excel 文件: {}", sourceFileAbsolutePath, e);
             throw new RuntimeException("File not found: " + sourceFileAbsolutePath, e);
         } catch (IOException e) {
+            log.error("读取 Excel 文件失败: {}", sourceFileAbsolutePath, e);
             throw new RuntimeException("Error reading file: " + sourceFileAbsolutePath, e);
         } catch (Exception e) {
+            log.error("处理 Excel 文件时发生未知错误", e);
             throw new RuntimeException("Unexpected error while processing Excel file", e);
         }
 

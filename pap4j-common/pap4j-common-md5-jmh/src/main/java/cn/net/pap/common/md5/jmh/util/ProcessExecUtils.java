@@ -94,9 +94,9 @@ public class ProcessExecUtils {
             // 超时校验与日志精确区分是进程报错还是被 Watchdog 超时强杀
             if (watchdog != null && watchdog.killedProcess()) {
                 isTimeout = true;
-                log.warn("命令执行超时({}ms被强杀): {}", timeoutMs, cmdLine.toString());
+                log.error("命令执行超时({}ms被强杀): {}", timeoutMs, cmdLine.toString(), e);
             } else {
-                log.warn("命令执行异常退出 (ExitCode: {}): {}", exitCode, cmdLine.toString());
+                log.error("命令执行异常退出 (ExitCode: {}): {}", exitCode, cmdLine.toString(), e);
             }
         }
 

@@ -20,6 +20,8 @@ import java.util.Locale;
  */
 final class DateSupport {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DateSupport.class);
+
     /** epoch 值判定为毫秒而非秒的阈值（绝对值 ≥ 1e11 视为毫秒）。 */
     private static final long EPOCH_MILLIS_THRESHOLD = 100_000_000_000L;
 
@@ -75,6 +77,7 @@ final class DateSupport {
                             : LocalDateTime.from(parsed);
                     return new ParsedDate(dateTime, spec.granularity());
                 } catch (DateTimeParseException e) {
+                    log.error("Failed to parse date with format {}", spec.formatter(), e);
                     // 尝试下一种格式
                 }
             }

@@ -16,6 +16,8 @@ import java.util.List;
  */
 public class PositionInParentFunction implements XPathFunction {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PositionInParentFunction.class);
+
     @Override
     public Object evaluate(List<?> args) throws XPathFunctionException {
         if (args == null || args.isEmpty()) {
@@ -39,6 +41,7 @@ public class PositionInParentFunction implements XPathFunction {
             }
             return "";
         } catch (Exception e) {
+            log.error("计算节点父级位置失败", e);
             throw new XPathFunctionException(e);
         }
     }

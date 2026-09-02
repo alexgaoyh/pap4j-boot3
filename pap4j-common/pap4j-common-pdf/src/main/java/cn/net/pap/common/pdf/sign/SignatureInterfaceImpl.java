@@ -20,6 +20,8 @@ import java.security.cert.X509Certificate;
 import java.util.Arrays;
 
 public class SignatureInterfaceImpl implements SignatureInterface {
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SignatureInterfaceImpl.class);
+
     private final PrivateKey privateKey;
     private final Certificate[] certificateChain;
 
@@ -34,6 +36,7 @@ public class SignatureInterfaceImpl implements SignatureInterface {
             byte[] contentBytes = IOUtils.toByteArray(content);
             return signContent(contentBytes, privateKey, certificateChain);
         } catch (Exception e) {
+            log.error("PDF 签名失败", e);
             throw new IOException(e);
         }
     }

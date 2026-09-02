@@ -54,6 +54,8 @@ import java.util.Set;
  */
 public final class JsonSchemaToEsMappingUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JsonSchemaToEsMappingUtil.class);
+
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     /** 自引用递归展开的最大深度(默认 8 层)，超过后终止递归下钻。 */
@@ -99,6 +101,7 @@ public final class JsonSchemaToEsMappingUtil {
         try {
             return generateIndexMapping(MAPPER.readTree(schemaJson), moneyFields, moneyScalingFactor);
         } catch (Exception e) {
+            log.error("Failed to parse JSON Schema", e);
             throw new IllegalArgumentException("Schema 解析失败: " + e.getMessage(), e);
         }
     }
@@ -170,6 +173,7 @@ public final class JsonSchemaToEsMappingUtil {
         try {
             return MAPPER.writerWithDefaultPrettyPrinter().writeValueAsString(indexMapping);
         } catch (Exception e) {
+            log.error("Failed to serialize index mapping", e);
             throw new IllegalStateException("Mapping 序列化失败: " + e.getMessage(), e);
         }
     }

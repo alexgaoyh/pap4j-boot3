@@ -420,6 +420,7 @@ public final class FileSearch {
             latch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            log.error("文件检索被中断", e);
             throw new IllegalStateException("文件检索被中断", e);
         }
         return results;

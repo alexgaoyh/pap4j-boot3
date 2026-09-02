@@ -72,6 +72,7 @@ public class BeanController {
             GitCommitInfo gitCommitInfo = GitCommitInfo.loadFromProperties();
             return gitCommitInfo;
         } catch (Exception e) {
+            log.error("Failed to load git commit info", e);
             return new GitCommitInfo();
         } finally {
             Thread.sleep(2000L);
@@ -91,6 +92,7 @@ public class BeanController {
             ObjectMapper objectMapper = new ObjectMapper();
             return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(exampleAdminDTO);
         } catch (Exception e) {
+            log.error("Failed to build pretty JSON for admin DTO", e);
             return e.getMessage();
         } finally {
             Thread.sleep(2000L);
@@ -269,6 +271,7 @@ public class BeanController {
             writer.write("data: [Stream Completed]\n\n");
             writer.flush();
         } catch (InterruptedException e) {
+            log.error("SSE stream interrupted", e);
             Thread.currentThread().interrupt();
         } finally {
             writer.close();

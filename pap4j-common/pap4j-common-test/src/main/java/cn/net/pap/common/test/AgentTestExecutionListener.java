@@ -14,6 +14,8 @@ import java.util.Optional;
 
 public class AgentTestExecutionListener implements TestExecutionListener {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AgentTestExecutionListener.class);
+
     private static final Object lock = new Object();
 
     @Override
@@ -31,7 +33,7 @@ public class AgentTestExecutionListener implements TestExecutionListener {
                 }
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to process test diagnostics", e);
         }
     }
 
@@ -78,7 +80,7 @@ public class AgentTestExecutionListener implements TestExecutionListener {
                 out.println("---");
             }
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to process test diagnostics", e);
         }
     }
 

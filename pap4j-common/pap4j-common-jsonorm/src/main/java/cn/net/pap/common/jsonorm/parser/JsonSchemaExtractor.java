@@ -266,6 +266,7 @@ public class JsonSchemaExtractor {
             try {
                 target.put(prefix, MAPPER.writeValueAsString(value));
             } catch (Exception e) {
+                log.error("Failed to serialize list value", e);
                 target.put(prefix, value.toString());
             }
         } else {
@@ -289,6 +290,7 @@ public class JsonSchemaExtractor {
                 try {
                     storageMap.put(key, MAPPER.writeValueAsString(value));
                 } catch (Exception e) {
+                    log.error("Failed to serialize storage value", e);
                     storageMap.put(key, value.toString());
                 }
             }

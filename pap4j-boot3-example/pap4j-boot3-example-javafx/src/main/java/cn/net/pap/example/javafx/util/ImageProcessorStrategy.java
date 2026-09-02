@@ -157,6 +157,7 @@ public interface ImageProcessorStrategy {
             try {
                 exitCode = executor.execute(cmdLine, envToUse);
             } catch (ExecuteException e) {
+                log.error("Command execution threw exception", e);
                 exitCode = e.getExitValue();
                 killed = watchdog != null && watchdog.killedProcess();
                 // 如果是超时终止，等待流处理完成
@@ -181,10 +182,12 @@ public interface ImageProcessorStrategy {
             try {
                 outStream.close();
             } catch (IOException e) {
+                log.error("Failed to close outStream", e);
             }
             try {
                 errStream.close();
             } catch (IOException e) {
+                log.error("Failed to close errStream", e);
             }
         }
 

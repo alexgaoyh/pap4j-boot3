@@ -48,7 +48,7 @@ public class LeakyTaskService {
                     try {
                         Thread.sleep(3000);
                     } catch (InterruptedException e) {
-                        log.info(">>> 线程 [{}] 捕获中断信号，准备退出。, 线程池 Hash: {}", Thread.currentThread().getName(), executorService.hashCode());
+                        log.info(">>> 线程 [{}] 捕获中断信号，准备退出。, 线程池 Hash: {}", Thread.currentThread().getName(), executorService.hashCode(), e);
                         Thread.currentThread().interrupt();
                         break;
                     }
@@ -67,7 +67,7 @@ public class LeakyTaskService {
             executorService.submit(identifiedTask2); // 使用 submit，返回 Future 对象
 
         } catch (RejectedExecutionException e) {
-            log.error(">>> 任务提交失败：线程池已关闭。, 线程池 Hash: {}", executorService.hashCode());
+            log.error(">>> 任务提交失败：线程池已关闭。, 线程池 Hash: {}", executorService.hashCode(), e);
         }
     }
 
@@ -137,7 +137,7 @@ public class LeakyTaskService {
                 log.info(">>> 线程池已成功关闭，资源已释放。, 线程池 Hash: {}", executorService.hashCode());
             }
         } catch (InterruptedException e) {
-            log.error(">>> 线程池关闭过程被外部中断！, 线程池 Hash: {}", executorService.hashCode());
+            log.error(">>> 线程池关闭过程被外部中断！, 线程池 Hash: {}", executorService.hashCode(), e);
             executorService.shutdownNow();
             Thread.currentThread().interrupt();
         }

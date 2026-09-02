@@ -179,6 +179,7 @@ public class ImageUtil {
             }
         } catch (IOException e) {
             // 记录异常
+            log.error("Failed to get low memory thumbnail for {}", inputFileStr, e);
             return null;
         }
     }

@@ -19,6 +19,11 @@ import java.util.stream.Collectors;
  */
 public class StackTraceUtils {
 
+    /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(StackTraceUtils.class);
+
     /** <p>过滤后的堆栈轨迹中要包含的默认包。</p> */
     public static final List<String> DEFAULT_INCLUDES = Arrays.asList("cn.net.pap.");
     /** <p>过滤后的堆栈轨迹中要排除的默认包。</p> */
@@ -223,6 +228,7 @@ public class StackTraceUtils {
                 try {
                     lineNumber = Integer.parseInt(locationParts[1]);
                 } catch (NumberFormatException e) {
+                    log.error("解析堆栈帧行号失败, line={}", line, e);
                     lineNumber = -1;
                 }
             }

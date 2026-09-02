@@ -123,6 +123,7 @@ public class TaskDataServiceImpl implements ITaskDataService {
             }
 
         } catch (Exception e) {
+            log.error("处理任务数据失败，id: {}", data.getId(), e);
             // 3. 标记处理失败 (独立小事务，立即提交)
             markTaskFailureInNewTransaction(data, processToken, e);
         }
@@ -151,6 +152,7 @@ public class TaskDataServiceImpl implements ITaskDataService {
         try {
             Thread.sleep(10);
         } catch (InterruptedException e) {
+            log.error("业务处理线程被中断", e);
             Thread.currentThread().interrupt();
         }
 

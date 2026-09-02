@@ -13,6 +13,8 @@ import java.util.regex.Pattern;
  */
 public class BeanMethodInvoker {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(BeanMethodInvoker.class);
+
     private BeanMethodInvoker() {
         // 工具类，防止实例化
     }
@@ -46,6 +48,7 @@ public class BeanMethodInvoker {
             return invokeMethod(bean, methodCallInfo.getMethodName(), methodCallInfo.getArguments());
 
         } catch (Exception e) {
+            log.error("Failed to invoke method call: {}", methodCall, e);
             throw new RuntimeException("Failed to invoke method call: " + methodCall, e);
         }
     }
@@ -71,6 +74,7 @@ public class BeanMethodInvoker {
             }
             return invokeMethod(bean, methodName, args);
         } catch (Exception e) {
+            log.error("Failed to invoke method: {}.{}", beanName, methodName, e);
             throw new RuntimeException("Failed to invoke method: " + beanName + "." + methodName, e);
         }
     }
@@ -110,6 +114,7 @@ public class BeanMethodInvoker {
             return method.invoke(target, convertedArgs);
 
         } catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            log.error("Failed to invoke method: {}", methodName, e);
             throw new RuntimeException("Failed to invoke method: " + methodName, e);
         }
     }
@@ -227,6 +232,7 @@ public class BeanMethodInvoker {
                 return strArg;
             }
         } catch (NumberFormatException e) {
+            log.error("Cannot convert '{}' to type {}", strArg, targetType.getSimpleName(), e);
             throw new IllegalArgumentException("Cannot convert '" + strArg + "' to type " + targetType.getSimpleName(), e);
         }
 

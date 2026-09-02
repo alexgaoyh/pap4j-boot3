@@ -14,6 +14,8 @@ import java.util.Optional;
 
 public class ZlibraryUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ZlibraryUtil.class);
+
     public static List<String> readFile(String file) {
         List<String> list = new ArrayList<>();
         String str;
@@ -25,6 +27,7 @@ public class ZlibraryUtil {
                 }
             }
         } catch (IOException e) {
+            log.error("读取文件失败", e);
         }
         return list;
     }
@@ -93,6 +96,7 @@ public class ZlibraryUtil {
             }
             connection.disconnect();
         } catch (IOException e) {
+            log.error("下载失败", e);
         }
     }
 

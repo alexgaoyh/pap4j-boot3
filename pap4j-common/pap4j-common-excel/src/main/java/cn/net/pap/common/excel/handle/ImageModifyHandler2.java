@@ -17,6 +17,8 @@ import java.util.Objects;
 
 public class ImageModifyHandler2 implements CellWriteHandler {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ImageModifyHandler2.class);
+
     // 256分之一的字符宽度转换为标准字符宽度。
     public static Integer standardCharacterWidth = 256;
 
@@ -106,6 +108,7 @@ public class ImageModifyHandler2 implements CellWriteHandler {
 
             bis.close();
         } catch (Exception e) {
+            log.error("处理图片缩放失败", e);
         }
 
         CellWriteHandler.super.afterCellDataConverted(writeSheetHolder, writeTableHolder, cellData, cell, head, relativeRowIndex, isHead);

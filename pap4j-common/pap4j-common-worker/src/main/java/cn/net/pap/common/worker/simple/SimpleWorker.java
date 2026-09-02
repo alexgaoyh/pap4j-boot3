@@ -47,6 +47,7 @@ public class SimpleWorker implements Runnable {
                     processedCount++;
                 }
             } catch (InterruptedException e) {
+                log.error("Worker-{}: 轮询任务队列被中断", id, e);
                 Thread.currentThread().interrupt();
                 break;
             }
@@ -62,6 +63,7 @@ public class SimpleWorker implements Runnable {
         try {
             Thread.sleep(task.getProcessingTime());
         } catch (InterruptedException e) {
+            log.error("Worker-{}: 任务处理被中断: {}", id, task.getId(), e);
             Thread.currentThread().interrupt();
         }
 

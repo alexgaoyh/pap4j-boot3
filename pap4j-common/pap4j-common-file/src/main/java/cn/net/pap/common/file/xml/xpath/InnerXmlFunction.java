@@ -26,6 +26,8 @@ import java.util.regex.Pattern;
  */
 public class InnerXmlFunction implements XPathFunction {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(InnerXmlFunction.class);
+
     private static final Pattern NUMERIC_ENTITY_PATTERN = Pattern.compile("&#(\\d+);");
     private static final TransformerFactory TRANSFORMER_FACTORY = TransformerFactory.newInstance();
 
@@ -60,6 +62,7 @@ public class InnerXmlFunction implements XPathFunction {
             return "";
 
         } catch (Exception e) {
+            log.error("获取节点内部 XML 失败", e);
             throw new XPathFunctionException(e);
         }
     }
@@ -175,6 +178,7 @@ public class InnerXmlFunction implements XPathFunction {
                 int codePoint = Integer.parseInt(m.group(1));
                 m.appendReplacement(sb, new String(Character.toChars(codePoint)));
             } catch (Exception e) {
+                log.error("解析数字实体失败，保留原始文本", e);
                 m.appendReplacement(sb, m.group(0));
             }
         }

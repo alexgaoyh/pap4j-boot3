@@ -84,6 +84,7 @@ public class WebhookManagementController {
 
             return ResponseEntity.ok("");
         } catch (IOException e) {
+            log.error("Failed to handle webhook callback", e);
             return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }

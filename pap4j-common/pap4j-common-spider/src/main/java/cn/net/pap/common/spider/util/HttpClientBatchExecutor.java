@@ -72,6 +72,7 @@ public class HttpClientBatchExecutor implements AutoCloseable {
             }
             return builder.build();
         } catch (Exception e) {
+            log.error("Failed to create unsafe HttpClient", e);
             throw new RuntimeException("Failed to create unsafe HttpClient", e);
         }
     }
@@ -186,7 +187,7 @@ public class HttpClientBatchExecutor implements AutoCloseable {
                     }
                 }, executor));
             } catch (RejectedExecutionException e) {
-                log.warn("任务提交被拒绝 (队列已满): {}", currentInput);
+                log.error("任务提交被拒绝 (队列已满): {}", currentInput, e);
                 futures.add(CompletableFuture.completedFuture(BatchResult.rejected(currentInput, "Queue full")));
             }
         }
@@ -198,15 +199,19 @@ public class HttpClientBatchExecutor implements AutoCloseable {
             try {
                 results.add(f.get(joinTimeoutMs, TimeUnit.MILLISECONDS));
             } catch (TimeoutException e) {
+                log.error("任务执行超时: {}", input, e);
                 f.cancel(true);
                 results.add(BatchResult.unknown(input, "Task timed out after " + joinTimeoutMs + "ms"));
             } catch (ExecutionException e) {
+                log.error("任务执行异常", e);
                 Throwable cause = e.getCause();
                 String msg = cause != null ? cause.getMessage() : e.getMessage();
                 results.add(BatchResult.unknown(input, msg != null ? msg : "Task execution failed"));
             } catch (CancellationException e) {
+                log.error("任务被取消", e);
                 results.add(BatchResult.unknown(input, "Task cancelled"));
             } catch (InterruptedException e) {
+                log.error("线程被中断", e);
                 Thread.currentThread().interrupt();
                 results.add(BatchResult.unknown(input, "Thread interrupted"));
             }
@@ -251,7 +256,7 @@ public class HttpClientBatchExecutor implements AutoCloseable {
                     }
                 }, executor));
             } catch (RejectedExecutionException e) {
-                log.warn("任务提交被拒绝 (队列已满): {}", currentUrl);
+                log.error("任务提交被拒绝 (队列已满): {}", currentUrl, e);
                 futures.add(CompletableFuture.completedFuture(BatchResult.rejected(currentUrl, "Queue full")));
             }
         }
@@ -263,15 +268,19 @@ public class HttpClientBatchExecutor implements AutoCloseable {
             try {
                 results.add(f.get(joinTimeoutMs, TimeUnit.MILLISECONDS));
             } catch (TimeoutException e) {
+                log.error("任务执行超时: {}", url, e);
                 f.cancel(true);
                 results.add(BatchResult.unknown(url, "Task timed out after " + joinTimeoutMs + "ms"));
             } catch (ExecutionException e) {
+                log.error("任务执行异常", e);
                 Throwable cause = e.getCause();
                 String msg = cause != null ? cause.getMessage() : e.getMessage();
                 results.add(BatchResult.unknown(url, msg != null ? msg : "Task execution failed"));
             } catch (CancellationException e) {
+                log.error("任务被取消", e);
                 results.add(BatchResult.unknown(url, "Task cancelled"));
             } catch (InterruptedException e) {
+                log.error("线程被中断", e);
                 Thread.currentThread().interrupt();
                 results.add(BatchResult.unknown(url, "Thread interrupted"));
             }
@@ -287,6 +296,7 @@ public class HttpClientBatchExecutor implements AutoCloseable {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {
+            log.error("关闭 executor 时线程被中断", e);
             executor.shutdownNow();
             Thread.currentThread().interrupt();
         }

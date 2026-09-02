@@ -196,12 +196,13 @@ public class TaskExecutor implements AutoCloseable {
             // 正确处理 InterruptedException
             // 恢复当前线程的中断标志位，这对于优雅停机（shutdownNow）的响应至关重要
             Thread.currentThread().interrupt();
-            log.error("任务被中断: {}", task.getId());
+            log.error("任务被中断: {}", task.getId(), e);
             task.setResult("FAILED: Interrupted");
             updateStatus(task, TaskStatus.FAILED);
 
         } catch (Exception e) {
             // 其他业务异常，进入重试逻辑
+            log.error("任务执行异常: {}", task.getId(), e);
             handleRetry(task, e);
         }
     }
@@ -313,7 +314,7 @@ public class TaskExecutor implements AutoCloseable {
                 executor.shutdownNow();
             }
         } catch (InterruptedException e) {
-            log.error("等待线程池关闭时被中断，强制关闭...");
+            log.error("等待线程池关闭时被中断，强制关闭...", e);
             executor.shutdownNow();
             // 恢复中断状态
             Thread.currentThread().interrupt();

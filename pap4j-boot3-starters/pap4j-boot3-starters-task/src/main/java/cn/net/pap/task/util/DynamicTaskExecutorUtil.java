@@ -17,6 +17,8 @@ import java.util.stream.Collectors;
  */
 public class DynamicTaskExecutorUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DynamicTaskExecutorUtil.class);
+
     /**
      * 执行可调用任务集合
      *
@@ -65,6 +67,7 @@ public class DynamicTaskExecutorUtil {
                     try {
                         result = task.call();
                     } catch (Throwable e) {
+                        log.error("任务执行失败", e);
                         exception = e;
                         failedCount.incrementAndGet();
                     } finally {
@@ -80,6 +83,7 @@ public class DynamicTaskExecutorUtil {
                         progressListener.accept(new TaskProgress(totalTasks, completedCount.get(), failedCount.get()));
                     }
                 } catch (InterruptedException e) {
+                    log.error("任务线程被中断", e);
                     Thread.currentThread().interrupt();
                 } finally {
                     if (semaphore != null) {

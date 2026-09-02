@@ -13,6 +13,8 @@ import java.util.concurrent.Future;
 
 public class AsyncFileChunkReader implements AutoCloseable {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AsyncFileChunkReader.class);
+
     private final AsynchronousFileChannel channel;
 
     /**
@@ -84,6 +86,7 @@ public class AsyncFileChunkReader implements AutoCloseable {
         try {
             return readChunk(offset, length).get();
         } catch (InterruptedException | ExecutionException e) {
+            log.error("异步读取文件块失败", e);
             throw new IOException("Async read failed", e);
         }
     }

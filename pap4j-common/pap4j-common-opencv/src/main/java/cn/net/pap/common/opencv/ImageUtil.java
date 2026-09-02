@@ -49,6 +49,7 @@ public class ImageUtil {
             ImageIO.write(image, "jpg", baos);
             return baos.toByteArray();
         } catch (IOException e) {
+            log.error("生成空JPEG失败", e);
             return new byte[0];
         }
     }
@@ -98,6 +99,7 @@ public class ImageUtil {
             ios.close();
             return true;
         } catch (Exception e) {
+            log.error("裁剪图片失败: {}", inputFilePath, e);
             return false;
         }
     }
@@ -634,6 +636,7 @@ public class ImageUtil {
             }
         } catch (IOException e) {
             // 记录异常
+            log.error("读取图片失败", e);
             return null;
         }
     }
@@ -658,6 +661,7 @@ public class ImageUtil {
 
             return scaledImage;
         } catch (Exception e) {
+            log.error("图片缩放失败: {}", imagePath, e);
             throw new IOException("图片缩放失败: " + e.getMessage(), e);
         }
     }

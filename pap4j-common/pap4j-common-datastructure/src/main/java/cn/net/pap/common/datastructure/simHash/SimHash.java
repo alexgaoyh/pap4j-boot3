@@ -20,12 +20,18 @@ import java.util.Map;
  */
 public class SimHash {
 
+    /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SimHash.class);
+
     private static final int HASH_BITS = 64; // 位数，通常64位
 
     private static final ThreadLocal<MessageDigest> DIGEST_HOLDER = ThreadLocal.withInitial(() -> {
         try {
             return MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException e) {
+            log.error("SHA-256 not available", e);
             throw new RuntimeException("SHA-256 not available", e);
         }
     });
@@ -110,6 +116,7 @@ public class SimHash {
             }
             return hashVal;
         } catch (java.io.UnsupportedEncodingException e) {
+            log.error("无法计算哈希值, input={}", input, e);
             throw new RuntimeException("无法计算哈希值", e);
         }
     }

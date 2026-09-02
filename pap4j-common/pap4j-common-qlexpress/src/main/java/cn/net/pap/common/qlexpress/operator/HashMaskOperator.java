@@ -18,6 +18,8 @@ import java.util.HexFormat;
  */
 public class HashMaskOperator implements CustomFunction {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(HashMaskOperator.class);
+
     @Override
     public Object call(QContext qContext, Parameters parameters) throws Throwable {
         if (parameters.size() < 2 || parameters.size() > 3) {
@@ -41,6 +43,7 @@ public class HashMaskOperator implements CustomFunction {
             byte[] hash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
             return HexFormat.of().formatHex(hash);
         } catch (NoSuchAlgorithmException e) {
+            log.error("HASH_MASK unsupported algorithm: {}", algorithm, e);
             throw new IllegalArgumentException("HASH_MASK 不支持的算法: " + algorithm, e);
         }
     }

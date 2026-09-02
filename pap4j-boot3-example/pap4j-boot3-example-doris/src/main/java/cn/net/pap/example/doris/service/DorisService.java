@@ -139,6 +139,7 @@ public class DorisService {
             pstmt.executeUpdate();
             return 1;
         } catch (SQLException e) {
+            log.error("Update failed", e);
             throw new RuntimeException("Update failed", e);
         }
     }
@@ -169,6 +170,7 @@ public class DorisService {
 
                 return 1;
             } catch (SQLException e) {
+                log.error("Update failed", e);
                 status.setRollbackOnly();
                 throw new RuntimeException("Update failed", e);
             } finally {

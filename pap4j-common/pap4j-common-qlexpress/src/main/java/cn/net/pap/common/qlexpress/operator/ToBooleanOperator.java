@@ -11,6 +11,8 @@ import java.util.Set;
  */
 public class ToBooleanOperator extends AbstractToOperator {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ToBooleanOperator.class);
+
     private static final Set<String> TRUE_WORDS = Set.of("true", "yes", "y", "t", "是");
     private static final Set<String> FALSE_WORDS = Set.of("false", "no", "n", "f", "否");
 
@@ -39,6 +41,7 @@ public class ToBooleanOperator extends AbstractToOperator {
             try {
                 return new BigDecimal(trimmed).signum() != 0;
             } catch (NumberFormatException e) {
+                log.error("TO_BOOLEAN cannot parse value: {}", str, e);
                 throw new IllegalArgumentException("TO_BOOLEAN cannot parse: " + str, e);
             }
         }

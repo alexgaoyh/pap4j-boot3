@@ -11,6 +11,8 @@ import java.util.Optional;
 @Service
 public class DroolsRuleServiceImpl implements IDroolsRuleService {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DroolsRuleServiceImpl.class);
+
     private final DroolsRuleRepository droolsRuleRepository;
 
     public DroolsRuleServiceImpl(DroolsRuleRepository droolsRuleRepository) {
@@ -48,6 +50,7 @@ public class DroolsRuleServiceImpl implements IDroolsRuleService {
         try {
             droolsRuleRepository.deleteById(droolsRuleId);
         } catch (Exception ex) {
+            log.error("删除Drools规则失败，id: {}", droolsRuleId, ex);
             result = false;
         }
         return result;

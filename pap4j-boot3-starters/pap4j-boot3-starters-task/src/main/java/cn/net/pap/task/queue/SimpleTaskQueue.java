@@ -70,7 +70,7 @@ public class SimpleTaskQueue {
                         log.error("Consumer Task execution exception: {}", e.getMessage(), e);
                     }
                 } catch (InterruptedException e) {
-                    log.warn("Consumer thread was interrupted. Shutting down...");
+                    log.error("Consumer thread was interrupted. Shutting down...", e);
                     running.set(false);
                     Thread.currentThread().interrupt();
                 }

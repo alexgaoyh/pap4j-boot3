@@ -16,6 +16,8 @@ public class ApplicationProperties {
 
     private static final Properties PROPS = new Properties();
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ApplicationProperties.class);
+
     /**
      * 图标
      */
@@ -30,6 +32,7 @@ public class ApplicationProperties {
             }
             PROPS.load(in);
         } catch (Exception e) {
+            log.error("Failed to load application.properties", e);
             throw new RuntimeException("Failed to load config", e);
         }
     }
@@ -68,6 +71,7 @@ public class ApplicationProperties {
             Files.createDirectories(tmpPath);
             return tmpStr;
         } catch (IOException e) {
+            log.error("无法创建临时目录", e);
             throw new RuntimeException("无法创建临时目录", e);
         }
     }

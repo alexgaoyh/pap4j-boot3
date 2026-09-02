@@ -70,6 +70,7 @@ public class WorkflowEngine {
                         try {
                             node.execute(context);
                         } catch (Exception e) {
+                            log.error("工作流节点执行异常, node={}", node.name(), e);
                             throw new RuntimeException(e);
                         }
                     });
@@ -77,9 +78,11 @@ public class WorkflowEngine {
                     try {
                         future.get(timeout, java.util.concurrent.TimeUnit.MILLISECONDS);
                     } catch (java.util.concurrent.TimeoutException e) {
+                        log.error("工作流节点执行超时, node={}, timeout={}", node.name(), timeout, e);
                         future.cancel(true); // 发送中断信号，尝试打断阻塞操作
                         throw new java.util.concurrent.TimeoutException(String.format("执行超时熔断 (配置阈值: %d ms)", timeout));
                     } catch (java.util.concurrent.ExecutionException e) {
+                        log.error("工作流节点执行返回异常, node={}", node.name(), e);
                         // 提取出实际抛出的业务异常
                         Throwable cause = e.getCause();
                         if (cause instanceof RuntimeException && cause.getCause() != null) {

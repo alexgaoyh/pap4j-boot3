@@ -11,6 +11,8 @@ import java.nio.charset.Charset;
 
 public class ReadXMLFileToStrUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ReadXMLFileToStrUtil.class);
+
     /**
      * 不同编码下读取 XML
      * @param filePath
@@ -37,6 +39,7 @@ public class ReadXMLFileToStrUtil {
             reader = factory.createXMLStreamReader(new FileInputStream(filePath));
             return reader.getCharacterEncodingScheme();
         } catch (Exception e) {
+            log.error("读取 XML 文件编码失败", e);
             return null;
         } finally {
             if (reader != null) {

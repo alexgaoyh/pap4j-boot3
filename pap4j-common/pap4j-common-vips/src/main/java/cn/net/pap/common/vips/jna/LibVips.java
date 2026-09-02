@@ -8,6 +8,8 @@ import com.sun.jna.ptr.PointerByReference;
 
 public interface LibVips extends Library {
 
+    org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LibVips.class);
+
     java.util.Map<String, Object> OPTIONS = java.util.Map.of(
             Library.OPTION_STRING_ENCODING, "UTF-8"
     );
@@ -21,6 +23,7 @@ public interface LibVips extends Library {
             try {
                 return Native.load(name, LibVips.class, OPTIONS);
             } catch (UnsatisfiedLinkError e) {
+                log.error("尝试加载 libvips 动态库失败: {}", name, e);
                 lastError = e;
             }
         }
@@ -43,6 +46,7 @@ public interface LibVips extends Library {
                             WinKernel32.INSTANCE.SetDllDirectoryW(absolutePath);
                         } catch (Throwable t) {
                             System.err.println("[Vips-Load] 尝试通过 Windows Kernel32.SetDllDirectoryW 绑定备用路径失败: " + t.getMessage());
+                            log.error("[Vips-Load] 尝试通过 Windows Kernel32.SetDllDirectoryW 绑定备用路径失败", t);
                         }
                     }
 
@@ -51,6 +55,7 @@ public interface LibVips extends Library {
                         try {
                             return Native.load(name, LibVips.class, OPTIONS);
                         } catch (UnsatisfiedLinkError e) {
+                            log.error("备用路径加载 libvips 动态库失败: {}", name, e);
                             lastError = e;
                         }
                     }
@@ -61,6 +66,7 @@ public interface LibVips extends Library {
                             WinKernel32.INSTANCE.SetDllDirectoryW(null);
                         } catch (Throwable t) {
                             // 忽略清理失败异常
+                            log.error("还原 Windows DLL 搜索路径失败", t);
                         }
                     }
                 }
@@ -284,6 +290,8 @@ public interface LibVips extends Library {
      * </ul>
      */
     interface GLib extends Library {
+        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GLib.class);
+
         GLib INSTANCE = loadLibrary();
 
         static GLib loadLibrary() {
@@ -298,6 +306,7 @@ public interface LibVips extends Library {
                 try {
                     return Native.load(name, GLib.class, OPTIONS);
                 } catch (UnsatisfiedLinkError e) {
+                    log.error("尝试加载 gobject 动态库失败: {}", name, e);
                     lastError = e;
                 }
             }
@@ -316,6 +325,8 @@ public interface LibVips extends Library {
      * GLib 核心基础依赖库接口，用于释放底层内存（g_free）。
      */
     interface GLibBase extends Library {
+        org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(GLibBase.class);
+
         GLibBase INSTANCE = loadLibrary();
 
         static GLibBase loadLibrary() {
@@ -330,6 +341,7 @@ public interface LibVips extends Library {
                 try {
                     return Native.load(name, GLibBase.class, OPTIONS);
                 } catch (UnsatisfiedLinkError e) {
+                    log.error("尝试加载 glib-2.0 基础动态库失败: {}", name, e);
                     lastError = e;
                 }
             }

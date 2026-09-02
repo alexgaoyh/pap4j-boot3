@@ -548,6 +548,7 @@ public class VipsImageProcessor {
         try {
             return Double.parseDouble(angleStr);
         } catch (NumberFormatException e) {
+            log.error("非法的旋转角度参数: {}", originalRotation, e);
             throw new IllegalArgumentException("非法的旋转角度参数: " + originalRotation, e);
         }
     }
@@ -584,6 +585,7 @@ public class VipsImageProcessor {
             return mirror ? flippedImage : rotatedImage;
 
         } catch (Throwable t) {
+            log.error("旋转或翻转处理失败", t);
             if (rotatedImage != null) {
                 LibVips.GLib.INSTANCE.g_object_unref(rotatedImage);
             }

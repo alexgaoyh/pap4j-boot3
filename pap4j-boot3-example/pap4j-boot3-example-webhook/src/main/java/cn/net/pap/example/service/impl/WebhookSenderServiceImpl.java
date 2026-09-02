@@ -223,6 +223,7 @@ public class WebhookSenderServiceImpl implements IWebhookSenderService {
                     sha256_HMAC.doFinal(data.getBytes())
             );
         } catch (Exception e) {
+            logger.error("生成签名失败", e);
             throw new RuntimeException("生成签名失败", e);
         }
     }
@@ -249,6 +250,7 @@ public class WebhookSenderServiceImpl implements IWebhookSenderService {
                     webhookTaskExecutor.getThreadPoolExecutor().shutdownNow();
                 }
             } catch (InterruptedException e) {
+                logger.error("[Webhook-Sender] 线程池关闭过程被中断", e);
                 webhookTaskExecutor.getThreadPoolExecutor().shutdownNow();
                 Thread.currentThread().interrupt();
             }
@@ -286,6 +288,7 @@ public class WebhookSenderServiceImpl implements IWebhookSenderService {
                     executor.getQueue().put(r);
                 }
             } catch (InterruptedException e) {
+                logger.error("[Webhook-Backpressure] 队列阻塞等待被中断", e);
                 Thread.currentThread().interrupt();
                 throw new RejectedExecutionException("Thread interrupted waiting for queue space", e);
             }

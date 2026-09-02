@@ -19,6 +19,8 @@ import java.util.Map;
  */
 public class XmlRecursiveParser {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(XmlRecursiveParser.class);
+
     /**
      * 将 XML 字符串解析为 List<Map<String, Object>>
      *
@@ -44,6 +46,7 @@ public class XmlRecursiveParser {
 
             return result;
         } catch (Exception e) {
+            log.error("Failed to parse XML string", e);
             throw new IllegalArgumentException("Invalid XML string", e);
         }
     }
@@ -224,6 +227,7 @@ public class XmlRecursiveParser {
 
             return result;
         } catch (Exception e) {
+            log.error("Failed to parse XML string", e);
             throw new IllegalArgumentException("Invalid XML string", e);
         }
     }
@@ -392,6 +396,7 @@ public class XmlRecursiveParser {
         try {
             return list.get(index);
         } catch (IndexOutOfBoundsException e) {
+            log.error("Index out of bounds, returning null", e);
             return null;
         }
     }

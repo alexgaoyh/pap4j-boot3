@@ -92,6 +92,7 @@ public class TaskExecutorUtil {
                     Future<V> future = executor.submit(task);
                     futures.add(future);
                 } catch (Throwable e) {
+                    log.error("提交任务到线程池失败，任务索引: {}", idx, e);
                     // 包含了所有的 Exception 和所有的 Error
                     futures.add(null); // 用 null 占位，保证 futures 长度与 tasks 对齐
                     if (e instanceof TaskRejectedException) {

@@ -41,6 +41,8 @@ import java.util.concurrent.ConcurrentMap;
  */
 public class PapLogbackLoggerFactory {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PapLogbackLoggerFactory.class);
+
     // 缓存上限 1024 以防止由于外部恶意动态传参导致的句柄泄露
     private static final int MAX_LOGGER_COUNT = 1024;
     private static final ConcurrentMap<String, Logger> loggerCache = new ConcurrentHashMap<>();
@@ -85,6 +87,7 @@ public class PapLogbackLoggerFactory {
             try {
                 logHome = OptionHelper.substVars(logHome, context);
             } catch (Exception e) {
+                log.error("Failed to substitute LOG_HOME variable, fall back to unresolved value", e);
                 // Ignore and fall back to unresolved logHome if substitution fails
             }
         }

@@ -14,6 +14,11 @@ import java.security.NoSuchAlgorithmException;
  */
 public class Md5HexUtil {
 
+    /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Md5HexUtil.class);
+
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
 
     /**
@@ -45,6 +50,7 @@ public class Md5HexUtil {
 
             return toHex(hashed);
         } catch (NoSuchAlgorithmException e) {
+            log.error("MD5 algorithm not available", e);
             throw new RuntimeException("MD5 algorithm not available", e);
         }
     }

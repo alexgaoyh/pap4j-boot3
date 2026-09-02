@@ -34,6 +34,8 @@ public class ChunkUploadController {
 
     private final Path uploadDir = Paths.get(System.getProperty("java.io.tmpdir"), "temp");
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChunkUploadController.class);
+
     public ChunkUploadController() throws Exception {
         if (!Files.exists(uploadDir)) {
             Files.createDirectories(uploadDir);
@@ -59,6 +61,7 @@ public class ChunkUploadController {
         try {
             chunkIndex = Integer.parseInt(chunkIndexStr);
         } catch (NumberFormatException e) {
+            log.error("Invalid X-Chunk-Index header value: {}", chunkIndexStr, e);
             return Mono.just(ResponseEntity.badRequest().body("Invalid X-Chunk-Index"));
         }
 

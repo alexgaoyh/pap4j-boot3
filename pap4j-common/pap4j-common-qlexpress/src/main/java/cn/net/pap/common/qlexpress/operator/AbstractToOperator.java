@@ -11,6 +11,8 @@ import com.alibaba.qlexpress4.runtime.function.CustomFunction;
  */
 abstract class AbstractToOperator implements CustomFunction {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(AbstractToOperator.class);
+
     @Override
     public final Object call(QContext qContext, Parameters parameters) throws Throwable {
         if (parameters.size() < 1 || parameters.size() > 2) {
@@ -30,6 +32,7 @@ abstract class AbstractToOperator implements CustomFunction {
             if (hasDefault) {
                 return defaultValue;
             }
+            log.error("{} failed to convert value: {}", name(), value, e);
             throw new IllegalArgumentException(name() + " failed to convert value: " + value, e);
         }
     }

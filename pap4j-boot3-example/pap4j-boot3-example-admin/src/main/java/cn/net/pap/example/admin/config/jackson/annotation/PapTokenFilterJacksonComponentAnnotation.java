@@ -56,6 +56,7 @@ public class PapTokenFilterJacksonComponentAnnotation {
 //                jsonGenerator.writeString(descriptionValue);
                 }
             } catch (NoSuchFieldException e) {
+                log.error("Failed to get declared field for annotation check", e);
                 throw new RuntimeException(e);
             }
         }
@@ -75,6 +76,7 @@ public class PapTokenFilterJacksonComponentAnnotation {
             try {
                 dateStr = jsonParser.getText();
             } catch (Exception e) {
+                log.error("Failed to read JSON text", e);
             }
             return dateStr;
         }

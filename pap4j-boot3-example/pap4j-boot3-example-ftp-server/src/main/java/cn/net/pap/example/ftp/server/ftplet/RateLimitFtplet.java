@@ -78,6 +78,7 @@ public class RateLimitFtplet extends DefaultFtplet {
             // 队列阻塞入队，避免拒绝客户端
             queue.put(request);
         } catch (InterruptedException e) {
+            log.error("onConnect interrupted while queueing", e);
             Thread.currentThread().interrupt();
             return FtpletResult.DISCONNECT;
         }
@@ -106,6 +107,7 @@ public class RateLimitFtplet extends DefaultFtplet {
                 latch.await(); // 阻塞等待调度器
                 return FtpletResult.DEFAULT;
             } catch (InterruptedException e) {
+                log.error("await interrupted", e);
                 Thread.currentThread().interrupt();
                 return FtpletResult.DISCONNECT;
             }

@@ -64,6 +64,7 @@ public final class XmlParseUtil {
                 return builder.parse(bomIn);
             }
         } catch (Exception e) {
+            log.error("解析 XML 文档失败", e);
             throw new IOException("Failed to parse XML document", e);
         }
     }
@@ -181,6 +182,7 @@ public final class XmlParseUtil {
             return writer.toString();
 
         } catch (Exception e) {
+            log.error("转换节点内容失败", e);
             throw new RuntimeException("转换节点内容失败", e);
         }
     }
@@ -244,6 +246,7 @@ public final class XmlParseUtil {
             XPath xPath = XPathFactory.newInstance().newXPath();
             return xPath.evaluate(xpath, doc);
         } catch (Exception e) {
+            log.error("XPath 查询失败", e);
             throw new RuntimeException("XPath查询失败: " + e.getMessage(), e);
         }
     }
@@ -287,6 +290,7 @@ public final class XmlParseUtil {
                 }
             }
         } catch (Exception e) {
+            log.error("XML 解析失败", e);
             throw new XmlParseException("XML parsing failed", e);
         }
 
@@ -302,6 +306,7 @@ public final class XmlParseUtil {
             NodeList nodes = (NodeList) xpath.evaluate(rootPath, document, XPathConstants.NODESET);
             return nodes != null && nodes.getLength() > 0;
         } catch (Exception e) {
+            log.error("检查 XML 路径是否存在失败", e);
             return false;
         }
     }
@@ -598,6 +603,7 @@ public final class XmlParseUtil {
                     hasChanges = true;
                 }
             } catch (XPathExpressionException e) {
+                log.error("XPath 表达式错误: {}", xpathExpression, e);
                 throw new RuntimeException("XPath表达式错误: " + xpathExpression, e);
             }
         }

@@ -20,6 +20,8 @@ import java.io.IOException;
  */
 public class LogbackSetCommand implements Command {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(LogbackSetCommand.class);
+
     /**
      * <p>执行 <code>LOGBACKSET</code> 自定义指令，提供动态修改 Logback 日志级别的能力。</p>
      *
@@ -46,6 +48,7 @@ public class LogbackSetCommand implements Command {
             LogbackLevelManager.setLoggerLevel(params.split(" ")[0], params.split(" ")[1]);
             session.write(new DefaultFtpReply(200, "success"));
         } catch (Exception e) {
+            log.error("Failed to set logback level with params: {}", params, e);
             session.write(new DefaultFtpReply(550, "Error reading file: " + e.getMessage()));
         }
     }

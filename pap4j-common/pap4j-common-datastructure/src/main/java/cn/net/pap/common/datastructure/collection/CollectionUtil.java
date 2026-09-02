@@ -30,6 +30,11 @@ import java.util.stream.IntStream;
 public class CollectionUtil {
 
     /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CollectionUtil.class);
+
+    /**
      * <p>将一个大的字符串列表按照指定的大小分割成多个较小的子列表。</p>
      * <strong>示例:</strong>
      * <pre>{@code
@@ -232,6 +237,7 @@ public class CollectionUtil {
                     return propertyExtractor.apply(element);
                 } catch (Exception e) {
                     // 记录日志或处理提取异常
+                    log.error("属性提取失败", e);
                     throw new RuntimeException(e);
                 }
             }).filter(Objects::nonNull).collect(Collectors.toList());

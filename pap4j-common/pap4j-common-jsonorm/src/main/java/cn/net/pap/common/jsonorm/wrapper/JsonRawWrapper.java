@@ -27,6 +27,8 @@ import java.util.Set;
  */
 public class JsonRawWrapper {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JsonRawWrapper.class);
+
     /**
      * 包装对象，使指定字段按原始 JSON 输出
      *
@@ -96,6 +98,7 @@ public class JsonRawWrapper {
                     JsonNode jsonNode = mapper.readTree(str);
                     node.set(key, jsonNode);
                 } catch (Exception e) {
+                    log.error("Failed to parse raw JSON field: {}", key, e);
                     node.put(key, str); // fallback：非合法 JSON
                 }
             } else {

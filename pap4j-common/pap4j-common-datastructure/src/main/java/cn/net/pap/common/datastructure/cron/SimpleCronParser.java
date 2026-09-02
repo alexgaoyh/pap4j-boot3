@@ -196,6 +196,7 @@ public class SimpleCronParser {
                 // 检查是否是当月的最后一个指定的星期几
                 return isLastWeekdayOfMonth(time, dayNum) && (cronDayOfWeek == dayNum);
             } catch (NumberFormatException e) {
+                log.error("无法解析星期字段, dayField={}", dayField, e);
                 throw new IllegalArgumentException("Invalid day of week field: " + dayField);
             }
         }
@@ -260,6 +261,7 @@ public class SimpleCronParser {
         try {
             return value == Integer.parseInt(field);
         } catch (NumberFormatException e) {
+            log.error("无法解析 Cron 数字字段, field={}", field, e);
             return false;
         }
     }

@@ -30,6 +30,8 @@ import java.util.Map;
 @ConditionalOnClass(RedisOperations.class)
 public class CacheableFuzzyFieldAspect {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CacheableFuzzyFieldAspect.class);
+
     private final CacheManager cacheManager;
 
     public CacheableFuzzyFieldAspect(CacheManager cacheManager) {
@@ -153,6 +155,7 @@ public class CacheableFuzzyFieldAspect {
 
             return null;
         } catch (Exception e) {
+            log.error("Error extracting fields for caching", e);
             throw new RuntimeException("Error extracting fields for caching", e);
         }
     }
@@ -177,6 +180,7 @@ public class CacheableFuzzyFieldAspect {
             }
 
         } catch (Exception e) {
+            log.error("Error extracting fields for caching", e);
             throw new RuntimeException("Error extracting fields for caching", e);
         }
     }

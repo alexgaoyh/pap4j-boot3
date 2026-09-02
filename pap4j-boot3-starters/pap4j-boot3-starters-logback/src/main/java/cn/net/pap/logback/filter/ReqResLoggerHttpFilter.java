@@ -108,6 +108,7 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
         try {
             chain.doFilter(requestToUse, responseToUse);
         } catch (Throwable t) {
+            logger.error("Request processing failed", t);
             exception = t;
             throw t;
         } finally {
@@ -292,6 +293,7 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
                             try {
                                 logHome = ch.qos.logback.core.util.OptionHelper.substVars(logHome, context);
                             } catch (Exception e) {
+                                logger.error("Failed to substitute LOG_HOME variable", e);
                                 // Ignore
                             }
                         }
@@ -459,6 +461,7 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
                         writer.flush(); // 此时已是直通模式，writer 中缓冲的字符将有序写入 rawResponse
                     }
                 } catch (IOException e) {
+                    logger.error("Failed to flush cache to response", e);
                     // 静默处理
                 }
             }
@@ -477,6 +480,7 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
             try {
                 return rawResponse.getOutputStream();
             } catch (IOException e) {
+                logger.error("Failed to get raw response output stream", e);
                 throw new RuntimeException(e);
             }
         }

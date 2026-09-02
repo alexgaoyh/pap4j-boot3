@@ -144,6 +144,7 @@ public class MockApiService {
             }
             return objectMapper.writeValueAsString(normalized);
         } catch (Exception e) {
+            log.error("非法的请求头 JSON Map 格式", e);
             throw new RuntimeException("非法的请求头 JSON Map 格式: " + e.getMessage());
         }
     }
@@ -156,6 +157,7 @@ public class MockApiService {
             Map<String, String> map = objectMapper.readValue(jsonStr, new TypeReference<Map<String, String>>() {});
             return objectMapper.writeValueAsString(map);
         } catch (Exception e) {
+            log.error("非法的响应头 JSON Map 格式", e);
             throw new RuntimeException("非法的响应头 JSON Map 格式: " + e.getMessage());
         }
     }
@@ -257,6 +259,7 @@ public class MockApiService {
             JsonNode actualNode = objectMapper.readTree(actualBody);
             return expectedNode.equals(actualNode);
         } catch (Exception e) {
+            log.error("JSON 比对失败，回退到忽略空白比较", e);
             return matchStringIgnoreWhitespace(expectedBody, actualBody);
         }
     }

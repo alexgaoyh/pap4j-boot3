@@ -23,6 +23,8 @@ import static org.bytedeco.leptonica.global.leptonica.pixGetHeight;
  */
 public class OCRUtils {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OCRUtils.class);
+
     static {
         // 预加载本地库
         Loader.load(org.bytedeco.tesseract.global.tesseract.class);
@@ -136,6 +138,7 @@ public class OCRUtils {
             if (e instanceof OCRException) {
                 throw (OCRException) e;
             }
+            log.error("OCR processing failed", e);
             throw new OCRException("OCR 处理异常: " + e.getMessage(), e);
         } finally {
             // 清理资源
@@ -297,6 +300,7 @@ public class OCRUtils {
             if (e instanceof OCRException) {
                 throw (OCRException) e;
             }
+            log.error("OCR processing failed", e);
             throw new OCRException("OCR 处理异常: " + e.getMessage(), e);
         } finally {
             // 清理资源

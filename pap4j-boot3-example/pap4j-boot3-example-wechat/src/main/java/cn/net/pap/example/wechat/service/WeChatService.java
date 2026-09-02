@@ -85,6 +85,7 @@ public class WeChatService {
                 return Result.success(wechatMap.get("access_token").toString());
             }
         } catch (JsonProcessingException e) {
+            log.error("getStableAccessToken failed", e);
             return Result.error(e.getMessage());
         }
     }
@@ -107,6 +108,7 @@ public class WeChatService {
                 return Result.success(jsonNode.get("openid").asText());
             }
         } catch (JsonProcessingException e) {
+            log.error("cgibin_user_info failed", e);
             return Result.error(e.getMessage());
         }
     }
@@ -129,6 +131,7 @@ public class WeChatService {
                 return Result.successObj(jsonNode);
             }
         } catch (JsonProcessingException e) {
+            log.error("cgibin_user_info_UnionID failed", e);
             return Result.error(e.getMessage());
         }
     }
@@ -150,6 +153,7 @@ public class WeChatService {
                 return Result.success(jsonNode.get("openid").asText());
             }
         } catch (JsonProcessingException e) {
+            log.error("sns_oauth2_access_token failed", e);
             return Result.error(e.getMessage());
         }
     }
@@ -178,6 +182,7 @@ public class WeChatService {
                 return Result.error(jsonNode.get("errmsg").asText());
             }
         } catch (JsonProcessingException e) {
+            log.error("cgibin_user_info_updateremark failed", e);
             throw new RuntimeException(e);
         }
 
@@ -195,6 +200,7 @@ public class WeChatService {
 
             return Result.success("finish");
         } catch (InterruptedException e) {
+            log.error("wechat sleep interrupted", e);
             Thread.currentThread().interrupt();
             return Result.error(e.getMessage());
         }

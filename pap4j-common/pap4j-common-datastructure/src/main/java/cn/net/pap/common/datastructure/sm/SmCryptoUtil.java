@@ -45,6 +45,11 @@ import java.security.spec.X509EncodedKeySpec;
  */
 public class SmCryptoUtil {
 
+    /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SmCryptoUtil.class);
+
     // 十六进制字符表，用于将字节快速转为可读字符
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
 
@@ -114,6 +119,7 @@ public class SmCryptoUtil {
             MessageDigest digest = MessageDigest.getInstance("SM3", "BC");
             return digest.digest(data);
         } catch (Exception e) {
+            log.error("SM3 hash execution failed", e);
             throw new RuntimeException("SM3 hash execution failed", e);
         }
     }
@@ -164,6 +170,7 @@ public class SmCryptoUtil {
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "SM4"));
             return cipher.doFinal(data); // 执行加密计算
         } catch (Exception e) {
+            log.error("SM4 ECB encryption failed", e);
             throw new RuntimeException("SM4 ECB encryption failed", e);
         }
     }
@@ -186,6 +193,7 @@ public class SmCryptoUtil {
             cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "SM4"));
             return cipher.doFinal(data); // 执行解密计算并自动去除填充
         } catch (Exception e) {
+            log.error("SM4 ECB decryption failed", e);
             throw new RuntimeException("SM4 ECB decryption failed", e);
         }
     }
@@ -211,6 +219,7 @@ public class SmCryptoUtil {
             cipher.init(Cipher.ENCRYPT_MODE, new SecretKeySpec(key, "SM4"), new IvParameterSpec(iv));
             return cipher.doFinal(data);
         } catch (Exception e) {
+            log.error("SM4 CBC encryption failed", e);
             throw new RuntimeException("SM4 CBC encryption failed", e);
         }
     }
@@ -235,6 +244,7 @@ public class SmCryptoUtil {
             cipher.init(Cipher.DECRYPT_MODE, new SecretKeySpec(key, "SM4"), new IvParameterSpec(iv));
             return cipher.doFinal(data);
         } catch (Exception e) {
+            log.error("SM4 CBC decryption failed", e);
             throw new RuntimeException("SM4 CBC decryption failed", e);
         }
     }
@@ -319,6 +329,7 @@ public class SmCryptoUtil {
             generator.initialize(new ECGenParameterSpec("sm2p256v1"));
             return generator.generateKeyPair(); // 产生密钥对
         } catch (Exception e) {
+            log.error("SM2 key pair generation failed", e);
             throw new RuntimeException("SM2 key pair generation failed", e);
         }
     }
@@ -341,6 +352,7 @@ public class SmCryptoUtil {
             cipher.init(Cipher.ENCRYPT_MODE, publicKey);
             return cipher.doFinal(data);
         } catch (Exception e) {
+            log.error("SM2 encryption failed", e);
             throw new RuntimeException("SM2 encryption failed", e);
         }
     }
@@ -362,6 +374,7 @@ public class SmCryptoUtil {
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
             return cipher.doFinal(data);
         } catch (Exception e) {
+            log.error("SM2 decryption failed", e);
             throw new RuntimeException("SM2 decryption failed", e);
         }
     }
@@ -441,6 +454,7 @@ public class SmCryptoUtil {
             signature.update(data); // 载入要签名的数据
             return signature.sign(); // 计算并输出数字签名
         } catch (Exception e) {
+            log.error("SM2 signing failed", e);
             throw new RuntimeException("SM2 signing failed", e);
         }
     }
@@ -465,6 +479,7 @@ public class SmCryptoUtil {
             signature.update(data); // 载入收到的原始明文数据
             return signature.verify(signBytes); // 校验签名是否与数据契合
         } catch (Exception e) {
+            log.error("SM2 verification failed", e);
             throw new RuntimeException("SM2 verification failed", e);
         }
     }
@@ -544,6 +559,7 @@ public class SmCryptoUtil {
             // 根据 PKCS8 规约解码并还原出私钥实例
             return keyFactory.generatePrivate(new PKCS8EncodedKeySpec(pkcs8Bytes));
         } catch (Exception e) {
+            log.error("Failed to restore SM2 private key from PKCS8 bytes", e);
             throw new RuntimeException("Failed to restore SM2 private key from PKCS8 bytes", e);
         }
     }
@@ -564,6 +580,7 @@ public class SmCryptoUtil {
             // 根据 X509 规约解码并还原出公钥实例
             return keyFactory.generatePublic(new X509EncodedKeySpec(x509Bytes));
         } catch (Exception e) {
+            log.error("Failed to restore SM2 public key from X509 bytes", e);
             throw new RuntimeException("Failed to restore SM2 public key from X509 bytes", e);
         }
     }

@@ -22,6 +22,7 @@ public class AsyncService {
             Thread.sleep(5000);
             return CompletableFuture.completedFuture(param.toUpperCase());
         } catch (InterruptedException e) {
+            log.error("asyncMethod interrupted", e);
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
@@ -32,6 +33,7 @@ public class AsyncService {
         try {
             Thread.sleep(1000);
         } catch (InterruptedException e) {
+            log.error("method1 interrupted", e);
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
@@ -42,6 +44,7 @@ public class AsyncService {
         try {
             Thread.sleep(2000);
         } catch (InterruptedException e) {
+            log.error("method2 interrupted", e);
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
@@ -52,6 +55,7 @@ public class AsyncService {
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
+            log.error("method3 interrupted", e);
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }

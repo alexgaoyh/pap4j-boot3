@@ -227,7 +227,7 @@ public class TaskDataParallelServiceImpl implements ITaskDataService {
             // 3. 标记失败或执行销毁期快速重置
             // 如果线程已被中断，或是因为应用正在关闭导致处理失败，我们不应当计入“真正的错误尝试次数”，而是应该秒级重置
             if (isShuttingDown || Thread.currentThread().isInterrupted() || e instanceof InterruptedException || e.getCause() instanceof InterruptedException) {
-                log.warn("[Task-Data-Parallel] 检测到任务在并发运行中由于应用关闭而被中断，正在重置状态，id: {}", data.getId());
+                log.error("[Task-Data-Parallel] 检测到任务在并发运行中由于应用关闭而被中断，正在重置状态，id: {}", data.getId(), e);
                 resetInterruptedDataInNewTransaction(data.getId(), processToken);
             } else {
                 taskDataService.markTaskFailureInNewTransaction(data, processToken, e);

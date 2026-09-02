@@ -75,6 +75,7 @@ public class SQLCheckerUtil {
             }
             return plainSelect.toString();
         } catch (JSQLParserException e) {
+            log.error("Failed to add where condition", e);
             throw new RuntimeException(e);
         }
     }
@@ -93,6 +94,7 @@ public class SQLCheckerUtil {
             Table table = (Table) plainSelect.getFromItem();
             return table.getName();
         } catch (JSQLParserException e) {
+            log.error("Failed to get table name", e);
             throw new RuntimeException(e);
         }
     }

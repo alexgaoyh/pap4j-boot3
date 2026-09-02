@@ -72,7 +72,7 @@ public class SPIDebugger {
                 }
             });
         } catch (Throwable t) {
-            log.warn("Failed to scan JPMS Module Layer SPI: {}", t.getMessage());
+            log.error("Failed to scan JPMS Module Layer SPI: {}", t.getMessage(), t);
         }
 
         log.info("=== Scanning Classpath META-INF/services SPI ===");
@@ -119,7 +119,7 @@ public class SPIDebugger {
                                         log.info("Classpath SPI Interface (from JAR): {}", service.getName());
                                         printServiceLoaderImplementations(service);
                                     } catch (Exception e) {
-                                        log.debug("Can't Load Classpath SPI Interface from JAR : {}", spiInterface);
+                                        log.error("Can't Load Classpath SPI Interface from JAR : {}", spiInterface, e);
                                     }
                                 }
                             }

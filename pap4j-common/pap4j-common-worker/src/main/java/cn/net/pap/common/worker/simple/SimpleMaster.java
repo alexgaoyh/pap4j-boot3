@@ -61,6 +61,7 @@ public class SimpleMaster {
             taskQueue.put(task);
             log.info("Master: 提交任务 {}", task.getId());
         } catch (InterruptedException e) {
+            log.error("Master: 提交任务被中断: {}", task.getId(), e);
             Thread.currentThread().interrupt();
         }
     }
@@ -80,6 +81,7 @@ public class SimpleMaster {
                     executorService.shutdownNow();
                 }
             } catch (InterruptedException e) {
+                log.error("Master: 等待停止工作进程被中断", e);
                 executorService.shutdownNow();
                 Thread.currentThread().interrupt();
             }

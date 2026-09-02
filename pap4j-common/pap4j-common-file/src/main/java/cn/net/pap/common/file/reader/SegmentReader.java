@@ -188,8 +188,8 @@ public final class SegmentReader implements AutoCloseable {
                 return idx;
             } catch (IndexLimitExceeded e) {
                 indexUnavailable = true;
-                log.warn("文件行数超过索引上限({} 条)，readLineRange 回退为逐次扫描（每次 O(fileSize)）",
-                        lineIndexEntryLimit);
+                log.error("文件行数超过索引上限({} 条)，readLineRange 回退为逐次扫描（每次 O(fileSize)）",
+                        lineIndexEntryLimit, e);
                 return null;
             }
         }

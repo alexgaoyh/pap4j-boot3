@@ -23,6 +23,8 @@ import java.util.Set;
  */
 public final class SchemaMockDataGenerator {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SchemaMockDataGenerator.class);
+
     /** 自引用（$ref: "#"）递归的最大深度，超过后数组不再生成元素以终止递归。 */
     private static final int MAX_DEPTH = 6;
 
@@ -67,6 +69,7 @@ public final class SchemaMockDataGenerator {
             }
             return records;
         } catch (Exception e) {
+            log.error("Schema 解析失败", e);
             throw new IllegalArgumentException("Schema 解析失败: " + e.getMessage(), e);
         }
     }

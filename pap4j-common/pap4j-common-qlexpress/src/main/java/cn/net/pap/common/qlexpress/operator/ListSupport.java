@@ -11,6 +11,8 @@ import java.util.List;
  */
 final class ListSupport {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ListSupport.class);
+
     private ListSupport() {
     }
 
@@ -50,6 +52,7 @@ final class ListSupport {
             try {
                 return new BigDecimal(str.trim());
             } catch (NumberFormatException e) {
+                log.error("Invalid numeric element: {}", str, e);
                 throw new IllegalArgumentException("Expected a numeric element, but got: " + str, e);
             }
         }
@@ -68,6 +71,8 @@ final class ListSupport {
         try {
             return ((Comparable) a).compareTo(b);
         } catch (ClassCastException e) {
+            log.error("Cannot compare elements of different types: {} vs {}",
+                    a.getClass().getName(), b.getClass().getName(), e);
             throw new IllegalArgumentException(
                     "LIST_MAX/LIST_MIN cannot compare elements of different types: "
                             + a.getClass().getName() + " vs " + b.getClass().getName(), e);

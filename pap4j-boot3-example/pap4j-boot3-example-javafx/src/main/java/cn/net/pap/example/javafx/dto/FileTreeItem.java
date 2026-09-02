@@ -19,6 +19,8 @@ import java.util.List;
  */
 public class FileTreeItem extends TreeItem<Path> {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FileTreeItem.class);
+
     private boolean childrenLoaded = false;
 
     public FileTreeItem(Path path) {
@@ -63,6 +65,7 @@ public class FileTreeItem extends TreeItem<Path> {
             }
         } catch (IOException e) {
             // 可记录日志
+            log.error("Failed to load directory children for {}", parentPath, e);
             return;
         }
         Comparator<Path> nameComparator = Comparator.comparing( (Path p) -> p.getFileName().toString(), new OSAlignedNaturalComparator());

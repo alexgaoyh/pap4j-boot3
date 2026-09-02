@@ -22,6 +22,11 @@ import java.util.regex.Pattern;
 public class MessyCodeRecoveryUtil {
 
     /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MessyCodeRecoveryUtil.class);
+
+    /**
      * <p>匹配中文字符的正则表达式模式。</p>
      */
     private static final Pattern CHINESE_PATTERN = Pattern.compile("\\p{IsHan}");
@@ -59,6 +64,7 @@ public class MessyCodeRecoveryUtil {
                     }
                 } catch (Exception e) {
                     // 忽略解码异常，尝试下一种组合
+                    log.error("忽略解码异常, encodingOut={}, encodingIn={}", encodingOut, encodingIn, e);
                 }
             }
         }

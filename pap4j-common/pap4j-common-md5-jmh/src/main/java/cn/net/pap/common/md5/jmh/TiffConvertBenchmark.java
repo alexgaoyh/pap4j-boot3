@@ -147,6 +147,7 @@ public class TiffConvertBenchmark {
             ProcessExecUtils.execWithShell(cmd, null, null, 20000);
             cn.net.pap.common.vips.VipsImageProcessor.convertFormat(tiffFilePath, tempJpgFile.getAbsolutePath());
         } catch (Exception e) {
+            logger.error("预热初始化失败，忽略", e);
             // ignore init errors
         }
     }
@@ -283,6 +284,7 @@ public class TiffConvertBenchmark {
 
             return "success";
         } catch (Exception e) {
+            logger.error("TIFF 转 JPG 失败", e);
             if(e instanceof org.apache.commons.imaging.ImageReadException) {
                 String message = ((org.apache.commons.imaging.ImageReadException) e).getMessage();
                 if(message.equals("Tiff: unknown/unsupported compression: 7")) {

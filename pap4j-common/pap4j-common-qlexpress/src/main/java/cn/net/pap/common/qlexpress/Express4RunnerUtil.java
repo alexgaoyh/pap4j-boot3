@@ -155,6 +155,7 @@ public class Express4RunnerUtil {
                     runner.check(expr);
                 }
             } catch (Exception e) {
+                log.error("Failed to check rule, targetField: {}, expr: {}", rule.targetField(), expr, e);
                 throw new IllegalArgumentException(
                         "Invalid rule [targetField=" + rule.targetField() + "]: " + expr, e);
             }

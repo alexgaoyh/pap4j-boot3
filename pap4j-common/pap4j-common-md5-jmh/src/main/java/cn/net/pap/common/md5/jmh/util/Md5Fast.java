@@ -2,6 +2,8 @@ package cn.net.pap.common.md5.jmh.util;
 
 public final class Md5Fast {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Md5Fast.class);
+
     private static final char[] HEX = "0123456789abcdef".toCharArray();
 
     private static final ThreadLocal<java.security.MessageDigest> MD5 =
@@ -9,6 +11,7 @@ public final class Md5Fast {
                 try {
                     return java.security.MessageDigest.getInstance("MD5");
                 } catch (Exception e) {
+                    log.error("获取 MD5 MessageDigest 失败", e);
                     throw new RuntimeException(e);
                 }
             });

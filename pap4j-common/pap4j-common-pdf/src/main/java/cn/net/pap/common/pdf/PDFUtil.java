@@ -703,7 +703,7 @@ public class PDFUtil {
             img.getCOSObject().setString(COSName.getPDFName("OriginalFormat"), "TIFF");
             return img;
         } catch (Exception e) {
-            log.info("该TIFF非黑白二值图，正在分析其内部压缩格式: {}", imageFile.getName());
+            log.error("该TIFF非黑白二值图，正在分析其内部压缩格式: {}", imageFile.getName(), e);
 
             BufferedImage bImage = ImageIO.read(imageFile);
             if (bImage == null) {
@@ -828,6 +828,7 @@ public class PDFUtil {
             try {
                 document.close();
             } catch (IOException e) {
+                log.error("关闭PDF文档失败", e);
                 return false;
             }
         }

@@ -28,6 +28,11 @@ import java.util.List;
 public class IpUtil {
 
     /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(IpUtil.class);
+
+    /**
      * 私有构造方法，防止实例化工具类。
      * <p>
      * 工具类中的所有方法均为静态方法，无需创建实例。
@@ -52,6 +57,7 @@ public class IpUtil {
             InetAddress address = InetAddress.getByName(ip);
             return isInternalAddress(address);
         } catch (UnknownHostException e) {
+            log.error("IP 解析失败, ip={}", ip, e);
             return false;
         }
     }
@@ -247,6 +253,7 @@ public class IpUtil {
             return targetIp.equals(pattern);
 
         } catch (UnknownHostException e) {
+            log.error("IP 地址段匹配解析失败, targetIp={}, pattern={}", targetIp, pattern, e);
             return false;
         }
     }
@@ -273,6 +280,7 @@ public class IpUtil {
         try {
             prefixLength = Integer.parseInt(parts[1]);
         } catch (NumberFormatException e) {
+            log.error("CIDR 前缀长度解析失败, cidr={}", cidr, e);
             return false;
         }
 

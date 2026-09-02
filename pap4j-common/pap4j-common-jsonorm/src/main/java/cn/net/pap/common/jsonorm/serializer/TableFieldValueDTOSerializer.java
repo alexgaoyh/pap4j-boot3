@@ -13,6 +13,8 @@ import java.lang.reflect.Field;
  */
 public class TableFieldValueDTOSerializer extends JsonSerializer<TableFieldValueDTO> {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TableFieldValueDTOSerializer.class);
+
     private java.util.List<String> fieldList;
 
     public TableFieldValueDTOSerializer(java.util.List<String> fieldList) {
@@ -30,6 +32,7 @@ public class TableFieldValueDTOSerializer extends JsonSerializer<TableFieldValue
                     Object object = field.get(value);
                     gen.writeObjectField(fieldStr, object);
                 } catch (Exception e) {
+                    log.error("Failed to serialize field: {}", fieldStr, e);
                 }
             }
         }

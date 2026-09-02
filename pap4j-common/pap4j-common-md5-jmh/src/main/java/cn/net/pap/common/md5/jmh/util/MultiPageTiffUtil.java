@@ -165,6 +165,7 @@ public final class MultiPageTiffUtil {
             int totalPages = writeAllInputsToSequence(writer, param, inputImages, compression);
             log.info("[MultiPageTiff-Build] Wrote multi-page TIFF with {} pages to {}", totalPages, outputTiff);
         } catch (Exception e) {
+            log.error("构建多页 TIFF 失败", e);
             deleteQuietly(tempOutput);
             throw e;
         } finally {
@@ -175,6 +176,7 @@ public final class MultiPageTiffUtil {
         try {
             promoteTempToTarget(tempOutput, outputTiff);
         } catch (IOException e) {
+            log.error("提升临时文件到目标路径失败", e);
             deleteQuietly(tempOutput);
             throw e;
         }
@@ -488,7 +490,7 @@ public final class MultiPageTiffUtil {
             try {
                 Files.deleteIfExists(file.toPath());
             } catch (IOException e) {
-                log.debug("[MultiPageTiff-Build] Failed to delete temporary file {}: {}", file, e.getMessage());
+                log.error("[MultiPageTiff-Build] Failed to delete temporary file {}: {}", file, e.getMessage(), e);
             }
         }
     }
@@ -501,6 +503,7 @@ public final class MultiPageTiffUtil {
             Files.move(temp.toPath(), target.toPath(),
                     StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
         } catch (AtomicMoveNotSupportedException e) {
+            log.error("ATOMIC_MOVE 不支持，回退为普通替换移动", e);
             Files.move(temp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
     }

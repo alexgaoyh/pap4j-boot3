@@ -24,6 +24,8 @@ import java.nio.file.Paths;
  */
 public class ContentCommand implements Command {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ContentCommand.class);
+
     /**
      * <p>执行 <code>CONTENT</code> 自定义指令，用于快速获取支持格式文件的文本内容。</p>
      *
@@ -78,6 +80,7 @@ public class ContentCommand implements Command {
             String content = readFileContent(localFile.getAbsolutePath());
             session.write(new DefaultFtpReply(200, content));
         } catch (Exception e) {
+            log.error("Error reading file: {}", filePath, e);
             session.write(new DefaultFtpReply(550, "Error reading file: " + e.getMessage()));
         }
     }

@@ -39,6 +39,8 @@ import java.util.List;
 
 public class ZoomableImageView extends StackPane {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ZoomableImageView.class);
+
     private final ImageView imageView = new ImageView();
     private final Pane selectionPane = new Pane(); // 用于放置选择框和控制点
     private Rectangle selectionRect; // 选择框
@@ -820,6 +822,7 @@ public class ZoomableImageView extends StackPane {
             // 3. 更新 imageList 中的引用（可选，取决于您是否希望 imageList 保持最新）
             imageList.set(currentIndex, imageViewDTO);
         } catch (Exception e) {
+            log.error("Failed to reload current image: {}", imagePath, e);
             Platform.runLater(() -> {
                 javafx.scene.control.Alert alert = new javafx.scene.control.Alert(javafx.scene.control.Alert.AlertType.ERROR);
                 alert.setTitle("错误");

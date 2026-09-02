@@ -54,6 +54,7 @@ public class ImageProcessorStrategyLibvips implements ImageProcessorStrategy {
                 try {
                     ImageProcessorStrategy.imageSaveInTmpFolder(inputPath);
                 } catch (IOException e) {
+                    log.error("Failed to save tmp folder for input: {}", inputPath, e);
                     throw new CompletionException(e);
                 }
             }, IO_EXECUTOR);

@@ -12,6 +12,8 @@ import java.util.concurrent.Callable;
  */
 public class RetryCircuitBreaker {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RetryCircuitBreaker.class);
+
     /**
      * 如果任务失败，重试执行任务的最大次数
      */
@@ -75,6 +77,7 @@ public class RetryCircuitBreaker {
                     recordSuccess();
                     return result;
                 } catch (Exception e) {
+                    log.error("任务执行失败", e);
                     lastException = e;
                     recordFailure();
                     attempt++;

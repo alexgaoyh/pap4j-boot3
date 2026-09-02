@@ -36,6 +36,8 @@ import java.util.Map;
 @Tag(name = "Schema 数据生成与提取工作台", description = "随机生成符合 schema 的数据，并可视化验证 qlexpress 提取表达式")
 public class SchemaWorkbenchController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SchemaWorkbenchController.class);
+
     private static final int MAX_COUNT = 200;
     private static final int DEFAULT_COUNT = 10;
 
@@ -76,6 +78,7 @@ public class SchemaWorkbenchController {
         try {
             Express4RunnerUtil.checkRules(converted);
         } catch (IllegalArgumentException e) {
+            log.error("校验提取规则失败", e);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
         }
         return Collections.singletonMap("ok", Boolean.TRUE);
@@ -113,6 +116,7 @@ public class SchemaWorkbenchController {
         try {
             return MAPPER.writeValueAsString(record);
         } catch (JsonProcessingException e) {
+            log.error("记录序列化失败", e);
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "记录序列化失败: " + e.getMessage(), e);
         }
     }

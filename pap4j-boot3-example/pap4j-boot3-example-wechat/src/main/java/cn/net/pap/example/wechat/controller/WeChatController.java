@@ -62,6 +62,7 @@ public class WeChatController {
             logger.info("{}", wechat);
             return Result.success("finish");
         } catch (Exception e) {
+            logger.error("wechat sleep invoke failed", e);
             return Result.error(e.getMessage());
         }
     }
@@ -74,6 +75,7 @@ public class WeChatController {
             logger.info("logback : {}", resultStr);
             return Result.success("finish");
         } catch (Exception e) {
+            logger.error("wechat stable_token request failed", e);
             return Result.error(e.getMessage());
         }
     }

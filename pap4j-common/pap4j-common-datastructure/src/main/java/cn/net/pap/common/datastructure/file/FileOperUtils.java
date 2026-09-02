@@ -33,6 +33,11 @@ import java.util.stream.Stream;
 public class FileOperUtils {
 
     /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FileOperUtils.class);
+
+    /**
      * <p>递归删除指定的文件夹及其包含的所有内部文件与子文件夹。</p>
      * <p>如果传入的路径不存在，方法将安全地直接返回而不会引发异常。利用了 {@link Files#walkFileTree} 进行底层的后序遍历删除。</p>
      *
@@ -96,6 +101,7 @@ public class FileOperUtils {
             Files.move(tempPath, targetPath, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
             return targetPath;
         } catch (IOException e) {
+            log.error("原子写入临时文件失败, 目标路径: {}", targetPath, e);
             // 若异常发生，尝试删除临时文件防止产生孤立的垃圾文件
             try {
                 Files.deleteIfExists(tempPath);

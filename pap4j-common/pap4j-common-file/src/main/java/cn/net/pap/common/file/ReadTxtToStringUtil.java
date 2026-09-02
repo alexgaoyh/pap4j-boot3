@@ -17,6 +17,8 @@ import java.util.Set;
 
 public class ReadTxtToStringUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ReadTxtToStringUtil.class);
+
     /**
      * 编码白名单，不在名单内的编码将触发 guessEncoding
      */
@@ -71,6 +73,7 @@ public class ReadTxtToStringUtil {
                     String s = guessEncoding(buf);
                     encoding = s;
                 } catch (Exception e) {
+                    log.error("猜测文件编码失败", e);
                 }
             }
 
@@ -130,6 +133,7 @@ public class ReadTxtToStringUtil {
                     String s = guessEncoding(buf);
                     encoding = s;
                 } catch (Exception e) {
+                    log.error("猜测文件编码失败", e);
                 }
             }
 
@@ -224,6 +228,7 @@ public class ReadTxtToStringUtil {
             }
             return score;
         } catch (CharacterCodingException e) {
+            log.error("字符解码失败，返回负分", e);
             // 如果解码失败，返回负分
             return -1;
         }

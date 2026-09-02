@@ -100,6 +100,7 @@ import java.util.Iterator;
 
 public class ImgSendCommand extends AbstractCommand {
     private final Logger LOG = LoggerFactory.getLogger(ImgSendCommand.class);
+    private static final Logger log = LoggerFactory.getLogger(ImgSendCommand.class);
 
     public void execute(FtpIoSession session, FtpServerContext context, FtpRequest request) throws IOException, FtpException {
         try {
@@ -330,6 +331,7 @@ public class ImgSendCommand extends AbstractCommand {
                 reader.dispose();
             }
         } catch (IOException e) {
+            log.error("Failed to get low memory thumbnail for {}", inputFileStr, e);
             return null;
         }
     }

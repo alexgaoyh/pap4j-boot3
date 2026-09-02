@@ -35,6 +35,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class WebClientUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WebClientUtil.class);
+
     private static final WebClient webClient;
     private static final HttpClient httpClient;
 
@@ -302,6 +304,7 @@ public class WebClientUtil {
                     );
             return true;
         } catch (Exception e) {
+            log.error("构建盲发 POST 请求异常，url: {}", url, e);
             // 吞掉同步构建异常（例如传入了非法的 url 字符串）
             return false;
         }

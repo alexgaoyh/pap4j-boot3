@@ -9,6 +9,8 @@ import java.nio.file.StandardOpenOption;
 
 public class ChineseWordSorterUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChineseWordSorterUtil.class);
+
     /**
      * 按照字典序添加词语到不同文件
      * @param basePathDir
@@ -35,6 +37,7 @@ public class ChineseWordSorterUtil {
                     Charset.forName("UTF-16"), StandardOpenOption.CREATE_NEW)) {
                 writer.write(word);
             }catch (IOException e) {
+                log.error("添加词语到词典文件失败", e);
                 return false;
             }
             return true;
@@ -74,12 +77,14 @@ public class ChineseWordSorterUtil {
                 fileContent.append(newWord).append(System.lineSeparator());
             }
         } catch (IOException e) {
+            log.error("读取词典文件失败", e);
             return false;
         }
 
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(file), StandardCharsets.UTF_16))) {
             writer.write(fileContent.toString());
         } catch (IOException e) {
+            log.error("写入词典文件失败", e);
             return false;
         }
 

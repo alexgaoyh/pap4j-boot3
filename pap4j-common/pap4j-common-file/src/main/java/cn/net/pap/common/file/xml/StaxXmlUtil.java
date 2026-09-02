@@ -101,7 +101,7 @@ public class StaxXmlUtil {
             return resultText.toString().trim();
 
         } catch (Exception e) {
-            log.debug("输入不符合标准 XML 格式，降级为正则提取文本返回。输入片段: {}", xmlString.length() > 50 ? xmlString.substring(0, 50) + "..." : xmlString);
+            log.error("输入不符合标准 XML 格式，降级为正则提取文本返回。输入片段: {}", xmlString.length() > 50 ? xmlString.substring(0, 50) + "..." : xmlString, e);
 
             // 严格解析失败时，使用正则表达式移除所有 XML/HTML 标签结构 . 匹配规则：以 < 开头，中间包含任意非 > 的字符，以 > 结尾。将其全部替换为空字符串。
             String fallbackText = xmlString.replaceAll("<[^>]+>", "");

@@ -65,6 +65,7 @@ public class OpenCVUtils {
             return;
         } catch (UnsatisfiedLinkError e) {
             // 说明 java.library.path 里没有，我们需要从 classpath 中提取
+            log.error("java.library.path 中未找到 OpenCV 本地库，准备从 classpath 提取: {}", libName, e);
         }
 
         // 2. 从 classpath 资源中提取并保存到临时目录进行加载
@@ -91,6 +92,7 @@ public class OpenCVUtils {
                 System.loadLibrary(Core.NATIVE_LIBRARY_NAME);
             } catch (Throwable ex) {
                 // 忽略兜底失败
+                log.error("兜底 System.loadLibrary 加载 OpenCV 本地库也失败", ex);
             }
         }
     }

@@ -105,6 +105,7 @@ public class ProcessPoolUtil {
                 streamReaderFuture.get(1, TimeUnit.SECONDS);
             } catch (TimeoutException e) {
                 // 如果 1 秒还没读完（极少发生），强行取消任务，防止阻塞主线程
+                log.error("[ProcessPoolUtil] 等待读取线程收尾超时，强制取消读取任务", e);
                 streamReaderFuture.cancel(true);
             } catch (Exception ignored) {
                 // 忽略 ExecutionException 和 InterruptedException
@@ -113,12 +114,13 @@ public class ProcessPoolUtil {
             return new ProcessResult(isFinished, process.exitValue(), out.toString());
 
         } catch (InterruptedException e) {
-            log.error("[ProcessPoolUtil] 收到主线程中断信号，正在强杀子进程...");
+            log.error("[ProcessPoolUtil] 收到主线程中断信号，正在强杀子进程...", e);
             // 重新设置中断状态，好让上层调用者（如线程池）知道线程已被中断
             Thread.currentThread().interrupt();
             return new ProcessResult(false, -1, out + "\nEXECUTION_INTERRUPTED");
 
         } catch (Exception e) {
+            log.error("[ProcessPoolUtil] 执行外部命令失败: {}", command, e);
             return new ProcessResult(false, -1, out + "\nERROR: " + e.getMessage());
         } finally {
             if (process != null) {

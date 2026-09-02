@@ -375,6 +375,7 @@ public class AiAssistantConfig {
             vectorStore.add(allDocuments);
 
         } catch (IOException e) {
+            log.error("读取本地知识文档失败", e);
             throw new RuntimeException("读取本地知识文档失败", e);
         }
     }

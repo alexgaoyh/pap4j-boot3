@@ -32,6 +32,8 @@ import java.util.concurrent.TimeUnit;
 @State(Scope.Thread)
 public class Md5FastBenchmark {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Md5FastBenchmark.class);
+
     private String input;
 
     private File file;
@@ -87,6 +89,7 @@ public class Md5FastBenchmark {
                 reader.dispose();
             }
         } catch (IOException e) {
+            log.error("读取图像失败，返回 null", e);
             return null;
         }
     }

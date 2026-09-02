@@ -158,7 +158,9 @@ public final class MmapSegmentReader implements AutoCloseable {
                 INVOKE_CLEANER.invoke(THE_UNSAFE, buffer);
                 return;
             } catch (Throwable t) {
-                warnOnce("显式 unmap 失败，映射段交由 GC 回收（Windows 下可能短暂占用文件）", t);
+                if (UNMAP_WARNED.compareAndSet(false, true)) {
+                    log.error("显式 unmap 失败，映射段交由 GC 回收（Windows 下可能短暂占用文件）", t);
+                }
                 return;
             }
         }
@@ -188,6 +190,7 @@ public final class MmapSegmentReader implements AutoCloseable {
         try {
             return Class.forName("sun.misc.Unsafe").getMethod("invokeCleaner", ByteBuffer.class);
         } catch (Throwable t) {
+            log.error("加载 sun.misc.Unsafe#invokeCleaner 失败，将不执行显式 unmap", t);
             return null;
         }
     }
@@ -198,6 +201,7 @@ public final class MmapSegmentReader implements AutoCloseable {
             field.setAccessible(true);
             return field.get(null);
         } catch (Throwable t) {
+            log.error("加载 sun.misc.Unsafe.theUnsafe 字段失败，将不执行显式 unmap", t);
             return null;
         }
     }

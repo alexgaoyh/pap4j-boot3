@@ -35,10 +35,12 @@ public class Pap4jBoot3ExampleAdminApplication {
                         String md5 = DigestUtils.calculateMD5(inputStream);
                         log.info("{} -> MD5: {}", resource.getURL(), md5);
                     } catch (Exception e) {
+                        log.error("启动后校验失败,服务关闭,error processing file: {}", resource.getFilename(), e);
                         throw new RuntimeException("启动后校验失败,服务关闭：" + "Error processing file: " + resource.getFilename() + " - " + e.getMessage());
                     }
                 }
             } catch (Exception e) {
+                log.error("启动后校验失败,服务关闭", e);
                 throw new RuntimeException("启动后校验失败,服务关闭：" + e);
             }
 

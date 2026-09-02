@@ -210,6 +210,7 @@ public class RetryUtil {
         try {
             Thread.sleep(delayMillis);
         } catch (InterruptedException e) {
+            log.error("Thread interrupted during retry wait", e);
             Thread.currentThread().interrupt();
             // 如果在这里被中断，不应该默默吃掉异常。抛出运行时异常，让外层循环能立刻感知并退出。
             throw new IllegalStateException("Thread was interrupted during retry wait.", e);

@@ -27,6 +27,8 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class PapDBAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PapDBAppender.class);
+
     private final DataSource dataSource;
     private final ConcurrentLinkedQueue<String> queue = new ConcurrentLinkedQueue<>();
     private final AtomicInteger count = new AtomicInteger(0);
@@ -121,6 +123,7 @@ public class PapDBAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
             ps.executeBatch();
             conn.commit();
         } catch (SQLException e) {
+            log.error("Failed to insert log batch into DB", e);
             addError("Failed to insert log batch into DB", e);
         }
     }
@@ -133,6 +136,7 @@ public class PapDBAppender extends UnsynchronizedAppenderBase<ILoggingEvent> {
                 scheduler.shutdownNow();
             }
         } catch (InterruptedException e) {
+            log.error("Interrupted while waiting for scheduler termination", e);
             Thread.currentThread().interrupt();
         }
         flush(); 

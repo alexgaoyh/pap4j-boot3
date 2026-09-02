@@ -20,6 +20,8 @@ import java.util.List;
  */
 public class Roaring64NavigableMapUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Roaring64NavigableMapUtil.class);
+
     /**
      * <p><strong>序列化 Roaring64NavigableMap 为 Base64 字符串</strong></p>
      * <ul>
@@ -40,6 +42,7 @@ public class Roaring64NavigableMapUtil {
             bitmap.serialize(dos);
             return Base64.getEncoder().encodeToString(bos.toByteArray());
         } catch (IOException e) {
+            log.error("Error occurred during serialization", e);
             throw new Roaring64NavigableMapException("Error occurred during serialization", e);
         }
     }
@@ -65,6 +68,7 @@ public class Roaring64NavigableMapUtil {
             bitmap.deserialize(dis);
             return bitmap;
         } catch (IOException e) {
+            log.error("Error occurred during deserialization", e);
             throw new Roaring64NavigableMapException("Error occurred during deserialization", e);
         }
     }

@@ -23,6 +23,8 @@ public class TimestampCryptoUtil {
         SECRET_KEY = new SecretKeySpec(FIXED_SALT, ALGORITHM);
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TimestampCryptoUtil.class);
+
     private TimestampCryptoUtil() {
         // 私有构造器
     }
@@ -51,6 +53,7 @@ public class TimestampCryptoUtil {
             return Base64.getUrlEncoder().withoutPadding().encodeToString(encrypted);
 
         } catch (Exception e) {
+            log.error("加密失败", e);
             throw new RuntimeException("加密失败", e);
         }
     }
@@ -72,6 +75,7 @@ public class TimestampCryptoUtil {
             return extractTimestamp(decrypted);
 
         } catch (Exception e) {
+            log.error("解密失败", e);
             throw new RuntimeException("解密失败", e);
         }
     }
@@ -84,6 +88,7 @@ public class TimestampCryptoUtil {
             long timestamp = decrypt(encryptedStr);
             return (System.currentTimeMillis() - timestamp) <= maxAgeMillis;
         } catch (Exception e) {
+            log.error("签名校验-时间戳解密失败", e);
             return false;
         }
     }

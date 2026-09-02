@@ -32,6 +32,11 @@ import java.util.Random;
 public class CountMinSketch implements Serializable {
 
     /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CountMinSketch.class);
+
+    /**
      * <p>素数取模数基数常量，用于快速散列计算（即 2^31 - 1）。</p>
      */
     public static final long PRIME_MODULUS = (1L << 31) - 1;
@@ -399,6 +404,7 @@ public class CountMinSketch implements Serializable {
             return bos.toByteArray();
         } catch (IOException e) {
             // Shouldn't happen
+            log.error("CountMinSketch 序列化失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -430,6 +436,7 @@ public class CountMinSketch implements Serializable {
             return sketch;
         } catch (IOException e) {
             // Shouldn't happen
+            log.error("CountMinSketch 反序列化失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -458,6 +465,7 @@ public class CountMinSketch implements Serializable {
         try {
             b = key.getBytes("UTF-16");
         } catch (UnsupportedEncodingException e) {
+            log.error("不支持 UTF-16 编码, key={}", key, e);
             throw new RuntimeException(e);
         }
         return getHashBuckets(b, hashCount, max);

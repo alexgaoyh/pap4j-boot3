@@ -21,6 +21,8 @@ import java.util.Map;
  */
 public class JsonRecursiveParser {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JsonRecursiveParser.class);
+
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     static {
@@ -40,6 +42,7 @@ public class JsonRecursiveParser {
             JsonNode rootNode = OBJECT_MAPPER.readTree(jsonString);
             return parseNode(rootNode);
         } catch (IOException e) {
+            log.error("Failed to parse JSON string", e);
             throw new IllegalArgumentException("Invalid JSON string", e);
         }
     }
@@ -155,6 +158,7 @@ public class JsonRecursiveParser {
                     return value;
             }
         } catch (Exception e) {
+            log.error("Failed to convert value for schema type: {}", schemaType, e);
             // 类型转换失败时返回默认值
             return getTypeDefaultValue(schemaType);
         }
@@ -305,6 +309,7 @@ public class JsonRecursiveParser {
         try {
             return OBJECT_MAPPER.writeValueAsString(object);
         } catch (JsonProcessingException e) {
+            log.error("Failed to convert object to JSON", e);
             throw new RuntimeException("Failed to convert object to JSON", e);
         }
     }

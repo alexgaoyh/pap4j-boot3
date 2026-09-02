@@ -7,6 +7,8 @@ import java.io.*;
  */
 public class JsonlUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JsonlUtil.class);
+
     /**
      * 写入最后一行
      *
@@ -19,6 +21,7 @@ public class JsonlUtil {
             writer.write(jsonData);
             writer.newLine();
         } catch (IOException e) {
+            log.error("Failed to write last line to file: {}", filePath, e);
             return false;
         }
         return true;
@@ -68,6 +71,7 @@ public class JsonlUtil {
             raf.readFully(bytes);
             return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
         } catch (IOException e) {
+            log.error("Failed to read last line from file: {}", filePath, e);
             return null;
         }
     }

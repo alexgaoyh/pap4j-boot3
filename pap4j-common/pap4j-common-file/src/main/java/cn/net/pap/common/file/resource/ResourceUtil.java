@@ -14,6 +14,8 @@ import java.util.Set;
  */
 public class ResourceUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ResourceUtil.class);
+
     /**
      * 复制 resources/native/{osType} 下的所有文件到目标目录，保持路径结构
      */
@@ -36,6 +38,7 @@ public class ResourceUtil {
                 Path sourcePath = Paths.get(resourceUrl.toURI()); // 修复 /D:/ 问题
                 Files.walk(sourcePath).forEach(src -> copyOne(src, sourcePath, outputPath));
             } catch (URISyntaxException e) {
+                log.error("转换资源 URL 为路径失败", e);
                 throw new IOException(e);
             }
         } else {
@@ -47,6 +50,7 @@ public class ResourceUtil {
                     Files.walk(sourcePath).forEach(src -> copyOne(src, sourcePath, outputPath));
                 }
             } catch (Exception e) {
+                log.error("解析资源 URL 失败，尝试备用方案", e);
                 // Fallback 方案：处理带 ! 的复杂嵌套加载器路径（如 Spring Boot 嵌套 jar）
                 String urlStr = resourceUrl.toString();
                 if (urlStr.contains("!")) {
@@ -115,6 +119,7 @@ public class ResourceUtil {
                 }
             }
         } catch (IOException e) {
+            log.error("复制文件失败", e);
             throw new RuntimeException(e);
         }
     }

@@ -35,6 +35,11 @@ import java.util.stream.Collectors;
 public class SimpleLicenseUtil {
 
     /**
+     * <p>日志记录器。</p>
+     */
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SimpleLicenseUtil.class);
+
+    /**
      * <p>无填充的 Base64 URL 安全编码器。</p>
      */
     private static final Base64.Encoder BASE64_ENCODER = Base64.getUrlEncoder().withoutPadding();
@@ -123,6 +128,7 @@ public class SimpleLicenseUtil {
             return validateLicenseDates(licenseProps);
 
         } catch (Exception e) {
+            log.error("许可证验证失败", e);
             return false;
         }
     }
@@ -206,6 +212,7 @@ public class SimpleLicenseUtil {
 
             return !issueDate.isAfter(currentDate) && !currentDate.isAfter(expiryDate);
         } catch (DateTimeParseException e) {
+            log.error("许可证日期解析失败", e);
             return false;
         }
     }

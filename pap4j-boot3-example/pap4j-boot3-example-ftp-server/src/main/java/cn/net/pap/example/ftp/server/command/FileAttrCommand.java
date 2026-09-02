@@ -23,6 +23,8 @@ import java.nio.file.attribute.BasicFileAttributes;
  */
 public class FileAttrCommand implements Command {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(FileAttrCommand.class);
+
     @Override
     public void execute(FtpIoSession session, FtpServerContext context, FtpRequest request)
             throws IOException, FtpException {
@@ -66,6 +68,7 @@ public class FileAttrCommand implements Command {
                 sb.append(";IsOther=").append(attrs.isOther());
             } catch (IOException e) {
                 // Ignore or handle BasicFileAttributes read error
+                log.error("Failed to read basic file attributes for {}", filePath, e);
             }
         }
 

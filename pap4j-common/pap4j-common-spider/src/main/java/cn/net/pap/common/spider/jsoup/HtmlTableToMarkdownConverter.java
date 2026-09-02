@@ -218,7 +218,7 @@ public class HtmlTableToMarkdownConverter {
             int value = Integer.parseInt(raw.trim());
             return value < 1 ? 1 : value;
         } catch (NumberFormatException e) {
-            log.warn("解析表格 {} 属性失败，非法值 '{}' 按 1 处理", attrName, raw);
+            log.error("解析表格 {} 属性失败，非法值 '{}' 按 1 处理", attrName, raw, e);
             return 1;
         }
     }
@@ -514,6 +514,7 @@ public class HtmlTableToMarkdownConverter {
                     }
                 }
             } catch (Exception e) {
+                log.error("解析/转换 HTML <table> 遇到异常", e);
                 return "解析/转换 HTML <table> 遇到异常: " + e.getMessage();
             }
         }

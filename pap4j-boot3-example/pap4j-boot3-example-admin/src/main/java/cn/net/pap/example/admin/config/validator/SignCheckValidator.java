@@ -12,6 +12,8 @@ public class SignCheckValidator implements ConstraintValidator<SignCheck, String
 
     private long timeTolerance;
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SignCheckValidator.class);
+
     @Override
     public void initialize(SignCheck constraintAnnotation) {
         this.timeTolerance = constraintAnnotation.timeTolerance();
@@ -39,6 +41,7 @@ public class SignCheckValidator implements ConstraintValidator<SignCheck, String
             return valid;
         } catch (Exception e) {
             // 记录异常日志，但校验失败
+            log.error("Signature validation failed", e);
             return false;
         }
     }

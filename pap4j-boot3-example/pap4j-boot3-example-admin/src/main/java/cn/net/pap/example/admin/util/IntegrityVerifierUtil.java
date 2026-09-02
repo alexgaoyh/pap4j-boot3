@@ -99,6 +99,7 @@ public class IntegrityVerifierUtil {
                 String hash = DigestUtils.calculateMD5(is);
                 log.info("[CLASS] {} -> {}", p, hash);
             } catch (Exception e) {
+                log.error("Integrity check failed for {}", p, e);
                 throw new RuntimeException("校验失败: " + p, e);
             }
         });
