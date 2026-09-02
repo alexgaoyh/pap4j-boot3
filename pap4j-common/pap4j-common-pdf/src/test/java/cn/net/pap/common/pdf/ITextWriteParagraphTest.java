@@ -87,6 +87,7 @@ public class ITextWriteParagraphTest {
             }
             return true;
         } catch (DocumentException | IOException e) {
+            log.error("写 PDF 段落失败", e);
             return false;
         } finally {
             // 关闭文档
@@ -98,6 +99,7 @@ public class ITextWriteParagraphTest {
         try {
             return simSun.getWidth(String.valueOf(c)) > 0;
         } catch (Exception e) {
+            log.error("字体宽度判断失败", e);
             return false;
         }
     }

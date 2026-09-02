@@ -157,6 +157,7 @@ class JdbcH2TemplateTest {
             }
 
         } catch (SQLException e) {
+            log.error("流式查询失败", e);
             fail("流式查询失败: " + e.getMessage());
         }
     }
@@ -250,6 +251,7 @@ class JdbcH2TemplateTest {
                 }
 
             } catch (SQLException | IOException e) {
+                log.error("导出失败", e);
                 fail("导出失败: " + e.getMessage());
             }
 

@@ -56,6 +56,7 @@ public class OKHttpTest {
                 return true;
             }
         } catch (Exception e) {
+            log.error("检查 URL 可达性失败: ", e);
             return false;
         }
     }

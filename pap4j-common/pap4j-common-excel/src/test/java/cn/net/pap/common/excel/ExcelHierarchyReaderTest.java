@@ -160,9 +160,11 @@ public class ExcelHierarchyReaderTest {
                 try {
                     return cell.getStringCellValue();
                 } catch (Exception e) {
+                    log.error("读取公式单元格的字符串值失败", e);
                     try {
                         return String.valueOf(cell.getNumericCellValue());
                     } catch (Exception ex) {
+                        log.error("读取公式单元格的数值失败，使用公式原文", ex);
                         return cell.getCellFormula();
                     }
                 }

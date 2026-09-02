@@ -94,6 +94,7 @@ public class JdbcAccessTemplateTest {
                 }
             }
         } catch (Exception e) {
+            log.error("流式查询异常", e);
         }
     }
 

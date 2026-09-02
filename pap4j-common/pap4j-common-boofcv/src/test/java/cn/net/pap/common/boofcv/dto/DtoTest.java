@@ -100,7 +100,7 @@ public class DtoTest {
 
         } catch (NoSuchMethodException e) {
             // 如果没有toString方法（理论上所有类都有Object的toString），这行代码不会执行
-            log.info("{} 没有toString方法，跳过测试", clazz.getSimpleName());
+            log.error("{} 没有toString方法，跳过测试", clazz.getSimpleName(), e);
         } catch (Exception e) {
             // 其他异常（如调用失败）也只打印日志，不中断测试
             log.error("{} toString方法调用失败: ", clazz.getSimpleName(), e);

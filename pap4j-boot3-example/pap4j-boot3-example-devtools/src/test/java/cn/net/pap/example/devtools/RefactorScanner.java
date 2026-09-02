@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 
 public class RefactorScanner {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(RefactorScanner.class);
     private static final Path ROOT_DIR = getProjectRootDir();
     private static final Path OUTPUT_FILE = ROOT_DIR.resolve(".ai/diagnostics/refactor_todo.md");
 
@@ -76,7 +77,7 @@ public class RefactorScanner {
                 lines.add(line);
             }
         } catch (IOException e) {
-            System.err.println("Failed to read file: " + file + ", error: " + e.getMessage());
+            log.error("Failed to read file: " + file, e);
             return;
         }
 

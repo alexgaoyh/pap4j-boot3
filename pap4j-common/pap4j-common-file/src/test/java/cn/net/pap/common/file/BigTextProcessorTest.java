@@ -85,6 +85,7 @@ public class BigTextProcessorTest {
         try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
+            log.error("线程监控预热休眠被中断", e);
             Thread.currentThread().interrupt();
         }
 

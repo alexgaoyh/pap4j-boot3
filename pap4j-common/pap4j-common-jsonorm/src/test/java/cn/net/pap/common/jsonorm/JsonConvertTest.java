@@ -94,6 +94,7 @@ public class JsonConvertTest {
      * 领域模型 & 核心转换逻辑 (OcrConverter)
      */
     public static class OcrConverter {
+        private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(OcrConverter.class);
 
         /**
          * 简易转换重载（不传元数据时使用默认值）
@@ -119,6 +120,7 @@ public class JsonConvertTest {
             try {
                 textItems = ctx.read("$.data.textArr[*][*]");
             } catch (Exception e) {
+                log.error("解析 textArr (多维数组平铺) 失败", e);
                 // Ignore if path not found
             }
             if (textItems != null) {
@@ -133,6 +135,7 @@ public class JsonConvertTest {
             try {
                 outTextItems = ctx.read("$.data.outTextArr[*]");
             } catch (Exception e) {
+                log.error("解析 outTextArr (单字行归一化) 失败", e);
                 // Ignore if path not found
             }
             if (outTextItems != null) {

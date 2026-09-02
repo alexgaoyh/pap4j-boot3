@@ -109,6 +109,7 @@ public class TaskDataTest {
                     startLatch.await(); // 等待所有线程就绪
                     taskDataService.processBatchSafely();
                 } catch (InterruptedException e) {
+                    logger.error("等待执行信号被中断", e);
                     Thread.currentThread().interrupt();
                 } finally {
                     endLatch.countDown();

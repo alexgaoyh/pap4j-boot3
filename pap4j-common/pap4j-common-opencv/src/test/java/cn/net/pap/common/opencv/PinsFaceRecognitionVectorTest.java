@@ -68,6 +68,7 @@ public class PinsFaceRecognitionVectorTest {
                     file.flush();
                 }
                 catch (IOException e) {
+                    log.error("写入人脸向量 JSON 文件失败", e);
                 }
 
             }

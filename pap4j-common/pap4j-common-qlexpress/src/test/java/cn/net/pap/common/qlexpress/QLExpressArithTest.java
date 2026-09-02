@@ -212,6 +212,7 @@ public class QLExpressArithTest {
             express4Runner.check("a+b;\n(a+b");
         }
         catch (QLSyntaxException e) {
+            log.error("QLExpress 语法校验预期抛出异常（用于校验异常定位信息）: ", e);
             assertEquals(2, e.getLineNo());
             assertEquals(4, e.getColNo());
             assertEquals("SYNTAX_ERROR", e.getErrorCode());

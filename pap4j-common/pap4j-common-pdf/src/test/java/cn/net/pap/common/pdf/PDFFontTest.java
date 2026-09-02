@@ -115,10 +115,14 @@ public class PDFFontTest {
         } finally {
             // 依次安全关闭
             if (reader != null) {
-                try { reader.close(); } catch (Exception e) {}
+                try { reader.close(); } catch (Exception e) {
+                    log.error("关闭 PdfReader 失败", e);
+                }
             }
             if (fis != null) {
-                try { fis.close(); } catch (Exception e) {} // 彻底切断文件占用
+                try { fis.close(); } catch (Exception e) { // 彻底切断文件占用
+                    log.error("关闭文件输入流失败", e);
+                }
             }
         }
         return fontList;
@@ -337,16 +341,24 @@ public class PDFFontTest {
             //  在 finally 中保证所有的 try { fis.close(); } catch(...) {} 执行完毕后，调用 srcFile.delete()、fontFile.delete()、tempDest.delete()。
             //  因为已经没有任何进程和句柄在占用它们了，它们会被立即顺畅删除，Temp 文件夹终于干净了。
             if (document != null && document.isOpen()) {
-                try { document.close(); } catch (Exception e) {}
+                try { document.close(); } catch (Exception e) {
+                    log.error("关闭 PDF 文档失败", e);
+                }
             }
             if (reader != null) {
-                try { reader.close(); } catch (Exception e) {}
+                try { reader.close(); } catch (Exception e) {
+                    log.error("关闭 PdfReader 失败", e);
+                }
             }
             if (srcFis != null) {
-                try { srcFis.close(); } catch (Exception e) {}
+                try { srcFis.close(); } catch (Exception e) {
+                    log.error("关闭源文件输入流失败", e);
+                }
             }
             if (destFos != null) {
-                try { destFos.close(); } catch (Exception e) {}
+                try { destFos.close(); } catch (Exception e) {
+                    log.error("关闭目标文件输出流失败", e);
+                }
             }
             if (srcFile != null && srcFile.exists()) {
                 srcFile.delete();

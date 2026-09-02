@@ -47,6 +47,7 @@ public class OFDTest {
             OFD_DIR_FIELD = OFDDoc.class.getDeclaredField("ofdDir");
             OFD_DIR_FIELD.setAccessible(true);
         } catch (NoSuchFieldException e) {
+            log.error("OFDDoc 初始化反射获取 ofdDir 失败", e);
             throw new RuntimeException("OFDDoc 初始化反射获取 ofdDir 失败", e);
         }
     }

@@ -15,6 +15,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class MD5StoreUtilTest {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(MD5StoreUtilTest.class);
+
     @BeforeEach
     public void setUp() {
         MD5StoreUtil.clear();
@@ -106,6 +108,7 @@ public class MD5StoreUtilTest {
             iterator.next();
             fail("Should have thrown a NoSuchElementException");
         } catch (NoSuchElementException e) {
+            log.error("迭代器耗尽后调用 next() 抛出 NoSuchElementException", e);
             assertNotNull(e);
         }
     }

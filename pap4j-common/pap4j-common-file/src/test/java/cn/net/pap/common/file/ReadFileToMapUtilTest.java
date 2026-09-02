@@ -55,6 +55,7 @@ public class ReadFileToMapUtilTest {
         try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
+            log.error("等待 GC 回收休眠被中断", e);
             Thread.currentThread().interrupt();
         }
 
@@ -193,12 +194,14 @@ public class ReadFileToMapUtilTest {
                         MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, fileSegmentDTO.getStart(), fileSegmentDTO.getEnd() - fileSegmentDTO.getStart());
                         processBuffer(buffer, atomicInteger);
                     } catch (IOException e) {
+                        log.error("文件分段内存映射处理失败", e);
                         throw new RuntimeException(e);
                     }
                 });
             }
 
         } catch (Exception e) {
+            log.error("大文件分段读取处理失败", e);
             throw new RuntimeException(e);
         }
 

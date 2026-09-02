@@ -8,6 +8,8 @@ import java.net.Socket;
 
 public abstract class CacheBaseTest {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(CacheBaseTest.class);
+
     @BeforeAll
     public static void checkNeo4jAvailable() {
         boolean isUp = false;
@@ -15,6 +17,7 @@ public abstract class CacheBaseTest {
             s.connect(new InetSocketAddress("127.0.0.1", 6379), 1000);
             isUp = true;
         } catch (Exception e) {
+            log.error("检查 Redis 连接失败（若 Redis 未启动，测试将被跳过）", e);
             // connection failed
         }
         Assumptions.assumeTrue(isUp, "redis is not running on 127.0.0.1:6379. Skipping tests.");

@@ -85,6 +85,7 @@ class JdbcMySQLTemplateTest {
             jdbcTemplate.queryForObject("SELECT 1", Integer.class);
             return true;
         } catch (Exception e) {
+            log.error("数据库连接检测异常", e);
             return false;
         }
     }
@@ -187,6 +188,7 @@ class JdbcMySQLTemplateTest {
             }
 
         } catch (SQLException e) {
+            log.error("流式查询失败", e);
             fail("流式查询失败: " + e.getMessage());
         }
     }
@@ -249,6 +251,7 @@ class JdbcMySQLTemplateTest {
                 try {
                     t2Done.await();
                 } catch (InterruptedException e) {
+                    log.error("线程等待被中断", e);
                     throw new RuntimeException(e);
                 }
 
@@ -557,6 +560,7 @@ class JdbcMySQLTemplateTest {
             }
             con.commit();
         } catch (Exception e) {
+            log.error("批量执行失败", e);
             if (con != null) {
                 con.rollback();
             }
@@ -567,6 +571,7 @@ class JdbcMySQLTemplateTest {
                     try {
                         pstmt.close();
                     } catch (SQLException e) {
+                        log.error("关闭 PreparedStatement 异常", e);
                     }
                 }
             }

@@ -15,6 +15,7 @@ public class StackTraceUtilsTest {
         try {
             int i = 1/0;
         } catch (Exception e) {
+            log.error("打印堆栈测试发生异常", e);
             // 默认规则过滤
             log.error("{}", StackTraceUtils.getCoreStackTrace(e));
 

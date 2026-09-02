@@ -348,7 +348,7 @@ public class GeneImageTest {
         try {
             bytes = Files.readAllBytes(path);
         } catch (IOException e) {
-            log.warn("Failed to read image {}: {}", imageAbsPath, e.getMessage());
+            log.error("Failed to read image {}", imageAbsPath, e);
             return -1;
         }
 
@@ -362,7 +362,7 @@ public class GeneImageTest {
                 return dpi;
             }
         } catch (Exception e) {
-            log.warn("Failed to get DPI from ImageInfo: {}", e.getMessage());
+            log.error("Failed to get DPI from ImageInfo", e);
         }
 
         // 2. 若 ImageInfo 中未定义 DPI（返回 -1），则尝试从 EXIF 元数据中获取
@@ -387,7 +387,7 @@ public class GeneImageTest {
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to get DPI from EXIF via Commons Imaging: {}", e.getMessage());
+            log.error("Failed to get DPI from EXIF via Commons Imaging", e);
         }
 
         // 3. 兜底：从 EXIF 获取（metadata-extractor，与第 2 层双库互备）
@@ -410,7 +410,7 @@ public class GeneImageTest {
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to get DPI from metadata-extractor: {}", e.getMessage());
+            log.error("Failed to get DPI from metadata-extractor", e);
         }
 
         return -1;

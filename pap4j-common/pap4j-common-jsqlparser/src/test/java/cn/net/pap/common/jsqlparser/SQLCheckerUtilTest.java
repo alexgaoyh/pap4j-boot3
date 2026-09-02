@@ -78,6 +78,7 @@ public class SQLCheckerUtilTest {
             Insert insertParse = (Insert) CCJSqlParserUtil.parse(sql1);
             log.info("Insert Parse Table: {}", insertParse.getTable());
         } catch (JSQLParserException e) {
+            log.error("SQL 解析异常", e);
             throw new RuntimeException(e);
         }
     }

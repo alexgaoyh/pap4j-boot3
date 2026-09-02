@@ -86,6 +86,7 @@ public class TfIdfDataSketchesUtilTest {
             try {
                 return new String(Files.readAllBytes(filePath), charset);
             } catch (MalformedInputException e) {
+                log.error("使用字符集 {} 解码失败，尝试下一种编码", charset, e);
                 // 尝试下一个编码
                 continue;
             }
@@ -115,6 +116,7 @@ public class TfIdfDataSketchesUtilTest {
                         String strings = readFileWithAutoEncoding(file.toAbsolutePath());
                         calculator.processDocument(strings);
                     } catch (IOException e) {
+                        log.error("处理文档失败: {}", file.toAbsolutePath(), e);
                         throw new RuntimeException(e);
                     }
 

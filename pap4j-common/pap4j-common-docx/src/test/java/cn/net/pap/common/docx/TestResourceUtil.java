@@ -7,6 +7,8 @@ import java.nio.file.StandardCopyOption;
 
 public class TestResourceUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TestResourceUtil.class);
+
     public static File getFile(String classpath) {
         try {
             InputStream is = TestResourceUtil.class.getResourceAsStream(classpath.startsWith("/") ? classpath : "/" + classpath);
@@ -23,6 +25,7 @@ public class TestResourceUtil {
             Files.copy(is, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             return tempFile;
         } catch (Exception e) {
+            log.error("复制 classpath 资源到临时文件失败", e);
             throw new RuntimeException(e);
         }
     }

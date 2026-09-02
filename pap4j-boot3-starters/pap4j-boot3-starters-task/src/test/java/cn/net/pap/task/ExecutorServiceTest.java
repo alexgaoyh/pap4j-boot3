@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 public class ExecutorServiceTest {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ExecutorServiceTest.class);
+
     private ExecutorService executorService;
 
     @AfterEach
@@ -44,6 +46,7 @@ public class ExecutorServiceTest {
             try {
                 blockLatch.await(); // 模拟任务执行极其缓慢或卡死
             } catch (InterruptedException e) {
+                log.error("阻塞占位任务被中断", e);
                 Thread.currentThread().interrupt();
             }
         });
@@ -87,6 +90,7 @@ public class ExecutorServiceTest {
                 try {
                     blockLatch.await(); // 模拟 IO 阻塞（比如查数据库慢、调第三方API慢）
                 } catch (InterruptedException e) {
+                    log.error("模拟 IO 阻塞任务被中断", e);
                     Thread.currentThread().interrupt();
                 }
             });

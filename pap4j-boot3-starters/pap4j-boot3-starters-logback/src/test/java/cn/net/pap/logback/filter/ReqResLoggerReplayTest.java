@@ -45,6 +45,7 @@ public class ReqResLoggerReplayTest {
 
     private MockMvc mockMvc;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ReqResLoggerReplayTest.class);
 
     @BeforeEach
     public void setUp() {
@@ -76,6 +77,7 @@ public class ReqResLoggerReplayTest {
                 }
             }
         } catch (Exception e) {
+            log.error("清理 logs 临时目录失败", e);
             // Ignore
         }
     }
@@ -111,6 +113,7 @@ public class ReqResLoggerReplayTest {
         try {
             mockMvc.perform(get("/test/error500")).andExpect(status().isInternalServerError());
         } catch (Exception e) {
+            log.error("触发 500 异常场景时请求失败", e);
             // 在 StandaloneSetup 下，异常会直接向外抛出，这代表了 Servlet 容器里的原始报错
         }
 
@@ -137,6 +140,7 @@ public class ReqResLoggerReplayTest {
                 try {
                     logHome = ch.qos.logback.core.util.OptionHelper.substVars(logHome, context);
                 } catch (Exception e) {
+                    log.error("解析 LOG_HOME 变量失败", e);
                     // Ignore
                 }
             }
@@ -156,6 +160,7 @@ public class ReqResLoggerReplayTest {
                 }
             }
         } catch (Exception e) {
+            log.error("清理 bug 录制目录失败", e);
             // Ignore
         }
     }

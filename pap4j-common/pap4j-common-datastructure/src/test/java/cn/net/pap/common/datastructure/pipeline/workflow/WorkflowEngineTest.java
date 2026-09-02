@@ -187,7 +187,7 @@ public class WorkflowEngineTest {
                     // 模拟长达 2000ms 的长耗时任务
                     Thread.sleep(2000); 
                 } catch (InterruptedException e) {
-                    log.warn("[{}] 响应中断信号，已被引擎主动阻断！", name());
+                    log.error("[{}] 响应中断信号，已被引擎主动阻断！", name(), e);
                     Thread.currentThread().interrupt(); // 恢复中断标志
                     throw e; // 继续抛出，由引擎拦截
                 }

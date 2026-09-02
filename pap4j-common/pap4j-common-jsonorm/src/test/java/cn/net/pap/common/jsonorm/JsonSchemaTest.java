@@ -91,12 +91,14 @@ public class JsonSchemaTest {
             try {
                 schemaJson = new JSONObject(new JSONTokener(schemaStr));
             } catch (JSONException e) {
+                log.error("Schema JSON 格式错误", e);
                 throw new JSONException("Schema JSON格式错误", e);
             }
 
             try {
                 dataJson = new JSONObject(new JSONTokener(dataStr));
             } catch (JSONException e) {
+                log.error("Data JSON 格式错误", e);
                 throw new JSONException("Data JSON格式错误", e);
             }
 
@@ -117,7 +119,7 @@ public class JsonSchemaTest {
         } catch (org.everit.json.schema.SchemaException e) {
             log.error("Schema定义异常: ", e);
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
             log.error("未预期的异常: ", e);
         }
@@ -199,8 +201,9 @@ public class JsonSchemaTest {
         try {
             schema.validate(new JSONObject(new JSONTokener(jsonData)));
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
+            log.error("数据验证失败，未预期的异常: ", e);
             throw new RuntimeException(e);
         }
 
@@ -254,8 +257,9 @@ public class JsonSchemaTest {
         try {
             schema.validate(new JSONObject(new JSONTokener(jsonData)));
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
+            log.error("数据验证失败，未预期的异常: ", e);
             throw new RuntimeException(e);
         }
     }
@@ -295,8 +299,9 @@ public class JsonSchemaTest {
             schema.validate(jsonData);
             assertEquals(10.5, jsonData.getDouble("price"), "Price 应该被填充默认值 10.5");
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
+            log.error("数据验证失败，未预期的异常: ", e);
             throw new RuntimeException(e);
         }
     }
@@ -342,8 +347,9 @@ public class JsonSchemaTest {
         try {
             schema.validate(rawSchema);
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
+            log.error("数据验证失败，未预期的异常: ", e);
             throw new RuntimeException(e);
         }
     }
@@ -375,8 +381,9 @@ public class JsonSchemaTest {
         try {
             schema.validate(rawSchema);
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
+            log.error("数据验证失败，未预期的异常: ", e);
             throw new RuntimeException(e);
         }
     }
@@ -409,8 +416,9 @@ public class JsonSchemaTest {
         try {
             loaderBuilder.build().load().build().validate(rawSchema);
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
+            log.error("数据验证失败，未预期的异常: ", e);
             throw new RuntimeException(e);
         }
     }
@@ -544,8 +552,9 @@ public class JsonSchemaTest {
         try {
             schema.validate(new JSONArray(new JSONTokener(jsonData1.trim())));
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
+            log.error("数据验证失败，未预期的异常: ", e);
             throw new RuntimeException(e);
         }
     }
@@ -575,8 +584,9 @@ public class JsonSchemaTest {
         try {
             validator.validate(new JSONArray(new JSONTokener(jsonData1.trim())));
         } catch (org.everit.json.schema.ValidationException e) {
-            log.error("数据验证失败，详细信息: {}", e.getAllMessages());
+            log.error("数据验证失败，详细信息: {}", e.getAllMessages(), e);
         } catch (Exception e) {
+            log.error("数据验证失败，未预期的异常: ", e);
             throw new RuntimeException(e);
         }
 

@@ -113,6 +113,7 @@ public class IdempotentTaskLockTest {
                         successCount.incrementAndGet();
                     }
                 } catch (InterruptedException e) {
+                    log.error("等待抢锁时被中断", e);
                     Thread.currentThread().interrupt();
                 } finally {
                     endLatch.countDown();

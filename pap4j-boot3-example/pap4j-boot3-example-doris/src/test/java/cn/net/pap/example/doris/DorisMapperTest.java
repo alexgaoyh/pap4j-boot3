@@ -44,6 +44,7 @@ public class DorisMapperTest {
             s.connect(new InetSocketAddress("192.168.1.115", 9030), 1000);
             isUp = true;
         } catch (Exception e) {
+            log.error("Doris 连接检查失败，将跳过测试", e);
             // connection failed
         }
         Assumptions.assumeTrue(isUp, "doris is not running on 192.168.1.115:9030. Skipping tests.");

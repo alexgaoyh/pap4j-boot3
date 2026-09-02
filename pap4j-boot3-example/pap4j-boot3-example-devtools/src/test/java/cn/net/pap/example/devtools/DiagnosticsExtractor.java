@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 
 public class DiagnosticsExtractor {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(DiagnosticsExtractor.class);
     private static final Path ROOT_DIR = getProjectRootDir();
     private static final Path OUTPUT_FILE = ROOT_DIR.resolve(".ai/diagnostics/test_failures.md");
 
@@ -67,7 +68,7 @@ public class DiagnosticsExtractor {
                 lines.add(line);
             }
         } catch (IOException e) {
-            System.err.println("Failed to read report: " + reportFile + ", error: " + e.getMessage());
+            log.error("Failed to read report: " + reportFile, e);
             return;
         }
 

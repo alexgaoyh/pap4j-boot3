@@ -198,6 +198,7 @@ public class DroolsRuleTest {
                 sb.append(new String(buff, 0, read));
             }
         } catch (IOException e) {
+            log.error("读取 Drools 规则文件失败: {}", fileName, e);
         }
         return sb.toString();
     }

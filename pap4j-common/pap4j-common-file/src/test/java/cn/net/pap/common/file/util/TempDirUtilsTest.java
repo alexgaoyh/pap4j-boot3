@@ -39,6 +39,7 @@ public class TempDirUtilsTest {
                 String content = Files.readString(tempFile);
                 log.info("文件内容: {}", content);
             } catch (IOException e) {
+                log.error("写入并读取临时文件失败", e);
                 throw new RuntimeException(e);
             }
         });
@@ -54,6 +55,7 @@ public class TempDirUtilsTest {
                     Files.writeString(tempFile, "{\"id\": 123, \"name\": \"test\"}");
                     return "success";
                 } catch (IOException e) {
+                    log.error("向临时目录写入 JSON 数据失败", e);
                     throw new RuntimeException(e);
                 }
             });
@@ -83,6 +85,7 @@ public class TempDirUtilsTest {
                 Files.writeString(outputFile, "处理后的数据");
                 Files.writeString(logFile, "处理日志");
             } catch (IOException e) {
+                log.error("在临时目录创建输入/输出/日志文件失败", e);
                 throw new RuntimeException(e);
             }
         });
@@ -113,6 +116,7 @@ public class TempDirUtilsTest {
                     returnListInner.add("success");
                     return returnListInner;
                 } catch (IOException e) {
+                    log.error("批量创建临时目录及输入文件失败", e);
                     throw new RuntimeException(e);
                 }
             });
@@ -134,6 +138,7 @@ public class TempDirUtilsTest {
                 try {
                     int i = 1/0;
                 } catch (Exception e) {
+                    log.error("模拟异常场景失败", e);
                     throw new RuntimeException(e);
                 }
             });
@@ -152,6 +157,7 @@ public class TempDirUtilsTest {
                     String content = Files.readString(tempFile);
                     log.info("文件内容: {}", content);
                 } catch (IOException e) {
+                    log.error("读取临时文件内容失败", e);
                     throw new RuntimeException(e);
                 }
             });

@@ -60,7 +60,7 @@ public class PdfObjectCheckTest {
                     }
                 }
             } catch (Exception e) {
-                log.error("解析对象 #{} 时崩溃: {}", num, e.getClass().getSimpleName());
+                log.error("解析对象 #{} 时崩溃: {}", num, e.getClass().getSimpleName(), e);
             }
         }
     }

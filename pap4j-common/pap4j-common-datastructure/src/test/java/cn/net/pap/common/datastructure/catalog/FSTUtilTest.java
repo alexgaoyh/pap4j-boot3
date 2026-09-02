@@ -135,10 +135,12 @@ public class FSTUtilTest {
                         MappedByteBuffer buffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, fileSegmentDTO.getStart(), fileSegmentDTO.getEnd() - fileSegmentDTO.getStart());
                         processBuffer(buffer, atomicInteger, dict);
                     } catch (IOException e) {
+                        log.error("处理文件分片异常", e);
                         throw new RuntimeException(e);
                     }
                 });
             } catch (Exception e) {
+                log.error("处理文件失败", e);
                 throw new RuntimeException(e);
             }
     

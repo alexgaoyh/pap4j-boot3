@@ -47,6 +47,7 @@ public class PDFUtilTest {
                     "alexgaoyh.png",
                     "output.pdf");
         } catch (Exception e) {
+            log.error("addStampTest 执行失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -59,6 +60,7 @@ public class PDFUtilTest {
                     "pap.net",
                     "output.pdf");
         } catch (Exception e) {
+            log.error("addProtectTest 执行失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -71,6 +73,7 @@ public class PDFUtilTest {
                     "alexgaoyh",
                     "output.pdf");
         } catch (Exception e) {
+            log.error("addSignTest 执行失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -81,6 +84,7 @@ public class PDFUtilTest {
             PDFUtil.convertPDFA("origin.pdf",
                     "output.pdf");
         } catch (Exception e) {
+            log.error("convertPDFATest 执行失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -92,6 +96,7 @@ public class PDFUtilTest {
             file = TestResourceUtil.getFile("origin.pdf");
             PDFUtil.analyzePdf(file.getAbsolutePath());
         } catch (Exception e) {
+            log.error("analyzePdfTest 执行失败", e);
             throw new RuntimeException(e);
         } finally {
             if (file != null && file.exists()) {
@@ -119,6 +124,7 @@ public class PDFUtilTest {
             String desktop = System.getProperty("user.home") + File.separator + "Desktop" + File.separator;
             PDFUtil.drawText(desktop + "output.pdf", coordsDTOList);
         } catch (Exception e) {
+            log.error("drawTextTest 执行失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -131,6 +137,7 @@ public class PDFUtilTest {
             List<CoordsDTO> coordsDTOList = FontUtil.convertTextPointDTO(textPointDTOS);
             PDFUtil.drawText("output.pdf", coordsDTOList);
         } catch (Exception e) {
+            log.error("drawTextTest2 执行失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -156,6 +163,7 @@ public class PDFUtilTest {
             }
             PDFUtil.drawText(desktop + "output.pdf", coordsDTOList, 2365, 4598);
         } catch (Exception e) {
+            log.error("drawTextTest3 执行失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -187,6 +195,7 @@ public class PDFUtilTest {
                     new PointDTO(160, 160),
                     new PointDTO(100, 160));
         } catch (Exception e) {
+            log.error("drawRectangleBy4PointTest 执行失败", e);
             throw new RuntimeException(e);
         } finally {
             if (tempOut != null && tempOut.exists()) {

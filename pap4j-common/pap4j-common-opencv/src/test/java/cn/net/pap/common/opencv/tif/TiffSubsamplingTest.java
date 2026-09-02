@@ -70,12 +70,14 @@ public class TiffSubsamplingTest {
         try {
             stripedFile = TestResourceUtil.getFile("striped_a4.tif");
         } catch (Exception e) {
+            log.error("获取 striped_a4.tif 测试文件失败", e);
             return;
         }
         File tiledFile = null;
         try {
             tiledFile = TestResourceUtil.getFile("tiled_a4.tif");
         } catch (Exception e) {
+            log.error("获取 tiled_a4.tif 测试文件失败", e);
             return;
         }
 
@@ -145,7 +147,7 @@ public class TiffSubsamplingTest {
         try {
             pyramidFile = TestResourceUtil.getFile("striped_a4_pyramid.tif");
         } catch (Exception e) {
-            log.info("未找到 striped_a4_pyramid.tif 测试文件，跳过 Pyramid TIFF 测试。");
+            log.error("未找到 striped_a4_pyramid.tif 测试文件，跳过 Pyramid TIFF 测试", e);
             return;
         }
 

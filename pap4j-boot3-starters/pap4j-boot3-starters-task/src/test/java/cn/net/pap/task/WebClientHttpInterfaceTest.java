@@ -24,6 +24,8 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
 public class WebClientHttpInterfaceTest {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(WebClientHttpInterfaceTest.class);
+
     private final JsonPlaceHolderApi api;
 
     public WebClientHttpInterfaceTest(JsonPlaceHolderApi api) {
@@ -36,7 +38,7 @@ public class WebClientHttpInterfaceTest {
             Post result = api.getPost(1).block();
             assertThat(result.userId != 0);
         } catch (Exception e) {
-
+            log.error("调用 jsonplaceholder HTTP 接口失败", e);
         }
     }
 

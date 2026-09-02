@@ -7,6 +7,8 @@ import java.nio.file.StandardCopyOption;
 
 public class TestResourceUtil {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(TestResourceUtil.class);
+
     public static File getFile(String classpath) {
         String resourcePath = classpath.startsWith("/") ? classpath : "/" + classpath;
 
@@ -30,6 +32,7 @@ public class TestResourceUtil {
             return tempFile;
 
         } catch (Exception e) {
+            log.error("加载测试资源失败: {}", classpath, e);
             throw new RuntimeException(e);
         }
     }

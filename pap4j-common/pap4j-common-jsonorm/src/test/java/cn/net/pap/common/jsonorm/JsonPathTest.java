@@ -290,6 +290,7 @@ public class JsonPathTest {
                                     try {
                                         rawValue = dataCtx.read(param_path);
                                     } catch (Exception e) {
+                                        log.error("读取 JsonPath 参数路径 {} 失败", param_path, e);
                                         rawValue = null;
                                     }
                                     String valueStr;
@@ -448,6 +449,7 @@ public class JsonPathTest {
         try {
             return ctx.read(path);
         } catch (Exception ex) {
+            log.error("safeRead 读取 JsonPath 路径 {} 失败", path, ex);
             return null;
         }
     }
@@ -461,6 +463,7 @@ public class JsonPathTest {
             }
             return Collections.emptyList();
         } catch (Exception ex) {
+            log.error("safeReadArray 读取 JsonPath 数组路径 {} 失败", path, ex);
             return Collections.emptyList();
         }
     }

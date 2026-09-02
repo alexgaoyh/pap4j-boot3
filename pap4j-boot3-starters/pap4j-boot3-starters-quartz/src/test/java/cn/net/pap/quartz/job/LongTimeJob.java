@@ -18,6 +18,7 @@ public class LongTimeJob implements Job {
             try {
                 Thread.sleep(9999);
             } catch (InterruptedException e) {
+                logger.error("LongTimeJob 执行被中断", e);
                 Thread.currentThread().interrupt();
             } finally {
                 QuartzConstants.semaphoreONE.release();

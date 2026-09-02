@@ -309,6 +309,7 @@ public class TakeScreenshotTest {
                 searchInput = driver.findElement(By.id("kw"));
             }
         } catch (Exception e) {
+            log.error("定位搜索输入框失败，尝试回退到 '#kw' 选择器: ", e);
             searchInput = driver.findElement(By.id("kw"));
         }
 
@@ -431,9 +432,9 @@ public class TakeScreenshotTest {
                 log.info("截图成功！已保存至: {}", dest.getAbsolutePath());
 
             } catch (org.openqa.selenium.TimeoutException e) {
-                log.warn("【温馨提示】显式等待超时：未能成功访问 {} 或未能在 10 秒内找到元素 '#su'。若本地或沙箱处于离线/无外网环境，此超时属正常现象，不阻塞单测构建。", testUrl);
+                log.error("【温馨提示】显式等待超时：未能成功访问 {} 或未能在 10 秒内找到元素 '#su'。若本地或沙箱处于离线/无外网环境，此超时属正常现象，不阻塞单测构建。", testUrl, e);
             } catch (Exception e) {
-                log.warn("【温馨提示】访问 {} 过程中发生异常: {}。若无公网连接属正常现象。", testUrl, e.getMessage());
+                log.error("【温馨提示】访问 {} 过程中发生异常: {}。若无公网连接属正常现象。", testUrl, e.getMessage(), e);
             } finally {
                 driver.quit();
                 if (isTempFile && dest != null && dest.exists()) {
@@ -461,6 +462,7 @@ public class TakeScreenshotTest {
                 return true;
             }
         } catch (Exception e) {
+            log.error("检查 URL 可达性失败: ", e);
             return false;
         }
     }

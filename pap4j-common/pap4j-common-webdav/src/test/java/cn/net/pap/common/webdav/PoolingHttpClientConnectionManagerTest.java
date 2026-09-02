@@ -81,6 +81,7 @@ public class PoolingHttpClientConnectionManagerTest {
                     }
                 }
             } catch (InterruptedException ex) {
+                logger.error("空闲连接监控线程被中断", ex);
             }
         }
 

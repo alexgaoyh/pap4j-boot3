@@ -117,6 +117,7 @@ class SimpleMasterTest {
             Thread.sleep(600);
             log.info("600ms后...");
         } catch (InterruptedException e) {
+            log.error("测试等待线程被中断", e);
             throw new RuntimeException(e);
         }
         log.info("混合任务测试完成");

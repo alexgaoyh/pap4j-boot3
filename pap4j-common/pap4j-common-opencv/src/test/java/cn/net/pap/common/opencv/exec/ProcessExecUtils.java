@@ -102,6 +102,7 @@ public class ProcessExecUtils {
                 try {
                     Thread.sleep(20);
                 } catch (InterruptedException e) {
+                    log.error("监控线程 sleep 被中断", e);
                     Thread.currentThread().interrupt();
                 }
             }
@@ -212,7 +213,7 @@ public class ProcessExecUtils {
                 isTimeout = true;
                 log.warn("命令执行超时({}ms被强杀): {}", timeoutMs, cmdLine.toString());
             } else {
-                log.error("命令执行异常退出 (ExitCode: {}): {}", exitCode, cmdLine.toString());
+                log.error("命令执行异常退出 (ExitCode: {}): {}", exitCode, cmdLine.toString(), e);
             }
         }
 

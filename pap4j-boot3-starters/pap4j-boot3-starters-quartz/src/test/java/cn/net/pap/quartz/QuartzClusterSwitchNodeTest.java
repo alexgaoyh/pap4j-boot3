@@ -85,6 +85,7 @@ public class QuartzClusterSwitchNodeTest {
             try {
                 log.info("Job 执行于节点: {}", context.getScheduler().getSchedulerInstanceId());
             } catch (Exception e) {
+                log.error("Job 执行失败", e);
                 throw new RuntimeException(e);
             }
         }

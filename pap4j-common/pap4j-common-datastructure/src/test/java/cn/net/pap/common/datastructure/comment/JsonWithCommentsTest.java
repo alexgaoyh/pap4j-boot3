@@ -70,6 +70,7 @@ public class JsonWithCommentsTest {
             try {
                 field.setAccessible(true);
             } catch (Exception e) {
+                log.error("忽略无法访问的字段: {}", field.getName(), e);
                 continue; // 忽略无法访问的字段
             }
 

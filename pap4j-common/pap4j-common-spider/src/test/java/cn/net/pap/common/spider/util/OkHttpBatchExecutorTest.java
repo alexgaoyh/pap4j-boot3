@@ -603,7 +603,7 @@ public class OkHttpBatchExecutorTest {
             OkHttpBatchExecutor.executePost(mockedClient, targetUserUrl, "{\"id\":999}");
             org.junit.jupiter.api.Assertions.fail("应该抛出 IOException 异常以响应 500 错误");
         } catch (IOException e) {
-            log.info("预期内的 500 响应拦截抛异常捕获成功: {}", e.getMessage());
+            log.error("预期内的 500 响应拦截抛异常捕获成功: {}", e.getMessage(), e);
             assertTrue(e.getMessage().contains("500"));
         }
 
@@ -612,7 +612,7 @@ public class OkHttpBatchExecutorTest {
             OkHttpBatchExecutor.executePost(mockedClient, targetUserUrl, "{\"id\":998}");
             org.junit.jupiter.api.Assertions.fail("应该抛出 SocketTimeoutException 异常");
         } catch (java.net.SocketTimeoutException e) {
-            log.info("预期内的 SocketTimeoutException 拦截捕获成功: {}", e.getMessage());
+            log.error("预期内的 SocketTimeoutException 拦截捕获成功: {}", e.getMessage(), e);
             assertEquals("Simulated connection timeout", e.getMessage());
         }
     }

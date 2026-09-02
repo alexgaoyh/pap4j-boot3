@@ -67,6 +67,7 @@ class PdfWebFluxControllerLoadTest {
         try {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
+            log.error("压测间隔休眠被中断", e);
         }
 
         log.info("=== 开始压测: view2 (异步隔离 I/O) ===");

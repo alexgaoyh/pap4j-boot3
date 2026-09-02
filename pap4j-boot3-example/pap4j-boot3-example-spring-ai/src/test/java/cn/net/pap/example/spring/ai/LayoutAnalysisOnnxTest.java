@@ -365,6 +365,7 @@ public class LayoutAnalysisOnnxTest {
         try {
             return OrtEnvironment.getEnvironment();
         } catch (Throwable t) {
+            log.error("onnxruntime 原生库加载失败（OrtEnvironment.getEnvironment()）: ", t);
             String javaHome = System.getProperty("java.home", "");
             String javaVendor = System.getProperty("java.vendor", "");
             boolean isJbr = javaHome.toLowerCase().contains("jbr")

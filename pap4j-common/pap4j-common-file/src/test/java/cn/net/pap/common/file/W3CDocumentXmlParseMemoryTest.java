@@ -128,6 +128,7 @@ public class W3CDocumentXmlParseMemoryTest {
             var builder = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
             return builder.parse(new java.io.ByteArrayInputStream(xmlContent.getBytes(StandardCharsets.UTF_8)));
         } catch (Exception e) {
+            log.error("Failed to parse XML document by old method", e);
             throw new IOException("Failed to parse XML document", e);
         }
     }
@@ -139,6 +140,7 @@ public class W3CDocumentXmlParseMemoryTest {
                 return builder.parse(bomIn);
             }
         } catch (Exception e) {
+            log.error("Failed to parse XML document by new method", e);
             throw new IOException("Failed to parse XML document", e);
         }
     }

@@ -162,6 +162,7 @@ public class StaxXmlUtilTest {
                 log.info("{}", path + " : " + XmlParseUtil.getValueByXPath(documentByContent, path));
             }
         } catch (Exception e) {
+            log.error("解析 XML 并提取路径失败", e);
             throw new RuntimeException(e);
         }
     }

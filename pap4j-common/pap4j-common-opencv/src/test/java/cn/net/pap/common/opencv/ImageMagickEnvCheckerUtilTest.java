@@ -108,6 +108,7 @@ public class ImageMagickEnvCheckerUtilTest {
                 log.info("{}", (result.exitCode == 0) + " : " + (System.currentTimeMillis() - start));
             }
         } catch (Exception e) {
+            log.error("命令执行出现异常", e);
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
             if (tempExecutor != null) {

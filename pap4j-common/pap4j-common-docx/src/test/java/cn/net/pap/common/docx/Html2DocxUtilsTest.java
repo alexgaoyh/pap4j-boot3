@@ -9,6 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Html2DocxUtilsTest {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Html2DocxUtilsTest.class);
+
     @Test
     public void html2DocxTest() throws Exception {
         org.junit.jupiter.api.Assumptions.assumeTrue(isUrlReachable("http://gips3.baidu.com"), "Baidu image host is not reachable. Skipping test.");
@@ -36,6 +38,7 @@ public class Html2DocxUtilsTest {
                 return true;
             }
         } catch (Exception e) {
+            log.error("URL 可达性检查异常", e);
             return false;
         }
     }

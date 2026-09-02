@@ -57,6 +57,7 @@ public class QuartzShutdownPropTest {
 
                 logger.info("{}", quartzService.print());
             } catch (SchedulerException e) {
+                logger.error("任务执行异常", e);
                 throw new RuntimeException(e);
             }
         }

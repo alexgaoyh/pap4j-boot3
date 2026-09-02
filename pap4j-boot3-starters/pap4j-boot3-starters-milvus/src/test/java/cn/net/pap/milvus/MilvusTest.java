@@ -47,6 +47,7 @@ public class MilvusTest {
             s.connect(new java.net.InetSocketAddress("192.168.1.115", 19530), 1000);
             isUp = true;
         } catch (Exception e) {
+            log.error("Milvus 连接检查失败，将跳过测试", e);
             // connection failed
         }
         org.junit.jupiter.api.Assumptions.assumeTrue(isUp, "Milvus is not running on 192.168.1.115:19530. Skipping tests.");

@@ -238,7 +238,7 @@ public class OpenCVUtilsTest {
             }
         } catch (Throwable t) {
             // 捕获 Throwable 是因为内存溢出通常抛出的是 java.lang.OutOfMemoryError，而不是 Exception
-            log.error("{}", "程序崩溃！捕获到异常/错误: " + t.getMessage());
+            log.error("程序崩溃！捕获到异常/错误: {}", t.getMessage(), t);
         }
         log.info("{}", "--- 内存泄露测试结束 ---");
     }
@@ -265,7 +265,7 @@ public class OpenCVUtilsTest {
             }
             log.info("{}", "成功处理全部 10000 帧，没有发生内存崩溃！");
         } catch (Throwable t) {
-            log.error("{}", "发生意外异常: " + t.getMessage());
+            log.error("发生意外异常: {}", t.getMessage(), t);
         }
         log.info("{}", "--- 内存安全测试结束 ---");
     }

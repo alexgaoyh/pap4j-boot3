@@ -92,6 +92,7 @@ public class ImageMagickCannyHougeAngleTest {
             log.info("{}", result);
             return result.getOutput();
         } catch (Exception e) {
+            log.error("ImageMagick 命令执行失败，返回 false", e);
             return "false";
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏
@@ -154,7 +155,7 @@ public class ImageMagickCannyHougeAngleTest {
 
                     } catch (Exception e) {
                         // 忽略解析错误
-                        log.error("{}", "解析错误: " + line);
+                        log.error("解析错误: {}", line, e);
                     }
                 }
             }
@@ -292,7 +293,7 @@ public class ImageMagickCannyHougeAngleTest {
                         double y2 = Double.parseDouble(p2[1]);
                         lines.add(new Double[]{x1, y1, x2, y2});
                     } catch (Exception e) {
-                        log.error("{}", "解析 Hough 线失败: " + line);
+                        log.error("解析 Hough 线失败: {}", line, e);
                     }
                 }
             }
@@ -355,7 +356,7 @@ public class ImageMagickCannyHougeAngleTest {
                         int height = Integer.parseInt(parts[4]);
                         return new int[]{width, height};
                     } catch (Exception e) {
-                        log.error("{}", "解析图像尺寸错误: " + line);
+                        log.error("解析图像尺寸错误: {}", line, e);
                     }
                 }
             }

@@ -43,6 +43,7 @@ public class ThreadPoolTaskExecutorTest {
                         printThreadPoolStatsAndLatchStats(executor, latch);
                         java.util.concurrent.TimeUnit.SECONDS.sleep(1);
                     } catch (InterruptedException e) {
+                        log.error("监控线程休眠被中断", e);
                         Thread.currentThread().interrupt();
                         break;
                     }
@@ -83,6 +84,7 @@ public class ThreadPoolTaskExecutorTest {
             }
             return true;
         } catch (InterruptedException e) {
+            log.error("任务执行过程中线程被中断", e);
             Thread.currentThread().interrupt();
             return false;
         } finally {

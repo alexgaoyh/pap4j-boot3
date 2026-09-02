@@ -70,6 +70,7 @@ class JdbcKingbaseTemplateTest {
             jdbcTemplate.queryForObject("SELECT 1", Integer.class);
             return true;
         } catch (Exception e) {
+            log.error("数据库连接检测异常", e);
             return false;
         }
     }
@@ -129,6 +130,7 @@ class JdbcKingbaseTemplateTest {
                 try {
                     t2Done.await();
                 } catch (InterruptedException e) {
+                    log.error("线程等待被中断", e);
                     throw new RuntimeException(e);
                 }
 

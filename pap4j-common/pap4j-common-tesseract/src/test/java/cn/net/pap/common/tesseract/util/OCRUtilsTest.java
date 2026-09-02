@@ -21,9 +21,10 @@ public class OCRUtilsTest {
             List<OCRUtils.OCRResult> chi = OCRUtils.recognizeWithCoordinates("d:\\tessdata", tempFile.getAbsolutePath(), "chi_sim");
             log.info("{}", chi);
         } catch (IOException e) {
+            log.error("OCR识别坐标IO异常", e);
             throw new RuntimeException(e);
         } catch (OCRUtils.OCRException e) {
-            log.error(e.getMessage());
+            log.error("OCR识别失败", e);
         } finally {
             if (tempFile != null && tempFile.exists()) {
                 tempFile.delete();
@@ -39,9 +40,10 @@ public class OCRUtilsTest {
             List<OCRUtils.OCRResult> chi = OCRUtils.recognizeWithWordCoordinates("d:\\tessdata", tempFile.getAbsolutePath(), "chi_sim");
             log.info("{}", chi);
         } catch (IOException e) {
+            log.error("OCR识别词坐标IO异常", e);
             throw new RuntimeException(e);
         } catch (OCRUtils.OCRException e) {
-            log.error(e.getMessage());
+            log.error("OCR词坐标识别失败", e);
         } finally {
             if (tempFile != null && tempFile.exists()) {
                 tempFile.delete();
@@ -86,9 +88,10 @@ public class OCRUtilsTest {
             printResult("180度", list180);
             printResult("270度", list270);
         } catch (IOException e) {
+            log.error("OCR方向识别IO异常", e);
             throw new RuntimeException(e);
         } catch (OCRUtils.OCRException e) {
-            log.error(e.getMessage());
+            log.error("OCR方向识别失败", e);
         } finally {
             for (File file : tempFiles) {
                 if (file.exists()) {

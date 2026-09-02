@@ -558,12 +558,12 @@ public class MultimodalTwoStageTableParsingTest {
                 lastErrorType = e.getErrorType();
                 lastError = e.getMessage();
                 lastResult = result;
-                log.warn("【二维表格契约】第 {} 次输出未通过二维校验 [{}]: {}", attempt, lastErrorType.getTitle(), lastError);
+                log.error("【二维表格契约】第 {} 次输出未通过二维校验 [{}]: {}", attempt, lastErrorType.getTitle(), lastError, e);
             } catch (IllegalArgumentException e) {
                 lastErrorType = TableErrorType.STRUCTURE_ERROR;
                 lastError = e.getMessage();
                 lastResult = result;
-                log.warn("【二维表格契约】第 {} 次输出未通过二维校验: {}", attempt, lastError);
+                log.error("【二维表格契约】第 {} 次输出未通过二维校验: {}", attempt, lastError, e);
             }
         }
 
@@ -711,7 +711,7 @@ public class MultimodalTwoStageTableParsingTest {
                 lastErrorType = e.getErrorType();
                 lastError = e.getMessage();
                 lastMissingOcr = null;
-                log.warn("【rows+OCR 双输出契约】第 {} 次输出未通过二维校验 [{}]: {}", attempt, lastErrorType.getTitle(), lastError);
+                log.error("【rows+OCR 双输出契约】第 {} 次输出未通过二维校验 [{}]: {}", attempt, lastErrorType.getTitle(), lastError, e);
                 continue;
             }
 
@@ -944,6 +944,7 @@ public class MultimodalTwoStageTableParsingTest {
         try {
             root = new ObjectMapper().readTree(content);
         } catch (Exception e) {
+            log.error("解析模型输出为 JSON 失败: ", e);
             throw new GridParseException(TableErrorType.JSON_SYNTAX, "无法解析为 JSON: " + e.getMessage());
         }
 
@@ -1023,6 +1024,7 @@ public class MultimodalTwoStageTableParsingTest {
         try {
             root = new ObjectMapper().readTree(content);
         } catch (Exception e) {
+            log.error("解析模型输出中的 ocr 字段 JSON 失败: ", e);
             return result;
         }
         if (root == null || !root.has("ocr")) {
@@ -1135,6 +1137,7 @@ public class MultimodalTwoStageTableParsingTest {
         try {
             root = new ObjectMapper().readTree(content);
         } catch (Exception e) {
+            log.error("解析模型输出中的 repair 计划 JSON 失败: ", e);
             return result;
         }
         if (root == null || !root.has("repair") || !root.path("repair").isArray()) {
@@ -1281,6 +1284,7 @@ public class MultimodalTwoStageTableParsingTest {
                         new com.fasterxml.jackson.core.type.TypeReference<List<List<String>>>() {});
             }
         } catch (java.io.IOException e) {
+            log.error("读取黄金样本期望网格失败: ", e);
             throw new RuntimeException("读取黄金样本期望网格失败", e);
         }
     }

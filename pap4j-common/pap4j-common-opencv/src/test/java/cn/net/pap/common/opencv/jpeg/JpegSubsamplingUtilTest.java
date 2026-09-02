@@ -59,6 +59,7 @@ public class JpegSubsamplingUtilTest {
 
                 return null; // 满足 Function 的返回值要求
             } catch (IOException e) {
+                log.error("生成子采样 JPEG 图像失败", e);
                 throw new RuntimeException(e);
             }
         });

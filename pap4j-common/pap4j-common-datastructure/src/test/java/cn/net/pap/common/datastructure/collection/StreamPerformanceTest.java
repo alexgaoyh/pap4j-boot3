@@ -238,6 +238,7 @@ public class StreamPerformanceTest {
             // 模拟单个任务极其耗时 (比如复杂的加密算法，耗时 10 毫秒)
             Thread.sleep(10);
         } catch (InterruptedException e) {
+            log.error("模拟CPU计算任务被中断", e);
             Thread.currentThread().interrupt();
         }
 

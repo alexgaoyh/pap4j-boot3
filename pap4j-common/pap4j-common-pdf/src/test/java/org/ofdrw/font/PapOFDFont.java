@@ -11,6 +11,8 @@ import java.nio.file.Path;
  */
 public class PapOFDFont extends Font {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PapOFDFont.class);
+
     // 1. 在子类中“隐藏”这两个无法直接操作的父类私有变量
     private Path customFontFile;
     private java.awt.Font customFontObj;
@@ -39,6 +41,7 @@ public class PapOFDFont extends Font {
         try (InputStream is = Files.newInputStream(fontFile)) {
             this.customFontObj = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, is);
         } catch (FontFormatException | IOException e) {
+            log.error("字体文件(fontFile)格式错误", e);
             throw new IllegalArgumentException("字体文件(fontFile)格式错误", e);
         }
         return this;

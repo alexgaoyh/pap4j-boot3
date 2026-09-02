@@ -67,6 +67,7 @@ public class TaskDataParallelTest {
                 testClientExecutor.shutdownNow();
             }
         } catch (InterruptedException e) {
+            log.error("关闭线程池被中断", e);
             testClientExecutor.shutdownNow();
             Thread.currentThread().interrupt();
         }
@@ -108,6 +109,7 @@ public class TaskDataParallelTest {
                     startLatch.await(); // 等待对齐信号
                     taskDataParallelService.processBatchSafely();
                 } catch (InterruptedException e) {
+                    log.error("等待执行信号被中断", e);
                     Thread.currentThread().interrupt();
                 } finally {
                     endLatch.countDown();

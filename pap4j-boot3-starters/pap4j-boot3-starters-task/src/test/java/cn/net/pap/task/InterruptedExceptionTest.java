@@ -36,7 +36,7 @@ public class InterruptedExceptionTest {
                             Thread.sleep(1000);
                         } catch (InterruptedException e) {
                             // 错误示范：捕获后没有处理，导致线程继续运行
-                            log.info("收到中断信号，但忽略...");
+                            log.error("收到中断信号，但忽略...", e);
                             // compare : need call Thread.currentThread().interrupt(); // 重新设置中断标志位
                             // compare : need call break; // 跳出循环
                         }

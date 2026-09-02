@@ -222,6 +222,7 @@ public class ITextTest {
                             }
                         }
                     } catch (UnsupportedEncodingException e) {
+                        log.error("Cp1252 文本转 GBK 失败", e);
                     }
                 }
                 withPointString.append(text)
@@ -303,6 +304,7 @@ public class ITextTest {
                             writer.dispose();
                         }
                     } catch (Exception e) {
+                        log.error("合并图像并写出 JPG 失败", e);
                         throw new RuntimeException(e);
                     }
                 }
@@ -596,6 +598,7 @@ public class ITextTest {
 
         } catch (Exception e) {
             // e.printStackTrace();
+            log.error("JBIG2 图像透明处理失败", e);
             throw new Exception(e);
         }
     }
@@ -938,6 +941,7 @@ public class ITextTest {
                 g.drawImage(maskImage, x, y, width, height, null);
             }
         } catch (IOException e) {
+            log.error("绘制带遮罩图像失败", e);
             throw new RuntimeException(e);
         }
     }

@@ -47,9 +47,11 @@ public class CompletableFutureTest {
         try {
             return doWorkInner(input).get();
         } catch (InterruptedException e) {
+            log.error("任务执行被中断", e);
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (ExecutionException e) {
+            log.error("任务执行失败", e);
             throw new RuntimeException(e);
         }
     }
@@ -65,9 +67,11 @@ public class CompletableFutureTest {
             Thread.sleep(randomNumber);
             return input.toUpperCase() + " : " + randomNumber + " : " + CpuInfoUtil.getCurrentCpuCore();
         } catch (InterruptedException e) {
+            log.error("任务执行被中断", e);
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         } catch (Exception e) {
+            log.error("任务执行发生异常", e);
             throw new RuntimeException(e);
         }
     }
@@ -89,6 +93,7 @@ public class CompletableFutureTest {
             try {
                 return task.call();
             } catch (Exception e) {
+                log.error("任务执行异常", e);
                 if (e instanceof InterruptedException) {
                     Thread.currentThread().interrupt();
                 }
@@ -112,6 +117,7 @@ public class CompletableFutureTest {
                     Thread.sleep(randomNumber);
                     return (finalI + "").toUpperCase() + " : " + randomNumber + " : " + CpuInfoUtil.getCurrentCpuCore();
                 } catch (InterruptedException e) {
+                    log.error("任务执行被中断", e);
                     Thread.currentThread().interrupt();
                     throw e;
                 }

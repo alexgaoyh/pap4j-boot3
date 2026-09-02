@@ -337,6 +337,7 @@ public class VipsImageProcessorTest {
                             }
                             return ok;
                         } catch (Throwable t) {
+                            log.error("第 " + index + " 次转码任务文件落盘失败（异常将向上抛出）: ", t);
                             if (outputFile.exists()) {
                                 outputFile.delete();
                             }
@@ -375,6 +376,7 @@ public class VipsImageProcessorTest {
                             }
                             return false; // 如果未抛异常，则表明校验失效，压测失败
                         } catch (IllegalArgumentException e) {
+                            log.error("注入非法 null 参数触发的预期内 IllegalArgumentException（并发防护校验通过）: ", e);
                             // 捕获预期内的业务规则异常，表明并发保护成功
                             return true;
                         }
@@ -740,6 +742,7 @@ public class VipsImageProcessorTest {
                         "default", "jpg"
                 );
             } catch (IllegalArgumentException e) {
+                log.error("构造非法旋转入参触发的预期内 IllegalArgumentException（内存泄漏验证）: ", e);
                 caughtExceptions++;
             }
         }
