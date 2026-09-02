@@ -30,6 +30,8 @@ public class ConcurrentLockAspect {
         final AtomicInteger refCount = new AtomicInteger(1);
     }
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ConcurrentLockAspect.class);
+
     // SpEL表达式解析器
     private final ExpressionParser parser = new SpelExpressionParser();
 
@@ -62,6 +64,7 @@ public class ConcurrentLockAspect {
             return joinPoint.proceed();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            log.error("获取锁被中断", e);
             throw new RuntimeException("获取锁被中断", e);
         } finally {
             // 5. 释放锁

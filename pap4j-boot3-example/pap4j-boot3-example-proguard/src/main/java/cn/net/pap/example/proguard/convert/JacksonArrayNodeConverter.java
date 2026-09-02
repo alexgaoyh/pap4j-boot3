@@ -12,6 +12,8 @@ import jakarta.persistence.AttributeConverter;
  */
 public class JacksonArrayNodeConverter implements AttributeConverter<ArrayNode, String> {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JacksonArrayNodeConverter.class);
+
     @Override
     public String convertToDatabaseColumn(ArrayNode arrayNode) {
         if (arrayNode == null) {
@@ -21,6 +23,7 @@ public class JacksonArrayNodeConverter implements AttributeConverter<ArrayNode, 
         try {
             return objectMapper.writeValueAsString(arrayNode);
         } catch (JsonProcessingException e) {
+            log.error("Could not convert ArrayNode to JSON string", e);
             throw new RuntimeException("Could not convert ArrayNode to JSON string", e);
         }
     }
@@ -43,6 +46,7 @@ public class JacksonArrayNodeConverter implements AttributeConverter<ArrayNode, 
                 }
             }
         } catch (JsonProcessingException e) {
+            log.error("Could not convert JSON to ArrayNode", e);
             throw new RuntimeException("Could not convert JSON to ArrayNode", e);
         }
         return null;

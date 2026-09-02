@@ -23,6 +23,8 @@ import java.util.Objects;
  */
 public class JsonTypeConvert implements UserType<Object> {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JsonTypeConvert.class);
+
     @Override
     public int getSqlType() {
         return Types.BLOB;
@@ -53,6 +55,7 @@ public class JsonTypeConvert implements UserType<Object> {
             // 注意这里存的数据被双引号包裹，包括 /，需要把他移除掉.
             return new ObjectMapper().readValue(cellContent.replaceAll("^\"|\"$", "").replaceAll("\\\\", ""), Object.class);
         } catch (Exception ex) {
+            log.error("Failed to convert String to Object: " + ex.getMessage(), ex);
             throw new RuntimeException("Failed to convert String to Object: " + ex.getMessage(), ex);
         }
     }
@@ -66,6 +69,7 @@ public class JsonTypeConvert implements UserType<Object> {
         try {
             st.setObject(index, new ObjectMapper().writeValueAsString(value), Types.BLOB);
         } catch (Exception ex) {
+            log.error("Failed to convert Object to String: " + ex.getMessage(), ex);
             throw new RuntimeException("Failed to convert Object to String: " + ex.getMessage(), ex);
         }
     }
@@ -78,6 +82,7 @@ public class JsonTypeConvert implements UserType<Object> {
         try {
             return new ObjectMapper().readValue(new ObjectMapper().writeValueAsString(value), Object.class);
         } catch (Exception ex) {
+            log.error("Failed to deep copy Object: " + ex.getMessage(), ex);
             throw new RuntimeException("Failed to deep copy Object: " + ex.getMessage(), ex);
         }
     }

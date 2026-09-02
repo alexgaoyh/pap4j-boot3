@@ -16,11 +16,14 @@ import java.util.Map;
 public class JsonToMapConverter implements AttributeConverter<Map<String, Object>, String> {
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JsonToMapConverter.class);
+
     @Override
     public String convertToDatabaseColumn(Map<String, Object> attribute) {
         try {
             return objectMapper.writeValueAsString(attribute);
         } catch (JsonProcessingException e) {
+            log.error("Error converting map to JSON string.", e);
             throw new IllegalArgumentException("Error converting map to JSON string.", e);
         }
     }
@@ -30,6 +33,7 @@ public class JsonToMapConverter implements AttributeConverter<Map<String, Object
         try {
             return objectMapper.readValue(dbData, Map.class);
         } catch (IOException e) {
+            log.error("Error converting JSON string to map.", e);
             throw new IllegalArgumentException("Error converting JSON string to map.", e);
         }
     }

@@ -53,6 +53,7 @@ public class DeadLockRetryDemoController {
             }
         } catch (InterruptedException e) {
             deadlockExecutor.shutdownNow();
+            log.error("等待死锁测试线程池关闭被中断", e);
             Thread.currentThread().interrupt();
         }
     }

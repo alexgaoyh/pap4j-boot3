@@ -10,11 +10,14 @@ public class JsonConverter implements AttributeConverter<Object, String> {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(JsonConverter.class);
+
     @Override
     public String convertToDatabaseColumn(Object attribute) {
         try {
             return attribute == null ? null : MAPPER.writeValueAsString(attribute);
         } catch (Exception e) {
+            log.error("JSON serialize error", e);
             throw new IllegalArgumentException("JSON serialize error", e);
         }
     }
@@ -31,6 +34,7 @@ public class JsonConverter implements AttributeConverter<Object, String> {
             }
             return node;
         } catch (Exception e) {
+            log.error("JSON deserialize error", e);
             throw new IllegalArgumentException("JSON deserialize error", e);
         }
     }

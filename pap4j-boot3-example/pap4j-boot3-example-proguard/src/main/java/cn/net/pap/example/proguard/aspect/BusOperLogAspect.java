@@ -69,6 +69,7 @@ public class BusOperLogAspect {
             Object value = expression.getValue(context);
             return value != null ? value.toString() : "";
         } catch (Exception e) {
+            logger.error("parseSpel", e);
             return expressionStr;
         }
     }

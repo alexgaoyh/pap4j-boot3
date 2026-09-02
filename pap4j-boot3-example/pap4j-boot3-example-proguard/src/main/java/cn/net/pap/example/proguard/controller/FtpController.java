@@ -111,6 +111,7 @@ public class FtpController {
             fileSize = file.getSize();
 
         } catch (Exception e) {
+            log.error("获取视频元信息失败", e);
             response.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             return;
         }

@@ -126,8 +126,9 @@ public class ProguardController {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            log.error("限流演示执行被中断", e);
         } catch (Exception e) {
-
+            log.error("限流演示执行失败", e);
         } finally {
             // 核心：只有真正拿到了许可的线程，才能去释放！
             if (acquired) {
@@ -429,6 +430,7 @@ public class ProguardController {
             Thread.sleep(10000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            log.error("longtime 接口睡眠被中断", e);
             throw new RuntimeException(e);
         }
         return "longtime";
@@ -494,6 +496,7 @@ public class ProguardController {
                 Object savedEntity = entityManager.merge(object);
                 return savedEntity;
             } catch (Exception e) {
+                log.error("保存实体失败", e);
                 status.setRollbackOnly();
                 throw new RuntimeException("保存失败: " + e.getMessage(), e);
             }

@@ -33,6 +33,7 @@ public class ProguardJDBCRepository {
                 }
             }
         } catch (SQLException e) {
+            log.error("查询 proguard 表失败", e);
             throw new RuntimeException(e);
         }
     }

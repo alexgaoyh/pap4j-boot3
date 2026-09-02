@@ -89,6 +89,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
             }
             throw new RuntimeException("ASDF");
         } catch (RuntimeException e) {
+            log.error("事务回滚演示抛出运行时异常", e);
             throw new RuntimeException(e);
         }
     }
@@ -126,6 +127,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
             }
             throw new IOException("ASDF");
         } catch (IOException e) {
+            log.error("事务回滚演示抛出受检异常", e);
             throw new IOException(e);
         }
     }
@@ -162,6 +164,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
                 success.add(autoIncrePreKey);
 
             } catch (Exception e) {
+                log.error("批量保存失败，记录到失败列表", e);
                 if (status != null && !status.isCompleted()) {
                     transactionManager.rollback(status);
                 }

@@ -46,6 +46,7 @@ public class DeadlockRetryDemoServiceImpl implements IDeadlockRetryDemoService {
             Thread.sleep(3000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            log.error("死锁演示 sleep 被中断", e);
             throw new RuntimeException(e);
         }
 

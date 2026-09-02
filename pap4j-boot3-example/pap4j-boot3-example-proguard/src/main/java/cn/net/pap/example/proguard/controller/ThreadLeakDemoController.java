@@ -59,6 +59,8 @@ import java.util.concurrent.ThreadFactory;
 @Tag(name = "线程泄露与系统内存诊断接口", description = "提供模拟线程泄露、分析排查活动线程以及获取操作系统系统级内存监控指标的接口")
 public class ThreadLeakDemoController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ThreadLeakDemoController.class);
+
     // ------------------------------------------------------------------------
     // 1. 内部静态配置类：统一管理线程池 Bean，完美解决优雅停机与单文件限制
     // ------------------------------------------------------------------------
@@ -111,6 +113,7 @@ public class ThreadLeakDemoController {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
+                log.warn("业务任务执行被中断", e);
             }
         };
 

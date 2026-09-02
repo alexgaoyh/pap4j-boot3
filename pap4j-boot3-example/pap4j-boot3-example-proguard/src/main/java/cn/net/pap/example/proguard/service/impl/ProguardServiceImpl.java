@@ -241,12 +241,14 @@ public class ProguardServiceImpl implements IProguardService {
                     } catch (SQLException rollbackEx) {
                         logger.error("Rollback failed", rollbackEx);
                     }
+                    logger.error("Batch insert failed", e);
                     throw new RuntimeException("Batch insert failed", e);
                 }
 
                 return true;
             });
         } catch (Exception e) {
+            logger.error("Error during batch insert", e);
             throw new RuntimeException("Error during batch insert", e);
         }
     }
@@ -274,10 +276,12 @@ public class ProguardServiceImpl implements IProguardService {
                     } catch (SQLException rollbackEx) {
                         logger.error("Rollback failed", rollbackEx);
                     }
+                    logger.error("Batch execution failed", e);
                     throw new RuntimeException("Batch execution failed", e);
                 }
             });
         } catch (Exception e) {
+            logger.error("Error during batch execution", e);
             throw new RuntimeException("Error during batch execution", e);
         }
     }
@@ -305,7 +309,7 @@ public class ProguardServiceImpl implements IProguardService {
             return true;
         } catch (Exception e) {
             if(logger.isDebugEnabled()) {
-                logger.debug("exceptionRandom: {}, {}", input, e.getMessage());
+                logger.debug("exceptionRandom failed, input={}", input, e);
             }
             return false;
         }
@@ -371,6 +375,7 @@ public class ProguardServiceImpl implements IProguardService {
                             status.setRollbackOnly();
                             // 重新抛出以触发回滚，并标记线程中断状态
                             Thread.currentThread().interrupt();
+                            logger.error("操作被中断", e);
                             throw new RuntimeException("操作被中断", e);
                         } finally {
                             if (Thread.currentThread().isInterrupted()) {
@@ -383,8 +388,10 @@ public class ProguardServiceImpl implements IProguardService {
                 return future.get(3, TimeUnit.SECONDS);
             } catch (TimeoutException e) {
                 future.cancel(true);
+                logger.error("执行超时，任务被取消", e);
                 throw new RuntimeException("执行超时，任务被取消", e);
             } catch (Exception e) {
+                logger.error("任务执行异常", e);
                 throw new RuntimeException("任务执行异常", e);
             }
         } finally {

@@ -64,7 +64,7 @@ public class EchoController {
         try {
             Thread.sleep(2000);
         } catch (Exception e) {
-
+            log.warn("jsonSleep 模拟延迟时被中断", e);
         }
         return Map.of("echo", "echo", "method", "POST", "contentType", "application/json", "body", body);
     }
