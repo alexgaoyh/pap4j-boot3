@@ -98,8 +98,8 @@
             <message key="matchxpath.match" value="资源对象变量必须使用 try-with-resources 语法声明以确保安全自动关闭（例如：try (InputStream in = ... )）。禁止单独定义后手动关闭。"/>
         </module>
 
-        <!-- catch 块必须记录异常对象本身（slf4j）：catch 块体内必须存在一条日志调用，其参数列表以"裸 IDENT"传入异常对象（如 log.error("...", e)），
-             以便 slf4j 保留堆栈；仅传 e.getMessage() 等派生信息（丢堆栈）视为不合规。禁止静默吞异常，便于后续排查。
+        <!-- catch 块必须以 error 级记录异常对象本身（slf4j）：catch 块体内必须存在一条 log.error(...) 调用，其参数列表以"裸 IDENT"传入异常对象（如 log.error("...", e)），
+             以便 slf4j 保留完整堆栈；仅传 e.getMessage() 等派生信息（丢堆栈）、或用 warn/info/debug 记录异常、或静默吞异常均视为不合规（既是异常就应上升到 error）。便于后续排查。
              说明：本项目 checkstyle 9.3 的 XPath 引擎不支持"节点集比较"（会抛 Operation is not supported），无法动态引用 catch 参数名，
              因此这里用常见异常变量名白名单（e/ex/t/exception/...）近似"传入了异常对象"；参数名不在白名单内的 catch（如 ignored 等有意忽略）会被豁免。
              如需对某些文件显式豁免，可在本文件顶部用 SuppressionSingleFilter 按 id=Catch-Must-Log-Exception 匹配 files 模式排除。 -->
@@ -116,12 +116,13 @@
                                 or .//IDENT[starts-with(@text,'logger')]
                                 or .//IDENT[starts-with(@text,'Logger')]
                             )
+                            and ./DOT/IDENT[@text='error']
                             and ELIST/EXPR/IDENT[@text = ('e','ex','t','e1','e2','error','exception','exp','err','throwable','exc')]
                         ]
                     )
                 ]
             "/>
-            <message key="matchxpath.match" value="catch 块内必须将异常对象本身传入 slf4j 日志调用（保留堆栈），例如：log.error(&quot;描述&quot;, e)；仅传 e.getMessage() 等信息视为不完整。"/>
+            <message key="matchxpath.match" value="catch 块内必须以 error 级别将异常对象本身传入 slf4j 日志（保留完整堆栈），例如：log.error(&quot;描述&quot;, e)；warn/info/debug 记录异常或仅传 e.getMessage() 均视为不完整。"/>
         </module>
 
         <!-- Javadoc 规范: 校验 public 类、方法及标签完整性 (@param/@return/@throws) -->
