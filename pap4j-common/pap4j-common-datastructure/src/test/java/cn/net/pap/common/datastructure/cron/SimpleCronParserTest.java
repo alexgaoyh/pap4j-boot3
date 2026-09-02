@@ -78,7 +78,7 @@ public class SimpleCronParserTest {
             }
         } catch (Exception e) {
             if(e instanceof java.lang.IllegalStateException && e.getMessage().equals("无法找到下一次执行时间，Cron 表达式可能已过期或逻辑不可达")) {
-                log.warn("Expected unreachable state: ", e);
+                log.error("Expected unreachable state: ", e);
             } else {
                 log.error("{}", e.getMessage(), e);
             }

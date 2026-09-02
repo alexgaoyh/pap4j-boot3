@@ -48,7 +48,7 @@ public class LeakyTaskService {
                     try {
                         Thread.sleep(3000);
                     } catch (InterruptedException e) {
-                        log.info(">>> 线程 [{}] 捕获中断信号，准备退出。, 线程池 Hash: {}", Thread.currentThread().getName(), executorService.hashCode(), e);
+                        log.error(">>> 线程 [{}] 捕获中断信号，准备退出。, 线程池 Hash: {}", Thread.currentThread().getName(), executorService.hashCode(), e);
                         Thread.currentThread().interrupt();
                         break;
                     }

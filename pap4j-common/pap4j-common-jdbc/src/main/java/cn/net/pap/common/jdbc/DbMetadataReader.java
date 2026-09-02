@@ -117,7 +117,7 @@ public final class DbMetadataReader {
                 }
             }
         } catch (SQLException e) {
-            log.warn("Failed to query MySQL table comments: ", e);
+            log.error("Failed to query MySQL table comments: ", e);
             return tables;
         }
 
@@ -144,7 +144,7 @@ public final class DbMetadataReader {
                 }
             }
         } catch (SQLException e) {
-            log.warn("Failed to query Kingbase table comments: ", e);
+            log.error("Failed to query Kingbase table comments: ", e);
             return tables;
         }
 
@@ -170,7 +170,7 @@ public final class DbMetadataReader {
                 }
             }
         } catch (SQLException e) {
-            log.warn("Failed to query MySQL column comments for table {}: ", tableName, e);
+            log.error("Failed to query MySQL column comments for table {}: ", tableName, e);
             return columns;
         }
 
@@ -199,7 +199,7 @@ public final class DbMetadataReader {
                 }
             }
         } catch (SQLException e) {
-            log.warn("Failed to query Kingbase column comments for table {}: ", tableName, e);
+            log.error("Failed to query Kingbase column comments for table {}: ", tableName, e);
             return columns;
         }
 

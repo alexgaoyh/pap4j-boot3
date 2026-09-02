@@ -134,7 +134,7 @@ public class ItextPdfChangePicInPDFTest {
             ProcessResult result = ProcessPoolUtil.runCommand(command, 10, tempExecutor);
             return Files.readAllBytes(Paths.get(tempInputFile.getAbsolutePath().replace(sourceFormat, targetFormat)));
         } catch (IOException e) {
-            log.warn("Magick command not found or execution failed", e);
+            log.error("Magick command not found or execution failed", e);
             throw e;
         } finally {
             // 务必关闭临时线程池，防止内存/线程泄漏

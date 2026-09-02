@@ -67,7 +67,7 @@ public class RetryUtil {
                     }
                 }
             } catch (Exception e) {
-                log.warn("Attempt {}/{} failed with exception: {}", retryCount + 1, maxRetries, e.getMessage(), e);
+                log.error("Attempt {}/{} failed with exception: {}", retryCount + 1, maxRetries, e.getMessage(), e);
                 addSuppressedException(suppressedExceptions, e);
                 lastException = e;
                 retryCount++;
@@ -143,7 +143,7 @@ public class RetryUtil {
                     }
                 }
             } catch (Exception e) {
-                log.warn("Attempt {}/{} failed with exception: {}", retryCount + 1, maxRetries, e.getMessage(), e);
+                log.error("Attempt {}/{} failed with exception: {}", retryCount + 1, maxRetries, e.getMessage(), e);
                 addSuppressedException(suppressedExceptions, e);
                 lastException = e;
                 retryCount++;

@@ -237,7 +237,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -343,7 +343,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -407,7 +407,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -444,7 +444,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -523,7 +523,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -571,7 +571,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -670,7 +670,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -777,7 +777,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }
@@ -966,7 +966,7 @@ public class StaxXmlUtil {
                 try {
                     reader.close();
                 } catch (Exception e) {
-                    log.warn("关闭 XMLStreamReader 失败", e);
+                    log.error("关闭 XMLStreamReader 失败", e);
                 }
             }
         }

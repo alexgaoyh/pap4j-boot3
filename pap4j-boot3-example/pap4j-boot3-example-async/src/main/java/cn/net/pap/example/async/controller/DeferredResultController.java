@@ -71,7 +71,7 @@ public class DeferredResultController {
                 }
 
             } catch (InterruptedException e) {
-                log.warn("任务被中断：", e);
+                log.error("任务被中断：", e);
                 Thread.currentThread().interrupt();
                 if (!deferredResult.isSetOrExpired()) {
                     deferredResult.setErrorResult("任务被中断");

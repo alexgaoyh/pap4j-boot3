@@ -204,7 +204,7 @@ public class TaskDataParallelServiceImpl implements ITaskDataService {
             latch.await();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            log.warn("[Task-Data-Parallel] 等待并发批次执行完成被中断", e);
+            log.error("[Task-Data-Parallel] 等待并发批次执行完成被中断", e);
         }
     }
 

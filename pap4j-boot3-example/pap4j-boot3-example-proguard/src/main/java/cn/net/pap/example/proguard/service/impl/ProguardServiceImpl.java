@@ -308,9 +308,7 @@ public class ProguardServiceImpl implements IProguardService {
             }
             return true;
         } catch (Exception e) {
-            if(logger.isDebugEnabled()) {
-                logger.debug("exceptionRandom failed, input={}", input, e);
-            }
+            logger.error("exceptionRandom failed, input={}", input, e);
             return false;
         }
     }

@@ -212,7 +212,7 @@ public class ProcessExecUtils {
                 isTimeout = true;
                 log.warn("命令执行超时({}ms被强杀): {}", timeoutMs, cmdLine.toString());
             } else {
-                log.warn("命令执行异常退出 (ExitCode: {}): {}", exitCode, cmdLine.toString());
+                log.error("命令执行异常退出 (ExitCode: {}): {}", exitCode, cmdLine.toString());
             }
         }
 

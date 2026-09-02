@@ -77,7 +77,7 @@ public class KingbaseToMysqlMigrationTest {
                 log.info("成功动态启用 MySQL 服务端 local_infile 参数");
             }
         } catch (Exception e) {
-            log.warn("尝试启用 MySQL 服务端 local_infile 失败（可能缺少权限），如果服务端未手动开启，迁移可能会失败: ", e);
+            log.error("尝试启用 MySQL 服务端 local_infile 失败（可能缺少权限），如果服务端未手动开启，迁移可能会失败: ", e);
         }
 
         List<String> tables;
@@ -235,7 +235,7 @@ public class KingbaseToMysqlMigrationTest {
                 }
             }
         } catch (Exception e) {
-            log.warn("获取表 {} 注释失败: ", table, e);
+            log.error("获取表 {} 注释失败: ", table, e);
         }
         return null;
     }
@@ -263,7 +263,7 @@ public class KingbaseToMysqlMigrationTest {
                 }
             }
         } catch (Exception e) {
-            log.warn("获取表 {} 字段注释失败: ", table, e);
+            log.error("获取表 {} 字段注释失败: ", table, e);
         }
         return comments;
     }

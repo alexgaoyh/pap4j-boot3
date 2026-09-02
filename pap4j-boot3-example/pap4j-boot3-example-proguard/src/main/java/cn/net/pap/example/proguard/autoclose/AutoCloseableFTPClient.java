@@ -96,7 +96,7 @@ public class AutoCloseableFTPClient extends FTPClient implements AutoCloseable {
             }
         } catch (IOException e) {
             // 登出异常不阻断关闭，但需记录 e 便于排查（AI.md：有 catch 必须有 e 信息）
-            log.warn("[AutoCloseableFTPClient-Close] logout 异常(忽略继续断开): ", e);
+            log.error("[AutoCloseableFTPClient-Close] logout 异常(忽略继续断开): ", e);
         } finally {
             try {
                 if (closeWithRst && _socket_ != null && _socket_.isConnected()) {
@@ -105,7 +105,7 @@ public class AutoCloseableFTPClient extends FTPClient implements AutoCloseable {
                 }
                 disconnect();
             } catch (IOException e) {
-                log.warn("[AutoCloseableFTPClient-Close] disconnect 异常(关闭已尽力): ", e);
+                log.error("[AutoCloseableFTPClient-Close] disconnect 异常(关闭已尽力): ", e);
             }
         }
     }

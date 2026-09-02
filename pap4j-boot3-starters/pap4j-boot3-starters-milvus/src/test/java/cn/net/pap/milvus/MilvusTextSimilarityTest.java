@@ -141,7 +141,7 @@ public class MilvusTextSimilarityTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed: ", e);
+                log.error("Milvus connection failed: ", e);
             } else {
                 log.error("Failed to insert records: ", e);
             }
@@ -180,7 +180,7 @@ public class MilvusTextSimilarityTest {
             }
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed: ", e);
+                log.error("Milvus connection failed: ", e);
             } else {
                 log.error("Search failed: ", e);
             }

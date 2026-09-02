@@ -108,7 +108,7 @@ public class TakeScreenshotTest {
             options.setCapability("goog:loggingPrefs", logPrefs);
             driver = new ChromeDriver(options);
         } catch (Exception e) {
-            log.warn("Chrome Headless 启动失败，尝试 Edge: ", e);
+            log.error("Chrome Headless 启动失败，尝试 Edge: ", e);
             try {
                 // 尝试初始化 Edge Headless
                 EdgeOptions options = new EdgeOptions();
@@ -146,7 +146,7 @@ public class TakeScreenshotTest {
                         log.info("[Browser Console] [{}] {}", entry.getLevel(), entry.getMessage());
                     }
                 } catch (Exception e) {
-                    log.warn("无法获取浏览器控制台日志: ", e);
+                    log.error("无法获取浏览器控制台日志: ", e);
                 }
 
                 // 2. 读取并打印浏览器网络性能日志（Network Logs）
@@ -156,7 +156,7 @@ public class TakeScreenshotTest {
                         parseAndLogNetworkEvent(entry.getMessage());
                     }
                 } catch (Exception e) {
-                    log.warn("无法获取浏览器网络日志: ", e);
+                    log.error("无法获取浏览器网络日志: ", e);
                 }
 
             } finally {
@@ -168,7 +168,7 @@ public class TakeScreenshotTest {
                         dest.delete();
                         log.info("已清理临时截图文件: {}", dest.getAbsolutePath());
                     } catch (Exception e) {
-                        log.warn("清理临时文件失败: ", e);
+                        log.error("清理临时文件失败: ", e);
                     }
                 }
             }
@@ -218,7 +218,7 @@ public class TakeScreenshotTest {
                 }
             }
         } catch (Exception e) {
-            log.debug("解析网络日志失败: ", e);
+            log.error("解析网络日志失败: ", e);
         }
     }
 
@@ -292,7 +292,7 @@ public class TakeScreenshotTest {
                         dest.delete();
                         log.info("已清理临时截图文件: {}", dest.getAbsolutePath());
                     } catch (Exception e) {
-                        log.warn("清理临时文件失败: ", e);
+                        log.error("清理临时文件失败: ", e);
                     }
                 }
             }
@@ -324,7 +324,7 @@ public class TakeScreenshotTest {
                 }
             }
         } catch (Exception e) {
-            log.warn("查找'百度一下'按钮文本失败: ", e);
+            log.error("查找'百度一下'按钮文本失败: ", e);
         }
 
         if (searchButton == null) {
@@ -334,7 +334,7 @@ public class TakeScreenshotTest {
         try {
             searchButton.click();
         } catch (Exception clickEx) {
-            log.warn("普通点击失败，尝试 JavaScript 点击: ", clickEx);
+            log.error("普通点击失败，尝试 JavaScript 点击: ", clickEx);
             ((org.openqa.selenium.JavascriptExecutor) driver).executeScript("arguments[0].click();", searchButton);
         }
     }
@@ -349,7 +349,7 @@ public class TakeScreenshotTest {
             options.setCapability("goog:loggingPrefs", logPrefs);
             driver = new ChromeDriver(options);
         } catch (Exception e) {
-            log.warn("Chrome Headless 启动失败，尝试 Edge: ", e);
+            log.error("Chrome Headless 启动失败，尝试 Edge: ", e);
             try {
                 EdgeOptions options = new EdgeOptions();
                 options.addArguments("--headless");
@@ -371,7 +371,7 @@ public class TakeScreenshotTest {
                 log.info("[Browser Console] [{}] {}", entry.getLevel(), entry.getMessage());
             }
         } catch (Exception e) {
-            log.warn("无法获取浏览器控制台日志: ", e);
+            log.error("无法获取浏览器控制台日志: ", e);
         }
 
         try {
@@ -380,7 +380,7 @@ public class TakeScreenshotTest {
                 parseAndLogNetworkEvent(entry.getMessage());
             }
         } catch (Exception e) {
-            log.warn("无法获取浏览器网络日志: ", e);
+            log.error("无法获取浏览器网络日志: ", e);
         }
     }
 
@@ -441,7 +441,7 @@ public class TakeScreenshotTest {
                         dest.delete();
                         log.info("已清理临时截图文件: {}", dest.getAbsolutePath());
                     } catch (Exception e) {
-                        log.warn("清理临时文件失败: ", e);
+                        log.error("清理临时文件失败: ", e);
                     }
                 }
             }

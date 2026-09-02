@@ -38,7 +38,7 @@ public class MinioUtilTest {
 
         } catch (Exception e) {
             if(e instanceof java.net.ConnectException) {
-                log.warn("Minio connect exception: ", e);
+                log.error("Minio connect exception: ", e);
             } else {
                 log.error("Minio exception: ", e);
             }
@@ -50,7 +50,7 @@ public class MinioUtilTest {
                 try {
                     Files.deleteIfExists(Paths.get(targetFileStr));
                 } catch (Exception e) {
-                    log.warn("Failed to delete temp file: " + targetFileStr, e);
+                    log.error("Failed to delete temp file: " + targetFileStr, e);
                 }
             }
         }

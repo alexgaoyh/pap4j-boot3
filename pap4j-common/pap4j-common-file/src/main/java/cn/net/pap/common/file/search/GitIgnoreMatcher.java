@@ -61,7 +61,7 @@ final class GitIgnoreMatcher {
                     }
                 }
             } catch (IOException e) {
-                log.warn("读取 .gitignore 失败: {}", ignoreFile, e);
+                log.error("读取 .gitignore 失败: {}", ignoreFile, e);
             }
         }
         return new GitIgnoreMatcher(root, all);

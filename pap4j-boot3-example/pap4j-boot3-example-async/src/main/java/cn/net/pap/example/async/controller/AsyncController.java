@@ -118,7 +118,7 @@ public class AsyncController {
                 log.info("Should not reach here");
                 return "Should not reach here";
             } catch (InterruptedException e) {
-                log.info("task interrupted!", e);
+                log.error("task interrupted!", e);
                 Thread.currentThread().interrupt();
                 throw e;
             }

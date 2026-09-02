@@ -233,7 +233,7 @@ public class MockApiService {
                 }
                 params.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
             } catch (Exception e) {
-                log.warn("[Mock-Service] URL 解码 Query 键值对发生异常: {}", pair, e);
+                log.error("[Mock-Service] URL 解码 Query 键值对发生异常: {}", pair, e);
                 if (idx > 0) {
                     key = pair.substring(0, idx);
                     value = pair.substring(idx + 1);

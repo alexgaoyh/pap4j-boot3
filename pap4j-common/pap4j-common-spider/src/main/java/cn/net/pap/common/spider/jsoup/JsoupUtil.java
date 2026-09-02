@@ -314,7 +314,7 @@ public class JsoupUtil {
 
             return verifyCleaned(cleaned, attrName, attrValue) ? cleaned : html;
         } catch (Throwable e) {
-            logger.warn("[JsoupUtil] 剥离 {}={} 标签异常，降级返回原 HTML", attrName, attrValue, e);
+            logger.error("[JsoupUtil] 剥离 {}={} 标签异常，降级返回原 HTML", attrName, attrValue, e);
             return html;
         }
     }

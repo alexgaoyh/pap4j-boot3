@@ -63,7 +63,7 @@ public class VipsImageProcessor {
                 try {
                     com.sun.jna.Native.setProtected(true);
                 } catch (Throwable t) {
-                    log.warn("[Vips-Init] 开启 JNA 崩溃保护拦截机制失败，当前系统或 JVM 可能不支持保护模式。详情: ", t);
+                    log.error("[Vips-Init] 开启 JNA 崩溃保护拦截机制失败，当前系统或 JVM 可能不支持保护模式。详情: ", t);
                 }
 
                 int result = LibVips.INSTANCE.vips_init("pap4j-common-vips");
@@ -669,7 +669,7 @@ public class VipsImageProcessor {
                     LibVips.GLibBase.INSTANCE.g_setenv("TMPDIR", targetTemp, true);
                     log.info("[Vips-Init] 已成功通过 GLib 接口将本地临时目录重定向至: {}", targetTemp);
                 } catch (Throwable t) {
-                    log.warn("[Vips-Init] 自动通过 GLib 设置临时目录失败: ", t);
+                    log.error("[Vips-Init] 自动通过 GLib 设置临时目录失败: ", t);
                 }
 
                 // 3. 补充 OS 进程级环境重定向 (双重防线)
@@ -681,7 +681,7 @@ public class VipsImageProcessor {
                         WinKernel32.INSTANCE.SetEnvironmentVariableW("TMPDIR", targetTemp);
                         log.info("[Vips-Init] 已通过 Windows Kernel32 将系统进程环境变量补充重定向");
                     } catch (Throwable t) {
-                        log.debug("[Vips-Init] WinKernel32 补充设置失败: ", t);
+                        log.error("[Vips-Init] WinKernel32 补充设置失败: ", t);
                     }
                 } else {
                     try {
@@ -690,12 +690,12 @@ public class VipsImageProcessor {
                         UnixLibC.INSTANCE.setenv("TMPDIR", targetTemp, ENV_OVERWRITE_TRUE);
                         log.info("[Vips-Init] 已通过 Unix LibC 将系统进程环境变量补充重定向");
                     } catch (Throwable t) {
-                        log.debug("[Vips-Init] UnixLibC 补充设置失败: ", t);
+                        log.error("[Vips-Init] UnixLibC 补充设置失败: ", t);
                     }
                 }
             }
         } catch (Throwable t) {
-            log.warn("[Vips-Init] 自动重定向 Native 临时目录失败，将使用系统默认临时目录。错误信息: ", t);
+            log.error("[Vips-Init] 自动重定向 Native 临时目录失败，将使用系统默认临时目录。错误信息: ", t);
         }
     }
 

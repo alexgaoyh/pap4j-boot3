@@ -182,7 +182,7 @@ public class FtpController {
                             log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
                         }
                     } catch (IOException e) {
-                        log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
+                        log.error("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                     }
                 }
                 // 控制通道已完成应答消费（无论 226 还是 426），服务端均已释放文件，无需再发 ABOR
@@ -322,7 +322,7 @@ public class FtpController {
                         }
                     }
                 } catch (Exception e) {
-                    log.warn("处理 FTP 流关闭时发生异常", e);
+                    log.error("处理 FTP 流关闭时发生异常", e);
                 }
             }
         } catch (Exception e) {
@@ -476,7 +476,7 @@ public class FtpController {
                             log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
                         }
                     } catch (IOException e) {
-                        log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
+                        log.error("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                     }
                 }
                 // 控制通道已完成应答消费（无论 226 还是 426），服务端均已释放文件，无需再发 ABOR
@@ -571,7 +571,7 @@ public class FtpController {
                             log.warn("FTP 数据传输未收到 226 完成应答(可能传输中断): {}", ftpReplySummary(client));
                         }
                     } catch (IOException e) {
-                        log.warn("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
+                        log.error("FTP completePendingCommand 异常: {}", ftpReplySummary(client), e);
                     }
                 }
                 // 控制通道已完成应答消费（无论 226 还是 426），服务端均已释放文件，无需再发 ABOR

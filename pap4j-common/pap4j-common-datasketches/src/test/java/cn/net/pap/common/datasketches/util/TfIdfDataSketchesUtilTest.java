@@ -166,7 +166,7 @@ public class TfIdfDataSketchesUtilTest {
                             .map(Path::toFile)
                             .forEach(File::delete);
                 } catch (IOException e) {
-                    log.warn("Failed to delete temp directory: " + tempDir, e);
+                    log.error("Failed to delete temp directory: " + tempDir, e);
                 }
             }
         }

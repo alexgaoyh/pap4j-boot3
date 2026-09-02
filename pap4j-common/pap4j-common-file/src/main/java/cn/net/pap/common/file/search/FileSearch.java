@@ -410,7 +410,7 @@ public final class FileSearch {
                         results.add(r);
                     }
                 } catch (IOException e) {
-                    log.warn("处理文件失败: {}", p, e);
+                    log.error("处理文件失败: {}", p, e);
                 } finally {
                     latch.countDown();
                 }
@@ -727,7 +727,7 @@ public final class FileSearch {
             String rel = root.relativize(file).toString().replace('\\', '/');
             return new FileMatch(file, rel, bytes.length, lines);
         } catch (IOException e) {
-            log.warn("跳过无法读取的文件: {}", file, e);
+            log.error("跳过无法读取的文件: {}", file, e);
             return null;
         }
     }
@@ -828,7 +828,7 @@ public final class FileSearch {
             String rel = root.relativize(file).toString().replace('\\', '/');
             return new FileMatch(file, rel, Files.size(file), lines);
         } catch (IOException e) {
-            log.warn("跳过无法读取的文件: {}", file, e);
+            log.error("跳过无法读取的文件: {}", file, e);
             return null;
         }
     }
@@ -1088,7 +1088,7 @@ public final class FileSearch {
             return isBinary(head);
         } catch (IOException e) {
             // 读失败不再静默当二进制：记日志后视为文本，交由下游读取路径统一报错/跳过
-            log.warn("探测二进制失败，视为文本交由后续处理: {}", file, e);
+            log.error("探测二进制失败，视为文本交由后续处理: {}", file, e);
             return false;
         }
     }

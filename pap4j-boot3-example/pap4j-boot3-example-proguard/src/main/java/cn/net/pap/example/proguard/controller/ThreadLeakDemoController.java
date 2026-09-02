@@ -113,7 +113,7 @@ public class ThreadLeakDemoController {
                 Thread.sleep(50);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.warn("业务任务执行被中断", e);
+                log.error("业务任务执行被中断", e);
             }
         };
 

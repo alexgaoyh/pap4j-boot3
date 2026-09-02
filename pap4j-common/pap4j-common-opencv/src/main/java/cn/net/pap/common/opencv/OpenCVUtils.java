@@ -118,7 +118,7 @@ public class OpenCVUtils {
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to clean legacy temporary native libraries: ", e);
+            log.error("Failed to clean legacy temporary native libraries: ", e);
         }
     }
 

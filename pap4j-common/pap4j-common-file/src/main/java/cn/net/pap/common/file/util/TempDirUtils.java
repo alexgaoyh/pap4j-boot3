@@ -214,7 +214,7 @@ public final class TempDirUtils {
                             Files.delete(path);
                         } catch (IOException e) {
                             // 忽略删除失败，避免影响主流程
-                            log.warn("清理临时文件/目录失败: {}", path.toAbsolutePath(), e);
+                            log.error("清理临时文件/目录失败: {}", path.toAbsolutePath(), e);
                         }
                     });
         }

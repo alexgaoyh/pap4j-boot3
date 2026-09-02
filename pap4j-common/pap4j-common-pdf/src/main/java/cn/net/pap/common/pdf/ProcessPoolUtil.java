@@ -83,7 +83,7 @@ public class ProcessPoolUtil {
                     }
                 } catch (Exception e) {
                     // 当底层流被关闭时正常抛出异常，不再作为 Error 打印，防止日志噪音
-                    log.debug("[ProcessPoolUtil] 读取流结束或被主动关闭", e);
+                    log.error("[ProcessPoolUtil] 读取流结束或被主动关闭", e);
                 }
             });
 

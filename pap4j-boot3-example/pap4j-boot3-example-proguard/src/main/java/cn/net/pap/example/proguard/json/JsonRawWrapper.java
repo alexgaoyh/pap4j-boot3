@@ -90,7 +90,7 @@ public class JsonRawWrapper {
                     JsonNode jsonNode = mapper.readTree(str);
                     node.set(key, jsonNode);
                 } catch (Exception e) {
-                    log.warn("字段 [{}] 不是合法 JSON，回退为原始字符串", key, e);
+                    log.error("字段 [{}] 不是合法 JSON，回退为原始字符串", key, e);
                     node.put(key, str); // fallback：非合法 JSON
                 }
             } else {

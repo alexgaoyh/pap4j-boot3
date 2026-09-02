@@ -651,7 +651,7 @@ public class OkHttpBatchExecutorTest {
                             id = jsonNode.get("id").asInt();
                         }
                     } catch (Exception e) {
-                        log.warn("解析请求 JSON 失败", e);
+                        log.error("解析请求 JSON 失败", e);
                     }
                 }
 

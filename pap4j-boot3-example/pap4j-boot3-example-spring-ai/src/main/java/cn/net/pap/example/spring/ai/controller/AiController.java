@@ -170,7 +170,7 @@ public class AiController {
                 return new RewriteResult(originalPrompt, "");
             }
         } catch (Exception e) {
-            log.warn("Query 改写提炼异常，降级不改写直接回答 - chatId: {}, 原始: '{}', 模型返回: {}",
+            log.error("Query 改写提炼异常，降级不改写直接回答 - chatId: {}, 原始: '{}', 模型返回: {}",
                     chatId, originalPrompt, modelResult, e);
             return new RewriteResult(originalPrompt, "");
         }
@@ -441,7 +441,7 @@ public class AiController {
             String keywords = node.path("bm25Keywords").asText("").trim();
             return new ProcessResult(rewritten, keywords);
         } catch (Exception e) {
-            log.warn("【Query 解析】解析模型 JSON 失败，返回原文本: {}", jsonResponse, e);
+            log.error("【Query 解析】解析模型 JSON 失败，返回原文本: {}", jsonResponse, e);
             return null;
         }
     }

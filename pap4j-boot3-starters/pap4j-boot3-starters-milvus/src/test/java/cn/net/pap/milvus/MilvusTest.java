@@ -78,7 +78,7 @@ public class MilvusTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed during test1: ", e);
+                log.error("Milvus connection failed during test1: ", e);
             } else {
                 log.error("Milvus test1 execution failed: ", e);
             }
@@ -109,7 +109,7 @@ public class MilvusTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed during test2: ", e);
+                log.error("Milvus connection failed during test2: ", e);
             } else {
                 log.error("Milvus test2 execution failed: ", e);
             }
@@ -165,7 +165,7 @@ public class MilvusTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed during test3: ", e);
+                log.error("Milvus connection failed during test3: ", e);
             } else {
                 log.error("Milvus test3 execution failed: ", e);
             }
@@ -199,7 +199,7 @@ public class MilvusTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed during test4: ", e);
+                log.error("Milvus connection failed during test4: ", e);
             } else {
                 log.error("Milvus test4 execution failed: ", e);
             }
@@ -223,7 +223,7 @@ public class MilvusTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed during test5: ", e);
+                log.error("Milvus connection failed during test5: ", e);
             } else {
                 log.error("Milvus test5 execution failed: ", e);
             }
@@ -244,7 +244,7 @@ public class MilvusTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed during test6: ", e);
+                log.error("Milvus connection failed during test6: ", e);
             } else {
                 log.error("Milvus test6 execution failed: ", e);
             }
@@ -276,7 +276,7 @@ public class MilvusTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed during test7_insertRows: ", e);
+                log.error("Milvus connection failed during test7_insertRows: ", e);
             } else {
                 log.error("Milvus test7_insertRows execution failed: ", e);
             }
@@ -323,7 +323,7 @@ public class MilvusTest {
             milvusClient.close();
         } catch (Exception e) {
             if (e instanceof java.net.ConnectException) {
-                log.warn("Milvus connection failed during test7_search: ", e);
+                log.error("Milvus connection failed during test7_search: ", e);
             } else {
                 log.error("Milvus test7_search execution failed: ", e);
             }
@@ -421,7 +421,7 @@ public class MilvusTest {
                         .forEach(File::delete);
             }
         } catch (IOException e) {
-            log.warn("Failed to delete temp directory: " + path, e);
+            log.error("Failed to delete temp directory: " + path, e);
         }
     }
 }

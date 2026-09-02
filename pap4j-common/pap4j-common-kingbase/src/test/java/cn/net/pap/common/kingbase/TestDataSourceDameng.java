@@ -30,7 +30,7 @@ public class TestDataSourceDameng {
             }
         } catch (Exception e) {
             if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
-                log.warn("KSQLException occurred: ", e);
+                log.error("KSQLException occurred: ", e);
             } else {
                 log.error("{}", e.getMessage(), e);
             }
@@ -57,7 +57,7 @@ public class TestDataSourceDameng {
             }
         } catch (Exception e) {
             if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
-                log.warn("KSQLException occurred: ", e);
+                log.error("KSQLException occurred: ", e);
             } else {
                 log.error("{}", e.getMessage(), e);
             }
@@ -90,7 +90,7 @@ public class TestDataSourceDameng {
             }
         } catch (Exception e) {
             if(e instanceof com.kingbase8.util.KSQLException && e.getCause() instanceof java.net.ConnectException) {
-                log.warn("KSQLException occurred: ", e);
+                log.error("KSQLException occurred: ", e);
             } else {
                 log.error("{}", e.getMessage(), e);
             }

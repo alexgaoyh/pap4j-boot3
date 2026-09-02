@@ -96,7 +96,7 @@ public class JSONAPIController {
                 try {
                     Thread.sleep(mockApi.getDelayMs());
                 } catch (InterruptedException e) {
-                    log.warn("[Mock-Controller] 延时响应被中断: ", e);
+                    log.error("[Mock-Controller] 延时响应被中断: ", e);
                     Thread.currentThread().interrupt();
                 }
             }

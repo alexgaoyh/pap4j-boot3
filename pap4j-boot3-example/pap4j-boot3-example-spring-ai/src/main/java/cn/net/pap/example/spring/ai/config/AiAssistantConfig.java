@@ -116,7 +116,7 @@ public class AiAssistantConfig {
                 log.info("【Elasticsearch-{}】已存在数据，跳过导入。", storeKey);
             }
         } catch (Exception e) {
-            log.info("【Elasticsearch-{}】未检测到有效索引，开始重建并导入...", storeKey, e);
+            log.error("【Elasticsearch-{}】未检测到有效索引，开始重建并导入...", storeKey, e);
             try {
                 initStoreData(esStore, storeKey);
                 log.info("【Elasticsearch-{}】数据重建导入完成！", storeKey);

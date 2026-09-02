@@ -196,7 +196,7 @@ public class RagMemoryOptimizationTest {
                 return true;
             }
         } catch (Exception e) {
-            log.warn("TCP 探活失败 ({})，将跳过本组评测单元测试。", baseUrl, e);
+            log.error("TCP 探活失败 ({})，将跳过本组评测单元测试。", baseUrl, e);
             return false;
         }
     }

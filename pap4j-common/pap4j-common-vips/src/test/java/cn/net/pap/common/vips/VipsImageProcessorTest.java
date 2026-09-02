@@ -785,7 +785,7 @@ public class VipsImageProcessorTest {
                 }
             }
         } catch (Exception e) {
-            log.debug("无法获取当前进程的 OS 物理内存 Working Set 大小: ", e);
+            log.error("无法获取当前进程的 OS 物理内存 Working Set 大小: ", e);
         }
         return -1;
     }

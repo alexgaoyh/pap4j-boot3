@@ -16,22 +16,22 @@ public class StackTraceUtilsTest {
             int i = 1/0;
         } catch (Exception e) {
             // 默认规则过滤
-            log.info("{}", StackTraceUtils.getCoreStackTrace(e));
+            log.error("{}", StackTraceUtils.getCoreStackTrace(e));
 
             // 完全自定义过滤逻辑
-            log.info("{}", StackTraceUtils.getCoreStackTrace(e, element ->
+            log.error("{}", StackTraceUtils.getCoreStackTrace(e, element ->
                     element.getClassName().contains("Test")
             ));
 
             // 默认规则过滤
-            log.info("{}", StackTraceUtils.getCoreStackTrace(StackTraceUtils.getFullStackTrace(e)));
+            log.error("{}", StackTraceUtils.getCoreStackTrace(StackTraceUtils.getFullStackTrace(e)));
 
             // 完全自定义过滤逻辑
-            log.info("{}", StackTraceUtils.getCoreStackTrace(StackTraceUtils.getFullStackTrace(e), element ->
+            log.error("{}", StackTraceUtils.getCoreStackTrace(StackTraceUtils.getFullStackTrace(e), element ->
                     element.getClassName().contains("Test")
             ));
 
-            log.info("{}", StackTraceUtils.printFilteredStackTraceStackWalker(e));
+            log.error("{}", StackTraceUtils.printFilteredStackTraceStackWalker(e));
         }
     }
 

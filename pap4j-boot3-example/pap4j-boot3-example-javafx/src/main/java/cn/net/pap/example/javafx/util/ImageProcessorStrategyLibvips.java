@@ -81,7 +81,7 @@ public class ImageProcessorStrategyLibvips implements ImageProcessorStrategy {
 
             return execResult;
         } catch (Exception e) {
-            log.warn("Magick command failed: {}", e);
+            log.error("Magick command failed: {}", e);
             return new ExecResult(999, "", e.getMessage(), true);
         } finally {
 

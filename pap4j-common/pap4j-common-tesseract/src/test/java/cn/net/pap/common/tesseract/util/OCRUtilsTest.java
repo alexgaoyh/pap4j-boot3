@@ -144,7 +144,7 @@ public class OCRUtilsTest {
                     root.appendChild(pHYs);
                     metadata.mergeTree(metaFormatName, root);
                 } catch (Exception e) {
-                    log.warn("Failed to set DPI metadata", e);
+                    log.error("Failed to set DPI metadata", e);
                 }
             }
 

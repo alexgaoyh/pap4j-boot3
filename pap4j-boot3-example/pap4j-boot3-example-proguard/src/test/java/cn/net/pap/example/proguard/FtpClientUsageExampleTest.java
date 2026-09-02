@@ -526,7 +526,7 @@ public class FtpClientUsageExampleTest {
                     break; // 关键分支：永久失败直接退出循环
                 }
             } catch (IOException e) {
-                log.warn("[FtpUsage] 遇到网络异常继续重试: ", e);
+                log.error("[FtpUsage] 遇到网络异常继续重试: ", e);
             }
         }
         assertEquals(1, attempts, "550 永久失败必须在第 1 次尝试后直接阻断，不消耗后续重试配额");
@@ -566,7 +566,7 @@ public class FtpClientUsageExampleTest {
                     fail("永久失败(" + ftpReplySummary(client) + ")不应进入重试循环");
                 }
             } catch (IOException e) {
-                log.info("[FtpUsage] 第 {} 次尝试遭遇瞬时异常(正常触发计数重试): ", attempts, e);
+                log.error("[FtpUsage] 第 {} 次尝试遭遇瞬时异常(正常触发计数重试): ", attempts, e);
             }
         }
         assertTrue(success, "瞬时异常重试后应最终成功");

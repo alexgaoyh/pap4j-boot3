@@ -73,7 +73,7 @@ public class OFDTest {
             try {
                 Files.deleteIfExists(GLOBAL_BASE_FONT_PATH);
             } catch (IOException e) {
-                log.warn("清理全局基础字体文件失败", e);
+                log.error("清理全局基础字体文件失败", e);
             }
         }
     }

@@ -335,11 +335,11 @@ public class PDFUtil {
                                 return tmp;
                             }
                         } catch (Exception e) {
-                            log.warn("Failed to get string width for text: {}", text, e);
+                            log.error("Failed to get string width for text: {}", text, e);
                         }
                     }
                 } catch (Exception e) {
-                    log.warn("Failed to load font: {}", chineseFont.getFontName(), e);
+                    log.error("Failed to load font: {}", chineseFont.getFontName(), e);
                 }
             }
         } catch (IOException e) {
@@ -359,7 +359,7 @@ public class PDFUtil {
                 }
             }
         } catch (Exception e) {
-            log.warn("Failed to get string width from loaded fonts", e);
+            log.error("Failed to get string width from loaded fonts", e);
         }
 
         for(ChineseFont chineseFont : ChineseFont.values()) {
@@ -382,7 +382,7 @@ public class PDFUtil {
                     }
                 }
             } catch (Exception e) {
-                log.warn("Error loading or checking font: {}", chineseFont.getFontName(), e);
+                log.error("Error loading or checking font: {}", chineseFont.getFontName(), e);
             }
 
         }
@@ -495,7 +495,7 @@ public class PDFUtil {
         try {
             return font.getStringWidth(String.valueOf(c)) > 0;
         } catch (Exception e) {
-            log.warn("fontContainsCharacter error for character: {}", c, e);
+            log.error("fontContainsCharacter error for character: {}", c, e);
             return false;
         }
     }
@@ -648,7 +648,7 @@ public class PDFUtil {
             document.save(pdfPath);
             return true;
         } catch (Exception e) {
-            log.warn("jpg2Pdf error for", e);
+            log.error("jpg2Pdf error for", e);
             return false;
         }
     }
@@ -822,7 +822,7 @@ public class PDFUtil {
             document.save(pdfPath);
             return true;
         } catch (Exception e) {
-            log.warn("dir2Pdf error", e);
+            log.error("dir2Pdf error", e);
             return false;
         } finally {
             try {
@@ -842,7 +842,7 @@ public class PDFUtil {
                 return directory.getInt(ExifIFD0Directory.TAG_ORIENTATION);
             }
         } catch (Exception e) {
-            log.debug("Read image orientation failed: ", e);
+            log.error("Read image orientation failed: ", e);
         }
         return 1;
     }

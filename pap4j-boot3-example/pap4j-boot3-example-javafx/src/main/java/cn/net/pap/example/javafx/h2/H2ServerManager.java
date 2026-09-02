@@ -71,7 +71,7 @@ public class H2ServerManager {
                 return Server.createTcpServer("-tcpPort", String.valueOf(tcpPort), "-tcpAllowOthers", "-ifNotExists").start();
             } catch (SQLException e) {
                 if (e.getMessage().contains("Port is already in use") || e.getMessage().contains("port may be in use")) {
-                    log.info("端口 {} 被占用，尝试下一个端口...", tcpPort, e);
+                    log.error("端口 {} 被占用，尝试下一个端口...", tcpPort, e);
                     lastException = e;
                     tcpPort++; // 端口递增
                 } else {
@@ -94,7 +94,7 @@ public class H2ServerManager {
                 return Server.createWebServer("-web", "-webPort", String.valueOf(webPort), "-webAllowOthers", "-ifNotExists").start();
             } catch (SQLException e) {
                 if (e.getMessage().contains("Port is already in use") || e.getMessage().contains("port may be in use")) {
-                    log.info("端口 {} 被占用，尝试下一个端口...", webPort, e);
+                    log.error("端口 {} 被占用，尝试下一个端口...", webPort, e);
                     lastException = e;
                     webPort++; // 端口递增
                 } else {

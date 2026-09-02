@@ -350,7 +350,7 @@ public class FtpTimeWaitLoopDownloadTest {
                 log.info("[FtpTimeWait] 当前 TCP 动态端口: start={}, count={}", start, count);
             }
         } catch (Exception e) {
-            log.warn("[FtpTimeWait] 读取 TCP 动态端口范围失败(不影响测试): ", e);
+            log.error("[FtpTimeWait] 读取 TCP 动态端口范围失败(不影响测试): ", e);
         }
     }
 
@@ -384,7 +384,7 @@ public class FtpTimeWaitLoopDownloadTest {
                 log.info("[FtpTimeWait]   其余 {} 条略", ftp.size() - 3);
             }
         } catch (Exception e) {
-            log.warn("[FtpTimeWait] 统计 TIME_WAIT 失败(不影响测试): ", e);
+            log.error("[FtpTimeWait] 统计 TIME_WAIT 失败(不影响测试): ", e);
         }
     }
 }

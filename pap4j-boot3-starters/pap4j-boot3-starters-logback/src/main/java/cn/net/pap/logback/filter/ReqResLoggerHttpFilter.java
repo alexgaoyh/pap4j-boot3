@@ -122,7 +122,7 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
                         logReqRes(requestToUse, responseWrapper);
                     }
                 } catch (Exception e) {
-                    logger.warn("Failed to process logs or recorded bugs", e);
+                    logger.error("Failed to process logs or recorded bugs", e);
                 }
             }
             if (responseWrapper != null) {
@@ -130,7 +130,7 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
                     responseWrapper.copyBodyToResponse();
                 } catch (IOException e) {
                     // 在 finally 块中捕获 IO 异常，防止其掩盖/冲掉真正的业务异常
-                    logger.debug("Failed to copy cached body to response", e);
+                    logger.error("Failed to copy cached body to response", e);
                 }
             }
         }
@@ -374,7 +374,7 @@ public class ReqResLoggerHttpFilter extends HttpFilter {
             
             logger.error("ReqResLoggerHttpFilter: Error detected (status={}), snapshot written to: {}", status, file.getAbsolutePath());
         } catch (Exception e) {
-            logger.warn("Failed to write bug snapshot", e);
+            logger.error("Failed to write bug snapshot", e);
         }
     }
 
