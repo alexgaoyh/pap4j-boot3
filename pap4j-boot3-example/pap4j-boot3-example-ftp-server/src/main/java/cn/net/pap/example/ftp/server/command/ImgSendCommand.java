@@ -116,7 +116,7 @@ public class ImgSendCommand extends AbstractCommand {
                 file = session.getFileSystemView().getFile(fileName);
             } catch (Exception var39) {
                 Exception ex = var39;
-                this.LOG.debug("Exception getting file object", ex);
+                this.LOG.error("Exception getting file object", ex);
             }
 
             if (file == null) {
@@ -157,7 +157,7 @@ public class ImgSendCommand extends AbstractCommand {
                 dataConnection = session.getDataConnection().openConnection();
             } catch (Exception var43) {
                 Exception e = var43;
-                this.LOG.debug("Exception getting the output data stream", e);
+                this.LOG.error("Exception getting the output data stream", e);
                 session.write(LocalizedDataTransferFtpReply.translate(session, request, context, 425, "IMGSEND", (String)null, file));
                 return;
             }
@@ -177,12 +177,12 @@ public class ImgSendCommand extends AbstractCommand {
                 }
             } catch (SocketException var41) {
                 SocketException ex = var41;
-                this.LOG.debug("Socket exception during data transfer", ex);
+                this.LOG.error("Socket exception during data transfer", ex);
                 failure = true;
                 session.write(LocalizedDataTransferFtpReply.translate(session, request, context, 426, "IMGSEND", fileName, file, transSz));
             } catch (IOException var42) {
                 IOException ex = var42;
-                this.LOG.debug("IOException during data transfer", ex);
+                this.LOG.error("IOException during data transfer", ex);
                 failure = true;
                 session.write(LocalizedDataTransferFtpReply.translate(session, request, context, 551, "IMGSEND", fileName, file, transSz));
             }

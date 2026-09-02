@@ -166,6 +166,7 @@ public interface ImageProcessorStrategy {
                         // 等待流处理线程安全停止，避免输出丢失
                         streamHandler.stop();
                     } catch (IOException ioe) {
+                        log.error("停止流处理线程失败", ioe);
                         // 记录或忽略流关闭异常
                     }
                 }

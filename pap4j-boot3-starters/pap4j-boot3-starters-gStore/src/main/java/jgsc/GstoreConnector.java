@@ -51,6 +51,7 @@ public class GstoreConnector {
         try {
             strUrl = URLEncoder.encode(strUrl, "UTF-8");
         } catch (UnsupportedEncodingException ex) {
+            log.error("Broken VM does not support UTF-8", ex);
             throw new RuntimeException("Broken VM does not support UTF-8");
         }
 
@@ -104,6 +105,7 @@ public class GstoreConnector {
         try {
             strUrl = URLEncoder.encode(strUrl, "UTF-8");
         } catch (UnsupportedEncodingException ex) {
+            log.error("Broken VM does not support UTF-8", ex);
             throw new RuntimeException("Broken VM does not support UTF-8");
         }
 
@@ -169,6 +171,7 @@ public class GstoreConnector {
         try {
             strUrl = URLEncoder.encode(strUrl, "UTF-8");
         } catch (UnsupportedEncodingException ex) {
+            log.error("Broken VM does not support UTF-8", ex);
             throw new RuntimeException("Broken VM does not support UTF-8");
         }
 
@@ -237,6 +240,7 @@ public class GstoreConnector {
         try {
             strUrl = URLEncoder.encode(strUrl, "UTF-8");
         } catch (UnsupportedEncodingException ex) {
+            log.error("Broken VM does not support UTF-8", ex);
             throw new RuntimeException("Broken VM does not support UTF-8");
         }
 

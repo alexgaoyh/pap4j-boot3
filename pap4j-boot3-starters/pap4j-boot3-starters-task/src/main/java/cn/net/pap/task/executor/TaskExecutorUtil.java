@@ -137,6 +137,7 @@ public class TaskExecutorUtil {
                     }
                 }
             } catch (InterruptedException ie) {
+                log.error("等待线程池关闭时被中断", ie);
                 executor.getThreadPoolExecutor().shutdownNow();
                 Thread.currentThread().interrupt();
             }
