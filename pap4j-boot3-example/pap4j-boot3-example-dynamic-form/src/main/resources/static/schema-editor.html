@@ -6,6 +6,8 @@
     <title>数据治理 - JSON Schema Draft-07 可视化编辑器</title>
     <!-- Vue 3 Localized -->
     <script src="vue.global.js"></script>
+    <!-- JSON-Editor (Standalone Engine) -->
+    <script src="jsoneditor.min.js"></script>
     <style>
         :root {
             --bg-color: #0f172a;
@@ -613,6 +615,212 @@
             color: #ffffff;
             border-color: var(--accent-primary);
         }
+
+        /* ===== 动态表单生成器 (JSON Schema to Form) 样式 ===== */
+        .form-card {
+            background: rgba(15, 23, 42, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        .form-card-title {
+            font-size: 0.88rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(51, 65, 85, 0.6);
+            padding-bottom: 0.4rem;
+        }
+        .form-card-desc {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 0.85rem 1.1rem;
+        }
+        .form-grid.single-col {
+            grid-template-columns: 1fr;
+        }
+        .form-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+        }
+        .form-item.full-width {
+            grid-column: 1 / -1;
+        }
+        .form-label {
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+        }
+        .form-label .req-star {
+            color: var(--accent-danger);
+            font-weight: bold;
+        }
+        .form-label .cond-badge {
+            font-size: 0.68rem;
+            color: var(--accent-warning);
+            background: rgba(245, 158, 11, 0.15);
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 3px;
+            padding: 0 0.3rem;
+        }
+        .form-label .type-hint {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            font-weight: normal;
+            font-family: monospace;
+        }
+        .form-input {
+            background: #0f172a;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            padding: 0.45rem 0.65rem;
+            font-size: 0.82rem;
+            outline: none;
+            width: 100%;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .form-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+        }
+        .form-input.has-error {
+            border-color: var(--accent-danger) !important;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+        }
+        .form-error {
+            font-size: 0.72rem;
+            color: var(--accent-danger);
+            margin-top: 0.15rem;
+            display: flex;
+            align-items: center;
+            gap: 0.2rem;
+        }
+        .form-desc {
+            font-size: 0.72rem;
+            color: var(--text-secondary);
+            line-height: 1.3;
+        }
+        .form-array-container {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .form-array-row {
+            background: rgba(30, 41, 59, 0.5);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 0.6rem;
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        .form-array-row.is-object {
+            flex-direction: column;
+        }
+        .form-array-index {
+            font-size: 0.75rem;
+            color: var(--accent-info);
+            font-weight: bold;
+            min-width: 26px;
+            padding-top: 0.35rem;
+        }
+        .form-oneof-tabs {
+            display: flex;
+            gap: 0.35rem;
+            margin-bottom: 0.6rem;
+            flex-wrap: wrap;
+        }
+        .form-oneof-tab {
+            padding: 0.25rem 0.6rem;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: rgba(15, 23, 42, 0.6);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+        }
+        .form-oneof-tab.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: #ffffff;
+            font-weight: 500;
+        }
+        .form-switch-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            cursor: pointer;
+            font-size: 0.8rem;
+            color: var(--text-primary);
+            user-select: none;
+        }
+        .form-switch-label input[type="checkbox"] {
+            cursor: pointer;
+            width: 16px;
+            height: 16px;
+            accent-color: var(--accent-primary);
+        }
+        /* JSON-Editor 黑暗模式适配 */
+        #json-editor-holder {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+            padding: 1rem;
+            color: var(--text-primary);
+        }
+        #json-editor-holder label {
+            color: var(--text-primary) !important;
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+            display: block;
+        }
+        #json-editor-holder input, #json-editor-holder select, #json-editor-holder textarea {
+            background: #0f172a !important;
+            border: 1px solid var(--border-color) !important;
+            color: var(--text-primary) !important;
+            border-radius: 4px;
+            padding: 0.35rem 0.5rem;
+            font-size: 0.8rem;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #json-editor-holder button {
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid var(--border-color);
+            color: #a5b4fc;
+            border-radius: 4px;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin: 0.15rem;
+        }
+        #json-editor-holder button:hover {
+            background: var(--accent-primary);
+            color: white;
+        }
+        #json-editor-holder .well {
+            background: rgba(30, 41, 59, 0.4) !important;
+            border: 1px solid var(--border-color) !important;
+            border-radius: 6px;
+            padding: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -655,11 +863,12 @@
             </div>
         </header>
 
-        <!-- 页签栏：Schema 设计 / 数据生成与提取验证 -->
+        <!-- 页签栏：Schema 设计 / 数据生成与提取验证 / 动态表单生成 -->
         <div style="display: flex; gap: 0.5rem; padding: 0.6rem 2rem; border-bottom: 1px solid var(--border-color); background: #1e293b; align-items: center; flex-wrap: wrap;">
             <button class="btn-outline" style="font-size: 0.85rem; padding: 0.3rem 0.9rem;" :class="{ 'tab-active': activeTab === 'design' }" @click="activeTab = 'design'">① Schema 设计</button>
             <button class="btn-outline" style="font-size: 0.85rem; padding: 0.3rem 0.9rem;" :class="{ 'tab-active': activeTab === 'workbench' }" @click="activeTab = 'workbench'">② 数据生成与提取验证</button>
-            <span style="font-size: 0.75rem; color: var(--text-secondary); margin-left: auto;">基于当前 Schema 随机生成数据 → 书写 JsonPath/QLExpress 提取表达式 → 逐条验证</span>
+            <button class="btn-outline" style="font-size: 0.85rem; padding: 0.3rem 0.9rem;" :class="{ 'tab-active': activeTab === 'form' }" @click="switchTabToForm">③ 动态表单生成与预览</button>
+            <span style="font-size: 0.75rem; color: var(--text-secondary); margin-left: auto;">将 JSON Schema 即时转换为交互式表单 → 数据双向绑定 → 验证与提交</span>
         </div>
 
         <main v-show="activeTab === 'design'">
@@ -1152,6 +1361,284 @@
             </div>
         </main>
 
+        <!-- ③ 动态表单生成与预览工作台 -->
+        <main v-show="activeTab === 'form'" class="workbench">
+            <!-- 顶部表单操作与状态控制条 -->
+            <div class="panel">
+                <div class="panel-title">
+                    <div style="display: flex; align-items: center; gap: 0.6rem;">
+                        <span>③ 动态表单生成器 (JSON Schema → Dynamic Form)</span>
+                        <span class="version-badge" style="background: rgba(16, 185, 129, 0.15); border-color: var(--accent-success); color: #34d399;">
+                            {{ formEngine === 'vue' ? 'Vue 3 原生自适应引擎' : 'JSON-Editor 工业级引擎' }}
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap;">
+                        <!-- 引擎切换 -->
+                        <button class="btn-outline" style="font-size: 0.78rem; padding: 0.25rem 0.5rem;" 
+                                :style="formEngine === 'vue' ? { borderColor: 'var(--accent-primary)', color: '#a5b4fc', background: 'rgba(99, 102, 241, 0.15)' } : {}"
+                                @click="setFormEngine('vue')">
+                            🚀 Vue3 原生引擎
+                        </button>
+                        <button class="btn-outline" style="font-size: 0.78rem; padding: 0.25rem 0.5rem;" 
+                                :style="formEngine === 'jsoneditor' ? { borderColor: 'var(--accent-info)', color: '#67e8f9', background: 'rgba(6, 182, 212, 0.15)' } : {}"
+                                @click="setFormEngine('jsoneditor')">
+                            🛠️ JSON-Editor 引擎
+                        </button>
+                        <div style="width: 1px; height: 18px; background: var(--border-color); margin: 0 0.2rem;"></div>
+                        <!-- 粘贴 JSON Schema 核心按纽 -->
+                        <button class="btn-primary" style="padding: 0.25rem 0.65rem; font-size: 0.78rem; background: var(--accent-primary);" 
+                                @click="openPasteSchemaModal" title="直接粘贴外部 JSON Schema 并即时生成 Form 表单">
+                            📥 粘贴 JSON Schema
+                        </button>
+                        <!-- 表单快捷操作 -->
+                        <button class="btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem; background: var(--accent-info);" 
+                                @click="fillMockToForm" title="一键导入第②步生成的数据或自动生成Mock数据填充">
+                            ⚡ 填充Mock数据
+                        </button>
+                        <button class="btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" 
+                                @click="fillDefaultValues" title="根据 Schema 中定义的 default 填充">
+                            🎲 默认值
+                        </button>
+                        <button class="btn-outline" style="padding: 0.25rem 0.6rem; font-size: 0.78rem;" 
+                                @click="resetFormData" title="清空所有字段值">
+                            🧹 清空
+                        </button>
+                        <button class="btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem; background: var(--accent-warning);" 
+                                @click="validateFormManual" title="根据 Schema 约束校验当前表单">
+                            ✔ 校验表单
+                        </button>
+                        <button class="btn-primary" style="padding: 0.25rem 0.6rem; font-size: 0.78rem; background: var(--accent-success);" 
+                                @click="submitForm" title="验证并提交表单数据">
+                            📤 提交表单
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 动态 Schema 状态说明卡片 -->
+                <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; background: rgba(15, 23, 42, 0.4); padding: 0.5rem 0.75rem; border-radius: 6px; font-size: 0.75rem; border: 1px solid rgba(51, 65, 85, 0.5);">
+                    <span style="color: var(--text-secondary);">当前模型: <strong style="color: var(--text-primary);">{{ schemaKey }}</strong> ({{ schemaName }})</span>
+                    <span style="color: var(--text-secondary);">根类型: <strong style="color: var(--accent-info);">{{ rootNode.type }}</strong></span>
+                    <span style="color: var(--text-secondary);">条件分支: <strong :style="ruleMode === 'switch' && switchCases.length > 0 ? { color: 'var(--accent-warning)' } : {}">{{ ruleMode === 'switch' ? `Switch-Case (${switchCases.length} 分支)` : (conditionalRules.length > 0 ? `独立规则 (${conditionalRules.length} 条)` : '无') }}</strong></span>
+                    <span v-if="formValidationStatus.checked" :style="formValidationStatus.valid ? { color: 'var(--accent-success)' } : { color: 'var(--accent-danger)' }" style="margin-left: auto; font-weight: bold;">
+                        {{ formValidationStatus.valid ? '✔ 表单校验通过' : `✘ 校验不通过 (${formValidationStatus.errors.length} 处错误)` }}
+                    </span>
+                    <span v-else style="color: var(--text-secondary); margin-left: auto;">
+                        💡 输入时实时响应与双向绑定
+                    </span>
+                </div>
+
+                <!-- 消息提示栏 -->
+                <div v-if="formAlertMsg" :style="formAlertMsg.type === 'error' ? { color: 'var(--accent-danger)', background: 'rgba(239, 68, 68, 0.1)' } : { color: 'var(--accent-success)', background: 'rgba(16, 185, 129, 0.1)' }" 
+                     style="font-size: 0.8rem; padding: 0.4rem 0.75rem; border-radius: 4px; display: flex; justify-content: space-between; align-items: center;">
+                    <span>{{ formAlertMsg.text }}</span>
+                    <button class="btn-icon" @click="formAlertMsg = null" style="font-size: 0.85rem;">×</button>
+                </div>
+            </div>
+
+            <!-- 表单渲染与右侧数据联动分栏 -->
+            <div class="workbench-cols">
+                <!-- 左栏：表单渲染区域 -->
+                <div class="panel" style="min-height: 500px;">
+                    <div class="panel-title">
+                        <span>📝 表单填写交互界面</span>
+                        <div style="font-size: 0.75rem; color: var(--text-secondary);">
+                            支持字段类型转换、正则/范围校验、嵌套对象及条件分支联动
+                        </div>
+                    </div>
+
+                    <!-- 1. Vue 3 原生动态表单组件 -->
+                    <div v-if="formEngine === 'vue'" style="margin-top: 0.25rem;">
+                        <schema-form-field 
+                            :schema="jsonSchemaObj" 
+                            :prop-key="schemaKey" 
+                            :required="true" 
+                            :model-value="formData" 
+                            @update:model-value="onFormDataChange" 
+                            :root-data="formData" 
+                            :parent-data="formData" 
+                            :errors="formErrorsMap" 
+                            :path="''" 
+                            :depth="0"
+                        ></schema-form-field>
+                    </div>
+
+                    <!-- 2. 开源 JSON-Editor 渲染容器 -->
+                    <div v-show="formEngine === 'jsoneditor'" style="margin-top: 0.25rem;">
+                        <div id="json-editor-holder"></div>
+                    </div>
+
+                    <!-- 表单底部提交按纽 -->
+                    <div style="display: flex; justify-content: flex-end; gap: 0.5rem; margin-top: 1rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                        <button class="btn-outline" @click="resetFormData">清空重填</button>
+                        <button class="btn-primary" style="background: var(--accent-warning);" @click="validateFormManual">实时校验</button>
+                        <button class="btn-primary" style="background: var(--accent-success);" @click="submitForm">✔ 确认提交表单</button>
+                    </div>
+                </div>
+
+                <!-- 右栏：实时表单数据 JSON + 校验错误明细 + 提交快照 -->
+                <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+                    <!-- 实时表单数据与 Schema 视窗 (含直接粘贴编辑能力) -->
+                    <div class="panel">
+                        <div class="panel-title">
+                            <div class="tabs-header" style="border: none; padding: 0; gap: 0.3rem;">
+                                <button class="tab-btn" :class="{ active: rightPanelTab === 'data' }" @click="rightPanelTab = 'data'" style="font-size: 0.8rem;">
+                                    📦 实时表单数据 (formData)
+                                </button>
+                                <button class="tab-btn" :class="{ active: rightPanelTab === 'schema' }" @click="syncRightPanelSchemaText" style="font-size: 0.8rem;">
+                                    📜 JSON Schema (可在此粘贴修改)
+                                </button>
+                            </div>
+                            <div style="display: flex; gap: 0.35rem;" v-if="rightPanelTab === 'data'">
+                                <button class="btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" @click="showImportDataDialog = true">
+                                    📥 导入JSON
+                                </button>
+                                <button class="btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" @click="copyFormData">
+                                    📋 复制JSON
+                                </button>
+                            </div>
+                            <div style="display: flex; gap: 0.35rem;" v-else>
+                                <button class="btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" @click="openPasteSchemaModal">
+                                    📥 预设/弹窗
+                                </button>
+                                <button class="btn-primary" style="padding: 0.2rem 0.5rem; font-size: 0.75rem; background: var(--accent-info);" @click="applyPastedSchemaFromRightPanel">
+                                    ⚡ 应用为表单
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- TAB 1: 实时数据模型 -->
+                        <div v-show="rightPanelTab === 'data'" class="code-container" style="max-height: 280px; min-height: 180px;">
+                            <button class="btn-copy" @click="copyFormData">Copy</button>
+                            <code>{{ formDataPrettyJson }}</code>
+                        </div>
+
+                        <!-- TAB 2: 直接粘贴与编辑 JSON Schema -->
+                        <div v-show="rightPanelTab === 'schema'" style="display: flex; flex-direction: column; gap: 0.4rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.75rem; color: var(--text-secondary);">
+                                <span>在此直接粘贴或修改 Schema 文本，点击「⚡ 应用为表单」即刻重构左侧表单：</span>
+                            </div>
+                            <textarea v-model="rightPanelSchemaText" 
+                                      placeholder='在此直接粘贴 JSON Schema，例如 { "$schema": "...", "type": "object", "properties": { ... } }'
+                                      style="width: 100%; height: 260px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.6rem; color: #34d399; font-family: monospace; font-size: 0.78rem; resize: vertical; outline: none; line-height: 1.4;"></textarea>
+                            <div v-if="rightPanelSchemaError" style="color: var(--accent-danger); font-size: 0.75rem; background: rgba(239, 68, 68, 0.1); padding: 0.3rem 0.5rem; border-radius: 4px;">
+                                ⚠ {{ rightPanelSchemaError }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 校验状态报告与错误清单 -->
+                    <div class="panel">
+                        <div class="panel-title">
+                            <span>🛡️ Draft-07 规范校验报告</span>
+                            <button class="btn-outline" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;" @click="validateFormManual">
+                                🔄 重新校验
+                            </button>
+                        </div>
+                        <div v-if="formValidationStatus.checked">
+                            <div v-if="formValidationStatus.valid" style="background: rgba(16, 185, 129, 0.1); border: 1px solid var(--accent-success); border-radius: 6px; padding: 0.75rem; color: var(--accent-success); font-size: 0.8rem; display: flex; align-items: center; gap: 0.5rem;">
+                                <span style="font-size: 1.2rem;">✔</span>
+                                <div>
+                                    <strong style="display: block;">全部校验通过！</strong>
+                                    <span style="font-size: 0.75rem; opacity: 0.9;">所有字段值均符合当前的 JSON Schema Draft-07 规范及分支约束。</span>
+                                </div>
+                            </div>
+                            <div v-else style="display: flex; flex-direction: column; gap: 0.4rem;">
+                                <div style="color: var(--accent-danger); font-size: 0.8rem; font-weight: 600; margin-bottom: 0.2rem;">
+                                    ✘ 共发现 {{ formValidationStatus.errors.length }} 项校验未通过：
+                                </div>
+                                <div v-for="(err, eIdx) in formValidationStatus.errors" :key="eIdx" 
+                                     style="background: rgba(239, 68, 68, 0.08); border-left: 3px solid var(--accent-danger); padding: 0.4rem 0.6rem; border-radius: 4px; font-size: 0.75rem;">
+                                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                                        <span style="color: var(--accent-info); font-family: monospace; font-weight: bold;">{{ err.path || 'root' }}</span>
+                                        <span style="color: var(--accent-warning); font-size: 0.7rem;">[{{ err.rule }}]</span>
+                                    </div>
+                                    <div style="color: var(--text-primary); margin-top: 0.15rem;">{{ err.message }}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else style="font-size: 0.8rem; color: var(--text-secondary); text-align: center; padding: 1rem 0;">
+                            点击「✔ 校验表单」按钮可全面检测当前表单数据是否符合 Schema 规范。
+                        </div>
+                    </div>
+
+                    <!-- 最近提交记录卡片 -->
+                    <div class="panel" v-if="submissionHistory.length > 0">
+                        <div class="panel-title">
+                            <span>📬 表单提交记录 (最新 {{ submissionHistory.length }} 条)</span>
+                            <button class="btn-outline" style="padding: 0.15rem 0.4rem; font-size: 0.72rem;" @click="submissionHistory = []">清空记录</button>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 0.4rem; max-height: 200px; overflow-y: auto;">
+                            <div v-for="(sub, sIdx) in submissionHistory" :key="sIdx" 
+                                 style="background: rgba(15, 23, 42, 0.5); border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; font-size: 0.75rem;">
+                                <div style="display: flex; justify-content: space-between; color: var(--accent-success); font-weight: 500;">
+                                    <span>✔ 提交成功 #{{ submissionHistory.length - sIdx }}</span>
+                                    <span style="color: var(--text-secondary); font-size: 0.7rem;">{{ sub.time }}</span>
+                                </div>
+                                <pre class="json-pre" style="max-height: 80px; overflow-y: auto; margin-top: 0.3rem;">{{ JSON.stringify(sub.data, null, 2) }}</pre>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- 导入数据弹窗 (Import Data Dialog) -->
+        <div v-if="showImportDataDialog" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+            <div style="background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; width: 550px; max-width: 90%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <h3 style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary);">📥 导入 JSON 数据到表单</h3>
+                    <button class="btn-icon" @click="showImportDataDialog = false" style="font-size: 1.25rem;">×</button>
+                </div>
+                <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                    <label style="font-size: 0.8rem; color: var(--text-secondary);">请在下方粘贴符合该 Schema 结构的 JSON 数据：</label>
+                    <textarea v-model="importDataText" placeholder='{ "order_id": "ORD-20260909-123456", ... }' 
+                              style="width: 100%; height: 220px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; color: #34d399; font-family: monospace; font-size: 0.8rem; resize: vertical; outline: none;"></textarea>
+                </div>
+                <div v-if="importDataError" style="color: var(--accent-danger); font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 4px;">
+                    ⚠ {{ importDataError }}
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                    <button class="btn-outline" @click="showImportDataDialog = false">取消</button>
+                    <button class="btn-primary" style="background: var(--accent-info);" @click="executeImportData">✔ 确认导入</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 粘贴并导入 JSON Schema 弹窗 (Paste Schema to Form Modal) -->
+        <div v-if="showPasteSchemaModal" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.75); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+            <div style="background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; width: 700px; max-width: 92%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 12px 30px rgba(0,0,0,0.6);">
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.5rem;">
+                        <h3 style="font-size: 1.05rem; font-weight: 600; color: var(--text-primary);">📥 粘贴外部 JSON Schema 转换为动态表单</h3>
+                        <span class="version-badge">Draft-07 / OpenAPI</span>
+                    </div>
+                    <button class="btn-icon" @click="showPasteSchemaModal = false" style="font-size: 1.25rem;">×</button>
+                </div>
+                
+                <!-- 预设常用 Schema 快捷载入 -->
+                <div style="display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; background: rgba(15, 23, 42, 0.4); padding: 0.4rem 0.6rem; border-radius: 6px; border: 1px solid rgba(51, 65, 85, 0.5);">
+                    <span style="font-size: 0.75rem; color: var(--text-secondary);">💡 快速预设填入:</span>
+                    <button class="btn-outline" style="padding: 0.15rem 0.45rem; font-size: 0.72rem;" @click="loadPresetSchema('user_profile')">👤 用户入职登记</button>
+                    <button class="btn-outline" style="padding: 0.15rem 0.45rem; font-size: 0.72rem;" @click="loadPresetSchema('sys_config')">⚙️ 系统运行配置</button>
+                    <button class="btn-outline" style="padding: 0.15rem 0.45rem; font-size: 0.72rem;" @click="loadPresetSchema('ecommerce')">🛒 电商多态订单</button>
+                    <button class="btn-outline" style="padding: 0.15rem 0.45rem; font-size: 0.72rem;" @click="loadPresetSchema('tree')">🌳 组织架构递归树</button>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 0.4rem;">
+                    <label style="font-size: 0.8rem; color: var(--text-secondary);">请在下方粘贴完整的 JSON Schema（支持 object / array / oneOf / if-then / 各种校验约束）：</label>
+                    <textarea v-model="pastedSchemaInput" placeholder='{ "$schema": "http://json-schema.org/draft-07/schema#", "title": "my_form", "type": "object", "properties": { ... } }' 
+                              style="width: 100%; height: 260px; background: #0f172a; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.6rem; color: #34d399; font-family: monospace; font-size: 0.78rem; resize: vertical; outline: none; line-height: 1.4;"></textarea>
+                </div>
+                <div v-if="pastedSchemaError" style="color: var(--accent-danger); font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); padding: 0.5rem; border-radius: 4px;">
+                    ⚠ {{ pastedSchemaError }}
+                </div>
+                <div style="display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid var(--border-color); padding-top: 0.75rem;">
+                    <button class="btn-outline" @click="showPasteSchemaModal = false">取消</button>
+                    <button class="btn-primary" style="background: var(--accent-primary);" @click="executeApplyPastedSchema">⚡ 即时解析并生成表单</button>
+                </div>
+            </div>
+        </div>
+
         <!-- Import Schema Dialog/Modal -->
         <div v-if="showImportDialog" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.7); display: flex; align-items: center; justify-content: center; z-index: 1000;">
             <div style="background: var(--panel-bg); border: 1px solid var(--border-color); border-radius: 12px; width: 600px; max-width: 90%; padding: 1.5rem; display: flex; flex-direction: column; gap: 1rem; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
@@ -1392,6 +1879,209 @@
                 </div>
             </div>
             </div> <!-- Close v-show="!node.collapsed" -->
+        </div>
+    </template>
+
+    <!-- Schema Dynamic Form Field Template Component -->
+    <template id="v-schema-form-field-template">
+        <!-- 1. OBJECT 类型容器 -->
+        <div v-if="schemaType === 'object'" class="form-card">
+            <div class="form-card-title" v-if="schema.title || propKey">
+                <span>
+                    {{ schema.title || propKey }}
+                    <span class="req-star" v-if="required">*</span>
+                    <span class="type-hint">object</span>
+                </span>
+                <button v-if="depth > 0" class="btn-icon" style="font-size: 0.75rem;" @click="isCollapsed = !isCollapsed">
+                    {{ isCollapsed ? '▶ 展开' : '▼ 收起' }}
+                </button>
+            </div>
+            <div class="form-card-desc" v-if="schema.description && !isCollapsed">{{ schema.description }}</div>
+            
+            <div v-show="!isCollapsed" class="form-grid" :class="{ 'single-col': isSingleCol }">
+                <template v-for="(subSchema, k) in displayProperties" :key="k">
+                    <schema-form-field 
+                        :schema="subSchema" 
+                        :prop-key="k" 
+                        :required="isPropRequired(k)"
+                        :model-value="safeModelValue[k]"
+                        @update:model-value="onSubFieldChange(k, $event)"
+                        :root-data="rootData"
+                        :parent-data="safeModelValue"
+                        :errors="errors"
+                        :path="calcPath(k)"
+                        :depth="depth + 1"
+                    ></schema-form-field>
+                </template>
+            </div>
+        </div>
+
+        <!-- 2. ARRAY 数组列表容器 -->
+        <div v-else-if="schemaType === 'array'" class="form-card">
+            <div class="form-card-title">
+                <span>
+                    {{ schema.title || propKey }}
+                    <span class="req-star" v-if="required">*</span>
+                    <span class="type-hint">array [{{ safeArrayValue.length }}]</span>
+                </span>
+                <button class="btn-primary" style="padding: 0.15rem 0.5rem; font-size: 0.72rem; background: var(--accent-success);" @click="addArrayItem">
+                    ➕ 添加列表项
+                </button>
+            </div>
+            <div class="form-card-desc" v-if="schema.description">{{ schema.description }}</div>
+            
+            <div class="form-array-container">
+                <div v-for="(item, idx) in safeArrayValue" :key="idx" class="form-array-row" :class="{ 'is-object': isItemObject }">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <span class="form-array-index">#{{ idx + 1 }}</span>
+                        <div style="display: flex; gap: 0.2rem;">
+                            <button class="btn-icon" title="上移" :disabled="idx === 0" @click="moveArrayItem(idx, -1)" style="font-size: 0.75rem;">↑</button>
+                            <button class="btn-icon" title="下移" :disabled="idx === safeArrayValue.length - 1" @click="moveArrayItem(idx, 1)" style="font-size: 0.75rem;">↓</button>
+                            <button class="btn-icon delete" title="删除" @click="removeArrayItem(idx)" style="font-size: 0.75rem;">🗑️</button>
+                        </div>
+                    </div>
+                    <div style="flex: 1; width: 100%;">
+                        <schema-form-field 
+                            :schema="itemSchema" 
+                            :prop-key="`[${idx}]`" 
+                            :required="true"
+                            :model-value="item"
+                            @update:model-value="updateArrayItem(idx, $event)"
+                            :root-data="rootData"
+                            :parent-data="safeArrayValue"
+                            :errors="errors"
+                            :path="`${path}[${idx}]`"
+                            :depth="depth + 1"
+                        ></schema-form-field>
+                    </div>
+                </div>
+                <div v-if="safeArrayValue.length === 0" style="font-size: 0.75rem; color: var(--text-secondary); text-align: center; padding: 0.6rem; border: 1px dashed var(--border-color); border-radius: 6px;">
+                    暂无列表项，点击右上角「➕ 添加列表项」
+                </div>
+            </div>
+            <div class="form-error" v-if="fieldError">{{ fieldError }}</div>
+        </div>
+
+        <!-- 3. oneOf 多态联合选择 -->
+        <div v-else-if="schemaType === 'oneOf'" class="form-card">
+            <div class="form-card-title">
+                <span>
+                    {{ schema.title || propKey }}
+                    <span class="req-star" v-if="required">*</span>
+                    <span class="type-hint">oneOf 多态联合分支</span>
+                </span>
+            </div>
+            <div class="form-oneof-tabs">
+                <button 
+                    v-for="(branch, bIdx) in schema.oneOf || schema.branches || []" 
+                    :key="bIdx" 
+                    class="form-oneof-tab" 
+                    :class="{ active: selectedBranchIdx === bIdx }"
+                    @click="switchBranch(bIdx)"
+                >
+                    {{ branch.title || `分支 ${bIdx + 1}` }}
+                </button>
+            </div>
+            <div v-if="activeBranchSchema">
+                <schema-form-field 
+                    :schema="activeBranchSchema" 
+                    :prop-key="propKey" 
+                    :required="required"
+                    :model-value="modelValue"
+                    @update:model-value="$emit('update:modelValue', $event)"
+                    :root-data="rootData"
+                    :parent-data="parentData"
+                    :errors="errors"
+                    :path="path"
+                    :depth="depth"
+                ></schema-form-field>
+            </div>
+        </div>
+
+        <!-- 4. 基本类型字段 (string / number / integer / boolean) -->
+        <div v-else class="form-item" :class="{ 'full-width': isFullWidth }">
+            <label class="form-label" v-if="schemaType !== 'boolean'">
+                <span>{{ schema.title || propKey }}</span>
+                <span class="req-star" v-if="required">*</span>
+                <span class="cond-badge" v-if="isConditionallyTriggered">条件激活</span>
+                <span class="type-hint" v-if="schema.format">({{ schema.format }})</span>
+                <span class="type-hint" v-else>({{ schema.type }})</span>
+            </label>
+
+            <!-- 4.1 枚举选项下拉列表 -->
+            <div v-if="enumOptions.length > 0">
+                <select class="form-input" :class="{ 'has-error': fieldError }" :value="modelValue" @change="onPrimitiveChange($event.target.value)">
+                    <option value="">-- 请选择 --</option>
+                    <option v-for="opt in enumOptions" :key="opt" :value="opt">{{ opt }}</option>
+                </select>
+            </div>
+
+            <!-- 4.2 布尔类型开关 -->
+            <div v-else-if="schemaType === 'boolean'" style="padding: 0.35rem 0;">
+                <label class="form-switch-label">
+                    <input type="checkbox" :checked="!!modelValue" @change="onPrimitiveChange($event.target.checked)">
+                    <span style="font-weight: 500;">{{ schema.title || propKey }}</span>
+                    <span class="req-star" v-if="required">*</span>
+                    <span class="cond-badge" v-if="isConditionallyTriggered">条件激活</span>
+                </label>
+            </div>
+
+            <!-- 4.3 数值类型 -->
+            <div v-else-if="schemaType === 'number' || schemaType === 'integer'">
+                <input 
+                    type="number" 
+                    class="form-input" 
+                    :class="{ 'has-error': fieldError }"
+                    :value="modelValue" 
+                    :step="schemaType === 'integer' ? '1' : 'any'"
+                    :min="schema.minimum"
+                    :max="schema.maximum"
+                    :placeholder="schema.description || (schema.minimum !== undefined ? `范围: [${schema.minimum} ~ ${schema.maximum !== undefined ? schema.maximum : '∞'}]` : '请输入数值')"
+                    @input="onNumberChange($event.target.value)"
+                >
+            </div>
+
+            <!-- 4.4 字符串类型 -->
+            <div v-else>
+                <!-- 日期时间 -->
+                <input 
+                    v-if="schema.format === 'date-time'" 
+                    type="datetime-local" 
+                    class="form-input" 
+                    :class="{ 'has-error': fieldError }"
+                    :value="formatDateTimeValue(modelValue)" 
+                    @input="onDateTimeChange($event.target.value)"
+                >
+                <input 
+                    v-else-if="schema.format === 'date'" 
+                    type="date" 
+                    class="form-input" 
+                    :class="{ 'has-error': fieldError }"
+                    :value="modelValue" 
+                    @input="onPrimitiveChange($event.target.value)"
+                >
+                <input 
+                    v-else-if="schema.format === 'time'" 
+                    type="time" 
+                    class="form-input" 
+                    :class="{ 'has-error': fieldError }"
+                    :value="modelValue" 
+                    @input="onPrimitiveChange($event.target.value)"
+                >
+                <!-- 普通文本 / email / uri / pattern 等 -->
+                <input 
+                    v-else 
+                    type="text" 
+                    class="form-input" 
+                    :class="{ 'has-error': fieldError }"
+                    :value="modelValue" 
+                    :placeholder="schema.description || (schema.pattern ? `正则格式: ${schema.pattern}` : (schema.defaultValue || '请输入文本'))"
+                    @input="onPrimitiveChange($event.target.value)"
+                >
+            </div>
+
+            <div class="form-desc" v-if="schema.description && schemaType !== 'boolean'">{{ schema.description }}</div>
+            <div class="form-error" v-if="fieldError">⚠ {{ fieldError }}</div>
         </div>
     </template>
 
@@ -1865,10 +2555,439 @@
             };
         };
 
+        // Helper to evaluate conditional IF block against object data
+        const evaluateIfCondition = (ifSchema, data) => {
+            if (!ifSchema || !ifSchema.properties || !data || typeof data !== 'object') return false;
+            for (const k of Object.keys(ifSchema.properties)) {
+                const cond = ifSchema.properties[k];
+                const val = data[k];
+                if (cond.const !== undefined && String(val) !== String(cond.const)) {
+                    return false;
+                }
+                if (cond.not && cond.not.const !== undefined && String(val) === String(cond.not.const)) {
+                    return false;
+                }
+                if (cond.pattern && !new RegExp(cond.pattern).test(String(val || ''))) {
+                    return false;
+                }
+            }
+            return true;
+        };
+
+        // Helper to validate entire form data against JSON Schema Draft-07 rules
+        const validateFormAgainstSchema = (schema, data, rootData = data, path = '', errors = []) => {
+            if (!schema) return errors;
+            const type = schema.type || (schema.properties ? 'object' : (schema.oneOf ? 'oneOf' : 'string'));
+
+            if (type === 'object') {
+                const obj = (data && typeof data === 'object' && !Array.isArray(data)) ? data : {};
+                const reqList = Array.isArray(schema.required) ? schema.required : [];
+                for (const reqKey of reqList) {
+                    const v = obj[reqKey];
+                    if (v === undefined || v === null || (typeof v === 'string' && v.trim() === '')) {
+                        errors.push({
+                            path: path ? `${path}.${reqKey}` : reqKey,
+                            rule: 'required (必填)',
+                            message: `必填字段 [${schema.properties?.[reqKey]?.title || reqKey}] 不能为空`
+                        });
+                    }
+                }
+
+                if (schema.properties) {
+                    for (const k of Object.keys(schema.properties)) {
+                        if (obj[k] !== undefined && obj[k] !== null && obj[k] !== '') {
+                            validateFormAgainstSchema(schema.properties[k], obj[k], rootData, path ? `${path}.${k}` : k, errors);
+                        }
+                    }
+                }
+
+                // Check If-Then-Else conditional constraints
+                if (schema.if && schema.then) {
+                    if (evaluateIfCondition(schema.if, obj)) {
+                        validateFormAgainstSchema(schema.then, obj, rootData, path, errors);
+                    } else if (schema.else) {
+                        validateFormAgainstSchema(schema.else, obj, rootData, path, errors);
+                    }
+                }
+                if (Array.isArray(schema.allOf)) {
+                    for (const sub of schema.allOf) {
+                        if (sub.if && sub.then && evaluateIfCondition(sub.if, obj)) {
+                            validateFormAgainstSchema(sub.then, obj, rootData, path, errors);
+                        }
+                    }
+                }
+            } else if (type === 'array') {
+                const arr = Array.isArray(data) ? data : [];
+                if (schema.minItems !== undefined && arr.length < schema.minItems) {
+                    errors.push({
+                        path: path || 'array',
+                        rule: `minItems: ${schema.minItems}`,
+                        message: `列表项数量不足 (当前 ${arr.length}，要求至少 ${schema.minItems} 项)`
+                    });
+                }
+                if (schema.maxItems !== undefined && arr.length > schema.maxItems) {
+                    errors.push({
+                        path: path || 'array',
+                        rule: `maxItems: ${schema.maxItems}`,
+                        message: `列表项数量超限 (当前 ${arr.length}，允许至多 ${schema.maxItems} 项)`
+                    });
+                }
+                if (schema.items) {
+                    arr.forEach((item, idx) => {
+                        validateFormAgainstSchema(schema.items, item, rootData, `${path}[${idx}]`, errors);
+                    });
+                }
+            } else if (type === 'string') {
+                const str = String(data || '');
+                if (schema.minLength !== undefined && str.length < schema.minLength) {
+                    errors.push({
+                        path: path,
+                        rule: `minLength: ${schema.minLength}`,
+                        message: `文本长度过短 (当前 ${str.length}，要求至少 ${schema.minLength} 字符)`
+                    });
+                }
+                if (schema.maxLength !== undefined && str.length > schema.maxLength) {
+                    errors.push({
+                        path: path,
+                        rule: `maxLength: ${schema.maxLength}`,
+                        message: `文本长度超长 (当前 ${str.length}，允许至多 ${schema.maxLength} 字符)`
+                    });
+                }
+                if (schema.pattern) {
+                    try {
+                        const reg = new RegExp(schema.pattern);
+                        if (!reg.test(str)) {
+                            errors.push({
+                                path: path,
+                                rule: `pattern: ${schema.pattern}`,
+                                message: `输入内容未匹配正则格式: ${schema.pattern}`
+                            });
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+                if (schema.format === 'email') {
+                    const emailReg = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (str && !emailReg.test(str)) {
+                        errors.push({
+                            path: path,
+                            rule: 'format: email',
+                            message: `邮箱格式不合法 (示例: user@example.com)`
+                        });
+                    }
+                }
+            } else if (type === 'number' || type === 'integer') {
+                const num = parseFloat(data);
+                if (isNaN(num)) {
+                    errors.push({
+                        path: path,
+                        rule: 'type',
+                        message: `数值格式不合法`
+                    });
+                } else {
+                    if (type === 'integer' && !Number.isInteger(num)) {
+                        errors.push({
+                            path: path,
+                            rule: 'type: integer',
+                            message: `字段必须为整数`
+                        });
+                    }
+                    if (schema.minimum !== undefined && num < schema.minimum) {
+                        errors.push({
+                            path: path,
+                            rule: `minimum: ${schema.minimum}`,
+                            message: `数值小于最小值 ${schema.minimum} (当前为 ${num})`
+                        });
+                    }
+                    if (schema.maximum !== undefined && num > schema.maximum) {
+                        errors.push({
+                            path: path,
+                            rule: `maximum: ${schema.maximum}`,
+                            message: `数值大于最大值 ${schema.maximum} (当前为 ${num})`
+                        });
+                    }
+                }
+            }
+            return errors;
+        };
+
+        // Helper to generate default initial form data from JSON Schema
+        const generateInitialFormData = (schema) => {
+            if (!schema) return {};
+            const type = schema.type || (schema.properties ? 'object' : (schema.oneOf ? 'oneOf' : 'string'));
+            if (type === 'object') {
+                const obj = {};
+                if (schema.properties) {
+                    for (const k of Object.keys(schema.properties)) {
+                        const prop = schema.properties[k];
+                        if (prop.default !== undefined) {
+                            obj[k] = prop.default;
+                        } else if (prop.defaultValue !== undefined && prop.defaultValue !== '') {
+                            obj[k] = prop.defaultValue;
+                        } else if (prop.enum && prop.enum.length > 0) {
+                            obj[k] = prop.enum[0];
+                        } else if (prop.type === 'object') {
+                            obj[k] = generateInitialFormData(prop);
+                        } else if (prop.type === 'array') {
+                            obj[k] = [];
+                        } else if (prop.type === 'number' || prop.type === 'integer') {
+                            obj[k] = prop.minimum !== undefined ? prop.minimum : 0;
+                        } else if (prop.type === 'boolean') {
+                            obj[k] = false;
+                        } else {
+                            obj[k] = '';
+                        }
+                    }
+                }
+                return obj;
+            } else if (type === 'array') {
+                return [];
+            } else if (type === 'oneOf' && schema.oneOf && schema.oneOf.length > 0) {
+                return generateInitialFormData(schema.oneOf[0]);
+            }
+            return '';
+        };
+
+        // Component for Dynamic Form Field (Recursive Tree Renderer)
+        const SchemaFormFieldComponent = {
+            name: 'schema-form-field',
+            template: '#v-schema-form-field-template',
+            props: {
+                schema: { type: Object, default: () => ({}) },
+                propKey: { type: String, default: '' },
+                required: { type: Boolean, default: false },
+                modelValue: { default: undefined },
+                rootData: { type: Object, default: () => ({}) },
+                parentData: { default: undefined },
+                errors: { type: Object, default: () => ({}) },
+                path: { type: String, default: '' },
+                depth: { type: Number, default: 0 }
+            },
+            emits: ['update:modelValue'],
+            setup(props, { emit }) {
+                const isCollapsed = ref(false);
+                const selectedBranchIdx = ref(0);
+
+                const schemaType = computed(() => {
+                    const s = props.schema || {};
+                    if (s.type) return s.type;
+                    if (s.properties) return 'object';
+                    if (s.oneOf) return 'oneOf';
+                    return 'string';
+                });
+
+                const fieldError = computed(() => {
+                    if (!props.path) return '';
+                    return props.errors[props.path] || '';
+                });
+
+                const safeModelValue = computed(() => {
+                    if (props.modelValue && typeof props.modelValue === 'object' && !Array.isArray(props.modelValue)) {
+                        return props.modelValue;
+                    }
+                    return {};
+                });
+
+                const safeArrayValue = computed(() => {
+                    if (Array.isArray(props.modelValue)) {
+                        return props.modelValue;
+                    }
+                    return [];
+                });
+
+                const isItemObject = computed(() => {
+                    const items = (props.schema && props.schema.items) || {};
+                    return items.type === 'object' || !!items.properties || items['$ref'] === '#';
+                });
+
+                const itemSchema = computed(() => {
+                    const items = (props.schema && props.schema.items) || {};
+                    if (items['$ref'] === '#') {
+                        return props.rootData?.__schema || props.schema;
+                    }
+                    return items;
+                });
+
+                const displayProperties = computed(() => {
+                    return (props.schema && props.schema.properties) || {};
+                });
+
+                const isSingleCol = computed(() => {
+                    return props.depth > 1;
+                });
+
+                const isFullWidth = computed(() => {
+                    return schemaType.value === 'object' || schemaType.value === 'array' || schemaType.value === 'oneOf';
+                });
+
+                const enumOptions = computed(() => {
+                    const s = props.schema || {};
+                    if (Array.isArray(s.enum)) return s.enum;
+                    if (s.enumList && typeof s.enumList === 'string') {
+                        return s.enumList.split(',').map(v => v.trim()).filter(Boolean);
+                    }
+                    return [];
+                });
+
+                const activeBranchSchema = computed(() => {
+                    const s = props.schema || {};
+                    const branches = s.oneOf || s.branches || [];
+                    return branches[selectedBranchIdx.value] || null;
+                });
+
+                const isConditionallyTriggered = computed(() => {
+                    const s = props.schema || {};
+                    // If this field is conditional on parent
+                    return false;
+                });
+
+                const isPropRequired = (childKey) => {
+                    const s = props.schema || {};
+                    const reqList = Array.isArray(s.required) ? s.required : [];
+                    if (reqList.includes(childKey)) return true;
+
+                    if (s.if && s.then) {
+                        const matchesIf = evaluateIfCondition(s.if, safeModelValue.value);
+                        if (matchesIf && s.then.required && Array.isArray(s.then.required)) {
+                            if (s.then.required.includes(childKey)) return true;
+                        }
+                    }
+                    if (Array.isArray(s.allOf)) {
+                        for (const sub of s.allOf) {
+                            if (sub.if && sub.then && evaluateIfCondition(sub.if, safeModelValue.value)) {
+                                if (sub.then.required && Array.isArray(sub.then.required) && sub.then.required.includes(childKey)) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                    return false;
+                };
+
+                const calcPath = (childKey) => {
+                    if (!props.path) return childKey;
+                    return `${props.path}.${childKey}`;
+                };
+
+                const onSubFieldChange = (key, val) => {
+                    const nextObj = { ...safeModelValue.value, [key]: val };
+                    emit('update:modelValue', nextObj);
+                };
+
+                const onPrimitiveChange = (val) => {
+                    emit('update:modelValue', val);
+                };
+
+                const onNumberChange = (valStr) => {
+                    if (valStr === '' || valStr === null || valStr === undefined) {
+                        emit('update:modelValue', null);
+                        return;
+                    }
+                    const num = schemaType.value === 'integer' ? parseInt(valStr, 10) : parseFloat(valStr);
+                    emit('update:modelValue', isNaN(num) ? valStr : num);
+                };
+
+                const formatDateTimeValue = (val) => {
+                    if (!val) return '';
+                    if (typeof val === 'string' && val.includes('T')) {
+                        return val.substring(0, 16);
+                    }
+                    return val;
+                };
+
+                const onDateTimeChange = (val) => {
+                    if (!val) {
+                        emit('update:modelValue', '');
+                        return;
+                    }
+                    const iso = val.length === 16 ? `${val}:00` : val;
+                    emit('update:modelValue', iso);
+                };
+
+                const addArrayItem = () => {
+                    const items = safeArrayValue.value.slice();
+                    let defVal = '';
+                    const itSchema = itemSchema.value;
+                    if (itSchema.type === 'object' || itSchema.properties || itSchema['$ref'] === '#') {
+                        defVal = {};
+                    } else if (itSchema.type === 'number' || itSchema.type === 'integer') {
+                        defVal = 0;
+                    } else if (itSchema.type === 'boolean') {
+                        defVal = false;
+                    } else {
+                        defVal = '';
+                    }
+                    items.push(defVal);
+                    emit('update:modelValue', items);
+                };
+
+                const updateArrayItem = (idx, val) => {
+                    const items = safeArrayValue.value.slice();
+                    items[idx] = val;
+                    emit('update:modelValue', items);
+                };
+
+                const removeArrayItem = (idx) => {
+                    const items = safeArrayValue.value.slice();
+                    items.splice(idx, 1);
+                    emit('update:modelValue', items);
+                };
+
+                const moveArrayItem = (idx, delta) => {
+                    const targetIdx = idx + delta;
+                    if (targetIdx < 0 || targetIdx >= safeArrayValue.value.length) return;
+                    const items = safeArrayValue.value.slice();
+                    const temp = items[idx];
+                    items[idx] = items[targetIdx];
+                    items[targetIdx] = temp;
+                    emit('update:modelValue', items);
+                };
+
+                const switchBranch = (bIdx) => {
+                    selectedBranchIdx.value = bIdx;
+                    const branch = (props.schema.oneOf || props.schema.branches || [])[bIdx];
+                    if (branch && branch.type === 'object') {
+                        emit('update:modelValue', {});
+                    } else {
+                        emit('update:modelValue', '');
+                    }
+                };
+
+                return {
+                    isCollapsed,
+                    selectedBranchIdx,
+                    schemaType,
+                    fieldError,
+                    safeModelValue,
+                    safeArrayValue,
+                    isItemObject,
+                    itemSchema,
+                    displayProperties,
+                    isSingleCol,
+                    isFullWidth,
+                    enumOptions,
+                    activeBranchSchema,
+                    isConditionallyTriggered,
+                    isPropRequired,
+                    calcPath,
+                    onSubFieldChange,
+                    onPrimitiveChange,
+                    onNumberChange,
+                    formatDateTimeValue,
+                    onDateTimeChange,
+                    addArrayItem,
+                    updateArrayItem,
+                    removeArrayItem,
+                    moveArrayItem,
+                    switchBranch
+                };
+            }
+        };
+
         // App Entry
         const app = createApp({
             components: {
-                'schema-node': SchemaNodeComponent
+                'schema-node': SchemaNodeComponent,
+                'schema-form-field': SchemaFormFieldComponent
             },
             setup() {
                 const schemaKey = ref('ecommerce_order');
@@ -2733,6 +3852,392 @@
                     genMessage.value = '✔ 一对多配置已打印到浏览器控制台 (F12 → Console)，明细 ' + detailList.length + ' 条';
                 };
 
+                // ===== ③ 动态表单生成器 (Dynamic Form Generator) 状态与交互逻辑 =====
+                const formEngine = ref('vue'); // 'vue' (Vue3 Native) or 'jsoneditor' (JSON-Editor)
+                const formData = ref({});
+                const formValidationStatus = ref({ checked: false, valid: true, errors: [] });
+                const formAlertMsg = ref(null);
+                const submissionHistory = ref([]);
+                const showImportDataDialog = ref(false);
+                const importDataText = ref('');
+                const importDataError = ref('');
+                let jsonEditorInstance = null;
+
+                const formErrorsMap = computed(() => {
+                    const map = {};
+                    for (const err of formValidationStatus.value.errors) {
+                        if (err.path && !map[err.path]) {
+                            map[err.path] = err.message;
+                        }
+                    }
+                    return map;
+                });
+
+                const formDataPrettyJson = computed(() => {
+                    try {
+                        return JSON.stringify(formData.value, null, 2);
+                    } catch (e) {
+                        return String(formData.value);
+                    }
+                });
+
+                const onFormDataChange = (newVal) => {
+                    formData.value = newVal;
+                    // If already validated, perform live dynamic re-validation
+                    if (formValidationStatus.value.checked) {
+                        const errs = validateFormAgainstSchema(jsonSchemaObj.value, formData.value);
+                        formValidationStatus.value = {
+                            checked: true,
+                            valid: errs.length === 0,
+                            errors: errs
+                        };
+                    }
+                };
+
+                const initJsonEditor = () => {
+                    if (!window.JSONEditor) {
+                        console.warn('JSONEditor script not available');
+                        return;
+                    }
+                    const holder = document.getElementById('json-editor-holder');
+                    if (!holder) return;
+
+                    if (jsonEditorInstance) {
+                        try { jsonEditorInstance.destroy(); } catch (e) {}
+                        jsonEditorInstance = null;
+                    }
+
+                    try {
+                        jsonEditorInstance = new window.JSONEditor(holder, {
+                            schema: jsonSchemaObj.value,
+                            startval: formData.value,
+                            theme: 'html',
+                            iconlib: null,
+                            disable_collapse: false,
+                            disable_edit_json: true,
+                            disable_properties: true,
+                            show_errors: 'change'
+                        });
+
+                        jsonEditorInstance.on('change', () => {
+                            if (jsonEditorInstance) {
+                                formData.value = jsonEditorInstance.getValue();
+                            }
+                        });
+                    } catch (e) {
+                        console.error('Failed to init JSONEditor:', e);
+                    }
+                };
+
+                const setFormEngine = (engine) => {
+                    formEngine.value = engine;
+                    if (engine === 'jsoneditor') {
+                        Vue.nextTick(() => {
+                            initJsonEditor();
+                        });
+                    } else {
+                        if (jsonEditorInstance) {
+                            try { jsonEditorInstance.destroy(); } catch (e) {}
+                            jsonEditorInstance = null;
+                        }
+                    }
+                };
+
+                const switchTabToForm = () => {
+                    activeTab.value = 'form';
+                    if (!formData.value || Object.keys(formData.value).length === 0) {
+                        fillDefaultValues();
+                    }
+                    if (formEngine.value === 'jsoneditor') {
+                        Vue.nextTick(() => {
+                            initJsonEditor();
+                        });
+                    }
+                };
+
+                const fillDefaultValues = () => {
+                    const defaults = generateInitialFormData(jsonSchemaObj.value);
+                    formData.value = defaults;
+                    formValidationStatus.value = { checked: false, valid: true, errors: [] };
+                    formAlertMsg.value = { text: '✔ 已根据当前 Schema 结构初始化表单默认值', type: 'success' };
+                    if (formEngine.value === 'jsoneditor') {
+                        Vue.nextTick(() => initJsonEditor());
+                    }
+                };
+
+                const resetFormData = () => {
+                    if (rootNode.value.type === 'array') {
+                        formData.value = [];
+                    } else if (rootNode.value.type === 'object') {
+                        formData.value = {};
+                    } else {
+                        formData.value = '';
+                    }
+                    formValidationStatus.value = { checked: false, valid: true, errors: [] };
+                    formAlertMsg.value = { text: '已清空表单数据', type: 'info' };
+                    if (formEngine.value === 'jsoneditor') {
+                        Vue.nextTick(() => initJsonEditor());
+                    }
+                };
+
+                const fillMockToForm = () => {
+                    if (generatedRecords.value && generatedRecords.value.length > 0) {
+                        const rec = JSON.parse(JSON.stringify(generatedRecords.value[0]));
+                        formData.value = rec;
+                        formAlertMsg.value = { text: `✔ 已将第 ② 步工作台生成的 Mock 数据 (#0) 灌入表单`, type: 'success' };
+                    } else {
+                        const def = generateInitialFormData(jsonSchemaObj.value);
+                        if (def && typeof def === 'object') {
+                            if (def.order_id !== undefined) def.order_id = 'ORD-20260909-668899';
+                            if (def.order_type !== undefined) def.order_type = 'PHYSICAL';
+                            if (def.total_price !== undefined) def.total_price = 199.90;
+                            if (def.shipping_address) {
+                                def.shipping_address = {
+                                    recipient_name: '张三',
+                                    phone: '13800138000',
+                                    address_line: '北京市海淀区中关村南大街1号'
+                                };
+                            }
+                            if (def.payment_details) {
+                                def.payment_details = {
+                                    wechat_unionid: 'wx_union_8899aabbcc',
+                                    payment_time: new Date().toISOString().substring(0, 19)
+                                };
+                            }
+                            if (def.dept_id !== undefined) def.dept_id = 1001;
+                            if (def.dept_name !== undefined) def.dept_name = '智能研发中心';
+                            if (def.leader !== undefined) def.leader = '高工';
+                        }
+                        formData.value = def;
+                        formAlertMsg.value = { text: '✔ 已自动构建并填充示范业务数据', type: 'success' };
+                    }
+                    formValidationStatus.value = { checked: false, valid: true, errors: [] };
+                    if (formEngine.value === 'jsoneditor') {
+                        Vue.nextTick(() => initJsonEditor());
+                    }
+                };
+
+                const validateFormManual = () => {
+                    const errs = validateFormAgainstSchema(jsonSchemaObj.value, formData.value);
+                    formValidationStatus.value = {
+                        checked: true,
+                        valid: errs.length === 0,
+                        errors: errs
+                    };
+                    if (errs.length === 0) {
+                        formAlertMsg.value = { text: '🎉 校验通过！当前表单数据 100% 符合 JSON Schema 约束与分支条件', type: 'success' };
+                    } else {
+                        formAlertMsg.value = { text: `⚠️ 校验失败：共 ${errs.length} 项字段不符合规范，请根据右侧清单修正`, type: 'error' };
+                    }
+                    return errs.length === 0;
+                };
+
+                const submitForm = () => {
+                    const isValid = validateFormManual();
+                    if (!isValid) {
+                        return;
+                    }
+                    const now = new Date();
+                    const timeStr = now.toTimeString().split(' ')[0];
+                    const snapshot = JSON.parse(JSON.stringify(formData.value));
+                    submissionHistory.value.unshift({
+                        time: timeStr,
+                        data: snapshot
+                    });
+                    if (submissionHistory.value.length > 20) {
+                        submissionHistory.value.pop();
+                    }
+                    formAlertMsg.value = { text: `🚀 表单提交成功！已生成提交快照 #${submissionHistory.value.length}`, type: 'success' };
+                    console.log('[动态表单提交]', snapshot);
+                };
+
+                const copyFormData = () => {
+                    navigator.clipboard.writeText(formDataPrettyJson.value)
+                        .then(() => {
+                            formAlertMsg.value = { text: '✔ 表单 JSON 数据已复制到剪贴板', type: 'success' };
+                        })
+                        .catch(e => {
+                            formAlertMsg.value = { text: '复制失败: ' + e, type: 'error' };
+                        });
+                };
+
+                const executeImportData = () => {
+                    importDataError.value = '';
+                    try {
+                        if (!importDataText.value.trim()) {
+                            throw new Error('请输入 JSON 数据文本');
+                        }
+                        const parsed = JSON.parse(importDataText.value);
+                        formData.value = parsed;
+                        showImportDataDialog.value = false;
+                        importDataText.value = '';
+                        formAlertMsg.value = { text: '✔ 外部 JSON 数据已成功载入表单', type: 'success' };
+                        if (formEngine.value === 'jsoneditor') {
+                            Vue.nextTick(() => initJsonEditor());
+                        }
+                    } catch (e) {
+                        importDataError.value = e.message || 'JSON 解析失败，请检查格式';
+                    }
+                };
+
+                const showPasteSchemaModal = ref(false);
+                const pastedSchemaInput = ref('');
+                const pastedSchemaError = ref('');
+                const rightPanelTab = ref('data'); // 'data' or 'schema'
+                const rightPanelSchemaText = ref('');
+                const rightPanelSchemaError = ref('');
+
+                const syncRightPanelSchemaText = () => {
+                    rightPanelTab.value = 'schema';
+                    rightPanelSchemaError.value = '';
+                    rightPanelSchemaText.value = jsonSchemaStr.value;
+                };
+
+                const openPasteSchemaModal = () => {
+                    pastedSchemaError.value = '';
+                    pastedSchemaInput.value = jsonSchemaStr.value;
+                    showPasteSchemaModal.value = true;
+                };
+
+                const applySchemaFromJsonString = (schemaJsonStr) => {
+                    if (!schemaJsonStr || !schemaJsonStr.trim()) {
+                        throw new Error('JSON Schema 内容不能为空');
+                    }
+                    const schema = JSON.parse(schemaJsonStr);
+                    if (!schema || typeof schema !== 'object') {
+                        throw new Error('解析格式错误：不是合法的 JSON 对象');
+                    }
+
+                    // 1. Update basic meta
+                    schemaKey.value = schema.title || schema.$id || 'custom_form';
+                    schemaName.value = schema.description || schema.title || '自定义 Schema 表单';
+
+                    // 2. Parse property tree recursively into rootNode
+                    const parsedRoot = parseJsonSchemaNode(schema, 'root');
+                    rootNode.value = parsedRoot;
+
+                    // 3. Parse conditional rules (if any)
+                    const condRulesInfo = inferAndParseConditionalRules(schema);
+                    ruleMode.value = condRulesInfo.mode;
+                    if (condRulesInfo.mode === 'switch') {
+                        switchKey.value = condRulesInfo.switchKeyVal || (rootNode.value.properties[0]?.key || '');
+                        switchCases.value = condRulesInfo.cases || [];
+                        switchDefaultRules.value = condRulesInfo.defaultRules || [];
+                    } else {
+                        conditionalRules.value = condRulesInfo.independentRules || [];
+                    }
+
+                    selectedTemplateKey.value = '';
+
+                    // 4. Generate default form data from the new schema
+                    const defaults = generateInitialFormData(schema);
+                    formData.value = defaults;
+                    formValidationStatus.value = { checked: false, valid: true, errors: [] };
+
+                    // 5. Update right panel text
+                    rightPanelSchemaText.value = JSON.stringify(schema, null, 2);
+
+                    // 6. If using jsoneditor, re-init
+                    if (formEngine.value === 'jsoneditor') {
+                        Vue.nextTick(() => initJsonEditor());
+                    }
+
+                    formAlertMsg.value = {
+                        text: `🎉 JSON Schema 解析成功！已自动将模型 [${schemaKey.value}] 转换为交互式表单 (共 ${rootNode.value.properties?.length || 0} 个主字段)`,
+                        type: 'success'
+                    };
+                };
+
+                const executeApplyPastedSchema = () => {
+                    pastedSchemaError.value = '';
+                    try {
+                        applySchemaFromJsonString(pastedSchemaInput.value);
+                        showPasteSchemaModal.value = false;
+                        pastedSchemaInput.value = '';
+                    } catch (e) {
+                        pastedSchemaError.value = e.message || '解析失败，请检查 JSON Schema 格式';
+                    }
+                };
+
+                const applyPastedSchemaFromRightPanel = () => {
+                    rightPanelSchemaError.value = '';
+                    try {
+                        applySchemaFromJsonString(rightPanelSchemaText.value);
+                    } catch (e) {
+                        rightPanelSchemaError.value = e.message || '解析失败，请检查 JSON 格式';
+                    }
+                };
+
+                const PRESET_SCHEMAS = {
+                    user_profile: {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "title": "用户入职登记表单",
+                        "description": "企业新员工标准电子档案登记",
+                        "type": "object",
+                        "required": ["username", "email", "gender", "age", "agreement"],
+                        "properties": {
+                            "username": { "title": "员工姓名", "type": "string", "minLength": 2, "maxLength": 20, "description": "2-20字符姓名" },
+                            "email": { "title": "工作邮箱", "type": "string", "format": "email", "description": "用于接收企业通知" },
+                            "gender": { "title": "性别", "type": "string", "enum": ["男", "女", "保密"] },
+                            "age": { "title": "年龄", "type": "integer", "minimum": 18, "maximum": 65, "default": 26 },
+                            "phone": { "title": "联系手机", "type": "string", "pattern": "^1\\d{10}$", "description": "11位手机号码" },
+                            "birthday": { "title": "出生日期", "type": "string", "format": "date" },
+                            "skills": {
+                                "title": "专业技能标签",
+                                "type": "array",
+                                "description": "掌握的技能清单",
+                                "items": { "type": "string" }
+                            },
+                            "emergency_contact": {
+                                "title": "紧急联系人",
+                                "type": "object",
+                                "required": ["contact_name", "contact_phone"],
+                                "properties": {
+                                    "contact_name": { "title": "姓名", "type": "string" },
+                                    "contact_phone": { "title": "电话", "type": "string" },
+                                    "relation": { "title": "关系", "type": "string", "enum": ["父母", "配偶", "朋友", "其他"] }
+                                }
+                            },
+                            "agreement": { "title": "我已阅读并知悉员工入职承诺书", "type": "boolean", "default": true }
+                        }
+                    },
+                    sys_config: {
+                        "$schema": "http://json-schema.org/draft-07/schema#",
+                        "title": "系统连接配置表单",
+                        "description": "微服务基础设施运行时网络与调度参数",
+                        "type": "object",
+                        "required": ["server_host", "port", "use_ssl"],
+                        "properties": {
+                            "server_host": { "title": "服务器域名/IP", "type": "string", "default": "api.production.internal" },
+                            "port": { "title": "服务端口号", "type": "integer", "minimum": 1, "maximum": 65535, "default": 8080 },
+                            "timeout_seconds": { "title": "超时时间(秒)", "type": "number", "minimum": 0.5, "maximum": 60, "default": 5.0 },
+                            "use_ssl": { "title": "启用 TLS/SSL 传输加密", "type": "boolean", "default": true },
+                            "log_level": { "title": "日志输出级别", "type": "string", "enum": ["DEBUG", "INFO", "WARN", "ERROR"], "default": "INFO" },
+                            "whitelist_ips": {
+                                "title": "IP访问白名单",
+                                "type": "array",
+                                "items": { "type": "string" }
+                            }
+                        }
+                    }
+                };
+
+                const loadPresetSchema = (presetKey) => {
+                    if (presetKey === 'ecommerce') {
+                        pastedSchemaInput.value = JSON.stringify(buildJsonSchema(ECOMMERCE_TEMPLATE), null, 2);
+                    } else if (presetKey === 'tree') {
+                        pastedSchemaInput.value = JSON.stringify(buildJsonSchema(TREE_TEMPLATE), null, 2);
+                    } else if (PRESET_SCHEMAS[presetKey]) {
+                        pastedSchemaInput.value = JSON.stringify(PRESET_SCHEMAS[presetKey], null, 2);
+                    }
+                };
+
+                watch(() => jsonSchemaStr.value, () => {
+                    if (activeTab.value === 'form' && formEngine.value === 'jsoneditor') {
+                        Vue.nextTick(() => initJsonEditor());
+                    }
+                });
+
                 return {
                     schemaKey,
                     schemaName,
@@ -2801,7 +4306,38 @@
                     doExtract,
                     buildDetailList,
                     buildOneToManyPayload,
-                    printOneToMany
+                    printOneToMany,
+                    formEngine,
+                    formData,
+                    formValidationStatus,
+                    formAlertMsg,
+                    submissionHistory,
+                    showImportDataDialog,
+                    importDataText,
+                    importDataError,
+                    formErrorsMap,
+                    formDataPrettyJson,
+                    onFormDataChange,
+                    setFormEngine,
+                    switchTabToForm,
+                    fillDefaultValues,
+                    resetFormData,
+                    fillMockToForm,
+                    validateFormManual,
+                    submitForm,
+                    copyFormData,
+                    executeImportData,
+                    showPasteSchemaModal,
+                    pastedSchemaInput,
+                    pastedSchemaError,
+                    rightPanelTab,
+                    rightPanelSchemaText,
+                    rightPanelSchemaError,
+                    syncRightPanelSchemaText,
+                    openPasteSchemaModal,
+                    executeApplyPastedSchema,
+                    applyPastedSchemaFromRightPanel,
+                    loadPresetSchema
                 };
             }
         });
