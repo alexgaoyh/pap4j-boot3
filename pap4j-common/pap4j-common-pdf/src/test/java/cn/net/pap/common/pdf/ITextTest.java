@@ -619,6 +619,7 @@ public class ITextTest {
     }
 
     private static byte[] extractGlobalBytesFromDecodeParms(PdfDictionary decodeParms) throws IOException {
+        if (decodeParms == null) return null;
         PdfObject globalObj = decodeParms.get(PdfName.JBIG2GLOBALS);
         if (globalObj == null) return null;
 
@@ -904,8 +905,15 @@ public class ITextTest {
             if (PdfName.JBIG2DECODE.equals(filter)) {
                 // --- JBIG2 专门处理 ---
                 byte[] rawBytes = PdfReader.getStreamBytesRaw(pr);
-                try (ByteArrayInputStream bais = new ByteArrayInputStream(rawBytes)) {
-                    MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais);
+                byte[] globalBytes = extractGlobalBytesFromDecodeParms(pr.getAsDict(PdfName.DECODEPARMS));
+                ByteArrayOutputStream jbig2Merged = new ByteArrayOutputStream();
+                if (globalBytes != null) {
+                    jbig2Merged.write(globalBytes);
+                }
+                jbig2Merged.write(rawBytes);
+
+                try (ByteArrayInputStream bais = new ByteArrayInputStream(jbig2Merged.toByteArray());
+                     MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais)) {
                     Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
                     if (!readers.hasNext()) throw new RuntimeException("No JBIG2 reader found");
                     ImageReader readerJBIG2 = readers.next();
