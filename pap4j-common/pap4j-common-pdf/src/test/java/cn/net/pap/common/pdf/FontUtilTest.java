@@ -11,6 +11,7 @@ import java.awt.*;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -38,6 +39,34 @@ public class FontUtilTest {
                 Dimension bimesion = FontUtil.getCharacterBounds("汉", new Font(font.getName(), Font.PLAIN, 24));
                 log.info("{} : {}", font.getName(), bimesion);
             }
+        }
+    }
+
+
+    /**
+     * 字 在哪个字体文件中有。
+     */
+    @Test
+    public void testFindSupportedFontFiles() {
+        int codePoint = 0x2639F; // U+2639F
+        List<File> allFontFiles = FontUtil.findSystemFontFiles();
+        log.info("扫描到系统字体文件总数: {}", allFontFiles.size());
+
+        List<String> matchedFiles = new ArrayList<>();
+        for (File f : allFontFiles) {
+            try {
+                Font font = Font.createFont(Font.TRUETYPE_FONT, f);
+                if (font.canDisplay(codePoint)) {
+                    matchedFiles.add(f.getAbsolutePath() + " -> " + font.getFontName() + " (" + font.getFamily() + ")");
+                }
+            } catch (Exception ignored) {
+                // 部分字体文件可能不是标准单个 TRUETYPE 格式（如 TTC 等）
+            }
+        }
+
+        log.info("支持该字符 (0x{}) 的物理字体文件数: {}", Integer.toHexString(codePoint).toUpperCase(), matchedFiles.size());
+        for (String mf : matchedFiles) {
+            log.info("  -> 字体文件: {}", mf);
         }
     }
 
