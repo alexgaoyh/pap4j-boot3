@@ -53,11 +53,13 @@ public class FontUtilTest {
         log.info("扫描到系统字体文件总数: {}", allFontFiles.size());
 
         List<String> matchedFiles = new ArrayList<>();
+        org.apache.fontbox.ttf.TTFParser parser = new org.apache.fontbox.ttf.TTFParser();
         for (File f : allFontFiles) {
-            try {
-                Font font = Font.createFont(Font.TRUETYPE_FONT, f);
-                if (font.canDisplay(codePoint)) {
-                    matchedFiles.add(f.getAbsolutePath() + " -> " + font.getFontName() + " (" + font.getFamily() + ")");
+            try (org.apache.pdfbox.io.RandomAccessReadBufferedFile read = new org.apache.pdfbox.io.RandomAccessReadBufferedFile(f);
+                 org.apache.fontbox.ttf.TrueTypeFont ttf = parser.parse(read)) {
+                org.apache.fontbox.ttf.CmapLookup cmap = ttf.getUnicodeCmapLookup();
+                if (cmap != null && cmap.getGlyphId(codePoint) > 0) {
+                    matchedFiles.add(f.getAbsolutePath() + " -> " + ttf.getName());
                 }
             } catch (Exception ignored) {
                 // 部分字体文件可能不是标准单个 TRUETYPE 格式（如 TTC 等）
