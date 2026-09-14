@@ -49,24 +49,25 @@ public class Jbig2ToJpgConverter {
         merged.write(imageBytes);
 
         // 使用 ImageIO 解码（确保 JBIG2 reader 可用）
-        ByteArrayInputStream bais = new ByteArrayInputStream(merged.toByteArray());
-        MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais);
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(merged.toByteArray());
+             MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais)) {
 
-        Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
-        if (!readers.hasNext()) {
-            throw new RuntimeException("No JBIG2 reader found. Please maybe add levigo-jbig2-imageio to classpath.");
+            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
+            if (!readers.hasNext()) {
+                throw new RuntimeException("No JBIG2 reader found. Please maybe add levigo-jbig2-imageio to classpath.");
+            }
+
+            ImageReader reader = readers.next();
+            reader.setInput(iis);
+
+            BufferedImage bufferedImage = reader.read(0);
+
+            // 写成 JPG
+            File output = new File(outputJpgPath);
+            ImageIO.write(bufferedImage, "jpg", output);
+
+            log.info("Converted JBIG2 to: {}", output.getAbsolutePath());
         }
-
-        ImageReader reader = readers.next();
-        reader.setInput(iis);
-
-        BufferedImage bufferedImage = reader.read(0);
-
-        // 写成 JPG
-        File output = new File(outputJpgPath);
-        ImageIO.write(bufferedImage, "jpg", output);
-
-        log.info("Converted JBIG2 to: {}", output.getAbsolutePath());
     }
 
     private static byte[] readFile(String path) throws IOException {

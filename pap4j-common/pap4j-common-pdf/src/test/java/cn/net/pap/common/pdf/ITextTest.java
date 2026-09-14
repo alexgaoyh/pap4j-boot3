@@ -562,39 +562,40 @@ public class ITextTest {
             if (globalBytes != null) merged.write(globalBytes);
             merged.write(jbig2Bytes);
 
-            ByteArrayInputStream bais = new ByteArrayInputStream(merged.toByteArray());
-            MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais);
+            try (ByteArrayInputStream bais = new ByteArrayInputStream(merged.toByteArray());
+                 MemoryCacheImageInputStream iis = new MemoryCacheImageInputStream(bais)) {
 
-            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
-            if (!readers.hasNext()) throw new RuntimeException("No JBIG2 reader found");
+                Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JBIG2");
+                if (!readers.hasNext()) throw new RuntimeException("No JBIG2 reader found");
 
-            ImageReader readerJBIG2 = readers.next();
-            readerJBIG2.setInput(iis);
+                ImageReader readerJBIG2 = readers.next();
+                readerJBIG2.setInput(iis);
 
-            BufferedImage img = readerJBIG2.read(0);
+                BufferedImage img = readerJBIG2.read(0);
 
-            // 检查并应用透明掩码
-            PdfBoolean imageMask = imgDict.getAsBoolean(PdfName.IMAGEMASK);
-            if (imageMask != null && imageMask.booleanValue()) {
-                // ImageMask = true，做遮罩处理
-                img = convertMaskToAlpha(img);
-            } else {
-                PdfObject smask = imgDict.get(PdfName.SMASK);
-                if (smask != null) {
-                    PdfImageObject smaskImage = new PdfImageObject((PRStream) PdfReader.getPdfObject(smask));
-                    BufferedImage maskImg = smaskImage.getBufferedImage();
-
-                    if (maskImg != null) {
-                        // 将mask作为alpha通道合成
-                        img = applyAlphaMask(img, maskImg);
-                    }
+                // 检查并应用透明掩码
+                PdfBoolean imageMask = imgDict.getAsBoolean(PdfName.IMAGEMASK);
+                if (imageMask != null && imageMask.booleanValue()) {
+                    // ImageMask = true，做遮罩处理
+                    img = convertMaskToAlpha(img);
                 } else {
-                    // 也可以根据需要做简单的颜色透明处理，比如把白色当透明
-                    img = convertWhiteToTransparent(img);
-                }
-            }
+                    PdfObject smask = imgDict.get(PdfName.SMASK);
+                    if (smask != null) {
+                        PdfImageObject smaskImage = new PdfImageObject((PRStream) PdfReader.getPdfObject(smask));
+                        BufferedImage maskImg = smaskImage.getBufferedImage();
 
-            return img;
+                        if (maskImg != null) {
+                            // 将mask作为alpha通道合成
+                            img = applyAlphaMask(img, maskImg);
+                        }
+                    } else {
+                        // 也可以根据需要做简单的颜色透明处理，比如把白色当透明
+                        img = convertWhiteToTransparent(img);
+                    }
+                }
+
+                return img;
+            }
 
         } catch (Exception e) {
             // e.printStackTrace();
