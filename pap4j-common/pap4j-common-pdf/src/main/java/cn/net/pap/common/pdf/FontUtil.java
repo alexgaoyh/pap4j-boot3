@@ -16,6 +16,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 
 /**
  * 汉字工具类
@@ -156,9 +157,8 @@ public class FontUtil {
         for (String directory : fontDirectories) {
             Path dirPath = Paths.get(directory);
             if (Files.exists(dirPath) && Files.isDirectory(dirPath)) {
-                try {
-                    Files.walk(dirPath)
-                            .filter(path -> isFontFile(path.toString()))
+                try (Stream<Path> stream = Files.walk(dirPath)) {
+                    stream.filter(path -> isFontFile(path.toString()))
                             .forEach(path -> fontFiles.add(path.toFile()));
                 } catch (Exception e) {
                     log.error("扫描目录失败: {}, 错误: {}", directory, e.getMessage(), e);
