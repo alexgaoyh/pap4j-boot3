@@ -164,14 +164,21 @@ public class ItextCheckTest {
             byte[] content = reader.getPageContent(1);
             String s = new String(content, StandardCharsets.ISO_8859_1);
 
-            // 2) 把非法数值替换成合法值（按实际坏 token 调整）
-            s = s.replace("1.#INF00", "12.000000")
-                    .replace("-2147483648 Tz", "100 Tz")
-                    .replace("-137438953472.000000 -137438953472.000000",
-                            "-1000.000000 -1000.000000");
+            // 2) 统计前面正确的字号并计算平均值
+            double avgFontSize = calculateAverageFontSize(s);
+            String avgSizeStr = String.format(java.util.Locale.ROOT, "%.6f", avgFontSize);
+            log.info("[PDF-Patch] 统计得到平均字号: {}", avgSizeStr);
+
+            // 3) 修复非法字号与异常 Tz 水平缩放
+            s = s.replace("1.#INF00", avgSizeStr)
+                    .replace("-2147483648 Tz", "100 Tz");
+
+            // 4) 【可选调用】修复异常溢出坐标（通过前后字形中点动态插值恢复排版显示位置）
+            s = interpolateBadCoordinates(s);
+
             byte[] fixed = s.getBytes(StandardCharsets.ISO_8859_1);
 
-            // 3) 找到内容流对象（可能是单个引用，也可能是数组，如 [38 0 R]）
+            // 5) 找到内容流对象（可能是单个引用，也可能是数组，如 [38 0 R]）
             PdfDictionary page = reader.getPageN(1);
             PdfObject contents = page.get(PdfName.CONTENTS);
             PdfObject arr = PdfReader.getPdfObject(contents);
@@ -204,6 +211,97 @@ public class ItextCheckTest {
                 reader.close();
             }
         }
+    }
+
+    /**
+     * 统计 PDF 内容流中合法的字号并求其平均值
+     *
+     * @param contentStream 页面内容流文本
+     * @return 平均字号（若无合法字号则默认兜底为 12.0）
+     */
+    private static double calculateAverageFontSize(String contentStream) {
+        Matcher tfMatcher = Pattern.compile("(/\\S+)\\s+([^\\s]+)\\s+Tf").matcher(contentStream);
+        List<Double> validSizes = new ArrayList<>();
+        while (tfMatcher.find()) {
+            String sizeStr = tfMatcher.group(2);
+            try {
+                double size = Double.parseDouble(sizeStr);
+                if (size > 0 && !Double.isInfinite(size) && !Double.isNaN(size)) {
+                    validSizes.add(size);
+                }
+            } catch (Exception ignored) {
+                // 忽略如 1.#INF00 等非法字号
+            }
+        }
+        return validSizes.isEmpty() ? 12.0 : validSizes.stream().mapToDouble(Double::doubleValue).average().orElse(12.0);
+    }
+
+    /**
+     * 【可选函数】修复 PDF 内容流中的异常溢出坐标：
+     * <p>
+     * 通过扫描坏字（坐标绝对值溢出或非法的 Tm 矩阵），自动寻找其前后相邻的合法字形坐标，
+     * 计算其中点位置插值进行替换，将偏离可视区域或被移出页面的字形精准放回版面中。
+     *
+     * @param contentStream 待修复的页面内容流文本
+     * @return 修复坐标插值后的内容流文本
+     */
+    private static String interpolateBadCoordinates(String contentStream) {
+        Pattern tmPattern = Pattern.compile("1\\.000000 0\\.000000 0\\.000000 1\\.000000 ([^\\s]+) ([^\\s]+) Tm");
+        Matcher tmM = tmPattern.matcher(contentStream);
+        List<int[]> badMatches = new ArrayList<>();
+        List<double[]> coords = new ArrayList<>();
+        while (tmM.find()) {
+            double x = 0, y = 0;
+            boolean isBad = false;
+            try {
+                x = Double.parseDouble(tmM.group(1));
+                y = Double.parseDouble(tmM.group(2));
+                if (Double.isNaN(x) || Double.isInfinite(x) || Double.isNaN(y) || Double.isInfinite(y) || Math.abs(x) > 1e6 || Math.abs(y) > 1e6) {
+                    isBad = true;
+                }
+            } catch (Exception e) {
+                isBad = true;
+            }
+            if (isBad) {
+                badMatches.add(new int[]{tmM.start(1), tmM.end(2), coords.size()});
+            }
+            coords.add(new double[]{x, y, isBad ? 1.0 : 0.0});
+        }
+
+        if (badMatches.isEmpty()) {
+            return contentStream;
+        }
+
+        StringBuilder sb = new StringBuilder(contentStream);
+        // 倒序替换以保证前面的索引不会失效
+        for (int i = badMatches.size() - 1; i >= 0; i--) {
+            int[] bm = badMatches.get(i);
+            int coordIdx = bm[2];
+            double prevX = 40.8, prevY = 600.0;
+            double nextX = 40.8, nextY = 600.0;
+            // 向上寻找前一个合法坐标
+            for (int p = coordIdx - 1; p >= 0; p--) {
+                if (coords.get(p)[2] == 0.0) {
+                    prevX = coords.get(p)[0];
+                    prevY = coords.get(p)[1];
+                    break;
+                }
+            }
+            // 向下寻找后一个合法坐标
+            for (int n = coordIdx + 1; n < coords.size(); n++) {
+                if (coords.get(n)[2] == 0.0) {
+                    nextX = coords.get(n)[0];
+                    nextY = coords.get(n)[1];
+                    break;
+                }
+            }
+            double fixedX = (prevX + nextX) / 2.0;
+            double fixedY = (prevY + nextY) / 2.0;
+            String fixedCoordStr = String.format(java.util.Locale.ROOT, "%.6f %.6f", fixedX, fixedY);
+            sb.replace(bm[0], bm[1], fixedCoordStr);
+            log.info("[PDF-Patch] 动态修复坏坐标 #{} 为中点坐标: {}", coordIdx, fixedCoordStr);
+        }
+        return sb.toString();
     }
 
     /**
