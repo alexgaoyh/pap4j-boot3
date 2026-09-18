@@ -516,6 +516,20 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
             transform: scale(0.98);
         }
 
+        .btn-outline {
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            box-shadow: none;
+            margin-top: 0.5rem;
+        }
+
+        .btn-outline:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+            border-color: var(--accent-color);
+            color: var(--text-white);
+        }
+
         .info-card {
             background-color: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border-color);
@@ -673,6 +687,17 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
             </div>
 
             <div>
+                <h3 class="section-title">报纸版面多边形演示</h3>
+                <div class="form-group">
+                    <label class="form-label" for="polygon-points">文章多边形顶点物理坐标 (X,Y...)</label>
+                    <input class="form-input" type="text" id="polygon-points" value="" placeholder="载入图像后将自动计算默认示范坐标">
+                </div>
+                <button class="btn btn-outline" id="toggle-polygon-btn">
+                    显示报纸多边形红框高亮
+                </button>
+            </div>
+
+            <div>
                 <h3 class="section-title">IIIF 规范接口监测</h3>
                 <div class="info-card">
                     <div class="info-item">
@@ -710,8 +735,17 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
 
     <script>
         var viewer = null;
+        var polygonOverlayElement = null;
         var cachedInfoData = null;
         var cachedKey = null;
+
+        // 自动初始化服务端口基地址
+        window.addEventListener('DOMContentLoaded', function() {
+            var serverUrlInput = document.getElementById('server-url');
+            if (!serverUrlInput.value) {
+                serverUrlInput.value = window.location.origin || 'http://localhost:8080';
+            }
+        });
 
         document.getElementById('load-btn').addEventListener('click', function() {
             loadIiifViewer(true); // 按钮点击强制重新获取元数据
@@ -728,6 +762,89 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
         document.getElementById('rotation').addEventListener('change', function() {
             loadIiifViewer(false); // 仅修改旋转/镜像时使用缓存的元数据加载
         });
+
+        document.getElementById('toggle-polygon-btn').addEventListener('click', function() {
+            toggleArticlePolygon();
+        });
+
+        function toggleArticlePolygon() {
+            if (!viewer || !viewer.world || viewer.world.getItemCount() === 0) {
+                alert('请先成功载入图像预览！');
+                return;
+            }
+
+            // 如果当前已经显示，则移除
+            if (polygonOverlayElement) {
+                viewer.removeOverlay(polygonOverlayElement);
+                polygonOverlayElement = null;
+                document.getElementById('toggle-polygon-btn').innerText = '显示报纸多边形红框高亮';
+                return;
+            }
+
+            var tiledImage = viewer.world.getItemAt(0);
+            if (!tiledImage) {
+                alert('图像正在初始化渲染，请稍候点击！');
+                return;
+            }
+
+            var pointsStr = document.getElementById('polygon-points').value.trim();
+            if (!pointsStr) {
+                alert('请输入有效多边形坐标！');
+                return;
+            }
+
+            // 获取原图物理像素尺寸
+            var imgWidth = cachedInfoData ? cachedInfoData.width : tiledImage.getContentSize().x;
+            var imgHeight = cachedInfoData ? cachedInfoData.height : tiledImage.getContentSize().y;
+
+            // 基于 OpenSeadragon 原生 Overlay 机制构建 SVG 容器，无需外部插件
+            polygonOverlayElement = document.createElement('div');
+            polygonOverlayElement.id = 'article-polygon-overlay';
+            polygonOverlayElement.style.width = '100%';
+            polygonOverlayElement.style.height = '100%';
+            polygonOverlayElement.style.pointerEvents = 'none';
+
+            var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("viewBox", "0 0 " + imgWidth + " " + imgHeight);
+            svg.style.width = '100%';
+            svg.style.height = '100%';
+            svg.style.overflow = 'visible';
+
+            var polygon = document.createElementNS("http://www.w3.org/2000/svg", "polygon");
+            polygon.setAttribute("points", pointsStr);
+            polygon.setAttribute("stroke", "#ff2222");
+
+            // 自适应计算合适的线宽（随大图分辨率动态适配）
+            var strokeW = Math.max(Math.round(imgWidth / 500), 4);
+            polygon.setAttribute("stroke-width", strokeW);
+            polygon.setAttribute("stroke-dasharray", (strokeW * 3) + "," + (strokeW * 1.5));
+            polygon.setAttribute("fill", "rgba(255, 0, 0, 0.28)");
+            polygon.style.pointerEvents = 'auto';
+            polygon.style.cursor = 'pointer';
+            polygon.style.transition = 'fill 0.2s';
+
+            polygon.onmouseover = function() {
+                polygon.setAttribute("fill", "rgba(255, 0, 0, 0.5)");
+            };
+            polygon.onmouseout = function() {
+                polygon.setAttribute("fill", "rgba(255, 0, 0, 0.28)");
+            };
+            polygon.onclick = function(e) {
+                e.stopPropagation();
+                alert('已成功触发文章多边形点击交互！\n顶点物理坐标: ' + pointsStr);
+            };
+
+            svg.appendChild(polygon);
+            polygonOverlayElement.appendChild(svg);
+
+            // 绑定到 OpenSeadragon 的底图视口区域中
+            viewer.addOverlay({
+                element: polygonOverlayElement,
+                location: tiledImage.getBounds()
+            });
+
+            document.getElementById('toggle-polygon-btn').innerText = '隐藏报纸多边形红框高亮';
+        }
 
         function loadIiifViewer(forceFetch) {
             var identifier = document.getElementById('identifier').value.trim();
@@ -851,7 +968,23 @@ OpenSeadragon 是一个非常流行的能够渲染 IIIF Image API 标准的深�
             // 销毁旧的 OSD 实例防止容器冲突
             if (viewer) {
                 viewer.destroy();
+                viewer = null;
             }
+            if (polygonOverlayElement) {
+                polygonOverlayElement = null;
+            }
+            document.getElementById('toggle-polygon-btn').innerText = '显示报纸多边形红框高亮';
+
+            // 根据真实图像分辨率动态计算一个具有代表性的多边形示范坐标（L型排版示例）
+            var w = infoData.width;
+            var h = infoData.height;
+            var p1 = Math.round(w * 0.1) + "," + Math.round(h * 0.1);
+            var p2 = Math.round(w * 0.45) + "," + Math.round(h * 0.1);
+            var p3 = Math.round(w * 0.45) + "," + Math.round(h * 0.4);
+            var p4 = Math.round(w * 0.3) + "," + Math.round(h * 0.4);
+            var p5 = Math.round(w * 0.3) + "," + Math.round(h * 0.7);
+            var p6 = Math.round(w * 0.1) + "," + Math.round(h * 0.7);
+            document.getElementById('polygon-points').value = [p1, p2, p3, p4, p5, p6].join(' ');
 
             // 初始化 OpenSeadragon 并加载符合 IIIF 规范的 info.json 数据源
             viewer = OpenSeadragon({
