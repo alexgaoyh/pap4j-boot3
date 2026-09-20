@@ -18,12 +18,15 @@ public interface LibVips extends Library {
 
     static LibVips loadVipsLibrary() {
         String[] libNames = {"vips", "libvips-42", "vips-42"};
+        if (System.getProperty("os.name").toLowerCase().contains("win")) {
+            libNames = new String[] {"libvips-42", "vips-42", "vips"};
+        }
         UnsatisfiedLinkError lastError = null;
         for (String name : libNames) {
             try {
                 return Native.load(name, LibVips.class, OPTIONS);
             } catch (UnsatisfiedLinkError e) {
-                log.error("尝试加载 libvips 动态库失败: {}", name, e);
+                log.debug("尝试加载 libvips 动态库失败: {}", name, e);
                 lastError = e;
             }
         }
@@ -319,12 +322,15 @@ public interface LibVips extends Library {
                     "libgobject-2.0",
                     "gobject"
             };
+            if (System.getProperty("os.name").toLowerCase().contains("win")) {
+                libNames = new String[] {"libgobject-2.0-0", "libgobject-2.0", "gobject-2.0", "gobject"};
+            }
             UnsatisfiedLinkError lastError = null;
             for (String name : libNames) {
                 try {
                     return Native.load(name, GLib.class, OPTIONS);
                 } catch (UnsatisfiedLinkError e) {
-                    log.error("尝试加载 gobject 动态库失败: {}", name, e);
+                    log.debug("尝试加载 gobject 动态库失败: {}", name, e);
                     lastError = e;
                 }
             }
@@ -354,12 +360,15 @@ public interface LibVips extends Library {
                     "libglib-2.0",
                     "glib"
             };
+            if (System.getProperty("os.name").toLowerCase().contains("win")) {
+                libNames = new String[] {"libglib-2.0-0", "libglib-2.0", "glib-2.0", "glib"};
+            }
             UnsatisfiedLinkError lastError = null;
             for (String name : libNames) {
                 try {
                     return Native.load(name, GLibBase.class, OPTIONS);
                 } catch (UnsatisfiedLinkError e) {
-                    log.error("尝试加载 glib-2.0 基础动态库失败: {}", name, e);
+                    log.debug("尝试加载 glib-2.0 基础动态库失败: {}", name, e);
                     lastError = e;
                 }
             }
