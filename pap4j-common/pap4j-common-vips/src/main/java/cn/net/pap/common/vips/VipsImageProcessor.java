@@ -974,4 +974,35 @@ public class VipsImageProcessor {
         }
         return cleanPath + "[Q=" + quality + "]";
     }
+
+
+    /**
+     * 在内存中将图片字节数组转换为 JP2 格式字节数组，从大到小降低 Q (48 -> 30)，找到第一个体积小于等于指定限制的字节数组。
+     *
+     * @param inputBytes   源图片二进制字节数组
+     * @param maxSizeBytes 目标文件体积上限（字节数）
+     * @param targetDpi    目标物理分辨率 DPI (例如 300，为 null 或 <= 0 时保持原图分辨率不变)
+     * @return 转换后的 JP2 二进制字节数组
+     * @throws IOException 如果加载、缩放或写出失败
+     */
+    public static byte[] convertToJp2UnderSize(byte[] inputBytes, long maxSizeBytes, Integer targetDpi) throws IOException {
+        if (inputBytes == null || inputBytes.length == 0) {
+            throw new IllegalArgumentException("输入图片字节数组不能为空");
+        }
+        if (maxSizeBytes <= 0) {
+            throw new IllegalArgumentException("目标大小限制 maxSizeBytes 必须大于 0，当前为: " + maxSizeBytes);
+        }
+
+        byte[] result = null;
+        for (int q = 48; q >= 30; q--) {
+            result = convertToJp2(inputBytes, q, targetDpi);
+            if (result.length <= maxSizeBytes) {
+                log.info("自适应转换：已在 Q={} 匹配到更小体积 ({} 字节 <= 目标限制: {} 字节)", q, result.length, maxSizeBytes);
+                return result;
+            }
+        }
+        log.warn("自适应转换：降至 Q=30 体积 ({} 字节) 仍超出限制 ({} 字节)，返回 Q=30 兜底结果", result != null ? result.length : 0, maxSizeBytes);
+        return result;
+    }
+
 }

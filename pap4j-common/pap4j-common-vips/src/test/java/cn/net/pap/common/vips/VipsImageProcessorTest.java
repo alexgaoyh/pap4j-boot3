@@ -882,4 +882,21 @@ public class VipsImageProcessorTest {
         }
         return -1;
     }
+
+    /**
+     * 测试自适应压缩：确保生成的 JP2 体积小于输入的图片体积。
+     */
+    @Test
+    public void testConvertToJp2SmallerThanInput() throws Exception {
+        log.info("测试自适应压缩小于输入大小，源图片大小: {} 字节...", sourceBytes.length);
+        byte[] jp2Bytes = VipsImageProcessor.convertToJp2UnderSize(sourceBytes, sourceBytes.length / 2,null);
+
+        assertNotNull(jp2Bytes, "生成的 JP2 字节数组不应为空");
+        assertTrue(jp2Bytes.length > 12, "生成的 JP2 字节数组应包含有效头部");
+        assertEquals((byte) 0x6A, jp2Bytes[4], "JP2 头部字节 4 必须为 'j'");
+        assertEquals((byte) 0x50, jp2Bytes[5], "JP2 头部字节 5 必须为 'P'");
+        assertTrue(jp2Bytes.length < sourceBytes.length, "生成的 JP2 大小必须小于原图大小");
+        log.info("自适应压缩小于输入大小验证通过！原图: {} 字节，JP2: {} 字节", sourceBytes.length, jp2Bytes.length);
+    }
+
 }
