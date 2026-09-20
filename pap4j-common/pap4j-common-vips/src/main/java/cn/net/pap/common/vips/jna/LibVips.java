@@ -96,22 +96,22 @@ public interface LibVips extends Library {
     }
 
     /**
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-vips.html#vips-init">vips_init API</a>
+     * @see <a href="https://www.libvips.org/API/current/func.init.html">vips_init API</a>
      */
     int vips_init(String argv0);
 
     /**
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-vips.html#vips-shutdown">vips_shutdown API</a>
+     * @see <a href="https://www.libvips.org/API/current/func.shutdown.html">vips_shutdown API</a>
      */
     void vips_shutdown();
 
     /**
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-vips.html#vips-thread-shutdown">vips_thread_shutdown API</a>
+     * @see <a href="https://www.libvips.org/API/current/func.thread_shutdown.html">vips_thread_shutdown API</a>
      */
     void vips_thread_shutdown();
 
     /**
-     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-new-from-file">vips_image_new_from_file API</a>
+     * @see <a href="https://www.libvips.org/API/current/ctor.Image.new_from_file.html">vips_image_new_from_file API</a>
      */
     Pointer vips_image_new_from_file(String filename, Object... varargs);
 
@@ -120,7 +120,7 @@ public interface LibVips extends Library {
      *
      * @param image 图像指针
      * @return 图像的宽度（像素）
-     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-get-width">vips_image_get_width API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.get_width.html">vips_image_get_width API</a>
      */
     int vips_image_get_width(Pointer image);
 
@@ -129,9 +129,27 @@ public interface LibVips extends Library {
      *
      * @param image 图像指针
      * @return 图像的高度（像素）
-     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-get-height">vips_image_get_height API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.get_height.html">vips_image_get_height API</a>
      */
     int vips_image_get_height(Pointer image);
+
+    /**
+     * 获取图像水平物理分辨率（像素/毫米）。
+     *
+     * @param image 图像指针
+     * @return 图像的水平物理分辨率（像素/毫米）
+     * @see <a href="https://www.libvips.org/API/current/method.Image.get_xres.html">vips_image_get_xres API</a>
+     */
+    double vips_image_get_xres(Pointer image);
+
+    /**
+     * 获取图像垂直物理分辨率（像素/毫米）。
+     *
+     * @param image 图像指针
+     * @return 图像的垂直物理分辨率（像素/毫米）
+     * @see <a href="https://www.libvips.org/API/current/method.Image.get_yres.html">vips_image_get_yres API</a>
+     */
+    double vips_image_get_yres(Pointer image);
 
     /**
      * 对图像进行裁剪操作。
@@ -144,7 +162,7 @@ public interface LibVips extends Library {
      * @param height 裁剪高度
      * @param varargs 可变参数列表，以空（null）指针结尾
      * @return 成功返回 0，失败返回非 0
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-conversion.html#vips-crop">vips_crop API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.crop.html">vips_crop API</a>
      */
     int vips_crop(Pointer in, PointerByReference out, int left, int top, int width, int height, Object... varargs);
 
@@ -156,7 +174,7 @@ public interface LibVips extends Library {
      * @param scale 缩放比例因子
      * @param varargs 可变参数列表，以空（null）指针结尾
      * @return 成功返回 0，失败返回非 0
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-resample.html#vips-resize">vips_resize API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.resize.html">vips_resize API</a>
      */
     int vips_resize(Pointer in, PointerByReference out, double scale, Object... varargs);
 
@@ -168,7 +186,7 @@ public interface LibVips extends Library {
      * @param direction 翻转方向（0 表示水平翻转，1 表示垂直翻转）
      * @param varargs 可变参数列表，以空（null）指针结尾
      * @return 成功返回 0，失败返回非 0
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-conversion.html#vips-flip">vips_flip API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.flip.html">vips_flip API</a>
      */
     int vips_flip(Pointer in, PointerByReference out, int direction, Object... varargs);
 
@@ -180,7 +198,7 @@ public interface LibVips extends Library {
      * @param angle 旋转角度枚举值（0 表示0度，1 表示90度，2 表示180度，3 表示270度）
      * @param varargs 可变参数列表，以空（null）指针结尾
      * @return 成功返回 0，失败返回非 0
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-conversion.html#vips-rot">vips_rot API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.rot.html">vips_rot API</a>
      */
     int vips_rot(Pointer in, PointerByReference out, int angle, Object... varargs);
 
@@ -192,12 +210,12 @@ public interface LibVips extends Library {
      * @param angle 顺时针旋转角度（双精度浮点数，单位为度）
      * @param varargs 可变参数列表，以空（null）指针结尾
      * @return 成功返回 0，失败返回非 0
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-resample.html#vips-rotate">vips_rotate API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.rotate.html">vips_rotate API</a>
      */
     int vips_rotate(Pointer in, PointerByReference out, double angle, Object... varargs);
 
     /**
-     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-write-to-file">vips_image_write_to_file API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.write_to_file.html">vips_image_write_to_file API</a>
      */
     int vips_image_write_to_file(Pointer image, String name, Object... varargs);
 
@@ -209,7 +227,7 @@ public interface LibVips extends Library {
      * @param optionString 选项字符串
      * @param varargs 可变参数列表，以空（null）指针结尾
      * @return 图像指针
-     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-new-from-buffer">vips_image_new_from_buffer API</a>
+     * @see <a href="https://www.libvips.org/API/current/ctor.Image.new_from_buffer.html">vips_image_new_from_buffer API</a>
      */
     Pointer vips_image_new_from_buffer(Pointer buf, long len, String optionString, Object... varargs);
 
@@ -222,7 +240,7 @@ public interface LibVips extends Library {
      * @param size 接收输出大小 of 引用
      * @param varargs 可变参数列表，以空（null）指针结尾
      * @return 成功返回 0，失败返回非 0
-     * @see <a href="https://libvips.github.io/libvips/API/current/VipsImage.html#vips-image-write-to-buffer">vips_image_write_to_buffer API</a>
+     * @see <a href="https://www.libvips.org/API/current/method.Image.write_to_buffer.html">vips_image_write_to_buffer API</a>
      */
     int vips_image_write_to_buffer(Pointer image, String suffix, PointerByReference buf, LongByReference size, Object... varargs);
 
@@ -267,12 +285,12 @@ public interface LibVips extends Library {
     int vips_linear1(Pointer in, PointerByReference out, double a, double b, Object... varargs);
 
     /**
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-error.html#vips-error-buffer">vips_error_buffer API</a>
+     * @see <a href="https://www.libvips.org/API/current/func.error_buffer.html">vips_error_buffer API</a>
      */
     String vips_error_buffer();
 
     /**
-     * @see <a href="https://libvips.github.io/libvips/API/current/libvips-error.html#vips-error-clear">vips_error_clear API</a>
+     * @see <a href="https://www.libvips.org/API/current/func.error_clear.html">vips_error_clear API</a>
      */
     void vips_error_clear();
 

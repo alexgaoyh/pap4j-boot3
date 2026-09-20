@@ -710,4 +710,268 @@ public class VipsImageProcessor {
 
         int setenv(String name, String value, int overwrite);
     }
+
+    // ==================== JPEG 2000 (JP2) 格式转换专有增量方法 ====================
+
+    /**
+     * 将本地图片转换为 JP2 (JPEG 2000) 格式并持久化写入到指定目标文件。
+     *
+     * @param inputPath  源图片文件路径
+     * @param outputPath 目标 JP2 文件输出路径（必须以 .jp2 或 .j2k 结尾）
+     * @param quality    JPEG 2000 压缩质量因子 (1 ~ 100，例如 80，为 null 或 <= 0 时使用底层默认质量)
+     * @param targetDpi  目标物理分辨率 DPI (例如 300，为 null 或 <= 0 时保持原图分辨率不变)
+     * @throws IOException 如果加载、缩放或写出 JP2 文件失败
+     */
+    public static void convertToJp2(String inputPath, String outputPath, Integer quality, Integer targetDpi) throws IOException {
+        ensureInitialized();
+        if (inputPath == null || inputPath.isEmpty()) {
+            throw new IllegalArgumentException("输入图片路径不能为空");
+        }
+        if (outputPath == null || outputPath.isEmpty()) {
+            throw new IllegalArgumentException("输出图片路径不能为空");
+        }
+
+        File inputFile = new File(inputPath);
+        if (!inputFile.exists()) {
+            throw new IOException("找不到输入文件: " + inputPath);
+        }
+
+        File outputFile = new File(outputPath);
+        File parentDir = outputFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+
+        Pointer image = loadImage(inputPath);
+        Pointer resizedImage = null;
+        try {
+            Pointer currentImage = image;
+            Double scale = calculateScaleForTargetDpi(currentImage, targetDpi);
+            if (scale != null) {
+                resizedImage = resizeImageIfNeeded(currentImage, scale, scale);
+                if (resizedImage != null) {
+                    currentImage = resizedImage;
+                }
+            }
+            String finalOutputPath = buildJp2OutputPathWithOptions(outputPath, quality);
+            LibVips.INSTANCE.vips_error_clear();
+            int result = LibVips.INSTANCE.vips_image_write_to_file(currentImage, finalOutputPath, (Object) null);
+            if (result != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("无法将图片写入 " + finalOutputPath + "，错误: " + errorMsg);
+            }
+        } finally {
+            if (resizedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(resizedImage);
+            }
+            LibVips.GLib.INSTANCE.g_object_unref(image);
+            LibVips.INSTANCE.vips_thread_shutdown();
+        }
+    }
+
+    /**
+     * 将本地图片文件转换为 JP2 (JPEG 2000) 格式并在内存中直接返回字节数组。
+     *
+     * @param inputPath 源图片文件路径
+     * @param quality   JPEG 2000 压缩质量因子 (1 ~ 100，例如 80，为 null 或 <= 0 时使用底层默认质量)
+     * @param targetDpi 目标物理分辨率 DPI (例如 300，为 null 或 <= 0 时保持原图分辨率不变)
+     * @return 转换后的 JP2 二进制字节数组
+     * @throws IOException 如果加载、缩放或写出失败
+     */
+    public static byte[] convertToJp2(String inputPath, Integer quality, Integer targetDpi) throws IOException {
+        ensureInitialized();
+        if (inputPath == null || inputPath.isEmpty()) {
+            throw new IllegalArgumentException("输入图片路径不能为空");
+        }
+
+        File inputFile = new File(inputPath);
+        if (!inputFile.exists()) {
+            throw new IOException("找不到输入文件: " + inputPath);
+        }
+
+        Pointer image = loadImage(inputPath);
+        Pointer resizedImage = null;
+        try {
+            Pointer currentImage = image;
+            Double scale = calculateScaleForTargetDpi(currentImage, targetDpi);
+            if (scale != null) {
+                resizedImage = resizeImageIfNeeded(currentImage, scale, scale);
+                if (resizedImage != null) {
+                    currentImage = resizedImage;
+                }
+            }
+            String finalFormat = buildJp2FormatWithOptions(quality);
+            return writeImageToBuffer(currentImage, finalFormat);
+        } finally {
+            if (resizedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(resizedImage);
+            }
+            LibVips.GLib.INSTANCE.g_object_unref(image);
+            LibVips.INSTANCE.vips_thread_shutdown();
+        }
+    }
+
+    /**
+     * 在内存中将图片字节数组转换为 JP2 (JPEG 2000) 格式字节数组（全程无需磁盘 IO）。
+     *
+     * @param inputBytes 源图片二进制字节数组
+     * @param quality    JPEG 2000 压缩质量因子 (1 ~ 100，例如 80，为 null 或 <= 0 时使用底层默认质量)
+     * @param targetDpi  目标物理分辨率 DPI (例如 300，为 null 或 <= 0 时保持原图分辨率不变)
+     * @return 转换后的 JP2 二进制字节数组
+     * @throws IOException 如果加载、缩放或写出失败
+     */
+    public static byte[] convertToJp2(byte[] inputBytes, Integer quality, Integer targetDpi) throws IOException {
+        ensureInitialized();
+        if (inputBytes == null || inputBytes.length == 0) {
+            throw new IllegalArgumentException("输入图片字节数组不能为空");
+        }
+
+        LibVips.INSTANCE.vips_error_clear();
+        com.sun.jna.Memory memInput = new com.sun.jna.Memory(inputBytes.length);
+        memInput.write(0, inputBytes, 0, inputBytes.length);
+
+        Pointer image = null;
+        Pointer resizedImage = null;
+        try {
+            image = LibVips.INSTANCE.vips_image_new_from_buffer(memInput, inputBytes.length, null, (Object) null);
+            if (image == null) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("无法从内存缓冲区加载图片，错误: " + errorMsg);
+            }
+
+            Pointer currentImage = image;
+            Double scale = calculateScaleForTargetDpi(currentImage, targetDpi);
+            if (scale != null) {
+                resizedImage = resizeImageIfNeeded(currentImage, scale, scale);
+                if (resizedImage != null) {
+                    currentImage = resizedImage;
+                }
+            }
+
+            String finalFormat = buildJp2FormatWithOptions(quality);
+            return writeImageToBuffer(currentImage, finalFormat);
+        } finally {
+            if (resizedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(resizedImage);
+            }
+            if (image != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(image);
+            }
+            LibVips.INSTANCE.vips_thread_shutdown();
+            java.lang.ref.Reference.reachabilityFence(memInput);
+        }
+    }
+
+    /**
+     * 将内存图片字节数组转换为 JP2 (JPEG 2000) 格式并持久化写入到目标文件。
+     *
+     * @param inputBytes 源图片二进制字节数组
+     * @param outputPath 目标 JP2 文件输出路径（必须以 .jp2 或 .j2k 结尾）
+     * @param quality    JPEG 2000 压缩质量因子 (1 ~ 100，例如 80，为 null 或 <= 0 时使用底层默认质量)
+     * @param targetDpi  目标物理分辨率 DPI (例如 300，为 null 或 <= 0 时保持原图分辨率不变)
+     * @throws IOException 如果加载、缩放或持久化写出失败
+     */
+    public static void convertToJp2(byte[] inputBytes, String outputPath, Integer quality, Integer targetDpi) throws IOException {
+        ensureInitialized();
+        if (inputBytes == null || inputBytes.length == 0) {
+            throw new IllegalArgumentException("输入图片字节数组不能为空");
+        }
+        if (outputPath == null || outputPath.isEmpty()) {
+            throw new IllegalArgumentException("输出图片路径不能为空");
+        }
+
+        File outputFile = new File(outputPath);
+        File parentDir = outputFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+
+        LibVips.INSTANCE.vips_error_clear();
+        com.sun.jna.Memory memInput = new com.sun.jna.Memory(inputBytes.length);
+        memInput.write(0, inputBytes, 0, inputBytes.length);
+
+        Pointer image = null;
+        Pointer resizedImage = null;
+        try {
+            image = LibVips.INSTANCE.vips_image_new_from_buffer(memInput, inputBytes.length, null, (Object) null);
+            if (image == null) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("无法从内存缓冲区加载图片，错误: " + errorMsg);
+            }
+
+            Pointer currentImage = image;
+            Double scale = calculateScaleForTargetDpi(currentImage, targetDpi);
+            if (scale != null) {
+                resizedImage = resizeImageIfNeeded(currentImage, scale, scale);
+                if (resizedImage != null) {
+                    currentImage = resizedImage;
+                }
+            }
+
+            String finalOutputPath = buildJp2OutputPathWithOptions(outputPath, quality);
+            int result = LibVips.INSTANCE.vips_image_write_to_file(currentImage, finalOutputPath, (Object) null);
+            if (result != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("无法将图片写入 " + finalOutputPath + "，错误: " + errorMsg);
+            }
+        } finally {
+            if (resizedImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(resizedImage);
+            }
+            if (image != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(image);
+            }
+            LibVips.INSTANCE.vips_thread_shutdown();
+            java.lang.ref.Reference.reachabilityFence(memInput);
+        }
+    }
+
+    private static void validateQuality(Integer quality) {
+        if (quality != null && (quality < 1 || quality > 100)) {
+            throw new IllegalArgumentException("JPEG 2000 质量因子 quality 必须在 [1, 100] 范围内，当前为: " + quality);
+        }
+    }
+
+    private static Double calculateScaleForTargetDpi(Pointer image, Integer targetDpi) {
+        if (image == null || targetDpi == null || targetDpi <= 0) {
+            return null;
+        }
+        double xres = LibVips.INSTANCE.vips_image_get_xres(image);
+        if (xres <= 0.0) {
+            return null;
+        }
+        // xres 在 libvips 中单位为像素/毫米 (pixels/mm)，1 英寸 = 25.4 毫米
+        double currentDpi = xres * 25.4;
+        if (currentDpi > targetDpi) {
+            double scale = (double) targetDpi / currentDpi;
+            if (scale > 0 && Math.abs(scale - 1.0) > SCALE_TOLERANCE) {
+                return scale;
+            }
+        }
+        return null;
+    }
+
+    private static String buildJp2FormatWithOptions(Integer quality) {
+        validateQuality(quality);
+        if (quality == null || quality <= 0) {
+            return "jp2";
+        }
+        return "jp2[Q=" + quality + "]";
+    }
+
+    private static String buildJp2OutputPathWithOptions(String outputPath, Integer quality) {
+        if (outputPath == null || outputPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("输出图片路径不能为空");
+        }
+        validateQuality(quality);
+        String cleanPath = outputPath.trim();
+        if (!cleanPath.toLowerCase().endsWith(".jp2") && !cleanPath.toLowerCase().contains(".jp2[")
+                && !cleanPath.toLowerCase().endsWith(".j2k") && !cleanPath.toLowerCase().contains(".j2k[")) {
+            throw new IllegalArgumentException("JP2 目标输出文件路径必须以 .jp2 或 .j2k 结尾: " + outputPath);
+        }
+        if (quality == null || quality <= 0 || cleanPath.contains("[")) {
+            return cleanPath;
+        }
+        return cleanPath + "[Q=" + quality + "]";
+    }
 }

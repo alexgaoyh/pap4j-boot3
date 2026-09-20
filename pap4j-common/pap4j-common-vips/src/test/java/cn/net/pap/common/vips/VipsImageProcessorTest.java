@@ -185,6 +185,96 @@ public class VipsImageProcessorTest {
     }
 
     /**
+     * 测试文件转文件格式转换（转换为 JP2 格式，验证质量控制）
+     */
+    @Test
+    public void testConvertToJp2FileToFile() throws Exception {
+        File outputHighQ = new File(tempDir, "output_high_q.jp2");
+        File outputLowQ = new File(tempDir, "output_low_q.jp2");
+
+        log.info("测试本地文件转 JP2 文件 (Quality=85 与 Quality=25)...");
+        VipsImageProcessor.convertToJp2(inputFile.getAbsolutePath(), outputHighQ.getAbsolutePath(), 85, null);
+        VipsImageProcessor.convertToJp2(inputFile.getAbsolutePath(), outputLowQ.getAbsolutePath(), 25, null);
+
+        assertTrue(outputHighQ.exists(), "高品质 JP2 文件应成功生成");
+        assertTrue(outputHighQ.length() > 0, "高品质 JP2 文件大小应大于 0");
+        assertTrue(outputLowQ.exists(), "低品质 JP2 文件应成功生成");
+        assertTrue(outputLowQ.length() > 0, "低品质 JP2 文件大小应大于 0");
+        assertTrue(outputLowQ.length() < outputHighQ.length(),
+                "低品质 JP2 文件体积应当小于高品质文件体积以验证质量参数生效");
+        log.info("成功转换本地文件到 JP2 文件，高品质大小: {} 字节，低品质大小: {} 字节",
+                outputHighQ.length(), outputLowQ.length());
+    }
+
+    /**
+     * 测试本地文件直转内存字节（转换为 JP2 格式）
+     */
+    @Test
+    public void testConvertToJp2FileToBytes() throws Exception {
+        log.info("测试本地文件直转 JP2 内存字节...");
+        byte[] jp2Bytes = VipsImageProcessor.convertToJp2(inputFile.getAbsolutePath(), 75, null);
+
+        assertNotNull(jp2Bytes, "返回的 JP2 字节数组不应为空");
+        assertTrue(jp2Bytes.length > 12, "返回的 JP2 数据应包含有效的头部长度");
+
+        // 校验 JPEG 2000 签名盒魔数 (0x6A 0x50 0x20 0x20 即 'jP  ')
+        assertEquals((byte) 0x6A, jp2Bytes[4], "JP2 头部字节 4 必须为 'j'");
+        assertEquals((byte) 0x50, jp2Bytes[5], "JP2 头部字节 5 必须为 'P'");
+        assertEquals((byte) 0x20, jp2Bytes[6], "JP2 头部字节 6 必须为空格");
+        assertEquals((byte) 0x20, jp2Bytes[7], "JP2 头部字节 7 必须为空格");
+        log.info("成功在内存中直转本地文件到 JP2 字节数组，大小: {} 字节", jp2Bytes.length);
+    }
+
+    /**
+     * 测试纯内存直转（byte[] 转 byte[]，转换为 JP2 格式）
+     */
+    @Test
+    public void testConvertToJp2BytesToBytes() throws Exception {
+        log.info("测试纯内存字节直转 JP2 字节数组...");
+        byte[] jp2Bytes = VipsImageProcessor.convertToJp2(sourceBytes, 70, null);
+
+        assertNotNull(jp2Bytes, "返回的 JP2 字节数组不应为空");
+        assertTrue(jp2Bytes.length > 12, "返回的 JP2 数据应包含有效的头部长度");
+
+        // 校验 JPEG 2000 签名盒魔数 ('jP  ')
+        assertEquals((byte) 0x6A, jp2Bytes[4], "JP2 头部字节 4 必须为 'j'");
+        assertEquals((byte) 0x50, jp2Bytes[5], "JP2 头部字节 5 必须为 'P'");
+        log.info("成功在纯内存中完成 byte[] 到 JP2 byte[] 转换，大小: {} 字节", jp2Bytes.length);
+    }
+
+    /**
+     * 测试内存字节转文件（byte[] 持久化为 JP2 文件）
+     */
+    @Test
+    public void testConvertToJp2BytesToFile() throws Exception {
+        File outputFile = new File(tempDir, "output_bytes_to_file.jp2");
+        log.info("测试内存字节持久化为本地 JP2 文件...");
+
+        VipsImageProcessor.convertToJp2(sourceBytes, outputFile.getAbsolutePath(), 80, null);
+
+        assertTrue(outputFile.exists(), "持久化 JP2 文件应存在");
+        assertTrue(outputFile.length() > 0, "持久化 JP2 文件大小应大于 0");
+        log.info("成功将内存字节持久化写入 JP2 文件，大小: {} 字节", outputFile.length());
+    }
+
+    /**
+     * 测试 convertToJp2 参数防御性校验
+     */
+    @Test
+    public void testConvertToJp2Validation() {
+        // 1. 质量因子范围校验
+        assertThrows(IllegalArgumentException.class, () ->
+                VipsImageProcessor.convertToJp2(sourceBytes, 0, null));
+        assertThrows(IllegalArgumentException.class, () ->
+                VipsImageProcessor.convertToJp2(sourceBytes, 101, null));
+
+        // 2. 输出文件名后缀校验
+        File invalidOutputFile = new File(tempDir, "invalid_output.png");
+        assertThrows(IllegalArgumentException.class, () ->
+                VipsImageProcessor.convertToJp2(sourceBytes, invalidOutputFile.getAbsolutePath(), 80, null));
+    }
+
+    /**
      * 测试获取图片元数据以及裁剪与缩放管线。
      */
     @Test
