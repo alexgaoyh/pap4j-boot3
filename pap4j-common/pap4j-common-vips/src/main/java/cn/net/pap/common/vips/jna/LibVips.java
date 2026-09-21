@@ -137,6 +137,15 @@ public interface LibVips extends Library {
     int vips_image_get_height(Pointer image);
 
     /**
+     * 获取图像通道数（Bands）。
+     *
+     * @param image 图像指针
+     * @return 图像通道数（如灰度为 1，RGB 为 3）
+     * @see <a href="https://www.libvips.org/API/current/method.Image.get_bands.html">vips_image_get_bands API</a>
+     */
+    int vips_image_get_bands(Pointer image);
+
+    /**
      * 获取图像水平物理分辨率（像素/毫米）。
      *
      * @param image 图像指针
