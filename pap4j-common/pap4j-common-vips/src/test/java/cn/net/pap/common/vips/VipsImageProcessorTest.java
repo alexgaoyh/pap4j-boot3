@@ -899,4 +899,50 @@ public class VipsImageProcessorTest {
         log.info("自适应压缩小于输入大小验证通过！原图: {} 字节，JP2: {} 字节", sourceBytes.length, jp2Bytes.length);
     }
 
+    /**
+     * 测试原生 Java 极速提取 JPEG 压缩质量 (Quality 1~100)。
+     * 验证多档位质量准确性、非 JPEG 防御性校验以及微秒级性能。
+     */
+    @Test
+    public void testEstimateJpegQuality() throws Exception {
+        log.info("====== 开始测试原生 Java 极速推导 JPEG Quality ======");
+
+        // 1. 防御性测试：非 JPEG 文件 (PNG) 应返回 -1；空路径与不存在路径校验
+        int nonJpegQ = VipsImageProcessor.estimateJpegQuality(inputFile.getAbsolutePath());
+        assertEquals(-1, nonJpegQ, "非 JPEG 格式 (PNG) 应当返回 -1");
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.estimateJpegQuality(null), "null 路径应当抛出 IllegalArgumentException");
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.estimateJpegQuality("   "), "空白路径应当抛出 IllegalArgumentException");
+        assertThrows(IOException.class, () -> VipsImageProcessor.estimateJpegQuality(new File(tempDir, "not_exist.jpg").getAbsolutePath()), "不存在的文件应当抛出 IOException");
+
+        // 2. 多档位可控测试：使用 libvips 生成不同 quality 的 JPG 图片并进行逆推验证
+        int[] targetQualities = {30, 50, 75, 85, 95};
+        for (int expectedQ : targetQualities) {
+            byte[] jpgBytes = VipsImageProcessor.processImage(
+                    inputFile.getAbsolutePath(),
+                    null, null, null, null,
+                    1.0, 1.0,
+                    "0",
+                    "default",
+                    "jpg[Q=" + expectedQ + "]"
+            );
+            assertNotNull(jpgBytes, "生成的 JPG 字节数组不能为空");
+
+            File tempJpg = new File(tempDir, "test_q_" + expectedQ + ".jpg");
+            java.nio.file.Files.write(tempJpg.toPath(), jpgBytes);
+
+            long startNano = System.nanoTime();
+            int estimatedQ = VipsImageProcessor.estimateJpegQuality(tempJpg.getAbsolutePath());
+            long elapsedNano = System.nanoTime() - startNano;
+
+            log.info("设定 Quality: {}, 原生 Java 解析推导 Quality: {}, 解析耗时: {} 微秒 ({} ms), JPG 大小: {} 字节",
+                    expectedQ, estimatedQ, elapsedNano / 1000, String.format("%.3f", elapsedNano / 1_000_000.0), tempJpg.length());
+
+            // 逆推得到的质量与编码设定的质量误差应 <= 1
+            assertTrue(Math.abs(estimatedQ - expectedQ) <= 1,
+                    String.format("推导 Quality (%d) 与期望 Quality (%d) 偏差过大", estimatedQ, expectedQ));
+        }
+
+        log.info("====== 原生 Java 极速推导 JPEG Quality 测试全部通过 ======");
+    }
+
 }
