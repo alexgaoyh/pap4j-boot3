@@ -21,6 +21,10 @@ public class DiffPic2PDFTest {
 
     public static String imagePath = "0.jp2";
 
+    /**
+     * jp22pdf
+     * @throws IOException
+     */
     @Test
     public void pic2PDF() throws IOException {
         FileOutputStream pdfOutputStream = null;
@@ -29,7 +33,7 @@ public class DiffPic2PDFTest {
         try {
             Image jp2Image = Image.getInstance(TestResourceUtil.getFile(imagePath).getAbsolutePath());
             Rectangle pageSize = new Rectangle(jp2Image.getScaledWidth(), jp2Image.getScaledHeight());
-            document = new Document(pageSize);
+            document = new Document(pageSize,0,0,0,0);
             tempPdf = java.io.File.createTempFile("pic2pdf", ".pdf");
             pdfOutputStream = new FileOutputStream(tempPdf);
             PdfWriter.getInstance(document, pdfOutputStream);
