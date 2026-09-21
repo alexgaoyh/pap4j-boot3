@@ -7,9 +7,12 @@ import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.geom.PageSize;
 import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfName;
+import com.itextpdf.kernel.pdf.PdfNumber;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvasConstants;
+import com.itextpdf.kernel.pdf.xobject.PdfImageXObject;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
@@ -320,7 +323,13 @@ public class VipsItextDoubleLayerPdfTest {
             try (PdfDocument pdfDoc = new PdfDocument(new PdfWriter(outputPdf));
                  Document doc = new Document(pdfDoc, new PageSize(widthPt, heightPt))) {
                 doc.setMargins(0, 0, 0, 0);
-                doc.add(new Image(imageData).setFixedPosition(0, 0).scaleToFit(widthPt, heightPt));
+                PdfImageXObject xObject = new PdfImageXObject(imageData);
+                xObject.getPdfObject().put(PdfName.ColorSpace, PdfName.DeviceRGB);
+                xObject.getPdfObject().put(PdfName.BitsPerComponent, new PdfNumber(8));
+                Image pdfImage = new Image(xObject);
+                pdfImage.setFixedPosition(0, 0);
+                pdfImage.scaleToFit(widthPt, heightPt);
+                doc.add(pdfImage);
             }
             log.info("PDF 文件已成功落盘: {}, 大小: {} 字节", outputPdf.getAbsolutePath(), outputPdf.length());
             try (PdfDocument pdfDoc = new PdfDocument(new PdfReader(outputPdf))) {
