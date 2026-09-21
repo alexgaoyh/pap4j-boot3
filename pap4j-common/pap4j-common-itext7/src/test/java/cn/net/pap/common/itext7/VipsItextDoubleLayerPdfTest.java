@@ -9,8 +9,11 @@ import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
 import com.itextpdf.kernel.pdf.PdfName;
 import com.itextpdf.kernel.pdf.PdfNumber;
+import com.itextpdf.kernel.pdf.PdfPage;
 import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.PdfWriter;
+import com.itextpdf.kernel.pdf.WriterProperties;
+import com.itextpdf.kernel.pdf.canvas.PdfCanvas;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvasConstants;
 import com.itextpdf.kernel.pdf.xobject.PdfImageXObject;
 import com.itextpdf.layout.Document;
@@ -298,6 +301,7 @@ public class VipsItextDoubleLayerPdfTest {
         try {
             double xDpi;
             double yDpi;
+            int bands;
             LibVips.INSTANCE.vips_error_clear();
             Pointer image = LibVips.INSTANCE.vips_image_new_from_file(file.getAbsolutePath(), (Object) null);
             if (image == null) {
@@ -306,6 +310,7 @@ public class VipsItextDoubleLayerPdfTest {
             try {
                 double xres = LibVips.INSTANCE.vips_image_get_xres(image);
                 double yres = LibVips.INSTANCE.vips_image_get_yres(image);
+                bands = LibVips.INSTANCE.vips_image_get_bands(image);
                 xDpi = (xres > 0.1) ? (xres * 25.4) : 300.0;
                 yDpi = (yres > 0.1) ? (yres * 25.4) : xDpi;
             } finally {
@@ -317,19 +322,20 @@ public class VipsItextDoubleLayerPdfTest {
             ImageData imageData = ImageDataFactory.create(jp2Bytes);
             float widthPt = (float) (imageData.getWidth() * 72.0 / xDpi);
             float heightPt = (float) (imageData.getHeight() * 72.0 / yDpi);
-            log.info("原图 DPI: xDpi={}, yDpi={}, 像素尺寸: {}x{}, 计算得出 PDF 尺寸: {}x{} pt",
-                    String.format("%.2f", xDpi), String.format("%.2f", yDpi), (int) imageData.getWidth(), (int) imageData.getHeight(), widthPt, heightPt);
+            log.info("原图 DPI: xDpi={}, yDpi={}, 通道数: {}, 像素尺寸: {}x{}, 计算得出 PDF 尺寸: {}x{} pt",
+                    String.format("%.2f", xDpi), String.format("%.2f", yDpi), bands, (int) imageData.getWidth(), (int) imageData.getHeight(), widthPt, heightPt);
 
-            try (PdfDocument pdfDoc = new PdfDocument(new PdfWriter(outputPdf));
-                 Document doc = new Document(pdfDoc, new PageSize(widthPt, heightPt))) {
-                doc.setMargins(0, 0, 0, 0);
+            WriterProperties writerProps = new WriterProperties().setFullCompressionMode(true);
+            try (PdfDocument pdfDoc = new PdfDocument(new PdfWriter(outputPdf.getAbsolutePath(), writerProps))) {
+                pdfDoc.getDocumentInfo().setTitle("pap.net.cn");
                 PdfImageXObject xObject = new PdfImageXObject(imageData);
-                xObject.getPdfObject().put(PdfName.ColorSpace, PdfName.DeviceRGB);
+                PdfName colorSpace = (bands == 1) ? PdfName.DeviceGray : PdfName.DeviceRGB;
+                xObject.getPdfObject().put(PdfName.ColorSpace, colorSpace);
                 xObject.getPdfObject().put(PdfName.BitsPerComponent, new PdfNumber(8));
-                Image pdfImage = new Image(xObject);
-                pdfImage.setFixedPosition(0, 0);
-                pdfImage.scaleToFit(widthPt, heightPt);
-                doc.add(pdfImage);
+
+                PdfPage page = pdfDoc.addNewPage(new PageSize(widthPt, heightPt));
+                new PdfCanvas(page)
+                        .addXObjectFittedIntoRectangle(xObject, new Rectangle(0, 0, widthPt, heightPt));
             }
             log.info("PDF 文件已成功落盘: {}, 大小: {} 字节", outputPdf.getAbsolutePath(), outputPdf.length());
             try (PdfDocument pdfDoc = new PdfDocument(new PdfReader(outputPdf))) {
@@ -337,7 +343,8 @@ public class VipsItextDoubleLayerPdfTest {
                 Rectangle pageSize = pdfDoc.getPage(1).getPageSize();
                 assertEquals(widthPt, pageSize.getWidth(), 1.0f);
                 assertEquals(heightPt, pageSize.getHeight(), 1.0f);
-                log.info("PDF 页面尺寸验证成功: {} x {} pt", pageSize.getWidth(), pageSize.getHeight());
+                assertEquals("pap.net.cn", pdfDoc.getDocumentInfo().getTitle());
+                log.info("PDF 页面尺寸与元数据验证成功: {} x {} pt, Title={}", pageSize.getWidth(), pageSize.getHeight(), pdfDoc.getDocumentInfo().getTitle());
             }
         } finally {
             if (file != null && file.exists()) {
