@@ -1,16 +1,20 @@
 package cn.net.pap.common.itext7;
 
 import cn.net.pap.common.vips.VipsImageProcessor;
+import cn.net.pap.common.vips.jna.LibVips;
 import com.itextpdf.io.image.ImageData;
 import com.itextpdf.io.image.ImageDataFactory;
 import com.itextpdf.kernel.geom.PageSize;
+import com.itextpdf.kernel.geom.Rectangle;
 import com.itextpdf.kernel.pdf.PdfDocument;
+import com.itextpdf.kernel.pdf.PdfReader;
 import com.itextpdf.kernel.pdf.PdfWriter;
 import com.itextpdf.kernel.pdf.canvas.PdfCanvasConstants;
 import com.itextpdf.layout.Document;
 import com.itextpdf.layout.element.Image;
 import com.itextpdf.layout.element.Paragraph;
 import com.itextpdf.layout.properties.Property;
+import com.sun.jna.Pointer;
 import com.sun.management.ThreadMXBean;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -32,6 +36,7 @@ import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.Iterator;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -280,6 +285,59 @@ public class VipsItextDoubleLayerPdfTest {
 
         assertNotNull(pdfBytes);
         assertTrue(outputPdf.exists());
+    }
+
+    @Test
+    public void testJpgToJp2ToPdf() throws Exception {
+        File file = TestResourceUtil.getFile("1.jpg");
+        File outputPdf = new File(tempDir, "1_jp2.pdf");
+
+        try {
+            double xDpi;
+            double yDpi;
+            LibVips.INSTANCE.vips_error_clear();
+            Pointer image = LibVips.INSTANCE.vips_image_new_from_file(file.getAbsolutePath(), (Object) null);
+            if (image == null) {
+                throw new IllegalStateException("无法加载源图片: " + LibVips.INSTANCE.vips_error_buffer());
+            }
+            try {
+                double xres = LibVips.INSTANCE.vips_image_get_xres(image);
+                double yres = LibVips.INSTANCE.vips_image_get_yres(image);
+                xDpi = (xres > 0.1) ? (xres * 25.4) : 300.0;
+                yDpi = (yres > 0.1) ? (yres * 25.4) : xDpi;
+            } finally {
+                LibVips.GLib.INSTANCE.g_object_unref(image);
+                LibVips.INSTANCE.vips_thread_shutdown();
+            }
+
+            byte[] jp2Bytes = VipsImageProcessor.convertToJp2(file.getAbsolutePath(), 30, (Integer) null);
+            ImageData imageData = ImageDataFactory.create(jp2Bytes);
+            float widthPt = (float) (imageData.getWidth() * 72.0 / xDpi);
+            float heightPt = (float) (imageData.getHeight() * 72.0 / yDpi);
+            log.info("原图 DPI: xDpi={}, yDpi={}, 像素尺寸: {}x{}, 计算得出 PDF 尺寸: {}x{} pt",
+                    String.format("%.2f", xDpi), String.format("%.2f", yDpi), (int) imageData.getWidth(), (int) imageData.getHeight(), widthPt, heightPt);
+
+            try (PdfDocument pdfDoc = new PdfDocument(new PdfWriter(outputPdf));
+                 Document doc = new Document(pdfDoc, new PageSize(widthPt, heightPt))) {
+                doc.setMargins(0, 0, 0, 0);
+                doc.add(new Image(imageData).setFixedPosition(0, 0).scaleToFit(widthPt, heightPt));
+            }
+            log.info("PDF 文件已成功落盘: {}, 大小: {} 字节", outputPdf.getAbsolutePath(), outputPdf.length());
+            try (PdfDocument pdfDoc = new PdfDocument(new PdfReader(outputPdf))) {
+                assertEquals(1, pdfDoc.getNumberOfPages());
+                Rectangle pageSize = pdfDoc.getPage(1).getPageSize();
+                assertEquals(widthPt, pageSize.getWidth(), 1.0f);
+                assertEquals(heightPt, pageSize.getHeight(), 1.0f);
+                log.info("PDF 页面尺寸验证成功: {} x {} pt", pageSize.getWidth(), pageSize.getHeight());
+            }
+        } finally {
+            if (file != null && file.exists()) {
+                file.delete();
+            }
+            if (outputPdf != null && outputPdf.exists()) {
+                outputPdf.delete();
+            }
+        }
     }
 
     /**
