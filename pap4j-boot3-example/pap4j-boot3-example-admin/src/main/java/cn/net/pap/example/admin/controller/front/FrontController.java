@@ -19,6 +19,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -78,6 +81,21 @@ public class FrontController {
             default:
                 return new ResponseEntity<>("default", HttpStatus.OK);
         }
+    }
+
+    @Operation(summary = "验证 Gzip 压缩", operationId = "testCompression",
+            responses = {@ApiResponse(responseCode = "200", description = "返回大 JSON 以触发压缩")})
+    @GetMapping("/compression")
+    public Map<String, Object> testCompression(@RequestParam(defaultValue = "200") int size) {
+        List<Map<String, Object>> list = new ArrayList<>();
+        for (int i = 0; i < size; i++) {
+            list.add(Map.of(
+                    "id", i,
+                    "name", "alexgaoyh_" + i,
+                    "email", "alexgaoyh_" + i + "@pap.net.cn",
+                    "desc", "https://pap-docs.pap.net.cn ; https://pap-docs.pap.net.cn ; "));
+        }
+        return Map.of("count", list.size(), "data", list);
     }
 
     // --- DTO 内部类 ---

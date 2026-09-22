@@ -7,6 +7,12 @@ spring:
     encoding: utf-8
     basename: i18n/messages
 
+server:
+  compression:
+    enabled: true
+    mime-types: application/json
+    min-response-size: 2048
+
 # Springdoc配置
 springdoc:
   api-docs:
