@@ -1,5 +1,6 @@
 package cn.net.pap.common.file;
 
+import org.junit.jupiter.api.io.TempDir;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -7,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.nio.file.attribute.FileTime;
@@ -19,6 +21,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Stream;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 public class FilesTest {
@@ -204,6 +207,16 @@ public class FilesTest {
                 Files.deleteIfExists(Paths.get(realPath));
             }
         }
+    }
+
+    @Test
+    public void testWriteAndReadGbk(@TempDir Path tempDir) throws Exception {
+        String content = "你好，世界！\nHello GBK! 12345\n结束。";
+        Path file = tempDir.resolve("gbk-test.txt");
+        Charset gbk = Charset.forName("GBK");
+        Files.writeString(file, content, gbk);
+        String readBack = Files.readString(file, gbk);
+        assertEquals(content, readBack);
     }
 
 }
