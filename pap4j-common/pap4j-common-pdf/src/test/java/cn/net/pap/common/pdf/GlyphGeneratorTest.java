@@ -116,6 +116,11 @@ public class GlyphGeneratorTest {
     private static final float INK_BOX_STROKE_WIDTH = 2.0f;
 
     /**
+     * OCR 坐标还原文字的颜色（红字）。
+     */
+    private static final Color RESTORED_TEXT_COLOR = Color.RED;
+
+    /**
      * JPEG 输出文件后缀。
      */
     private static final String JPEG_SUFFIX = ".jpg";
@@ -164,6 +169,11 @@ public class GlyphGeneratorTest {
      * 墨迹标注图临时文件前缀。
      */
     private static final String INK_OVERLAY_PREFIX = "glyph_sheet_ink_overlay";
+
+    /**
+     * OCR 坐标还原图临时文件前缀。
+     */
+    private static final String RESTORED_SHEET_PREFIX = "glyph_sheet_ocr_restore";
 
     /**
      * 全部中文，按形态分类：扁 / 窄 / 宽 / 方正 / 复杂 / 简单 / 各种结构。
@@ -239,6 +249,33 @@ public class GlyphGeneratorTest {
 
         log.info("[GlyphSheet-InkOverlay] written: {}, boxes={}, color={}, stroke={}",
                 out.toAbsolutePath(), sheet.inkBoxes().size(), INK_BOX_COLOR, INK_BOX_STROKE_WIDTH);
+    }
+
+    @Test
+    @DisplayName("模拟 OCR 结果：按墨迹坐标把识别文字用红字还原到图上，输出 glyph_sheet_ocr_restore.jpg")
+    void restoreTextFromOcrInkBoxes() throws IOException {
+        GlyphSheet sheet = buildGlyphSheet();
+
+        Graphics2D g = sheet.image().createGraphics();
+        try {
+            applyRenderingHints(g);
+            Font baseFont = new Font(FONT_NAME, Font.PLAIN, BASE_FONT_SIZE);
+            FontRenderContext frc = g.getFontRenderContext();
+            for (GlyphInkBox box : sheet.inkBoxes()) {
+                drawGlyphIntoBox(g, baseFont, frc, box.ch(), box, RESTORED_TEXT_COLOR);
+            }
+        } finally {
+            g.dispose();
+        }
+
+        Path out = File.createTempFile(RESTORED_SHEET_PREFIX, JPEG_SUFFIX).toPath();
+        writeJpegWithDpi(sheet.image(), out, DPI);
+
+        assertTrue(Files.exists(out), "OCR 坐标还原图应存在");
+        assertTrue(Files.size(out) > 0, "OCR 坐标还原图不应为空");
+
+        log.info("[GlyphSheet-OcrRestore] written: {}, restoredGlyphs={}, color={}",
+                out.toAbsolutePath(), sheet.inkBoxes().size(), RESTORED_TEXT_COLOR);
     }
 
     /**
@@ -375,6 +412,38 @@ public class GlyphGeneratorTest {
         at.translate(-ink.getX(), -ink.getY());
 
         return new FittedInk(at, new Rectangle2D.Double(targetInkX, targetInkY, scaledInkW, scaledInkH));
+    }
+
+    /**
+     * 把字符按 OCR 墨迹框等比缩放并还原到画布上：以框为目标，将字形墨迹的左上角对齐到框左上角，
+     * 与原始字形的缩放/定位变换一致，因此红字可与底图上的黑字重合。
+     *
+     * @param g        目标画笔
+     * @param baseFont 基准字体
+     * @param frc      字体渲染上下文
+     * @param ch       OCR 识别出的文字
+     * @param box      OCR 给出的墨迹坐标框
+     * @param color    还原文字颜色
+     */
+    private static void drawGlyphIntoBox(Graphics2D g, Font baseFont, FontRenderContext frc,
+                                         String ch, GlyphInkBox box, Color color) {
+        GlyphVector gv = baseFont.createGlyphVector(frc, ch);
+        Rectangle2D ink = gv.getVisualBounds();
+
+        // 空白或无法渲染的字符直接跳过
+        if (ink.getWidth() <= 0 || ink.getHeight() <= 0) {
+            return;
+        }
+
+        // 由 OCR 框反推等比缩放比（框宽高恰为墨迹宽高乘以原始缩放比），再平移对齐框左上角
+        double scale = Math.min(box.width() / ink.getWidth(), box.height() / ink.getHeight());
+        AffineTransform at = new AffineTransform();
+        at.translate(box.x(), box.y());
+        at.scale(scale, scale);
+        at.translate(-ink.getX(), -ink.getY());
+
+        g.setColor(color);
+        g.fill(at.createTransformedShape(gv.getOutline()));
     }
 
     @Test
