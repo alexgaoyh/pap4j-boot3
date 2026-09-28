@@ -10,6 +10,7 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -649,4 +650,23 @@ public class ImageMagickEnvCheckerUtilTest {
         return Double.parseDouble(df.format(value));
     }
 
+    @Test
+    public void drawRectInPic() throws Exception {
+        File file = TestResourceUtil.getFile("rect.txt");
+        try {
+            List<String> rectList = Files.readAllLines(file.toPath(), Charset.forName("UTF-8"));
+            for(String rect : rectList) {
+                String[] p = rect.split(",");
+                int x = Integer.parseInt(p[0].trim());
+                int y = Integer.parseInt(p[1].trim());
+                int w = Integer.parseInt(p[2].trim());
+                int h = Integer.parseInt(p[3].trim());
+            }
+        } finally {
+            if (file != null && file.exists()) {
+                file.delete();
+            }
+        }
+
+    }
 }
