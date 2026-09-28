@@ -331,8 +331,13 @@ public class ImageMagickEnvCheckerUtilTest {
     // magick input.jpg -level 10%,100%,1.1 output.jpg
 
     // 字浅 (通过降低对比度使文字更浅)
-
     // magick input.jpg +level 10%,100%,1.1 output.jpg
+
+    // 填充矩形区域为黑色。注意 -draw "rectangle x1,y1 x2,y2" 中的 x2,y2 是右下角“包含”的像素坐标，要写成 x+w-1, y+h-1 才能精确覆盖 w×h 个像素；不减 1 会多覆盖 1 行/1 列。
+    // magick 0001.jpg -fill black -draw "rectangle 1785,362 %[fx:1785+32-1],%[fx:362+50-1]" 0001-output.jpg
+
+    // 截取矩形区域。x,y 为左上角坐标，w,h 为宽高。-crop 使用标准 WxH+X+Y 语义，不需要 -1；+repage 用于清除裁剪后残留的页面偏移，避免后续拼接/裁剪坐标错乱。
+    // magick 0001.jpg -crop 32x50+1785+362 +repage 0001-crop.jpg
 
     @Test
     public void streamTest() {
