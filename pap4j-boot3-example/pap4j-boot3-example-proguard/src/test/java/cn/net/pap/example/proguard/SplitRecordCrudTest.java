@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
         properties = "spring.datasource.url=jdbc:h2:mem:${random.uuid};DATABASE_TO_UPPER=false;DB_CLOSE_DELAY=-1"
 )
 @TestConstructor(autowireMode = TestConstructor.AutowireMode.ALL)
-@Transactional
+@Transactional(rollbackFor = Exception.class)
 public class SplitRecordCrudTest {
 
     private final ISplitRecordCrudService splitRecordCrudService;

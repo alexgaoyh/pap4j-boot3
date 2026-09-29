@@ -23,7 +23,7 @@ public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysql
      * @return
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int updateTestThrowExceptionInMysqlDB() {
         for(int i = 0; i < 1000; i++) {
             log.debug("{}", i);
@@ -37,7 +37,7 @@ public class DorisTransServiceInMysqlDBImpl implements IDorisTransServiceInMysql
      * @return
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int updateTestNoExceptionInMysqlDB() {
         for(int i = 0; i < 1000; i++) {
             log.debug("{}", i);

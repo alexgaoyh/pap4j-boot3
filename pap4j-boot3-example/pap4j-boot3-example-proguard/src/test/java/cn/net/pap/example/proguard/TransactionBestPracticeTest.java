@@ -196,7 +196,7 @@ public class TransactionBestPracticeTest {
         /**
          * 声明式事务方法，包含慢操作（模拟外部系统调用），事务期间独占数据库连接。
          */
-        @Transactional
+        @Transactional(rollbackFor = Exception.class)
         public void executeWithTransaction(Long id, long sleepMs) {
             // 查询引发连接绑定
             proguardRepository.findById(id);
@@ -234,7 +234,7 @@ public class TransactionBestPracticeTest {
         /**
          * 读写事务修改实体
          */
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = false, rollbackFor = Exception.class)
         public Proguard modifyWithReadOnlyFalse(Long id, String newName) {
             Proguard p = proguardRepository.findById(id).orElse(null);
             if (p != null) {
@@ -254,7 +254,7 @@ public class TransactionBestPracticeTest {
         /**
          * 读写事务批量加载
          */
-        @Transactional(readOnly = false)
+        @Transactional(readOnly = false, rollbackFor = Exception.class)
         public List<Proguard> loadEntitiesWithReadOnlyFalse() {
             return proguardRepository.findAll();
         }

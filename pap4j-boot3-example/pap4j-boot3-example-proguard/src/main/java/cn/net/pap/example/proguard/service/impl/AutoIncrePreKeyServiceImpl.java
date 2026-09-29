@@ -102,7 +102,7 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
      * @throws IOException
      */
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public AutoIncrePreKey saveAndFlushThrowIOException(AutoIncrePreKey entity) throws IOException {
         try {
             AutoIncrePreKey autoIncrePreKey = autoIncrePreKeyRepository.saveAndFlush(entity);

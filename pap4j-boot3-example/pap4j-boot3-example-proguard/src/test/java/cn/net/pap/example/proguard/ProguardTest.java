@@ -691,7 +691,7 @@ public class ProguardTest {
     }
 
     @Test
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void jsonInsertTest() throws Exception {
         String jsonInput = """
                 {
@@ -745,7 +745,7 @@ public class ProguardTest {
     }
 
     @Test
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void json2MapListTest() throws Exception {
         // 先清理数据，防止其他测试方法残留导致主键冲突
         entityManager.createNativeQuery("DELETE FROM proguard WHERE proguard_id = 888889").executeUpdate();

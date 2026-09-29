@@ -103,7 +103,7 @@ public class RefactorScanner {
             if (trimmed.contains("@Service")) {
                 isService = true;
             }
-            if (trimmed.startsWith("@Transactional")) {
+            if (trimmed.startsWith("@Transactional") && !trimmed.startsWith("@TransactionalEventListener")) {
                 hasClassTransactional = true;
             }
         }
@@ -156,7 +156,7 @@ public class RefactorScanner {
                         "JPA association mapping annotation (" + trimmed.split("\\(|\\s")[0] + ") is forbidden. Fetch associations in Service layer instead."));
             }
 
-            if (trimmed.startsWith("@Transactional")) {
+            if (trimmed.startsWith("@Transactional") && !trimmed.startsWith("@TransactionalEventListener")) {
                 boolean hasRollbackFor = trimmed.contains("rollbackFor") || trimmed.contains("rollbackForClassName");
                 boolean isReadOnly = trimmed.contains("readOnly = true") || trimmed.contains("readOnly=true");
                 if (!hasRollbackFor && !isReadOnly) {

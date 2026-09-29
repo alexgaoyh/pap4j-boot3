@@ -28,7 +28,7 @@ class MockApiServiceTests {
     }
 
     @Test
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void testSemanticQueryParamMatching() {
         // 1. 保存期望 Query 为 page=1&size=10 的规则
         MockApiDTO dto = new MockApiDTO(
@@ -53,7 +53,7 @@ class MockApiServiceTests {
     }
 
     @Test
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void testSemanticJsonBodyMatching() {
         // 1. 保存期望 JSON Body 为 {"name":"Alice","age":20} 的规则
         MockApiDTO dto = new MockApiDTO(
@@ -79,7 +79,7 @@ class MockApiServiceTests {
     }
 
     @Test
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void testSemanticJsonArrayMatching() {
         // 1. 保存期望 JSON Body 为 JSON 数组且包含无序 Key 对象的规则
         MockApiDTO dto = new MockApiDTO(

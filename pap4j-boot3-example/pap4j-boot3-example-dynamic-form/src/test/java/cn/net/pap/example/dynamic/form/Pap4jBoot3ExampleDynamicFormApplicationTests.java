@@ -59,7 +59,7 @@ class Pap4jBoot3ExampleDynamicFormApplicationTests {
      * </ol>
      */
     @Test
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void testSaveAndReconstructComplexRecord() {
         // 1. Prepare nested payload (Order -> Items)
         Map<String, Object> payload = Map.of(
@@ -94,7 +94,7 @@ class Pap4jBoot3ExampleDynamicFormApplicationTests {
     }
 
     @Test
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     void testVariousFieldValueTypesAndListRecords() {
         // 1. 构造包含长文本 (>255)、时间 (LocalDateTime) 的各种属性值
         java.time.LocalDateTime testTime = java.time.LocalDateTime.of(2026, 6, 25, 9, 0);

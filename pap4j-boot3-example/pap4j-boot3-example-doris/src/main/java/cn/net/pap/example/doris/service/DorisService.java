@@ -180,7 +180,7 @@ public class DorisService {
 
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public int updateTestTestInMysqlDB2() {
         java.sql.Connection conn = DataSourceUtils.getConnection(dataSource);
         try {
