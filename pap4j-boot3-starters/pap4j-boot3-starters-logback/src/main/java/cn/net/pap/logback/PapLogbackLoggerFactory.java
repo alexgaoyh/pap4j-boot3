@@ -47,6 +47,12 @@ public class PapLogbackLoggerFactory {
     private static final int MAX_LOGGER_COUNT = 1024;
     private static final ConcurrentMap<String, Logger> loggerCache = new ConcurrentHashMap<>();
 
+    /**
+     * 获取指定名称的 Logger，带有缓存和上限保护。
+     *
+     * @param loggerName Logger 名称
+     * @return 配置好的 Logger 实例
+     */
     public static Logger getLogger(String loggerName) {
         if (loggerCache.size() >= MAX_LOGGER_COUNT && !loggerCache.containsKey(loggerName)) {
             // 达到上限，回退到默认日志，防止 OOM

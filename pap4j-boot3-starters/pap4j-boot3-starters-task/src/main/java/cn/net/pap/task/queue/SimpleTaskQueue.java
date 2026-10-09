@@ -38,6 +38,9 @@ public class SimpleTaskQueue {
         return queue.offer(task);
     }
 
+    /**
+     * 启动消费者线程，开始处理队列中的任务。
+     */
     public synchronized void startConsumer() {
         if (executorService != null && !executorService.isShutdown()) {
             return;
@@ -78,6 +81,11 @@ public class SimpleTaskQueue {
         });
     }
 
+    /**
+     * 停止消费者并返回未处理的任务列表。
+     *
+     * @return 未处理的任务列表
+     */
     public List<SimpleTaskQueueDTO> stopConsumerAndReturnUnProcessed() {
         running.set(false);
         if (executorService != null) {
@@ -102,6 +110,11 @@ public class SimpleTaskQueue {
         return queue.size();
     }
 
+    /**
+     * 清空并返回队列中所有未处理的任务。
+     *
+     * @return 未处理的任务列表
+     */
     public List<SimpleTaskQueueDTO> drainUnprocessedTasks() {
         List<SimpleTaskQueueDTO> remaining = new ArrayList<>();
         queue.drainTo(remaining);

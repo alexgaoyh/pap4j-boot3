@@ -14,6 +14,12 @@ import java.util.Map;
  */
 public class HLMEntity2KGConvert {
 
+    /**
+     * 将 HLMEntity 转换为知识图谱的 nodes/relations 结构。
+     *
+     * @param hlm HLM 实体
+     * @return 包含 nodes 和 relations 的图谱 Map
+     */
     public static Map<String, Object> convertToKnowledgeGraph(HLMEntity hlm) {
         Map<String, Object> graph = new HashMap<>();
         graph.put("nodes", new ArrayList<>());

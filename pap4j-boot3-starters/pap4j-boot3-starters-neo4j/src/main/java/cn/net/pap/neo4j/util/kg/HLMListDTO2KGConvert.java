@@ -11,6 +11,12 @@ import java.util.Map;
 
 public class HLMListDTO2KGConvert {
 
+    /**
+     * 将 HLM 列表 DTO 转换为知识图谱的 nodes/relations 结构。
+     *
+     * @param hlmList HLM 列表 DTO 集合
+     * @return 包含 nodes 和 relations 的图谱 Map
+     */
     public static Map<String, Object> convertToKnowledgeGraph(List<HLMListDTO> hlmList) {
         Map<String, Object> graph = new HashMap<>();
         graph.put("nodes", new ArrayList<>());
@@ -39,6 +45,12 @@ public class HLMListDTO2KGConvert {
         return graph;
     }
 
+    /**
+     * 将单个 HLMListDTO 转换为知识图谱的 nodes/relations 结构。
+     *
+     * @param hlm HLM 列表 DTO
+     * @return 包含 nodes 和 relations 的图谱 Map
+     */
     public static Map<String, Object> convertToKnowledgeGraph(HLMListDTO hlm) {
         Map<String, Object> graph = new HashMap<>();
         graph.put("nodes", new ArrayList<>());

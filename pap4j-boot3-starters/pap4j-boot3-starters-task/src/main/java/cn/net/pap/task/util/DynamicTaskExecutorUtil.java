@@ -123,6 +123,13 @@ public class DynamicTaskExecutorUtil {
         private final int completed;
         private final int failed;
 
+        /**
+         * 创建任务进度信息。
+         *
+         * @param total     总任务数
+         * @param completed 已完成数
+         * @param failed    失败数
+         */
         public TaskProgress(int total, int completed, int failed) {
             this.total = total;
             this.completed = completed;
@@ -155,6 +162,16 @@ public class DynamicTaskExecutorUtil {
         private final long startTime;
         private final long endTime;
 
+        /**
+         * 创建任务结果。
+         *
+         * @param taskId     任务 ID
+         * @param result     执行结果
+         * @param exception  异常信息
+         * @param submitTime 提交时间
+         * @param startTime  开始时间
+         * @param endTime    结束时间
+         */
         public TaskResult(long taskId, T result, Throwable exception, long submitTime, long startTime, long endTime) {
             this.taskId = taskId;
             this.result = result;

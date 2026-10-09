@@ -18,6 +18,14 @@ public class OrderAction implements Action<OrderStates, OrderEvents> {
 
     private OrderEvents event;
 
+    /**
+     * 创建订单状态机动作。
+     *
+     * @param orderRepository 订单仓储
+     * @param source          源状态
+     * @param target          目标状态
+     * @param event           触发事件
+     */
     public OrderAction(OrderRepository orderRepository, OrderStates source, OrderStates target, OrderEvents event) {
         this.orderRepository = orderRepository;
         this.source = source;

@@ -60,6 +60,12 @@ public class CacheApplication {
         return new LettuceConnectionFactory(redisStandaloneConfiguration, lettuceClientConfiguration);
     }
 
+    /**
+     * 配置 Redis 模板。
+     *
+     * @param redisConnectionFactory Redis 连接工厂
+     * @return 配置好的 Redis 模板
+     */
     @Bean
     @Primary
     public RedisTemplate redisTemplate(RedisConnectionFactory redisConnectionFactory) {

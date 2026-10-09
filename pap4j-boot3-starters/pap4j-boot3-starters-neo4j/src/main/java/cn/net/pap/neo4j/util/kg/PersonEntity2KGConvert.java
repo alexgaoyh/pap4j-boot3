@@ -14,6 +14,12 @@ import java.util.Map;
  */
 public class PersonEntity2KGConvert {
 
+    /**
+     * 将 PersonEntity 转换为知识图谱的 nodes/relations 结构。
+     *
+     * @param person 人员实体
+     * @return 包含 nodes 和 relations 的图谱 Map
+     */
     public static Map<String, Object> convertToKnowledgeGraph(PersonEntity person) {
         Map<String, Object> graph = new HashMap<>();
         graph.put("nodes", new ArrayList<>());

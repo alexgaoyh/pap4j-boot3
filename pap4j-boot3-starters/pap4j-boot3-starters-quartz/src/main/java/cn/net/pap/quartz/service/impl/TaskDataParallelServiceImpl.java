@@ -53,6 +53,13 @@ public class TaskDataParallelServiceImpl implements ITaskDataService {
     private volatile boolean isShuttingDown = false;
     // =========================================================================
 
+    /**
+     * 创建任务数据并行处理服务。
+     *
+     * @param taskDataService     任务数据服务
+     * @param taskDataRepository  任务数据仓储
+     * @param transactionManager  事务管理器
+     */
     @Autowired
     public TaskDataParallelServiceImpl(ITaskDataService taskDataService,
                                        TaskDataRepository taskDataRepository,

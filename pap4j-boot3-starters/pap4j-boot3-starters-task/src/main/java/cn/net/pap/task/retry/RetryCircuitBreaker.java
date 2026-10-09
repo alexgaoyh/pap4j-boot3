@@ -55,6 +55,15 @@ public class RetryCircuitBreaker {
      */
     private long lastStateChangeTime;
 
+    /**
+     * 创建重试滑动窗口断路器。
+     *
+     * @param maxRetries          最大重试次数
+     * @param retryDelayMillis    重试间隔（毫秒）
+     * @param failureThreshold    故障阈值
+     * @param windowSizeMillis    滑动窗口大小（毫秒）
+     * @param openStateDelayMillis 断路器打开状态持续时间（毫秒）
+     */
     public RetryCircuitBreaker(int maxRetries, long retryDelayMillis, int failureThreshold, long windowSizeMillis, long openStateDelayMillis) {
         this.maxRetries = maxRetries;
         this.retryDelayMillis = retryDelayMillis;
@@ -66,6 +75,14 @@ public class RetryCircuitBreaker {
         this.lastStateChangeTime = System.currentTimeMillis();
     }
 
+    /**
+     * 在断路器保护下执行带重试的任务。
+     *
+     * @param task 待执行的任务
+     * @param <T>  返回类型
+     * @return 任务执行结果
+     * @throws Exception 重试耗尽或断路器打开时抛出
+     */
     public <T> T executeWithRetry(Callable<T> task) throws Exception {
         int attempt = 0;
         Exception lastException = null;

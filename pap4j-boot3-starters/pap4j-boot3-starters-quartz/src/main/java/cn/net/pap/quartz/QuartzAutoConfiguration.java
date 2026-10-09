@@ -138,6 +138,12 @@ public class QuartzAutoConfiguration {
         return schedulerFactoryBean;
     }
 
+    /**
+     * 多调度器模式下的第一个调度器。
+     *
+     * @return 调度器工厂 Bean
+     * @throws Exception 初始化异常
+     */
     @ConditionalOnProperty(name = "cn.net.pap.quartz.scheduler.multi", havingValue = "true")
     @Bean(name = "scheduler1")
     public SchedulerFactoryBean scheduler1() throws Exception {
@@ -149,6 +155,12 @@ public class QuartzAutoConfiguration {
         return factory;
     }
 
+    /**
+     * 多调度器模式下的第二个调度器。
+     *
+     * @return 调度器工厂 Bean
+     * @throws Exception 初始化异常
+     */
     @ConditionalOnProperty(name = "cn.net.pap.quartz.scheduler.multi", havingValue = "true")
     @Bean(name = "scheduler2")
     public SchedulerFactoryBean scheduler2() throws Exception {
@@ -203,6 +215,12 @@ public class QuartzAutoConfiguration {
         return properties;
     }
 
+    /**
+     * 注册 Spring 上下文关闭事件监听器，确保线程池优雅关闭。
+     *
+     * @param schedulerThreadPool 调度器线程池
+     * @return 应用监听器
+     */
     @Bean
     public ApplicationListener<ContextClosedEvent> contextClosedHandler(ThreadPoolTaskExecutor schedulerThreadPool) {
         return event -> {
