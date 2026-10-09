@@ -48,7 +48,6 @@ public interface LibVips extends Library {
                         try {
                             WinKernel32.INSTANCE.SetDllDirectoryW(absolutePath);
                         } catch (Throwable t) {
-                            System.err.println("[Vips-Load] 尝试通过 Windows Kernel32.SetDllDirectoryW 绑定备用路径失败: " + t.getMessage());
                             log.error("[Vips-Load] 尝试通过 Windows Kernel32.SetDllDirectoryW 绑定备用路径失败", t);
                         }
                     }
