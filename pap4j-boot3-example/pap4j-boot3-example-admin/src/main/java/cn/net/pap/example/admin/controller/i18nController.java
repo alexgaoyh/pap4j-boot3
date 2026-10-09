@@ -26,6 +26,12 @@ public class i18nController {
         return messageSource.getMessage("greeting.message", null, locale);
     }
 
+    /**
+     * 获取携带默认参数的国际化问候语。
+     *
+     * @param locale 语言环境标识
+     * @return 问候语
+     */
     @Operation(summary = "带参数的问候语", description = "根据 Accept-Language 请求头返回对应区域语言且携带了默认参数的问候语。")
     @GetMapping("/greeting2")
     public String greeting2(@Parameter(description = "语言环境标识") @RequestHeader(value = "Accept-Language", required = false) Locale locale) {

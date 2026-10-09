@@ -26,6 +26,11 @@ public class Pap4jBoot3ExampleWebhookApplication {
         }
     }
 
+    /**
+     * 应用入口。
+     *
+     * @param args 命令行参数
+     */
     public static void main(String[] args) {
         ConfigurableApplicationContext context = new SpringApplicationBuilder(Pap4jBoot3ExampleWebhookApplication.class)
                 .beanNameGenerator(new Pap4jCustomGenerator())

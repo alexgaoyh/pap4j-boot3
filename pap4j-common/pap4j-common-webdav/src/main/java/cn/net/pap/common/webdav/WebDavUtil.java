@@ -43,6 +43,13 @@ public class WebDavUtil {
     private HttpClient client;
     private HttpClientContext context;
 
+    /**
+     * 创建 WebDAV 客户端并配置 BASIC 认证。
+     *
+     * @param baseUri  服务基地址
+     * @param userName 用户名
+     * @param passWord 密码
+     */
     public WebDavUtil(String baseUri, String userName, String passWord) {
         this.uri = URI.create(baseUri);
         this.root = this.uri.toASCIIString();
@@ -72,6 +79,12 @@ public class WebDavUtil {
 
     }
 
+    /**
+     * 删除指定资源。
+     *
+     * @param uri 资源 URI
+     * @throws IOException IO 异常
+     */
     public void delete(String uri) throws IOException {
         HttpDelete delete = new HttpDelete(uri);
         int status = this.client.execute(delete, this.context).getStatusLine().getStatusCode();
@@ -135,12 +148,26 @@ public class WebDavUtil {
         }
     }
 
+    /**
+     * 创建单级目录。
+     *
+     * @param uri 目录 URI
+     * @throws IOException IO 异常
+     */
     public void mkdir(String uri) throws IOException {
         HttpMkcol mkcol = new HttpMkcol(uri);
         int status = this.client.execute(mkcol, this.context).getStatusLine().getStatusCode();
         log.info("Create folder {} status is :{}", uri, status);
     }
 
+    /**
+     * 下载资源并保存到本地文件。
+     *
+     * @param uri          资源 URI
+     * @param fileName     文件名
+     * @param downloadPath 下载目录路径
+     * @throws IOException IO 异常
+     */
     public void download(String uri, String fileName, String downloadPath) throws IOException {
         HttpGet get = new HttpGet(uri);
         HttpResponse execRel = this.client.execute(get, this.context);
@@ -179,6 +206,13 @@ public class WebDavUtil {
         }
     }
 
+    /**
+     * 将输入流内容写入本地文件。
+     *
+     * @param is       输入流
+     * @param fileName 目标文件路径
+     * @throws IOException IO 异常
+     */
     public void transStream2File(InputStream is, String fileName) throws IOException {
         try (BufferedInputStream in = new BufferedInputStream(is);
              BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(fileName))) {

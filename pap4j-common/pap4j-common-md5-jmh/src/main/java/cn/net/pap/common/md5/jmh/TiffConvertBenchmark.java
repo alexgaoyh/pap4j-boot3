@@ -116,6 +116,11 @@ public class TiffConvertBenchmark {
     // 为 TwelveMonkeys 单独准备一个输出文件，避免两者相互覆盖或由于文件大小不同带来的 I/O 异常
     private File tempJpgFileJava;
 
+    /**
+     * 基准测试前置准备：初始化资源并预热各转换引擎。
+     *
+     * @throws IOException IO 异常
+     */
     @Setup
     public void setup() throws IOException {
         // 关闭 ImageIO 的默认磁盘缓存，强制使用内存，拉平与 ImageMagick 在处理小文件时的 I/O 模型
@@ -152,6 +157,9 @@ public class TiffConvertBenchmark {
         }
     }
 
+    /**
+     * 基准测试清理：删除临时文件并关闭 vips 库。
+     */
     @TearDown
     public void tearDown() {
         new File(tiffFilePath).delete();
@@ -162,6 +170,12 @@ public class TiffConvertBenchmark {
         cn.net.pap.common.vips.VipsImageProcessor.shutdown();
     }
 
+    /**
+     * TwelveMonkeys 转换基准测试。
+     *
+     * @return 输出文件大小
+     * @throws IOException IO 异常
+     */
     @Benchmark
     public long convert_TwelveMonkeys() throws IOException {
         long size = convertFullSizeToDisk(tiffFilePath, tempJpgFileJava);
@@ -177,6 +191,12 @@ public class TiffConvertBenchmark {
         return 1;
     }
 
+    /**
+     * ImageMagick 转换基准测试。
+     *
+     * @return 输出文件大小
+     * @throws IOException IO 异常
+     */
     @Benchmark
     public long convert_ImageMagick() throws IOException {
         // 增加 -quality 75 参数，对齐 Java ImageIO 默认的压缩比率
@@ -188,6 +208,12 @@ public class TiffConvertBenchmark {
         return tempJpgFile.length();
     }
 
+    /**
+     * vips 命令行转换基准测试。
+     *
+     * @return 输出文件大小
+     * @throws IOException IO 异常
+     */
     @Benchmark
     public long convert_Vips() throws IOException {
         String cmd = String.format("vips copy \"%s\" \"%s\"", tiffFilePath, tempJpgFile.getAbsolutePath());
@@ -243,6 +269,13 @@ public class TiffConvertBenchmark {
         }
     }
 
+    /**
+     * 使用 commons-imaging 将 TIFF 转换为 JPG。
+     *
+     * @param inputFilePath  输入 TIFF 路径
+     * @param outputFilePath 输出 JPG 路径
+     * @return 成功返回 "success"，否则返回错误信息
+     */
     public static String tiffToJpg(String inputFilePath, String outputFilePath) {
         File inputFile = new File(inputFilePath);
         File outputFile = new File(outputFilePath);
@@ -299,6 +332,13 @@ public class TiffConvertBenchmark {
         }
     }
 
+    /**
+     * 使用 ImageIO（TwelveMonkeys writer）兜底转换 TIFF 为 JPG。
+     *
+     * @param inputFilePath  输入 TIFF 路径
+     * @param outputFilePath 输出 JPG 路径
+     * @return 成功返回 "success"，否则返回错误信息
+     */
     public static String tiffToJpg2(String inputFilePath, String outputFilePath) {
         File inputFile = new File(inputFilePath);
         File outputFile = new File(outputFilePath);

@@ -22,6 +22,11 @@ public class Pap4jBoot3ExampleAdminApplication {
         SpringApplication.run(Pap4jBoot3ExampleAdminApplication.class, args);
     }
 
+    /**
+     * 启动后校验类文件完整性，校验失败则关闭服务。
+     *
+     * @return 命令行运行器
+     */
     @Bean
     public CommandLineRunner shutdownAfterStartup() {
         return args -> {

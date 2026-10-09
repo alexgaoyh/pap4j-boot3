@@ -18,6 +18,11 @@ public class Pap4jBoot3ExampleAsyncApplication {
         }
     }
 
+    /**
+     * 应用入口。
+     *
+     * @param args 命令行参数
+     */
     public static void main(String[] args) {
         new SpringApplicationBuilder(Pap4jBoot3ExampleAsyncApplication.class)
                 .beanNameGenerator(new Pap4jCustomGenerator())

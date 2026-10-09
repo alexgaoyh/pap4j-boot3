@@ -295,6 +295,12 @@ public class OpenCVUtils {
         }
     }
 
+    /**
+     * 提取图像 ORB 特征并转换为浮点数组。
+     *
+     * @param imagePath 图像路径
+     * @return 特征浮点数组
+     */
     public static float[] matOfKeyPointImage2(String imagePath) {
         Mat image = null;
         Mat grayImage = null;
@@ -458,6 +464,13 @@ public class OpenCVUtils {
         return Float.intBitsToFloat(accum);
     }
 
+    /**
+     * 将浮点列表转换为定长浮点数组，NaN 值替换为 0。
+     *
+     * @param floatList 浮点列表
+     * @param maxLength 数组最大长度
+     * @return 转换后的浮点数组
+     */
     public static float[] convertArray(List<Float> floatList, Integer maxLength) {
         Integer arrayLength = floatList.size() > maxLength ? maxLength : floatList.size();
         float[] array = new float[arrayLength];
@@ -583,6 +596,13 @@ public class OpenCVUtils {
         }
     }
 
+    /**
+     * 旋转图像并自动扩展画布使图像完整显示。
+     *
+     * @param inputPath  输入图像路径
+     * @param outputPath 输出图像路径
+     * @param angle      旋转角度
+     */
     public static void rotation2(String inputPath, String outputPath, double angle) {
         Mat originalImage = null;
         Mat rotationMatrix = null;
@@ -1272,6 +1292,13 @@ public class OpenCVUtils {
         return Imgcodecs.imread(image, flags);
     }
 
+    /**
+     * 将信息编码到图像中
+     *
+     * @param image   原始图像
+     * @param message 隐藏信息
+     * @return 编码后的图像
+     */
     // 将信息编码到图像中
     public static Mat embedMessage(Mat image, String message) {
         int width = image.cols();
@@ -1302,6 +1329,12 @@ public class OpenCVUtils {
         return image;
     }
 
+    /**
+     * 从图像中提取隐藏的信息
+     *
+     * @param image 携带隐写信息的图像
+     * @return 提取的信息
+     */
     // 从图像中提取隐藏的信息
     public static String extractMessage(Mat image) {
         int width = image.cols();

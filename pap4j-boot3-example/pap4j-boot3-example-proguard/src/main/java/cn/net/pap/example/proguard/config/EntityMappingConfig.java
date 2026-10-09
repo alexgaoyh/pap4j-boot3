@@ -14,6 +14,11 @@ import java.util.Map;
 @Configuration
 public class EntityMappingConfig {
 
+    /**
+     * 注册实体类名到 Class 的映射。
+     *
+     * @return 实体映射表
+     */
     @Bean
     public Map<String, Class<?>> entityMappings() {
         Map<String, Class<?>> mappings = new HashMap<>();

@@ -34,6 +34,11 @@ public class H2ServerManager {
 
     private static final int MAX_PORT_ATTEMPTS = 10;
 
+    /**
+     * 启动 H2 TCP 服务器与 Web 控制台并测试连接。
+     *
+     * @throws SQLException SQL 异常
+     */
     public static void startH2Servers() throws SQLException {
 
         // 启动 TCP 服务器（自动处理端口占用）
@@ -108,6 +113,11 @@ public class H2ServerManager {
         throw new SQLException("无法启动 Web 控制台，尝试了 " + MAX_PORT_ATTEMPTS + " 个端口(" + (webPort - MAX_PORT_ATTEMPTS) + "-" + (webPort - 1) + ")，全部被占用", lastException);
     }
 
+    /**
+     * 获取当前使用的端口信息。
+     *
+     * @return 连接信息文本
+     */
     // 获取当前使用的端口信息
     public static String getConnectionInfo() {
         if (tcpServer == null || webServer == null) {
@@ -128,6 +138,9 @@ public class H2ServerManager {
                 dbPath);  // 现在有4个参数对应4个占位符
     }
 
+    /**
+     * 停止 TCP 服务器与 Web 控制台。
+     */
     // 停止服务器
     public static void stopServers() {
         if (tcpServer != null) {
@@ -140,6 +153,11 @@ public class H2ServerManager {
         }
     }
 
+    /**
+     * 获取 Web 管理界面的完整 URL。
+     *
+     * @return Web 控制台 URL 或未启动提示
+     */
     // 获取 Web 管理界面的完整 URL
     public static String getWebConsoleUrl() {
         if (webServer == null) {
@@ -148,6 +166,11 @@ public class H2ServerManager {
         return "http://localhost:" + webServer.getPort();
     }
 
+    /**
+     * 获取数据库连接 URL。
+     *
+     * @return 数据库连接 URL 或未启动提示
+     */
     // 获取数据库连接 URL
     public static String getDatabaseUrl() {
         if (tcpServer == null) {

@@ -184,6 +184,12 @@ public class ImageUtil {
         }
     }
 
+    /**
+     * 判断文件名是否为支持的图片文件。
+     *
+     * @param fileName 文件名
+     * @return 是图片文件返回 true
+     */
     public static boolean isImageFile(String fileName) {
         String lower = fileName.toLowerCase();
         return lower.endsWith(".jpg") || lower.endsWith(".jpeg")

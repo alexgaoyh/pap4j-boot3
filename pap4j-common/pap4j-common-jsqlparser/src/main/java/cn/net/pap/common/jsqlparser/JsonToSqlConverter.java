@@ -88,6 +88,13 @@ public class JsonToSqlConverter {
     ) {
     }
 
+    /**
+     * 将查询 JSON 转换为 SQL 语句。
+     *
+     * @param json 查询条件 JSON 字符串
+     * @return 生成的 SQL
+     * @throws IOException JSON 解析异常
+     */
     public static String convert(String json) throws IOException {
         if (json == null || json.isBlank()) {
             throw new IllegalArgumentException("JSON string cannot be null or empty");
@@ -101,6 +108,12 @@ public class JsonToSqlConverter {
         return sql;
     }
 
+    /**
+     * 校验 SQL 语句合法性。
+     *
+     * @param sql 待校验的 SQL
+     * @throws IllegalArgumentException SQL 非法时抛出
+     */
     public static void validateSql(String sql) {
         try {
             CCJSqlParserUtil.parse(sql);

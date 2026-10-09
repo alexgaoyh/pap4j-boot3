@@ -9,6 +9,12 @@ public class PapIdentifiedFutureTask<T> extends FutureTask<T> {
 
     private final PapIdentifiedTask originalTask;
 
+    /**
+     * 构造包装任务的 FutureTask。
+     *
+     * @param runnable 被包装的 PapIdentifiedTask
+     * @param result 结果
+     */
     public PapIdentifiedFutureTask(PapIdentifiedTask runnable, T result) {
         // 调用父类构造器，传入 PapIdentifiedTask
         super(runnable, result);

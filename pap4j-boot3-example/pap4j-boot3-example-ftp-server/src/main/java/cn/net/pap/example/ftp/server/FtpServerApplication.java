@@ -16,6 +16,11 @@ public class FtpServerApplication {
         }
     }
 
+    /**
+     * 应用入口。
+     *
+     * @param args 命令行参数
+     */
     public static void main(String[] args) {
         new SpringApplicationBuilder(FtpServerApplication.class)
                 .beanNameGenerator(new Pap4jCustomGenerator())

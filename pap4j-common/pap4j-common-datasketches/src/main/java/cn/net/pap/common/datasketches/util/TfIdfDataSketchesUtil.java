@@ -44,6 +44,14 @@ public class TfIdfDataSketchesUtil {
     // ItemsSketch 配置
     private final int mapSize;
 
+    /**
+     * 构造 TF-IDF DataSketches 工具。
+     *
+     * @param mapSize  ItemsSketch 容量
+     * @param cmsWidth Count-Min Sketch 宽度
+     * @param cmsDepth Count-Min Sketch 深度
+     * @param seed     哈希种子
+     */
     public TfIdfDataSketchesUtil(int mapSize, int cmsWidth, int cmsDepth, int seed) {
         this.mapSize = mapSize;
         this.dfSketch = new ItemsSketch<>(mapSize);
@@ -219,6 +227,9 @@ public class TfIdfDataSketchesUtil {
         return dfSketch.getMaximumError();
     }
 
+    /**
+     * 输出 TF-IDF 统计信息日志（含前 10 个高频词）。
+     */
     public void printStatistics() {
         log.info("=== TF-IDF Statistics ===");
         log.info("Total documents: {}", getTotalDocuments());

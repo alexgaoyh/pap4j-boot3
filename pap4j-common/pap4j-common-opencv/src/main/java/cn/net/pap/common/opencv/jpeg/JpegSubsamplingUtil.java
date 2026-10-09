@@ -150,6 +150,13 @@ public class JpegSubsamplingUtil {
         return SubsamplingMode.UNKNOWN;
     }
 
+    /**
+     * 创建红蓝双色测试图像。
+     *
+     * @param width  图像宽度
+     * @param height 图像高度
+     * @return 测试图像
+     */
     public static BufferedImage createTestImage(int width, int height) {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         Graphics2D g2d = image.createGraphics();

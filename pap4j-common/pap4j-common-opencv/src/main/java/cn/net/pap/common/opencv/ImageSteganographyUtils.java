@@ -7,6 +7,13 @@ import java.awt.image.BufferedImage;
  */
 public class ImageSteganographyUtils {
 
+    /**
+     * 将信息编码到图像中
+     *
+     * @param image   原始图像
+     * @param message 隐藏信息
+     * @return 编码后的图像
+     */
     // 将信息编码到图像中
     public static BufferedImage embedMessage(BufferedImage image, String message) {
         int width = image.getWidth();
@@ -52,6 +59,12 @@ public class ImageSteganographyUtils {
         return stegoImage;
     }
 
+    /**
+     * 从图像中提取隐藏的信息 请注意隐写信息已'.'结尾。
+     *
+     * @param image 携带隐写信息的图像
+     * @return 提取的信息
+     */
     // 从图像中提取隐藏的信息  请注意隐写信息已‘.’结尾。
     public static String extractMessage(BufferedImage image) {
         int width = image.getWidth();

@@ -57,6 +57,12 @@ public class EchoController {
         return Map.of("echo", "echo", "method", "POST", "contentType", "application/json", "body", body);
     }
 
+    /**
+     * POST JSON 回显测试（带 2 秒延迟）。
+     *
+     * @param body 请求体
+     * @return 回显内容
+     */
     @Operation(summary = "POST JSON回显测试（带延迟）")
     @PostMapping(value = "/jsonSleep", consumes = MediaType.APPLICATION_JSON_VALUE)
     public Map<String, Object> postJsonSleep(@RequestBody Map<String, Object> body) {
@@ -76,6 +82,13 @@ public class EchoController {
         return Map.of("echo", "echo", "method", "POST", "contentType", "application/x-www-form-urlencoded", "params", params);
     }
 
+    /**
+     * POST multipart 文件上传与参数回显测试。
+     *
+     * @param params 表单参数
+     * @param files  上传文件列表
+     * @return 回显内容
+     */
     @Operation(summary = "POST 文件上传与参数回显测试")
     @PostMapping(value = "/multipart", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public Map<String, Object> postMultipart(@RequestParam Map<String, String> params, @RequestParam(required = false) List<MultipartFile> files) {
@@ -89,6 +102,12 @@ public class EchoController {
         return Map.of("echo", "echo", "method", "POST", "contentType", "multipart/form-data", "params", params, "files", fileInfos);
     }
 
+    /**
+     * POST 纯文本回显测试。
+     *
+     * @param text 请求文本
+     * @return 回显内容
+     */
     @Operation(summary = "POST 纯文本回显测试")
     @PostMapping(value = "/text", consumes = MediaType.TEXT_PLAIN_VALUE)
     public Map<String, Object> postText(@RequestBody byte[] text) {

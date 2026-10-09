@@ -24,6 +24,12 @@ public class NumberSegmentService {
         numberSegmentRepository.save(numberSegment);
     }
 
+    /**
+     * 加载一个号段的号码到队列。
+     *
+     * @param segmentName 号段名称
+     * @param queue       号码队列
+     */
     @Transactional(rollbackFor = Exception.class)
     public void loadSegments(String segmentName, Queue<String> queue) {
         NumberSegment updatedSegment = getUpdatedSegment(segmentName);

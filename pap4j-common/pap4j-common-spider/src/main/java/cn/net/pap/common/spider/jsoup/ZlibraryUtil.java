@@ -16,6 +16,12 @@ public class ZlibraryUtil {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ZlibraryUtil.class);
 
+    /**
+     * 读取文件内容为字符串列表（忽略空行）。
+     *
+     * @param file 文件路径
+     * @return 非空行列表
+     */
     public static List<String> readFile(String file) {
         List<String> list = new ArrayList<>();
         String str;
@@ -58,6 +64,14 @@ public class ZlibraryUtil {
         downloadNet(bookDownloadUrl, baseSaveDir + File.separator + downloadBusName, isbnOption.get().getValue() + ".epub", cookie);
     }
 
+    /**
+     * 下载图片到指定目录。
+     *
+     * @param urlString   图片 URL
+     * @param baseSaveDir 保存目录
+     * @param filename    文件名
+     * @throws Exception 下载异常
+     */
     public static void downloadImg(String urlString, String baseSaveDir, String filename) throws Exception {
         URL url = new URL(urlString);
         URLConnection con = url.openConnection();
@@ -75,6 +89,15 @@ public class ZlibraryUtil {
         }
     }
 
+    /**
+     * 下载网络文件到指定目录。
+     *
+     * @param urlToDownload 下载 URL
+     * @param saveFilePath  保存目录
+     * @param fileName      文件名
+     * @param cookie        登录 cookie
+     * @throws MalformedURLException URL 格式异常
+     */
     public static void downloadNet(String urlToDownload, String saveFilePath, String fileName, String cookie) throws MalformedURLException {
         try {
             URL url = new URL(urlToDownload);

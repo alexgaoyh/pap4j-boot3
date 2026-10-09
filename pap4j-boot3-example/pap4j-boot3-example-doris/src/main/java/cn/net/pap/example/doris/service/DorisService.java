@@ -29,6 +29,14 @@ public class DorisService {
 
     private final PlatformTransactionManager platformTransactionManager;
 
+    /**
+     * 构造 DorisService。
+     *
+     * @param sqlSessionFactory           SqlSession 工厂
+     * @param dataSource                  数据源
+     * @param dorisMapper                 Doris Mapper
+     * @param platformTransactionManager  事务管理器
+     */
     public DorisService(SqlSessionFactory sqlSessionFactory,
                         DataSource dataSource,
                         DorisMapper dorisMapper,
@@ -39,6 +47,11 @@ public class DorisService {
         this.platformTransactionManager = platformTransactionManager;
     }
 
+    /**
+     * 手动控制事务的批量插入测试。
+     *
+     * @return 成功返回 1，失败返回 0
+     */
     public int transactionalTest() {
         try (SqlSession session = sqlSessionFactory.openSession(false);
              Connection conn = session.getConnection()) {
@@ -180,6 +193,11 @@ public class DorisService {
 
     }
 
+    /**
+     * 使用 @Transactional 注解控制事务的更新测试。
+     *
+     * @return 成功返回 1，失败返回 -1
+     */
     @Transactional(rollbackFor = Exception.class)
     public int updateTestTestInMysqlDB2() {
         java.sql.Connection conn = DataSourceUtils.getConnection(dataSource);

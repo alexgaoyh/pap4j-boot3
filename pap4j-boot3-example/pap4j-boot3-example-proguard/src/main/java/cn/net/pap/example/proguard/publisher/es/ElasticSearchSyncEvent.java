@@ -10,6 +10,13 @@ public class ElasticSearchSyncEvent<T> {
 
     private final List<T> data;
 
+    /**
+     * 构造同步事件。
+     *
+     * @param index 目标索引
+     * @param type  同步操作类型
+     * @param data  同步数据
+     */
     public ElasticSearchSyncEvent(String index, SyncType type, List<T> data) {
         this.index = index;
         this.type = type;

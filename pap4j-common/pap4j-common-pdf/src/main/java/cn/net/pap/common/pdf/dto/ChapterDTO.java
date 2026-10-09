@@ -13,6 +13,13 @@ public class ChapterDTO implements Serializable {
     public ChapterDTO() {
     }
 
+    /**
+     * 构造章节 DTO。
+     *
+     * @param title      章节标题
+     * @param content    章节内容
+     * @param anchorName 锚点名称
+     */
     public ChapterDTO(String title, String content, String anchorName) {
         this.title = title;
         this.content = content;

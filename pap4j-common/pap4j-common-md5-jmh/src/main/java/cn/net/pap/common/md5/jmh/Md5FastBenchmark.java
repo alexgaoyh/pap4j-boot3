@@ -54,6 +54,12 @@ public class Md5FastBenchmark {
         return Md5Normal.md5(input);
     }
 
+    /**
+     * Thumbnailator 缩略图基准测试。
+     *
+     * @return 缩略图
+     * @throws Exception 异常
+     */
     @Benchmark
     public BufferedImage thumb_thumbnailator() throws Exception {
         BufferedImage image = Thumbnails.of(file).size(141, Integer.MAX_VALUE)
@@ -63,6 +69,12 @@ public class Md5FastBenchmark {
         return image;
     }
 
+    /**
+     * 低内存方式读取缩略图基准测试。
+     *
+     * @return 缩略图，读取失败时返回 null
+     * @throws Exception 异常
+     */
     @Benchmark
     public BufferedImage thumb_lowMemory() throws Exception {
         try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {

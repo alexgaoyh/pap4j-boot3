@@ -60,6 +60,16 @@ public class ProguardController {
 
     private final ObjectMapper objectMapper;
 
+    /**
+     * 构造 ProguardController。
+     *
+     * @param proguardService   Proguard 服务
+     * @param demoProperties    演示配置属性
+     * @param entityMappings    实体映射表
+     * @param entityManager     实体管理器
+     * @param transactionTemplate 事务模板
+     * @param objectMapper      对象映射器
+     */
     public ProguardController(IProguardService proguardService, DemoProperties demoProperties, Map<String, Class<?>> entityMappings, EntityManager entityManager, TransactionTemplate transactionTemplate, ObjectMapper objectMapper) {
         this.proguardService = proguardService;
         this.demoProperties = demoProperties;
@@ -69,6 +79,13 @@ public class ProguardController {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * 设置 Cookie 并演示 HttpOnly 与 SameSite 属性。
+     *
+     * @param resp HTTP 响应
+     * @return 成功标识
+     * @throws IOException IO 异常
+     */
     @RequestMapping("/first")
     public String first(HttpServletResponse resp) throws IOException {
         Cookie userCookie = new Cookie("username", "alexgaoyh");
@@ -87,6 +104,12 @@ public class ProguardController {
         return "{\"code\" : \"success\"}";
     }
 
+    /**
+     * 读取并回显请求中的所有 Cookie。
+     *
+     * @param request HTTP 请求
+     * @return Cookie 拼接结果
+     */
     @RequestMapping("/second")
     public String second(HttpServletRequest request) {
         String resultStr = "";
@@ -111,6 +134,11 @@ public class ProguardController {
         return Path.of(System.getProperty("user.dir")).toFile().getAbsolutePath();
     }
 
+    /**
+     * 限流测试与批量处理演示。
+     *
+     * @return 结果字符串
+     */
     @Operation(summary = "限流测试与批量处理")
     @GetMapping(value = "/batch", produces = "application/json;charset=UTF-8")
     public String batch() {
@@ -184,6 +212,11 @@ public class ProguardController {
         return new ResponseEntity<>("pap.net.cn! " + now.toString(), headers, HttpStatus.OK);
     }
 
+    /**
+     * ETag 缓存测试接口。
+     *
+     * @return 304 或带 ETag 的响应
+     */
     @GetMapping("/eTagTest")
     public ResponseEntity<String> eTagTest() {
 
@@ -249,6 +282,11 @@ public class ProguardController {
         return new ResponseEntity<>(proguardService.saveProguardWithIdxSeq(proguard), HttpStatus.OK);
     }
 
+    /**
+     * 保存并立即刷新 Proguard 实体。
+     *
+     * @return 保存后的实体
+     */
     @GetMapping("/saveAndFlush")
     public ResponseEntity<Proguard> saveAndFlush() {
         Proguard proguard = new Proguard();
@@ -291,6 +329,12 @@ public class ProguardController {
         return proguardService.getProguardByProguardId(proguardId);
     }
 
+    /**
+     * 根据 ProguardId 更新实体。
+     *
+     * @param proguardId 主键
+     * @return 更新后的实体
+     */
     @GetMapping("updateProguardByProguardId")
     public Proguard updateProguardByProguardId(@RequestParam(name = "proguardId") Long proguardId) {
         Proguard proguardByProguardId = proguardService.getProguardByProguardId(proguardId);
@@ -311,6 +355,11 @@ public class ProguardController {
         return proguardService.findAll(PageRequest.of(page, size));
     }
 
+    /**
+     * 使用朴素 SQL 进行分页查询。
+     *
+     * @return 分页结果
+     */
     @GetMapping("/findNaive")
     public Page<Proguard> findNaive() {
         Pageable pageable = PageRequest.of(0, 10);
@@ -318,6 +367,11 @@ public class ProguardController {
         return proguardsPageable;
     }
 
+    /**
+     * 批量新增 100 条记录并刷新。
+     *
+     * @return 保存后的实体列表
+     */
     @GetMapping("/saveAllAndFlush")
     public List<Proguard> saveAllAndFlush() {
         List<Proguard> proguards = new ArrayList<>();
@@ -330,6 +384,11 @@ public class ProguardController {
         return proguardService.saveAllAndFlush(proguards);
     }
 
+    /**
+     * 保存并刷新包含复杂字段的实体。
+     *
+     * @return 保存是否成功
+     */
     @GetMapping("/saveAllAndFlush2")
     public Boolean saveAllAndFlush2() {
         Proguard proguard = new Proguard();
@@ -368,6 +427,11 @@ public class ProguardController {
     }
 
 
+    /**
+     * 先保存再更新实体。
+     *
+     * @return 更新后的实体
+     */
     @GetMapping("/saveAndUpdate")
     public Proguard saveAndUpdate() {
         Proguard proguard = new Proguard();
@@ -410,6 +474,12 @@ public class ProguardController {
         return proguard;
     }
 
+    /**
+     * 通过 POST 请求保存实体。
+     *
+     * @param proguard 实体
+     * @return 保存后的实体
+     */
     @PostMapping("postSave")
     @ResponseBody
     public Proguard postSave(@RequestBody Proguard proguard) {
@@ -424,6 +494,11 @@ public class ProguardController {
         return b.toString();
     }
 
+    /**
+     * 模拟耗时 10 秒的接口。
+     *
+     * @return 结果字符串
+     */
     @GetMapping(value = "/longtime", produces = "application/json;charset=UTF-8")
     public String longtime() {
         try {
@@ -436,6 +511,12 @@ public class ProguardController {
         return "longtime";
     }
 
+    /**
+     * 模拟超时处理接口。
+     *
+     * @param timeoutMS 超时毫秒数
+     * @return 实体
+     */
     @GetMapping("/timeout")
     public Proguard timeout(@RequestParam(name = "timeoutMS") Long timeoutMS) {
         Proguard proguard = new Proguard();
@@ -538,6 +619,11 @@ public class ProguardController {
         return proguard1;
     }
 
+    /**
+     * 初始化一个包含复杂字段的 Proguard 实体。
+     *
+     * @return 实体
+     */
     public Proguard initProguard() {
         Proguard proguard = new Proguard();
         proguard.setProguardId(System.currentTimeMillis());

@@ -70,6 +70,12 @@ public class JSONAPIController {
     // 2. 动态 Mock 请求转发与代理端点 (支持 cURL 精确匹配)
     // ==========================================
 
+    /**
+     * Mock 请求动态代理转发端点，按配置规则特征匹配返回预设响应。
+     *
+     * @param request HTTP 请求
+     * @return 匹配到的 Mock 响应
+     */
     @RequestMapping("/api/mock/**")
     @Operation(summary = "Mock 请求动态代理转发端点", description = "拦截 /api/mock/** 的所有请求，根据配置规则进行高精度特征匹配并返回预设响应")
     public ResponseEntity<String> handleMock(HttpServletRequest request) {
@@ -155,6 +161,15 @@ public class JSONAPIController {
         }
     }
 
+    /**
+     * 统一文件与二进制 Mock 测试端点。
+     *
+     * @param type 资源文件类型: txt, png, pdf, xlsx
+     * @param disposition 浏览器处置行为: attachment 或 inline
+     * @param filename 下载文件的默认名称
+     * @param size 动态生成指定大小的测试文件空字节流（字节数）
+     * @param response HTTP 响应
+     */
     @GetMapping("/api/mock/binary")
     @Operation(summary = "统一文件与二进制 Mock 测试端点", description = "支持模拟生成文本、图片、PDF、Excel等文件流，支持浏览器直接预览或强制另存下载")
     public void handleBinaryMock(

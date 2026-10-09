@@ -15,12 +15,27 @@ public class SpiderDTO implements Serializable {
     public SpiderDTO() {
     }
 
+    /**
+     * 构造 SpiderDTO。
+     *
+     * @param id   标识
+     * @param name 名称
+     * @param sign 标记
+     */
     public SpiderDTO(String id, String name, String sign) {
         this.id = id;
         this.name = name;
         this.sign = sign;
     }
 
+    /**
+     * 构造带页码的 SpiderDTO。
+     *
+     * @param id         标识
+     * @param name       名称
+     * @param sign       标记
+     * @param pageNumber 页码
+     */
     public SpiderDTO(String id, String name, String sign, Integer pageNumber) {
         this.id = id;
         this.name = name;

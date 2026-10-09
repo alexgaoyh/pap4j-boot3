@@ -69,6 +69,13 @@ public final class XmlParseUtil {
         }
     }
 
+    /**
+     * 从 XML 字符串内容解析 W3C Document。
+     *
+     * @param xmlContent XML 字符串内容
+     * @return 解析后的文档
+     * @throws Exception 解析异常
+     */
     public static Document getDocumentByContent(String xmlContent) throws Exception {
         DocumentBuilder builder = DOCUMENT_BUILDER_FACTORY.newDocumentBuilder();
         // 核心优化：使用 StringReader 和 InputSource 替代 getBytes()。 优化对照结果详见： W3CDocumentXmlParseMemoryTest.java

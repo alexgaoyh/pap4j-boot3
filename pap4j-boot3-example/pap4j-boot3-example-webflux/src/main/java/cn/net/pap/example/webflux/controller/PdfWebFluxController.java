@@ -23,6 +23,12 @@ import java.nio.file.Path;
 @Tag(name = "PDF WebFlux 接口", description = "提供非阻塞 WebFlux 方式下的 PDF 文件流式读取与预览接口")
 public class PdfWebFluxController {
 
+    /**
+     * 流式获取并预览 PDF 文件（路径遍历防御）。
+     *
+     * @param fileName 文件名
+     * @return 包含 PDF 资源的 Mono 响应
+     */
     @Operation(summary = "流式获取并预览 PDF 文件", description = "流式读取临时目录下的 PDF 文件并作为应用 PDF 格式流返回预览。")
     @GetMapping("/view/{fileName}")
     public Mono<ResponseEntity<Resource>> streamPdf(@Parameter(description = "文件名") @PathVariable String fileName) {
@@ -48,6 +54,12 @@ public class PdfWebFluxController {
                 .body(resource));
     }
 
+    /**
+     * 通过弹性调度线程池流式获取并预览 PDF 文件。
+     *
+     * @param fileName 文件名
+     * @return 包含 PDF 资源的 Mono 响应
+     */
     @Operation(summary = "流式获取并预览 PDF 文件版本2", description = "通过单独弹性调度线程池运行阻塞 I/O 的流式 PDF 文件预览获取。")
     @GetMapping("/view2/{fileName}")
     public Mono<ResponseEntity<?>> streamPdf2(@Parameter(description = "文件名") @PathVariable String fileName) {

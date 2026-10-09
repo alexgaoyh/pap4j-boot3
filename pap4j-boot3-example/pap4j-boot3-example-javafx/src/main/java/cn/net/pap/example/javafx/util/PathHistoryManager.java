@@ -71,6 +71,11 @@ public class PathHistoryManager {
         }
     }
 
+    /**
+     * 清理超过指定时长的历史记录及其对应的文件。
+     *
+     * @param maxAge 最大保留时长
+     */
     public static void cleanupExpiredHistory(Duration maxAge) {
         long now = System.currentTimeMillis();
         long expireMillis = maxAge.toMillis();
@@ -113,6 +118,12 @@ public class PathHistoryManager {
         }
     }
 
+    /**
+     * 删除目录下早于指定时长的文件。
+     *
+     * @param directory 目录
+     * @param duration 时长
+     */
     public static void deleteFilesBefore(Path directory, Duration duration) {
         if (directory == null || duration == null) {
             return;

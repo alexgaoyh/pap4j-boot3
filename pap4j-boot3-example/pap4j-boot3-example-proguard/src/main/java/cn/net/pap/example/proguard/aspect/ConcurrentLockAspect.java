@@ -35,6 +35,14 @@ public class ConcurrentLockAspect {
     // SpEL表达式解析器
     private final ExpressionParser parser = new SpelExpressionParser();
 
+    /**
+     * 环绕通知：基于注解的可重入锁并发控制。
+     *
+     * @param joinPoint      切点
+     * @param concurrentLock 并发锁注解
+     * @return 目标方法返回值
+     * @throws Throwable 获取锁失败、中断或目标方法异常
+     */
     @Around("@annotation(concurrentLock)")
     public Object around(ProceedingJoinPoint joinPoint, ConcurrentLock concurrentLock) throws Throwable {
         // 1. 解析锁key

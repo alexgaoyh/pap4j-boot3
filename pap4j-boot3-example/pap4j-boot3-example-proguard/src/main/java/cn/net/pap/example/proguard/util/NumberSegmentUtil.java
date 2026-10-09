@@ -10,6 +10,12 @@ public class NumberSegmentUtil {
 
     private static final ConcurrentHashMap<String, Queue<String>> segmentCacheMap = new ConcurrentHashMap<>();
 
+    /**
+     * 获取下一个号码（号段缓存不足时自动加载）。
+     *
+     * @param segmentName 号段名称
+     * @return 号码字符串
+     */
     public static synchronized String getNextNumber(String segmentName) {
         Queue<String> queue = segmentCacheMap.computeIfAbsent(segmentName, key -> new LinkedList<>());
 

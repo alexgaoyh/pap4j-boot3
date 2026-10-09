@@ -36,6 +36,14 @@ public class ListMapGroupUtil {
         }
     }
 
+    /**
+     * 按多个字段对数据列表进行分组。
+     *
+     * @param dataList     数据列表
+     * @param groupFields  分组字段数组
+     * @param options      分组选项，可为 null
+     * @return 分组后的数据列表
+     */
     public static List<Map<String, Object>> groupByFields(List<Map<String, Object>> dataList, String[] groupFields, GroupOptions options) {
 
         if (options == null) {

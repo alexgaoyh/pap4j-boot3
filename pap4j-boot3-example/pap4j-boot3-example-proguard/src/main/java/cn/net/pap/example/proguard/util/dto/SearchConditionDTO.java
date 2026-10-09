@@ -23,6 +23,13 @@ public class SearchConditionDTO implements Serializable {
         // Add more operators as needed
     }
 
+    /**
+     * 构造查询条件。
+     *
+     * @param field    字段名
+     * @param operator 操作符
+     * @param value    比较值
+     */
     public SearchConditionDTO(String field, Operator operator, Object value) {
         this.field = field;
         this.operator = operator;

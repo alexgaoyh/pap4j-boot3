@@ -51,6 +51,13 @@ public class Result<T> implements Serializable {
 		this.message = message;
 	}
 	
+    /**
+     * 构造成功结果。
+     *
+     * @param message 提示消息
+     * @param <T>     数据类型
+     * @return 成功结果
+     */
 	public static<T> Result<T> success(String message) {
 		Result<T> r = new Result<T>();
 		r.setMessage(message);
@@ -59,6 +66,12 @@ public class Result<T> implements Serializable {
 		return r;
 	}
 
+    /**
+     * 构造携带数据对象的成功结果。
+     *
+     * @param message 数据对象
+     * @return 成功结果
+     */
 	public static Result successObj(Object message) {
 		Result<Object> r = new Result<Object>();
 		r.setResult(message);
@@ -71,6 +84,14 @@ public class Result<T> implements Serializable {
 		return error(500, msg);
 	}
 
+    /**
+     * 构造指定错误码的失败结果。
+     *
+     * @param code 错误码
+     * @param msg  提示消息
+     * @param <T>  数据类型
+     * @return 失败结果
+     */
 	public static<T> Result<T> error(int code, String msg) {
 		Result<T> r = new Result<T>();
 		r.setCode(code);

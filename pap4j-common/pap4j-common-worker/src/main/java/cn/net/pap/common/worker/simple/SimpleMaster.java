@@ -27,6 +27,11 @@ public class SimpleMaster {
 
     private volatile boolean running = true;
 
+    /**
+     * 创建 Master 并启动指定数量的工作进程。
+     *
+     * @param workerCount 工作进程数量
+     */
     public SimpleMaster(int workerCount) {
         // 使用 ThreadPoolExecutor 管理工作进程，符合并发与线程规范
         this.executorService = new ThreadPoolExecutor(

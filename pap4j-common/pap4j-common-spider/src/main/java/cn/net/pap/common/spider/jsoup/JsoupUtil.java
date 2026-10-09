@@ -54,6 +54,12 @@ public class JsoupUtil {
         return sb.toString();
     }
 
+    /**
+     * 将 DTO 对象转换为 span HTML 片段。
+     *
+     * @param dto DTO 对象
+     * @return span HTML 字符串，dto 为 null 时返回空串
+     */
     public static String convertDtoToSpan(Object dto) {
         if (dto == null) {
             return "";

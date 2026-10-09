@@ -29,6 +29,14 @@ public class BusOperLogAspect {
     private final ExpressionParser parser = new SpelExpressionParser();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 环绕通知：解析 SpEL 并记录业务操作日志。
+     *
+     * @param joinPoint  切点
+     * @param busOperLog 操作日志注解
+     * @return 目标方法返回值
+     * @throws Throwable 目标方法抛出的异常
+     */
     @Around("@annotation(busOperLog)")
     public Object logOperation(ProceedingJoinPoint joinPoint, BusOperLog busOperLog) throws Throwable {
         MethodSignature signature = (MethodSignature) joinPoint.getSignature();

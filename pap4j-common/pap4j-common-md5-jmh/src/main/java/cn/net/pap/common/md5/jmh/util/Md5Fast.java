@@ -19,6 +19,12 @@ public final class Md5Fast {
     private static final ThreadLocal<char[]> CHAR_BUF =
             ThreadLocal.withInitial(() -> new char[32]);
 
+    /**
+     * 使用 ThreadLocal 复用 MessageDigest 计算 MD5 摘要。
+     *
+     * @param input 原始字符串
+     * @return 小写十六进制摘要
+     */
     public static String md5(String input) {
         var md = MD5.get();
         md.reset();

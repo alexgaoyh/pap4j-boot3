@@ -62,6 +62,17 @@ public class AiController {
     private final ObjectMapper objectMapper;
     private final String defaultPersona;
 
+    /**
+     * 构造 AI 控制器，注入对话客户端、聊天记忆与向量库等依赖。
+     *
+     * @param customChatClient 自定义对话客户端
+     * @param queryRewriteChatClient 查询改写对话客户端
+     * @param chatMemory 聊天记忆
+     * @param knowledgeVectorStore 知识库向量存储
+     * @param emojiVectorStore Emoji 向量存储
+     * @param objectMapper JSON 序列化器
+     * @param defaultPersona 默认人设
+     */
     public AiController(@Qualifier("customChatClient") ChatClient customChatClient,
                         @Qualifier("queryRewriteChatClient") ChatClient queryRewriteChatClient,
                         ChatMemory chatMemory,
@@ -313,6 +324,12 @@ public class AiController {
                         删除 清除 移除 垃圾桶 废弃 叉号 禁止
                 """;
 
+    /**
+     * Emoji 语义检索接口，提示词改写后进行向量检索。
+     *
+     * @param request 检索请求
+     * @return Emoji 检索结果列表
+     */
     @Operation(summary = "Emoji 语义检索接口")
     @PostMapping("/emoji")
     public Mono<List<EmojiResponse>> searchEmoji(@RequestBody EmojiRequest request) {

@@ -20,6 +20,12 @@ public class ShapeSimilarCharactersUtil {
         root = new TrieNode();
     }
 
+    /**
+     * 加载文件
+     *
+     * @param filename 形近字词库文件路径
+     * @throws IOException IO 异常
+     */
     // 加载文件
     public void loadFile(String filename) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(filename))) {
@@ -41,6 +47,12 @@ public class ShapeSimilarCharactersUtil {
         }
     }
 
+    /**
+     * 查询
+     *
+     * @param c 目标字符
+     * @return 形近字集合，不存在时返回空集合
+     */
     // 查询
     public Set<Character> querySimilarCharacters(char c) {
         TrieNode node = root;

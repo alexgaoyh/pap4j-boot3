@@ -30,7 +30,17 @@ public @interface SignCheck {
      */
     String message() default "签名验证失败";
 
+    /**
+     * 校验分组。
+     *
+     * @return 分组类型数组
+     */
     Class<?>[] groups() default {};
 
+    /**
+     * 负载类型。
+     *
+     * @return 负载类型数组
+     */
     Class<? extends Payload>[] payload() default {};
 }

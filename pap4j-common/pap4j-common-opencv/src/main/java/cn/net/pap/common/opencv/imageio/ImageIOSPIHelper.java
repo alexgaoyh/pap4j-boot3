@@ -155,6 +155,9 @@ public class ImageIOSPIHelper {
         // if (!Arrays.asList(readers).contains("webp")) { ... }
     }
 
+    /**
+     * 输出 IIORegistry 注册信息诊断日志。
+     */
     public static void dumpRegistryInfo() {
         IIORegistry registry = IIORegistry.getDefaultInstance();
 

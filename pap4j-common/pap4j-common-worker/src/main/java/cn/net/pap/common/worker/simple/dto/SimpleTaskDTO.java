@@ -11,6 +11,13 @@ public class SimpleTaskDTO {
 
     private final int processingTime; // 模拟处理时间（毫秒）
 
+    /**
+     * 构造任务对象。
+     *
+     * @param id             任务 ID
+     * @param name           任务名称
+     * @param processingTime 模拟处理时间（毫秒）
+     */
     public SimpleTaskDTO(String id, String name, int processingTime) {
         this.id = id;
         this.name = name;

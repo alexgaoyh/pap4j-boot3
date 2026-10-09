@@ -114,6 +114,13 @@ public class ImageModifyHandler2 implements CellWriteHandler {
         CellWriteHandler.super.afterCellDataConverted(writeSheetHolder, writeTableHolder, cellData, cell, head, relativeRowIndex, isHead);
     }
 
+    /**
+     * 获取单元格所属的合并区域。
+     *
+     * @param cell  单元格
+     * @param sheet 工作表
+     * @return 合并区域，未找到时返回 null
+     */
     public static CellRangeAddress getMergedRegion(Cell cell, Sheet sheet) {
         List<CellRangeAddress> mergedRegions = sheet.getMergedRegions();
         for (CellRangeAddress cellRangeAddress : mergedRegions) {

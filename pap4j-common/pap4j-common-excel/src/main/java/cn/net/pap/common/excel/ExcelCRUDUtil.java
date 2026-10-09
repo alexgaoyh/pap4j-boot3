@@ -23,6 +23,12 @@ public class ExcelCRUDUtil {
 
     private static final Logger log = LoggerFactory.getLogger(ExcelCRUDUtil.class);
 
+    /**
+     * 创建 xlsx 文件及指定工作表。
+     *
+     * @param path      文件路径
+     * @param sheetName 工作表名称
+     */
     public static void createXlsx(String path, String sheetName) {
         new File(path).delete();
         try (XSSFWorkbook workbook = new XSSFWorkbook();
@@ -34,6 +40,14 @@ public class ExcelCRUDUtil {
         }
     }
 
+    /**
+     * 查询指定工作表的数据列表（当前只完成内容的模糊查询）。
+     *
+     * @param path  文件路径
+     * @param sheet 工作表名称
+     * @return 数据列表
+     * @throws ParseException 解析异常
+     */
     // 当前只完成内容的模糊查询
     public static List<PageData> selectList(String path, String sheet) throws ParseException {
         List<PageData> res = vttInit(path, sheet);
@@ -46,6 +60,14 @@ public class ExcelCRUDUtil {
         return rs;
     }
 
+    /**
+     * 向指定工作表末尾插入一行数据。
+     *
+     * @param pd     行数据
+     * @param path   文件路径
+     * @param sheets 工作表名称
+     * @throws IOException IO 异常
+     */
     public static void insert(PageData pd, String path, String sheets) throws IOException {
         try (XSSFWorkbook workbook = getExcelByPath(path);
              FileOutputStream out = new FileOutputStream(path)) {
@@ -62,6 +84,14 @@ public class ExcelCRUDUtil {
         }
     }
 
+    /**
+     * 删除指定工作表中的一行。
+     *
+     * @param rowIndex 行索引
+     * @param path     文件路径
+     * @param sheets   工作表名称
+     * @throws IOException IO 异常
+     */
     public static void delete(int rowIndex, String path, String sheets) throws IOException {
         try (XSSFWorkbook workbook = getExcelByPath(path);
              FileOutputStream out = new FileOutputStream(path)) {
@@ -101,6 +131,13 @@ public class ExcelCRUDUtil {
         }
     }
 
+    /**
+     * 初始化读取指定工作表的数据。
+     *
+     * @param path   文件路径
+     * @param sheets 工作表名称
+     * @return 数据列表
+     */
     public static List<PageData> vttInit(String path, String sheets) {
         List<PageData> rs = new ArrayList<>();
         XSSFWorkbook workbook = getExcelByPath(path);
@@ -137,6 +174,12 @@ public class ExcelCRUDUtil {
         return rs;
     }
 
+    /**
+     * 获取Excel表的真实行数
+     *
+     * @param sheet 工作表
+     * @return 真实行数
+     */
     // 获取Excel表的真实行数
     public static int getExcelRealRow(Sheet sheet) {
         boolean flag = false;
@@ -183,6 +226,12 @@ public class ExcelCRUDUtil {
         return null;
     }
 
+    /**
+     * 格式化单元格值为字符串。
+     *
+     * @param cell 单元格
+     * @return 格式化后的字符串
+     */
     public static String formatCell(Cell cell) {
         String ret;
         switch (cell.getCellType()) {

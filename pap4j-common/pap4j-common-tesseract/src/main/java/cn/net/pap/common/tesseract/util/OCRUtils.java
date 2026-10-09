@@ -43,6 +43,14 @@ public class OCRUtils {
         private float confidence;
         private String level;
 
+        /**
+         * 构造 OCR 结果。
+         *
+         * @param text        识别文本
+         * @param boundingBox 文本边界框
+         * @param confidence  置信度
+         * @param level       识别级别
+         */
         public OCRResult(String text, Rectangle boundingBox, float confidence, String level) {
             this.text = text;
             this.boundingBox = boundingBox;

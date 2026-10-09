@@ -30,6 +30,13 @@ public class TreeStorage {
     public TreeStorage() {
     }
 
+    /**
+     * 构造树形结构实体。
+     *
+     * @param sequence 业务键
+     * @param parentId 父节点 ID
+     * @param attr1    业务属性
+     */
     public TreeStorage(Integer sequence, Long parentId, String attr1) {
         this.sequence = sequence;
         this.parentId = parentId;

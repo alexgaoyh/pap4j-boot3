@@ -32,6 +32,11 @@ public class ProcessPoolUtilController {
     @Configuration
     public class ThreadPoolConfig {
 
+        /**
+         * 创建进程执行专用线程池 Bean。
+         *
+         * @return 线程池执行器
+         */
         @Bean(name = "processExecutor")
         public static ThreadPoolTaskExecutor processExecutor() {
             ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
@@ -50,6 +55,11 @@ public class ProcessPoolUtilController {
             return executor;
         }
 
+        /**
+         * 创建测试用 ThreadPoolExecutor Bean。
+         *
+         * @return 线程池执行器
+         */
         @Bean(name = "testThreadPoolExecutor")
         public static ThreadPoolExecutor testThreadPoolExecutor() {
             return new ThreadPoolExecutor(

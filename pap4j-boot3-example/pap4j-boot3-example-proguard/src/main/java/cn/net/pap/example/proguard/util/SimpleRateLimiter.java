@@ -20,6 +20,13 @@ public class SimpleRateLimiter {
         return INSTANCE;
     }
 
+    /**
+     * 尝试获取限流许可（原子操作，含容量熔断）。
+     *
+     * @param key   限流键
+     * @param limit 并发上限
+     * @return 是否获取成功
+     */
     public static boolean tryAcquire(String key, int limit) {
         // 使用单元素数组将 Lambda 内部的结果带出来
         boolean[] acquired = new boolean[]{false};
@@ -57,6 +64,11 @@ public class SimpleRateLimiter {
         return acquired[0];
     }
 
+    /**
+     * 释放限流许可（计数归零自动清理）。
+     *
+     * @param key 限流键
+     */
     public static void release(String key) {
         // 安全释放，减到 0 自动清理，防止内存泄露
         INSTANCE.accessCounts.computeIfPresent(key, (k, currentCount) -> {

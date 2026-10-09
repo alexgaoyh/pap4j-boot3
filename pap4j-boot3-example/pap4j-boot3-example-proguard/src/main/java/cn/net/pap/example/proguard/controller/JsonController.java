@@ -19,6 +19,11 @@ import java.util.Set;
 @Tag(name = "JSON处理测试接口", description = "演示特殊 JSON 格式包装输出（如原始字符串转 JSON 节点）的测试接口")
 public class JsonController {
 
+    /**
+     * 获取未包裹的 Map。
+     *
+     * @return 普通 Map
+     */
     @Operation(summary = "获取未包裹的 Map")
     @GetMapping("/map1")
     public Map<String, Object> map1() {
@@ -28,6 +33,11 @@ public class JsonController {
         return map;
     }
 
+    /**
+     * 获取经 JsonRawWrapper 包裹后的 Map（特殊序列化）。
+     *
+     * @return 包裹后的 MappingJacksonValue
+     */
     @Operation(summary = "获取包裹后的 Map（特殊序列化）")
     @GetMapping("/map2")
     public MappingJacksonValue map2() {
@@ -37,6 +47,11 @@ public class JsonController {
         return JsonRawWrapper.wrap(map, Set.of("extraJson"));
     }
 
+    /**
+     * 获取未包裹的 Map 列表。
+     *
+     * @return 普通 Map 列表
+     */
     @Operation(summary = "获取未包裹的 Map 列表")
     @GetMapping("/list1")
     public List<Map<String, Object>> list1() {
@@ -46,6 +61,11 @@ public class JsonController {
         return List.of(map);
     }
 
+    /**
+     * 获取经 JsonRawWrapper 包裹后的 Map 列表。
+     *
+     * @return 包裹后的 MappingJacksonValue
+     */
     @Operation(summary = "获取包裹后的 Map 列表")
     @GetMapping("/list2")
     public MappingJacksonValue list2() {
@@ -55,6 +75,11 @@ public class JsonController {
         return JsonRawWrapper.wrap(List.of(map), Set.of("extraJson"));
     }
 
+    /**
+     * 获取未包裹的 DTO。
+     *
+     * @return 普通 DTO
+     */
     @Operation(summary = "获取未包裹的 DTO")
     @GetMapping("/dto1")
     public JsonDTO dto1() {
@@ -64,6 +89,11 @@ public class JsonController {
         return jsonDTO;
     }
 
+    /**
+     * 获取经 JsonRawWrapper 包裹后的 DTO。
+     *
+     * @return 包裹后的 MappingJacksonValue
+     */
     @Operation(summary = "获取包裹后的 DTO")
     @GetMapping("/dto2")
     public MappingJacksonValue dto2() {
@@ -73,6 +103,11 @@ public class JsonController {
         return JsonRawWrapper.wrap(jsonDTO, Set.of("extraJson"));
     }
 
+    /**
+     * 获取未包裹的 DTO 列表。
+     *
+     * @return 普通 DTO 列表
+     */
     @Operation(summary = "获取未包裹的 DTO 列表")
     @GetMapping("/list3")
     public List list3() {
@@ -82,6 +117,11 @@ public class JsonController {
         return List.of(jsonDTO);
     }
 
+    /**
+     * 获取经 JsonRawWrapper 包裹后的 DTO 列表。
+     *
+     * @return 包裹后的 MappingJacksonValue
+     */
     @Operation(summary = "获取包裹后的 DTO 列表")
     @GetMapping("/list4")
     public MappingJacksonValue list4() {
@@ -91,6 +131,11 @@ public class JsonController {
         return JsonRawWrapper.wrap(List.of(jsonDTO), Set.of("extraJson"));
     }
 
+    /**
+     * 获取包裹后并包裹在 Map 的 ResponseEntity。
+     *
+     * @return 包裹后的 ResponseEntity
+     */
     @Operation(summary = "获取包裹后并包裹在 Map 的 ResponseEntity")
     @GetMapping("/responseEntity1")
     public ResponseEntity<MappingJacksonValue> responseEntity1() {
@@ -104,6 +149,11 @@ public class JsonController {
         return ResponseEntity.ok(JsonRawWrapper.wrap(map, Set.of("extraJson")));
     }
 
+    /**
+     * 获取包裹在特定结果类中的 ResponseEntity。
+     *
+     * @return 包裹后的 ResponseEntity
+     */
     @Operation(summary = "获取包裹在特定结果类的 ResponseEntity")
     @GetMapping("/responseEntity2")
     public ResponseEntity<MappingJacksonValue> responseEntity2() {

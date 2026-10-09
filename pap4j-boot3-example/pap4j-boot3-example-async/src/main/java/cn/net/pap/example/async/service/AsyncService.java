@@ -13,6 +13,11 @@ public class AsyncService {
 
     private static final Logger log = LoggerFactory.getLogger(AsyncService.class);
 
+    /**
+     * 异步执行方法（携带 ThreadLocal 上下文）。
+     *
+     * @return 完成的 CompletableFuture
+     */
     @Async("asyncExecutor")
     public CompletableFuture<String> asyncMethod() {
         try {
@@ -29,6 +34,12 @@ public class AsyncService {
 
     }
 
+    /**
+     * 模拟耗时 1 秒并转大写。
+     *
+     * @param param 原始字符串
+     * @return 大写结果
+     */
     public String method1(String param) {
         try {
             Thread.sleep(1000);
@@ -40,6 +51,12 @@ public class AsyncService {
         return param.toUpperCase();
     }
 
+    /**
+     * 模拟耗时 2 秒并转小写。
+     *
+     * @param param 原始字符串
+     * @return 小写结果
+     */
     public String method2(String param) {
         try {
             Thread.sleep(2000);
@@ -51,6 +68,12 @@ public class AsyncService {
         return param.toLowerCase();
     }
 
+    /**
+     * 模拟耗时 3 秒并追加时间戳。
+     *
+     * @param param 原始字符串
+     * @return 拼接结果
+     */
     public String method3(String param) {
         try {
             Thread.sleep(3000);
