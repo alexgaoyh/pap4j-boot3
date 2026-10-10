@@ -53,6 +53,11 @@ public class WeChatController {
         return updateremark;
     }
 
+    /**
+     * 方法反射休眠测试。
+     *
+     * @return 执行结果
+     */
     @Operation(summary = "方法反射休眠测试")
     @GetMapping(value = "/sleep")
     public Result<String> sleep() {
@@ -67,6 +72,11 @@ public class WeChatController {
         }
     }
 
+    /**
+     * 测试微信 stable_token 接口调用。
+     *
+     * @return 执行结果
+     */
     @Operation(summary = "测试微信 stable_token 接口调用")
     @GetMapping(value = "/logback")
     public Result<String> logback() {

@@ -37,6 +37,13 @@ public class SimilarityUtils {
         return dotProduct / (normA * normB);
     }
 
+    /**
+     * 计算两个浮点数组的余弦相似度。
+     *
+     * @param a 数组 a
+     * @param b 数组 b
+     * @return 余弦相似度，长度不一致时返回 0
+     */
     public static double cosineSimilarity(float[] a, float[] b) {
         if (a.length != b.length) {
             return 0;

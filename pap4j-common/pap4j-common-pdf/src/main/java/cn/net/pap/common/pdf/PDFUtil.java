@@ -603,6 +603,13 @@ public class PDFUtil {
         }
     }
 
+    /**
+     * 将单个 JPG 图片转换为 PDF 文件。
+     *
+     * @param jpgPath JPG 图片路径
+     * @param pdfPath 输出 PDF 路径
+     * @return 是否成功
+     */
     public static Boolean jpg2Pdf(String jpgPath, String pdfPath) {
         List<String> imagePaths = Arrays.asList(new String[]{ jpgPath });
         try (PDDocument document = new PDDocument()) {
@@ -762,6 +769,14 @@ public class PDFUtil {
         }
     }
 
+    /**
+     * 将目录下的所有 JPG 图片合并转换为 PDF 文件。
+     *
+     * @param dirPath 图片目录路径
+     * @param pdfPath 输出 PDF 路径
+     * @param DPI     图片 DPI
+     * @return 是否成功
+     */
     public static Boolean dir2Pdf(String dirPath, String pdfPath, Integer DPI) {
         List<String> imagePaths = new ArrayList<>();
         File dirPathFile = new File(dirPath);

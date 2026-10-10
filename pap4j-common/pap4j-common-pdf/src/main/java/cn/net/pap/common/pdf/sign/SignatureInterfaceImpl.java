@@ -41,6 +41,15 @@ public class SignatureInterfaceImpl implements SignatureInterface {
         }
     }
 
+    /**
+     * 对内容生成 PKCS#7 签名。
+     *
+     * @param content         待签名内容
+     * @param privateKey      私钥
+     * @param certificateChain 证书链
+     * @return 签名后的字节数组
+     * @throws Exception 签名异常
+     */
     public static byte[] signContent(byte[] content, PrivateKey privateKey, Certificate[] certificateChain) throws Exception {
         // 用于生成PKCS#7签名的代码，这里仅为示例，具体实现可能需要使用BouncyCastle或其他库
         CMSSignedDataGenerator generator = new CMSSignedDataGenerator();

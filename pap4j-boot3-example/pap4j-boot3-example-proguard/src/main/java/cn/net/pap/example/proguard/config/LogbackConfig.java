@@ -10,6 +10,11 @@ import org.springframework.core.Ordered;
 @Configuration
 public class LogbackConfig {
 
+    /**
+     * 注册请求响应日志过滤器。
+     *
+     * @return 过滤器注册 Bean
+     */
     @Bean
     @ConditionalOnClass(ReqResLoggerHttpFilter.class)
     public FilterRegistrationBean<ReqResLoggerHttpFilter> requestLogFilter() {

@@ -57,6 +57,16 @@ public class ProguardServiceImpl implements IProguardService {
 
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * 构造 ProguardServiceImpl。
+     *
+     * @param proguardRepository      Proguard 仓储
+     * @param proguardIdxSeqRepository 号段序列仓储
+     * @param proguardJDBCRepository  JDBC 仓储
+     * @param entityManager           实体管理器
+     * @param transactionTemplate     事务模板
+     * @param jdbcTemplate            JDBC 模板
+     */
     public ProguardServiceImpl(ProguardRepository proguardRepository,
                                ProguardIdxSeqRepository proguardIdxSeqRepository,
                                ProguardJDBCRepository proguardJDBCRepository,

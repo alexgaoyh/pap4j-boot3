@@ -27,6 +27,13 @@ public class OrderStateMachineConfiguration {
 
     private final OrderRepository orderRepository;
 
+    /**
+     * 订单状态机配置。
+     *
+     * @param beanFactory                          Spring Bean 工厂
+     * @param orderStateMachineRuntimePersister      状态机持久化器
+     * @param orderRepository                      订单仓储
+     */
     public OrderStateMachineConfiguration(BeanFactory beanFactory,
                                           @Qualifier("orderStateMachineRuntimePersister") StateMachineRuntimePersister<OrderStates, OrderEvents, String> orderStateMachineRuntimePersister,
                                           OrderRepository orderRepository) {

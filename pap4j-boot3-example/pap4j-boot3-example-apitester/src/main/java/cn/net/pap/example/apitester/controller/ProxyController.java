@@ -77,6 +77,12 @@ public class ProxyController {
                     .body("Error: " + e.getMessage())));
     }
 
+    /**
+     * 表单参数格式请求代理转发。
+     *
+     * @param exchange 服务器交互对象
+     * @return 转发响应
+     */
     @Operation(summary = "表单参数格式请求代理转发")
     @PostMapping("/form")
     public Mono<ResponseEntity<String>> proxyForm(ServerWebExchange exchange) {

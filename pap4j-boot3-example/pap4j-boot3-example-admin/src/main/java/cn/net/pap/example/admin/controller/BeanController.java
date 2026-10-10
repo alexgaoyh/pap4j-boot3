@@ -58,12 +58,25 @@ public class BeanController {
 
     private final ThreadPoolTaskExecutor taskExecutor;
 
+    /**
+     * 构造 BeanController。
+     *
+     * @param exampleBeanDTO Bean 示例 DTO
+     * @param exampleUserDTO 用户示例 DTO
+     * @param taskExecutor   任务线程池
+     */
     public BeanController(ExampleBeanDTO exampleBeanDTO, ExampleUserDTO exampleUserDTO, @Qualifier("processExecutor") ThreadPoolTaskExecutor taskExecutor) {
         this.exampleBeanDTO = exampleBeanDTO;
         this.exampleUserDTO = exampleUserDTO;
         this.taskExecutor = taskExecutor;
     }
 
+    /**
+     * 获取 Git 提交信息。
+     *
+     * @return Git 提交元数据
+     * @throws Exception 异常
+     */
     @Operation(summary = "获取 Git 提交信息", description = "从编译生成的属性文件中读取并返回当前项目的 Git 提交元数据信息。")
     @GetMapping(value = "gitCommitInfo", produces = "application/json;charset=UTF-8")
     @ResponseBody
@@ -80,6 +93,12 @@ public class BeanController {
 
     }
 
+    /**
+     * 最终结果检查，返回美化排版的 Admin DTO JSON。
+     *
+     * @return JSON 字符串
+     * @throws Exception 异常
+     */
     @Operation(summary = "最终结果检查", description = "返回经过漂亮排版的示例 Admin DTO JSON 数据。")
     @ApiResponse(responseCode = "200", description = "成功返回 DTO", content = @Content(schema = @Schema(implementation = ExampleAdminDTO.class)))
     @GetMapping(value = "checkFinal", produces = "application/json;charset=UTF-8")
@@ -100,6 +119,12 @@ public class BeanController {
 
     }
 
+    /**
+     * 对请求体 DTO 执行 JSR-380 校验。
+     *
+     * @param validationDTO 待校验 DTO
+     * @return 校验结果
+     */
     @Operation(summary = "表单/载荷数据验证", description = "接收一个被校验的 Validation DTO，对其内部字段进行 JSR-380 标准验证。")
     @PostMapping("validation")
     public Map<String, String> validation(@Valid @RequestBody ValidationDTO validationDTO) {
@@ -109,6 +134,11 @@ public class BeanController {
         return result;
     }
 
+    /**
+     * 生成当前时间戳的加密签名。
+     *
+     * @return 包含签名的响应
+     */
     @Operation(summary = "生成签名", description = "生成当前时间戳的加密字符串，供签名校验接口测试使用。")
     @GetMapping("validation-sign1")
     public Map<String, String> validationSign() {
@@ -118,6 +148,12 @@ public class BeanController {
         return result;
     }
 
+    /**
+     * 校验客户端传入的签名字符串。
+     *
+     * @param sign 签名字符串
+     * @return 校验结果
+     */
     @Operation(summary = "校验签名", description = "接收并校验客户端传入的签名字符串，支持指定的时间容差度。")
     @GetMapping("validation-sign2")
     public Map<String, String> validationSign(@Parameter(description = "签名字符串") @SignCheck(timeTolerance = 6001) @RequestParam(required = false) String sign) {
@@ -139,6 +175,11 @@ public class BeanController {
         return exampleUserDTO;
     }
 
+    /**
+     * 获取默认状态的 Admin DTO。
+     *
+     * @return ExampleAdminDTO 实例
+     */
     @Operation(summary = "获取默认 Admin DTO", description = "构建并返回一个默认状态 of ExampleAdminDTO 实例。")
     @GetMapping("dto")
     public ExampleAdminDTO exampleAdminDTO() {
@@ -148,6 +189,12 @@ public class BeanController {
         return exampleAdminDTO;
     }
 
+    /**
+     * 获取美化排版的 Admin DTO JSON 字符串。
+     *
+     * @return JSON 字符串
+     * @throws Exception 异常
+     */
     @Operation(summary = "获取漂亮排版 of Admin DTO 字符串", description = "构建 ExampleAdminDTO 实例并使用 Jackson 转换为美化排版后的 JSON 字符串。")
     @ApiResponse(responseCode = "200", description = "成功返回 DTO", content = @Content(schema = @Schema(implementation = ExampleAdminDTO.class)))
     @GetMapping(value = "dto2", produces = "application/json;charset=UTF-8")
@@ -160,6 +207,11 @@ public class BeanController {
         return objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(exampleAdminDTO);
     }
 
+    /**
+     * 通过 Basic 视图序列化 DTO。
+     *
+     * @return ExampleAdminDTO 实例
+     */
     @Operation(summary = "通过视图获取基础 DTO 属性", description = "利用 Jackson 视图 @JsonView 限定只序列化 Basic 基础字段的属性。")
     @GetMapping("dto3")
     @JsonView(JacksonViews.Basic.class)
@@ -170,6 +222,11 @@ public class BeanController {
         return exampleAdminDTO;
     }
 
+    /**
+     * 通过 BasicWithMsg 视图序列化 DTO。
+     *
+     * @return ExampleAdminDTO 实例
+     */
     @Operation(summary = "通过视图获取包含消息的 DTO 属性", description = "利用 Jackson 视图 @JsonView 限定只序列化 BasicWithMsg 基础和消息字段的属性。")
     @GetMapping("dto4")
     @JsonView(JacksonViews.BasicWithMsg.class)
@@ -180,6 +237,12 @@ public class BeanController {
         return exampleAdminDTO;
     }
 
+    /**
+     * 手动使用 Basic 视图序列化 DTO。
+     *
+     * @return JSON 字符串
+     * @throws Exception 异常
+     */
     @Operation(summary = "通过视图手动转化基础 DTO 字符串", description = "手动调用 ObjectMapper 配合 Jackson 视图 Basic 序列化 DTO 并返回 JSON 字符串。")
     @ApiResponse(responseCode = "200", description = "成功返回 DTO", content = @Content(schema = @Schema(implementation = ExampleAdminDTO.class)))
     @GetMapping(value = "dto5", produces = "application/json;charset=UTF-8")
@@ -192,6 +255,12 @@ public class BeanController {
         return objectMapper.writerWithView(JacksonViews.Basic.class).writeValueAsString(exampleAdminDTO);
     }
 
+    /**
+     * 手动使用 BasicWithMsg 视图序列化 DTO。
+     *
+     * @return JSON 字符串
+     * @throws Exception 异常
+     */
     @Operation(summary = "通过视图手动转化包含消息的 DTO 字符串", description = "手动调用 ObjectMapper 配合 Jackson 视图 BasicWithMsg 序列化 DTO 并返回 JSON 字符串。")
     @ApiResponse(responseCode = "200", description = "成功返回 DTO", content = @Content(schema = @Schema(implementation = ExampleAdminDTO.class)))
     @GetMapping(value = "dto6", produces = "application/json;charset=UTF-8")

@@ -24,6 +24,13 @@ public class NumberSegment {
     public NumberSegment() {
     }
 
+    /**
+     * 构造号段实体。
+     *
+     * @param name          号段名称
+     * @param segmentPrefix 号段前缀
+     * @param currentValue  当前号段值
+     */
     public NumberSegment(String name, String segmentPrefix, Integer currentValue) {
         this.name = name;
         this.segmentPrefix = segmentPrefix;

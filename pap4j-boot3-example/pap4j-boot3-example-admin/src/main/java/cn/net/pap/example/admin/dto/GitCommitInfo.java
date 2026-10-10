@@ -58,6 +58,11 @@ public class GitCommitInfo {
     public GitCommitInfo() {
     }
 
+    /**
+     * 从 Properties 构造 Git 提交与构建元数据。
+     *
+     * @param properties git.properties 内容
+     */
     // Constructor that populates from Properties
     public GitCommitInfo(Properties properties) {
         this.tags = properties.getProperty("git.tags", "");
@@ -85,6 +90,12 @@ public class GitCommitInfo {
         this.totalCommitCount = properties.getProperty("git.total.commit.count", "");
     }
 
+    /**
+     * 从 classpath 加载 git.properties 并构造 GitCommitInfo。
+     *
+     * @return GitCommitInfo 实例
+     * @throws IOException 文件不存在或读取失败
+     */
     public static GitCommitInfo loadFromProperties() throws IOException {
         Properties properties = new Properties();
         try (InputStream input = GitCommitInfo.class.getClassLoader().getResourceAsStream("git.properties")) {

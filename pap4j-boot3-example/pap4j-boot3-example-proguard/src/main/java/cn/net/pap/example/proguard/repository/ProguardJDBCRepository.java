@@ -24,6 +24,9 @@ public class ProguardJDBCRepository {
         this.dataSource = dataSource;
     }
 
+    /**
+     * 使用原生 JDBC 查询并打印 proguard_id。
+     */
     public void dataSourcePrintProguardId() {
         try (Connection conn = dataSource.getConnection();
              PreparedStatement ps = conn.prepareStatement("SELECT * FROM proguard")) {

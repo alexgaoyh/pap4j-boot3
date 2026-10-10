@@ -23,6 +23,11 @@ public class FileTreeItem extends TreeItem<Path> {
 
     private boolean childrenLoaded = false;
 
+    /**
+     * 构造目录树节点，目录节点放占位子节点并监听展开事件按需加载。
+     *
+     * @param path 文件或目录路径
+     */
     public FileTreeItem(Path path) {
         super(path);
 

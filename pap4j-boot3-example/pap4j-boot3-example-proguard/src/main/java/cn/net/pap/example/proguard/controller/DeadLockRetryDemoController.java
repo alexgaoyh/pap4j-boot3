@@ -43,6 +43,9 @@ public class DeadLockRetryDemoController {
         this.autoIncrePreKeyService = autoIncrePreKeyService;
     }
 
+    /**
+     * 容器关闭时停死锁测试线程池。
+     */
     @PreDestroy
     public void shutdownExecutor() {
         log.info("Shutting down deadlock test executor...");
@@ -58,6 +61,12 @@ public class DeadLockRetryDemoController {
         }
     }
 
+    /**
+     * 插入两条自增主键数据作为死锁测试基础数据。
+     *
+     * @return 完成标识
+     * @throws InterruptedException 中断异常
+     */
     @Operation(summary = "初始化测试数据", description = "往数据库插入两条自增主键数据作为死锁测试的基础数据。")
     @GetMapping("/insert")
     public String insert() throws InterruptedException {

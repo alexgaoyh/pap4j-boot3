@@ -64,6 +64,13 @@ public class DeadlockRetryDemoServiceImpl implements IDeadlockRetryDemoService {
         );
     }
 
+    /**
+     * 重试耗尽后的兜底恢复逻辑。
+     *
+     * @param e   最后一次异常
+     * @param id1 第一行 ID
+     * @param id2 第二行 ID
+     */
     @Recover
     public void recover(Exception e, Long id1, Long id2) {
         log.error("!!! 重试耗尽，恢复逻辑触发，参数：{} -> {}，异常：", id1, id2, e);

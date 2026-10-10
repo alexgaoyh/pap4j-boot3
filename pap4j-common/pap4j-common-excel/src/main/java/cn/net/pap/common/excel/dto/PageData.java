@@ -24,6 +24,11 @@ public class PageData extends LinkedHashMap implements Map, Serializable {
 
     private String request;
 
+    /**
+     * 通过请求参数字符串构造 PageData。
+     *
+     * @param request 请求参数字符串（key=value&key2=value2 格式）
+     */
     public PageData(String request) {
         this.request = request;
         Map properties = stringToMap(request);
@@ -57,6 +62,11 @@ public class PageData extends LinkedHashMap implements Map, Serializable {
         map = new LinkedHashMap();
     }
 
+    /**
+     * 通过查询结果集构造 PageData。
+     *
+     * @param res 数据库查询结果集
+     */
     public PageData(ResultSet res) {
         Map returnMap = new LinkedHashMap();
         try {
@@ -73,6 +83,12 @@ public class PageData extends LinkedHashMap implements Map, Serializable {
         map = returnMap;
     }
 
+    /**
+     * 将请求参数字符串解析为 Map。
+     *
+     * @param request 请求参数字符串
+     * @return 解析后的键值对
+     */
     public Map stringToMap(String request) {
         String res[] = request.split("&");
         Map resMap = new LinkedHashMap<>();
@@ -88,6 +104,12 @@ public class PageData extends LinkedHashMap implements Map, Serializable {
         return (String) map.get(key);
     }
 
+    /**
+     * 按索引获取值的字符串表示。
+     *
+     * @param idx 条目索引
+     * @return 对应索引的字符串值
+     */
     public String getStringByIdx(Integer idx) {
         List<Map.Entry<String, Object>> list = (List<Entry<String, Object>>) map.entrySet().stream().collect(Collectors.toList());
         Map.Entry<String, Object> entry = list.get(idx);

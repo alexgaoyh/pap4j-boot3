@@ -67,6 +67,13 @@ public class WebhookManagementController {
         return ResponseEntity.ok("测试事件已触发");
     }
 
+    /**
+     * 测试接收 Webhook 回调并打印请求头与请求体。
+     *
+     * @param request HTTP 请求
+     * @param response HTTP 响应
+     * @return 回显结果
+     */
     @Operation(summary = "测试接收 Webhook 回调（回显）", description = "用于模拟和打印接收到的 Webhook 请求头和请求体。")
     @RequestMapping("/test/webhook")
     public ResponseEntity<String> testWebhook(HttpServletRequest request, HttpServletResponse response) {

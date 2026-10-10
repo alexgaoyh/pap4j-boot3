@@ -40,6 +40,11 @@ public class EntityDebugLoggerListener {
 
     private static final Logger log = LoggerFactory.getLogger(EntityDebugLoggerListener.class);
 
+    /**
+     * 实体持久化后回调。
+     *
+     * @param entity 变更实体
+     */
     @PostPersist
     public void onPostPersist(Object entity) {
         if(log.isDebugEnabled()) {
@@ -47,6 +52,11 @@ public class EntityDebugLoggerListener {
         }
     }
 
+    /**
+     * 实体更新后回调。
+     *
+     * @param entity 变更实体
+     */
     @PostUpdate
     public void onPostUpdate(Object entity) {
         if(log.isDebugEnabled()) {
@@ -54,6 +64,11 @@ public class EntityDebugLoggerListener {
         }
     }
 
+    /**
+     * 实体删除后回调。
+     *
+     * @param entity 变更实体
+     */
     @PostRemove
     public void onPostRemove(Object entity) {
         if(log.isDebugEnabled()) {

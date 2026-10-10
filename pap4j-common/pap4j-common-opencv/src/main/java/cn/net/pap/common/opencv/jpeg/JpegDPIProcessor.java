@@ -13,6 +13,14 @@ public class JpegDPIProcessor {
 
     private String formatName = "jpeg";
 
+    /**
+     * 为 JPEG 图片设置 DPI 信息。
+     *
+     * @param image 原始图像
+     * @param dpi   目标 DPI
+     * @return 写入 DPI 信息后的 JPEG 字节数组
+     * @throws IOException IO 异常
+     */
     public byte[] setDPI(BufferedImage image, int dpi) throws IOException {
         for (Iterator<ImageWriter> iw = ImageIO.getImageWritersByFormatName(formatName); iw.hasNext(); ) {
             ImageWriter writer = iw.next();

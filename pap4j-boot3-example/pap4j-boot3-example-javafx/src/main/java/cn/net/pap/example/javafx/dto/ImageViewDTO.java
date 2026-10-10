@@ -37,6 +37,15 @@ public class ImageViewDTO implements Serializable {
      */
     private final Integer targetWidth;
 
+    /**
+     * 构造图像展示数据对象。
+     *
+     * @param image 图像对象
+     * @param imageAbsolutePath 图片绝对路径
+     * @param sourceWidth 原始图像的宽
+     * @param sourceHeight 原始图像的高
+     * @param targetWidth 目标展示图像的宽
+     */
     public ImageViewDTO(Image image, String imageAbsolutePath, Integer sourceWidth, Integer sourceHeight, Integer targetWidth) {
         this.image = image;
         this.imageAbsolutePath = imageAbsolutePath;

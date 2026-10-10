@@ -21,6 +21,11 @@ public class ImageIOController {
 
     private static final Logger log = LoggerFactory.getLogger(ImageIOController.class);
 
+    /**
+     * 查询系统内 ImageIO 支持的图片格式与 MIME 类型。
+     *
+     * @return 包含 formatList、mimeList、nptList 的 Map
+     */
     @Operation(summary = "获取支持的图片格式", description = "获取系统内 ImageIO 支持的所有图片读取格式名称和对应的 MIME 类型服务类。")
     @GetMapping("imageio")
     public Object imageio() {

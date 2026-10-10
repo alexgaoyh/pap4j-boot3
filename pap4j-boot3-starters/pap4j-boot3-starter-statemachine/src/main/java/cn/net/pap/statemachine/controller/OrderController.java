@@ -15,10 +15,20 @@ public class OrderController {
 
     private final StateMachine<OrderStates, OrderEvents> orderStateMachine;
 
+    /**
+     * 订单控制器。
+     *
+     * @param orderStateMachine 订单状态机
+     */
     public OrderController(@Qualifier("orderStateMachine") StateMachine<OrderStates, OrderEvents> orderStateMachine) {
         this.orderStateMachine = orderStateMachine;
     }
 
+    /**
+     * 触发订单创建事件。
+     *
+     * @return 操作结果
+     */
     @GetMapping("/created")
     public String created() {
         Order order = new Order();
@@ -33,6 +43,11 @@ public class OrderController {
         return "created";
     }
 
+    /**
+     * 触发订单支付事件。
+     *
+     * @return 操作结果
+     */
     @GetMapping("/paid")
     public String paid() {
         Order order = new Order();

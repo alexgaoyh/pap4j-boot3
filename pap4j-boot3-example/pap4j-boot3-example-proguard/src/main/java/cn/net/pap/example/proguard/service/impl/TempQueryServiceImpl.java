@@ -24,6 +24,12 @@ public class TempQueryServiceImpl implements ITempQueryService {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * 分批插入临时查询数据。
+     *
+     * @param bizType 业务类型
+     * @param ids     ID 集合
+     */
     @Transactional(rollbackFor = Exception.class)
     public void batchInsert(String bizType, Collection<Long> ids) {
         if (ids == null || ids.isEmpty()) {

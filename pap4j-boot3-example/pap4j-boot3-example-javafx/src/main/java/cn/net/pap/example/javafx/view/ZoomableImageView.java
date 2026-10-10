@@ -87,6 +87,11 @@ public class ZoomableImageView extends StackPane {
         init(images);
     }
 
+    /**
+     * 初始化图像视图、选择工具与事件监听。
+     *
+     * @param images 图像展示数据列表
+     */
     public void init(List<ImageViewDTO> images) {
         this.imageList = images;
         if (images != null && !images.isEmpty()) {
@@ -834,6 +839,9 @@ public class ZoomableImageView extends StackPane {
 
     }
 
+    /**
+     * 释放资源，移除全部事件监听与父容器监听。
+     */
     public void dispose() {
         removeAllEventListeners();
 

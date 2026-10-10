@@ -6,6 +6,7 @@ import org.slf4j.LoggerFactory;
 import cn.net.pap.common.file.xml.StaxXmlUtil;
 import cn.net.pap.common.file.xml.XmlParseUtil;
 import cn.net.pap.common.file.xml.xpath.ExtFunctionResolver;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -32,10 +33,13 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class StaxXmlUtilTest {
@@ -496,6 +500,71 @@ public class StaxXmlUtilTest {
                 org.junit.jupiter.api.Assertions.fail("Concurrency issue detected: " + e.getMessage());
             }
         });
+    }
+
+    @Test
+    @DisplayName("StaxXmlUtil 增量综合: 一对多/嵌套/重复同级/CDATA/转义/边界/计数/属性/异常")
+    public void staxXmlUtilIncrementalTest() {
+        String xml = """
+            <?xml version="1.0" encoding="utf-8"?>
+            <root>
+              <students>
+                <student id="S1"><name>小明</name><age>7</age><pic>P1</pic><pic>P2</pic><photo><src>a.jpg</src><desc>图A</desc></photo><photo><src>b.jpg</src><desc>图B</desc></photo></student>
+                <student id="S2"><name>小红</name><age>8</age><pic>P3</pic><photo><src>c.jpg</src><desc>图C</desc></photo></student>
+              </students>
+              <library><shelf code="A"><book><title>书一</title></book><book><title>书二</title></book></shelf><shelf code="B"><book><title>书三</title></book></shelf></library>
+              <cdata><item><![CDATA[<b>加粗</b> & 符号]]></item></cdata>
+            </root>
+            """;
+        String src = xml.trim();
+
+        // 一对多 + 属性保留 + 递归取子值
+        List<String> students = StaxXmlUtil.readChildrenXmlByStax(src, "student");
+        assertEquals(2, students.size(), "student 一对多数量");
+        assertTrue(students.get(0).startsWith("<student id=\"S1\">"), "首个节点应保留属性");
+        assertEquals("小明", StaxXmlUtil.readNodeValueByStax(students.get(0), "name").orElse(null));
+        assertEquals("8", StaxXmlUtil.readNodeValueByStax(students.get(1), "age").orElse(null));
+
+        // 无外层包装的重复同级子节点
+        List<String> pics = StaxXmlUtil.readChildrenXmlByStax(src, "pic");
+        assertEquals(3, pics.size(), "无 pics 包装的 pic 应全量提取");
+        assertEquals("<pic>P1</pic>", pics.get(0));
+        assertEquals(3, StaxXmlUtil.countNodesByStax(src, "pic"), "跨层级计数");
+
+        // 与 pic 类似、但内含子节点的重复同级 photo（无外层包装）
+        List<String> photos = StaxXmlUtil.readChildrenXmlByStax(src, "photo");
+        assertEquals(3, photos.size(), "无 photo 包装的 photo 应全量提取");
+        assertTrue(photos.get(0).contains("<src>a.jpg</src>") && photos.get(0).contains("<desc>图A</desc>"), "photo 子节点应完整保留");
+        assertEquals("b.jpg", StaxXmlUtil.readNodeValueByStax(photos.get(1), "src").orElse(null));
+        assertEquals("图C", StaxXmlUtil.readNodeValueByStax(photos.get(2), "desc").orElse(null));
+
+        // 多层嵌套下的各自一对多
+        List<String> shelves = StaxXmlUtil.readChildrenXmlByStax(src, "shelf");
+        assertEquals(2, shelves.size(), "shelf 数量");
+        assertEquals(2, StaxXmlUtil.readChildrenXmlByStax(shelves.get(0), "book").size(), "A 架书数");
+        List<String> booksOfB = StaxXmlUtil.readChildrenXmlByStax(shelves.get(1), "book");
+        assertEquals(1, booksOfB.size(), "B 架书数");
+        assertEquals("书三", StaxXmlUtil.readNodeValueByStax(booksOfB.get(0), "title").orElse(null));
+
+        // CDATA 转义保留
+        List<String> items = StaxXmlUtil.readChildrenXmlByStax(src, "item");
+        assertTrue(items.get(0).contains("&lt;b&gt;加粗&lt;/b&gt;") && items.get(0).contains("&amp;"), "CDATA 内容应转义保留");
+        assertEquals("<b>加粗</b> & 符号", StaxXmlUtil.extractText(items.get(0)));
+
+        // 转义往返 + null / 未知实体
+        String raw = "a<b>&\"'";
+        assertEquals(raw, StaxXmlUtil.unescapeXml(StaxXmlUtil.escapeXml(raw)), "转义应无损往返");
+        assertNull(StaxXmlUtil.escapeXml(null), "null 应原样返回");
+
+        // 未匹配 / 空输入安全
+        assertTrue(StaxXmlUtil.readChildrenXmlByStax(src, "missing").isEmpty(), "未匹配应返回空集合");
+        assertTrue(StaxXmlUtil.readChildrenXmlByStax(null, "pic").isEmpty(), "null 输入应返回空集合");
+        assertEquals(Optional.empty(), StaxXmlUtil.readNodeValueByStax(src, "missing"), "未匹配应返回 Optional.empty");
+        assertEquals(0, StaxXmlUtil.countNodesByStax(src, "missing"), "未匹配计数应为 0");
+
+        // 属性提取 + 畸形 XML 异常
+        assertEquals("JAVA", StaxXmlUtil.extractAllAttributes("<book isbn=\"001\" title=\"JAVA\" author=\"PAP\"/>", "book").get("title"));
+        assertThrows(RuntimeException.class, () -> StaxXmlUtil.readChildrenXmlByStax("<root><a>1</b></root>", "a"), "标签不匹配应抛异常");
     }
 
 }

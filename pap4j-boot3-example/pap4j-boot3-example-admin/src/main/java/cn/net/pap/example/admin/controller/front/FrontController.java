@@ -83,6 +83,12 @@ public class FrontController {
         }
     }
 
+    /**
+     * 返回大 JSON 以验证 Gzip 压缩。
+     *
+     * @param size 生成记录条数
+     * @return 包含 count 与 data 的 Map
+     */
     @Operation(summary = "验证 Gzip 压缩", operationId = "testCompression",
             responses = {@ApiResponse(responseCode = "200", description = "返回大 JSON 以触发压缩")})
     @GetMapping("/compression")

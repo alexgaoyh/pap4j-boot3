@@ -24,6 +24,12 @@ public class AutoIncrePreKeyController {
         this.autoIncrePreKeyService = autoIncrePreKeyService;
     }
 
+    /**
+     * 保存并刷新单条记录。
+     *
+     * @return 成功标识
+     * @throws Exception 异常
+     */
     @Operation(summary = "保存并刷新单条记录")
     @GetMapping("/saveAndFlush")
     public String saveAndFlush() throws Exception {
@@ -33,6 +39,12 @@ public class AutoIncrePreKeyController {
         return "success";
     }
 
+    /**
+     * 批量保存并刷新记录。
+     *
+     * @return 成功标识
+     * @throws Exception 异常
+     */
     @Operation(summary = "批量保存并刷新记录")
     @GetMapping("/saveAndFlushBatch")
     public String saveAndFlushBatch() throws Exception {
@@ -46,6 +58,12 @@ public class AutoIncrePreKeyController {
         return "success";
     }
 
+    /**
+     * 触发运行时异常以测试事务回滚。
+     *
+     * @return 成功标识
+     * @throws Exception 异常
+     */
     @Operation(summary = "触发运行时异常测试事务回滚")
     @GetMapping("/runtimeException")
     public String runtimeException() throws Exception {
@@ -55,6 +73,12 @@ public class AutoIncrePreKeyController {
         return "success";
     }
 
+    /**
+     * 触发检测到 IO 异常以测试事务回滚。
+     *
+     * @return 成功标识
+     * @throws Exception 异常
+     */
     @Operation(summary = "触发检测到IO异常测试事务回滚")
     @GetMapping("/ioException")
     public String ioException() throws Exception {
@@ -64,6 +88,11 @@ public class AutoIncrePreKeyController {
         return "success";
     }
 
+    /**
+     * 批量分批次插入测试。
+     *
+     * @return 分批插入结果
+     */
     @Operation(summary = "批量分批次插入测试")
     @GetMapping("/batch")
     @ResponseBody

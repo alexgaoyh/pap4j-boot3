@@ -23,6 +23,12 @@ public class WebhookEvent {
 
     }
 
+    /**
+     * 构造 Webhook 事件，自动生成事件 ID 与时间戳。
+     *
+     * @param eventType 事件类型
+     * @param data 事件数据
+     */
     public WebhookEvent(String eventType, Object data) {
         this.eventId = UUID.randomUUID().toString();
         this.eventType = eventType;

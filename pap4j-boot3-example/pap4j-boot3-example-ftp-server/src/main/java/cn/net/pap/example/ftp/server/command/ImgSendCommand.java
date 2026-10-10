@@ -102,6 +102,15 @@ public class ImgSendCommand extends AbstractCommand {
     private final Logger LOG = LoggerFactory.getLogger(ImgSendCommand.class);
     private static final Logger log = LoggerFactory.getLogger(ImgSendCommand.class);
 
+    /**
+     * 执行 IMGSEND 命令，向客户端发送图片数据。
+     *
+     * @param session FTP 会话
+     * @param context FTP 服务器上下文
+     * @param request FTP 请求
+     * @throws IOException IO 异常
+     * @throws FtpException FTP 异常
+     */
     public void execute(FtpIoSession session, FtpServerContext context, FtpRequest request) throws IOException, FtpException {
         try {
             String fileName = request.getArgument();

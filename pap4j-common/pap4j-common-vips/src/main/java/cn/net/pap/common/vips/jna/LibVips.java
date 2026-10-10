@@ -16,6 +16,11 @@ public interface LibVips extends Library {
 
     LibVips INSTANCE = loadVipsLibrary();
 
+    /**
+     * 加载 libvips 动态库，按候选名称依次尝试并支持用户目录备用路径。
+     *
+     * @return libvips 接口实例
+     */
     static LibVips loadVipsLibrary() {
         String[] libNames = {"vips", "libvips-42", "vips-42"};
         if (System.getProperty("os.name").toLowerCase().contains("win")) {
@@ -48,7 +53,6 @@ public interface LibVips extends Library {
                         try {
                             WinKernel32.INSTANCE.SetDllDirectoryW(absolutePath);
                         } catch (Throwable t) {
-                            System.err.println("[Vips-Load] 尝试通过 Windows Kernel32.SetDllDirectoryW 绑定备用路径失败: " + t.getMessage());
                             log.error("[Vips-Load] 尝试通过 Windows Kernel32.SetDllDirectoryW 绑定备用路径失败", t);
                         }
                     }
@@ -324,6 +328,11 @@ public interface LibVips extends Library {
 
         GLib INSTANCE = loadLibrary();
 
+        /**
+         * 加载 gobject 动态库以解析 g_object_unref 函数。
+         *
+         * @return GLib 接口实例
+         */
         static GLib loadLibrary() {
             String[] libNames = {
                     "gobject-2.0",
@@ -362,6 +371,11 @@ public interface LibVips extends Library {
 
         GLibBase INSTANCE = loadLibrary();
 
+        /**
+         * 加载 glib-2.0 基础动态库以解析 g_free 函数。
+         *
+         * @return GLibBase 接口实例
+         */
         static GLibBase loadLibrary() {
             String[] libNames = {
                     "glib-2.0",

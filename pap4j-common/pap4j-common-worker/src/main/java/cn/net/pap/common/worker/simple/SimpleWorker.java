@@ -70,6 +70,9 @@ public class SimpleWorker implements Runnable {
         log.info("Worker-{}: 完成任务 {}", id, task.getId());
     }
 
+    /**
+     * 停止工作进程并中断其线程。
+     */
     public void stop() {
         running = false;
         if (workerThread != null) {

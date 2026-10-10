@@ -22,6 +22,13 @@ public class Html2DocxUtils {
 
     private static final StringBuffer htmlFotter = new StringBuffer("</body></html>");
 
+    /**
+     * 将 HTML 内容转换并写入 docx 文件（基于 POI POIFS）。
+     *
+     * @param html       HTML 内容
+     * @param docxAbsPath 输出 docx 文件绝对路径
+     * @return 是否成功
+     */
     public static boolean html2docx2UsingPOI(StringBuffer html, String docxAbsPath) {
         StringBuffer all = new StringBuffer().append(htmlHeader).append(html).append(htmlFotter);
         try {
@@ -43,6 +50,13 @@ public class Html2DocxUtils {
     }
 
 
+    /**
+     * 将 HTML 中的网络图片转换为 Base64 编码，并处理 img 样式属性。
+     *
+     * @param html HTML 内容
+     * @return 处理后的 HTML 字符串
+     * @throws IOException IO 异常
+     */
     public static String image2Base64Convert(String html) throws IOException {
         Document doc = Jsoup.parse(html);
         Elements images = doc.select("img[src]");

@@ -41,6 +41,13 @@ public class AsyncController {
         this.taskExecutor = taskExecutor;
     }
 
+    /**
+     * 同步阻塞测试接口。
+     *
+     * @param index 休眠毫秒数（可选）
+     * @return "direct"
+     * @throws Exception 异常
+     */
     @Operation(summary = "同步阻塞测试")
     @GetMapping(value = "/direct", produces = "application/json;charset=UTF-8")
     public String direct(@Parameter(description = "休眠毫秒数") @RequestParam(value = "index", required = false) String index) throws Exception {
@@ -95,6 +102,11 @@ public class AsyncController {
         }
     }
 
+    /**
+     * 获取 CPU 密集型异步任务结果（WebAsyncTask）。
+     *
+     * @return WebAsyncTask 异步任务
+     */
     @Operation(summary = "获取 CPU 密集型异步任务结果 (WebAsyncTask)")
     @GetMapping("/async-data")
     public WebAsyncTask<String> getAsyncData() {
@@ -109,6 +121,11 @@ public class AsyncController {
         return new WebAsyncTask<>(3000L, taskExecutor, callable);
     }
 
+    /**
+     * 带超时与错误回调的异步任务测试。
+     *
+     * @return WebAsyncTask 异步任务
+     */
     @Operation(summary = "带超时的异步任务测试")
     @GetMapping("/async-with-timeout")
     public WebAsyncTask<String> getAsyncWithTimeout() {

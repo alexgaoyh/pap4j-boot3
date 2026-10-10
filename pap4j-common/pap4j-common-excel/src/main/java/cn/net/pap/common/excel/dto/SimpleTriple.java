@@ -31,6 +31,13 @@ public class SimpleTriple<T1, T2, T3> implements Serializable {
     public SimpleTriple() {
     }
 
+    /**
+     * 构造三元组。
+     *
+     * @param s 主语
+     * @param p 谓语
+     * @param o 宾语
+     */
     public SimpleTriple(T1 s, T2 p, T3 o) {
         this.s = s;
         this.p = p;

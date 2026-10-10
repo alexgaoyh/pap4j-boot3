@@ -131,6 +131,18 @@ public class ExcelUtil {
         return resultData;
     }
 
+    /**
+     * 获取一对多结构的行列表，按指定字段比对后将子行挂载到主行。
+     *
+     * @param sourceFileAbsolutePath 源文件绝对路径
+     * @param sourceSheetName        源工作表名称
+     * @param targetFileAbsolutePath 目标文件绝对路径
+     * @param targetSheetName        目标工作表名称
+     * @param fieldCompareDTOLists   字段比对配置列表
+     * @param indexNoConstantKey     索引常量 key
+     * @param childConstantKey       子数据存放的 key
+     * @return 行数据列表
+     */
     public static List<Map<String, Object>> getOneToManyRowList(
             String sourceFileAbsolutePath, String sourceSheetName,
             String targetFileAbsolutePath, String targetSheetName,
@@ -236,6 +248,13 @@ public class ExcelUtil {
     }
 
 
+    /**
+     * 按指定字段对行数据列表进行分组。
+     *
+     * @param sourceRowList   行数据列表
+     * @param sourceFieldList 分组字段列表
+     * @return 分组结果
+     */
     public static Map<String, List<Map<String, Object>>> groupByField(List<Map<String, Object>> sourceRowList, List<String> sourceFieldList) {
         return sourceRowList.parallelStream()
                 .collect(Collectors.groupingBy(

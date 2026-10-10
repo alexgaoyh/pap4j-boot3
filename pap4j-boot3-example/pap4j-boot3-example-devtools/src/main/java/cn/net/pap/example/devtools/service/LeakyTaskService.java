@@ -34,6 +34,9 @@ public class LeakyTaskService {
 
     private static final long SHUTDOWN_TIMEOUT_SECONDS = 5;
 
+    /**
+     * 初始化服务，提交监控任务与泄漏任务演示。
+     */
     @PostConstruct
     public void init() {
         log.info(">>> LeakyTaskService 初始化, 线程池 Hash: {}", executorService.hashCode());

@@ -66,6 +66,13 @@ public class HLMEntity implements Serializable {
         return Objects.hash(name);
     }
 
+    /**
+     * 按名称升序比较两个 HLMEntity。
+     *
+     * @param o1 第一个实体
+     * @param o2 第二个实体
+     * @return 比较结果，正数表示 o1 排在 o2 之后
+     */
     public static int sort(HLMEntity o1, HLMEntity o2) {
         if (o1.getName() == null) {
             return 1;

@@ -16,6 +16,12 @@ import java.util.zip.ZipOutputStream;
 @Tag(name = "Zip下载测试接口", description = "提供流式生成并下载 Zip 压缩包的接口")
 public class ZipDownloadController {
 
+    /**
+     * 流式生成包含 10 个文本文件的 ZIP 包并下载。
+     *
+     * @param response HTTP 响应
+     * @throws IOException IO 异常
+     */
     @Operation(summary = "流式下载包含多个文本文件的 ZIP 包", description = "动态在内存中创建一个 ZIP 文件流，向其中添加 10 个文本文件并流式写入到客户端 Response 中。")
     @GetMapping("/download/streaming-zip")
     public void downloadStreamingZip(HttpServletResponse response) throws IOException {

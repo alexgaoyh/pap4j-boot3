@@ -11,6 +11,13 @@ public class ProcessResult {
     public ProcessResult() {
     }
 
+    /**
+     * 构造处理结果。
+     *
+     * @param finished 是否完成
+     * @param exitCode 退出码
+     * @param output   输出内容
+     */
     public ProcessResult(boolean finished, Integer exitCode, String output) {
         this.finished = finished;
         this.exitCode = exitCode;

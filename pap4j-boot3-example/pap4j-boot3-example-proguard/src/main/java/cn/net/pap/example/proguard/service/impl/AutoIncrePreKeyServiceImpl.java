@@ -34,6 +34,13 @@ public class AutoIncrePreKeyServiceImpl implements IAutoIncrePreKeyService {
 
     private final ElasticsearchDomainEventPublisher elasticsearchDomainEventPublisher;
 
+    /**
+     * 构造 AutoIncrePreKeyServiceImpl。
+     *
+     * @param autoIncrePreKeyRepository            自增主键仓储
+     * @param transactionManager                   事务管理器
+     * @param elasticsearchDomainEventPublisher    ES 领域事件发布器
+     */
     public AutoIncrePreKeyServiceImpl(AutoIncrePreKeyRepository autoIncrePreKeyRepository,
                                       PlatformTransactionManager transactionManager,
                                       ElasticsearchDomainEventPublisher elasticsearchDomainEventPublisher) {

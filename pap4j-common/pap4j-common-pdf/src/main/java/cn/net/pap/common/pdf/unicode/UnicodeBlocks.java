@@ -25,6 +25,13 @@ public class UnicodeBlocks {
         // 新增：记录支持该区块的字体列表
         private final List<String> supportedFonts;
 
+        /**
+         * 构造 Unicode 区块。
+         *
+         * @param s 起始码点
+         * @param e 结束码点
+         * @param n 区块名称
+         */
         public Block(int s, int e, String n) {
             this.start = s;
             this.end = e;
@@ -36,6 +43,11 @@ public class UnicodeBlocks {
             return codePoint >= start && codePoint <= end;
         }
 
+        /**
+         * 添加支持该区块的字体。
+         *
+         * @param fontName 字体名称
+         */
         // 新增：添加支持的字体
         public void addSupportedFont(String fontName) {
             if (!supportedFonts.contains(fontName)) {
@@ -67,6 +79,12 @@ public class UnicodeBlocks {
     // 存储所有区块（按 start 排序）
     private final List<Block> blocks;
 
+    /**
+     * 从输入流加载区块定义并分析字体支持情况。
+     *
+     * @param in 区块定义输入流
+     * @throws IOException IO 异常
+     */
     public UnicodeBlocks(InputStream in) throws IOException {
         blocks = new ArrayList<>();
         loadBlocks(in);

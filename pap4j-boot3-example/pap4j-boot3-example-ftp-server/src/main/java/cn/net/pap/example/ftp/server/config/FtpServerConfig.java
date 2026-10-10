@@ -187,6 +187,13 @@ public class FtpServerConfig {
         private final String password;
         private final String homeDirectory;
 
+        /**
+         * 构造 FTP 用户属性。
+         *
+         * @param username 用户名
+         * @param password 密码
+         * @param homeDirectory 主目录
+         */
         public FtpUserProperties(String username, String password, String homeDirectory) {
             this.username = username;
             this.password = password;

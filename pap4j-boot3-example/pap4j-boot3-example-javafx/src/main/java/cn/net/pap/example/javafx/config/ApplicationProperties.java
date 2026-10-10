@@ -41,6 +41,11 @@ public class ApplicationProperties {
         return PROPS.getProperty(key);
     }
 
+    /**
+     * 获取当前操作系统对应的 ImageMagick 路径。
+     *
+     * @return ImageMagick 可执行文件路径
+     */
     public static String getImageMagickPath() {
         String osName = System.getProperty("os.name").toLowerCase();
         if (osName.contains("win")) {

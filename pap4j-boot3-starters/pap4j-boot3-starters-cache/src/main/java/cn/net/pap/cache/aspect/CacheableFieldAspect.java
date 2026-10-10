@@ -35,10 +35,22 @@ public class CacheableFieldAspect {
 
     private final CacheManager cacheManager;
 
+    /**
+     * 创建缓存字段切面。
+     *
+     * @param cacheManager 缓存管理器
+     */
     public CacheableFieldAspect(CacheManager cacheManager) {
         this.cacheManager = cacheManager;
     }
 
+    /**
+     * 缓存字段切面处理方法。
+     *
+     * @param pjp 连接点
+     * @return 处理结果
+     * @throws Throwable 执行异常
+     */
     @Around(value = "@annotation(cn.net.pap.cache.annotation.CacheableField)")
     public Object cacheable(ProceedingJoinPoint pjp) throws Throwable {
         MethodSignature signature = (MethodSignature) pjp.getSignature();
@@ -103,6 +115,13 @@ public class CacheableFieldAspect {
         return result;
     }
 
+    /**
+     * 缓存清除切面处理方法。
+     *
+     * @param pjp 连接点
+     * @return 处理结果
+     * @throws Throwable 执行异常
+     */
     @Around(value = "@annotation(cn.net.pap.cache.annotation.CacheEvictField)")
     public Object cacheEvict(ProceedingJoinPoint pjp) throws Throwable {
         MethodSignature signature = (MethodSignature) pjp.getSignature();
@@ -163,6 +182,12 @@ public class CacheableFieldAspect {
         }
     }
 
+    /**
+     * 提取对象字段值。
+     *
+     * @param result 结果对象
+     * @return 字段名到字段值的映射
+     */
     public Map<String, Object> extractFields(Object result) {
         try {
             if(result != null) {

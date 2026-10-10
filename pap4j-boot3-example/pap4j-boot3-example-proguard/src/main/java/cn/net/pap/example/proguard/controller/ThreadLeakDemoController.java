@@ -67,6 +67,11 @@ public class ThreadLeakDemoController {
     @Configuration
     public static class ThreadPoolConfig {
 
+        /**
+         * 创建带优雅停机配置的业务线程池 Bean。
+         *
+         * @return 线程池执行器
+         */
         @Bean("correctBizPool")
         public ThreadPoolTaskExecutor correctBizPool() {
             ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();

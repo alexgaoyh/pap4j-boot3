@@ -20,6 +20,13 @@
             <property name="id" value="CheckStyleDTO-Instantiation-Forbidden"/>
             <property name="classes" value="cn.net.pap.common.datastructure.checkstyle.CheckStyleDTO"/>
         </module>
+        <!-- 禁止使用 System.out.println / System.err.println / e.printStackTrace() -->
+        <module name="RegexpSinglelineJava">
+            <property name="id" value="SystemOut-Forbidden"/>
+            <property name="format" value="System\.(out|err)\.println\s*\(|\.printStackTrace\s*\("/>
+            <property name="message" value="禁止使用 System.out/System.err/printStackTrace，请使用 Slf4j 日志框架。"/>
+            <property name="ignoreComments" value="true"/>
+        </module>
         <!-- 禁止使用 Executors.newFixedThreadPool -->
         <module name="RegexpSinglelineJava">
             <property name="id" value="Executors-FixedThreadPool-Forbidden"/>

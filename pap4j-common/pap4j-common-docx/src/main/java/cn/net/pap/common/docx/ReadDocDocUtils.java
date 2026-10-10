@@ -15,6 +15,12 @@ public class ReadDocDocUtils {
 
     private static final Logger log = LoggerFactory.getLogger(ReadDocDocUtils.class);
 
+    /**
+     * 读取 Word 文档（.doc / .docx）文本内容。
+     *
+     * @param filePath 文件路径
+     * @return 文档文本内容
+     */
     public static String readWord(String filePath) {
         if (filePath == null || (!filePath.endsWith(".doc") && !filePath.endsWith(".docx"))) {
             throw new IllegalArgumentException("Only .doc and .docx files are supported.");

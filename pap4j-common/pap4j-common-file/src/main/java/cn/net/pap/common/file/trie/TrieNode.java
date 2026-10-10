@@ -14,6 +14,12 @@ public class TrieNode {
         this.similarChars = new HashSet<>();
     }
 
+    /**
+     * 插入字符并记录其形近字集合。
+     *
+     * @param c            字符
+     * @param similarChars 形近字集合
+     */
     public void insert(char c, Set<Character> similarChars) {
         TrieNode node = this;
         node.children.putIfAbsent(c, new TrieNode());

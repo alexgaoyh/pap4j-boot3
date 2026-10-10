@@ -14,6 +14,13 @@ public class FileSegmentDTO implements Serializable {
     public FileSegmentDTO() {
     }
 
+    /**
+     * 构造文件分段。
+     *
+     * @param start       起始位置
+     * @param end         结束位置
+     * @param fileChannel 文件通道
+     */
     public FileSegmentDTO(long start, long end, FileChannel fileChannel) {
         this.start = start;
         this.end = end;

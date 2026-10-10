@@ -36,6 +36,11 @@ public class ChunkUploadController {
 
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(ChunkUploadController.class);
 
+    /**
+     * 构造上传控制器，确保存储目录存在。
+     *
+     * @throws Exception IO 异常
+     */
     public ChunkUploadController() throws Exception {
         if (!Files.exists(uploadDir)) {
             Files.createDirectories(uploadDir);
@@ -144,6 +149,12 @@ public class ChunkUploadController {
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
+    /**
+     * 直接多部分表单文件上传。
+     *
+     * @param exchange 服务器交互对象
+     * @return 上传结果
+     */
     @Operation(summary = "直接多部分表单文件上传")
     @PostMapping("/direct")
     public Mono<ResponseEntity<String>> uploadDirect(ServerWebExchange exchange) {

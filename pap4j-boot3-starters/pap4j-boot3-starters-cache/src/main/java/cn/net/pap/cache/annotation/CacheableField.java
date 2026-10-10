@@ -9,8 +9,18 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 public @interface CacheableField {
 
+    /**
+     * 缓存名称。
+     *
+     * @return 缓存名称
+     */
     String value();
 
+    /**
+     * 缓存键表达式。
+     *
+     * @return 缓存键，默认为空字符串
+     */
     String key() default "";
 
     /**

@@ -641,6 +641,14 @@ public class ImageUtil {
         }
     }
 
+    /**
+     * 按目标宽度等比例缩放图片。
+     *
+     * @param imagePath    图片路径
+     * @param targetWidth  目标宽度
+     * @return 缩放后的图片
+     * @throws IOException IO 异常
+     */
     public static BufferedImage scaleImage(String imagePath, int targetWidth) throws IOException {
         try {
             // 1. 从文件路径读取BufferedImage

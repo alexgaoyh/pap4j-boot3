@@ -15,6 +15,13 @@ public class WebClientBodyDTO<T> implements Serializable {
     public WebClientBodyDTO() {
     }
 
+    /**
+     * 创建 WebClient 响应体。
+     *
+     * @param code HTTP 状态码
+     * @param msg  响应消息
+     * @param data 响应数据
+     */
     public WebClientBodyDTO(HttpStatus code, String msg, T data) {
         this.code = code;
         this.msg = msg;

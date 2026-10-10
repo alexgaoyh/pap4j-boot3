@@ -150,6 +150,13 @@ public class HttpClientBatchExecutor implements AutoCloseable {
         );
     }
 
+    /**
+     * 向同一 URL 批量发送多个 JSON 请求体。
+     *
+     * @param url       目标 URL
+     * @param jsonBodies JSON 请求体列表
+     * @return 批量执行结果列表
+     */
     public List<BatchResult> executeBatch(String url, List<String> jsonBodies) {
         if (jsonBodies == null || jsonBodies.isEmpty()) {
             return Collections.emptyList();
@@ -219,6 +226,13 @@ public class HttpClientBatchExecutor implements AutoCloseable {
         return results;
     }
 
+    /**
+     * 向多个 URL 批量发送同一 JSON 请求体。
+     *
+     * @param urls     目标 URL 列表
+     * @param jsonBody JSON 请求体
+     * @return 批量执行结果列表
+     */
     public List<BatchResult> executeBatch(List<String> urls, String jsonBody) {
         if (urls == null || urls.isEmpty()) {
             return Collections.emptyList();

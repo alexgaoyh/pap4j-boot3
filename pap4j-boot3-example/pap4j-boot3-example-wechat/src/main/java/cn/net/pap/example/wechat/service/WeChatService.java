@@ -256,6 +256,13 @@ public class WeChatService {
     }
 
 
+    /**
+     * 使用 HttpClient 发送 POST JSON 请求。
+     *
+     * @param url   请求地址
+     * @param param JSON 请求体
+     * @return 响应内容，参数为空时返回 null
+     */
     public static String sendPostByHttpClient(String url, String param) {
         if (StringUtils.isEmpty(url) || StringUtils.isEmpty(param)) {
             return null;

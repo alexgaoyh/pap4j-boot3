@@ -12,6 +12,14 @@ public class ExecResult implements Serializable {
     private final String stderr;
     private boolean killed;
 
+    /**
+     * 构造命令执行结果。
+     *
+     * @param exitCode 退出码
+     * @param stdout 标准输出
+     * @param stderr 标准错误输出
+     * @param killed 是否被强制终止
+     */
     public ExecResult(int exitCode, String stdout, String stderr, boolean killed) {
         this.exitCode = exitCode;
         this.stdout = stdout;

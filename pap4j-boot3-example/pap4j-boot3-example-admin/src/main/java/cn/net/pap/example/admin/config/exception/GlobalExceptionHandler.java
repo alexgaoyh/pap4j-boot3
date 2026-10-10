@@ -15,6 +15,13 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    /**
+     * 处理方法参数校验异常，汇总字段错误信息。
+     *
+     * @param methodArgumentNotValidException 参数校验异常
+     * @return 包含错误信息与错误码的 Map
+     * @throws Exception 异常
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public Map exceptionHandler(MethodArgumentNotValidException methodArgumentNotValidException) throws Exception {
         List<FieldError> fieldErrors = methodArgumentNotValidException.getBindingResult().getFieldErrors();
@@ -31,6 +38,12 @@ public class GlobalExceptionHandler {
         return map;
     }
 
+    /**
+     * 处理 HandlerMethodValidationException，返回 400 响应。
+     *
+     * @param ex 校验异常
+     * @return 包含错误信息与状态码的响应实体
+     */
     @ExceptionHandler(HandlerMethodValidationException.class)
     public ResponseEntity<Map<String, Object>> handlerMethodValidationException(HandlerMethodValidationException ex) {
         String message = "参数校验异常";

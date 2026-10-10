@@ -208,6 +208,13 @@ public class FtpController {
         }
     }
 
+    /**
+     * 流式读取播放 MP4 版本2（推荐）。
+     *
+     * @param request  HTTP 请求
+     * @param response HTTP 响应
+     * @throws IOException IO 异常
+     */
     @Operation(summary = "流式读取播放 MP4 版本2 (推荐)", description = "改进版 FTP mp4 视频流式读取播放，采用更健壮的连接关闭和分块读取机制。")
     @GetMapping("/streammp42")
     public void streamMp42(HttpServletRequest request, HttpServletResponse response) throws IOException {
@@ -422,6 +429,13 @@ public class FtpController {
         response.setStatus(ftpFailureHttpStatus(client));
     }
 
+    /**
+     * 流式读取并显示 JPG 图片。
+     *
+     * @param request  HTTP 请求
+     * @param response HTTP 响应
+     * @throws IOException IO 异常
+     */
     @Operation(summary = "流式读取并显示 JPG 图片")
     @GetMapping("/streamjpg")
     public void streamJpg(HttpServletRequest request, HttpServletResponse response) throws IOException {

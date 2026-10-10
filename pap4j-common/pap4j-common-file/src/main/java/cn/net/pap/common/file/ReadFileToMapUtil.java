@@ -206,6 +206,14 @@ public class ReadFileToMapUtil {
         return lineMap;
     }
 
+    /**
+     * 在字节数组中查找目标字节的位置。
+     *
+     * @param array  字节数组
+     * @param target 目标字节
+     * @return 首次出现的索引，未找到返回 -1
+     * @deprecated 请使用替代实现
+     */
     @Deprecated
     public static int findByte(byte[] array, byte target) {
         for (int i = 0; i < array.length; i++) {

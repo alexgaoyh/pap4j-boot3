@@ -244,6 +244,12 @@ public class StaxXmlUtil {
         return result;
     }
 
+    /**
+     * 转义 XML 特殊字符。
+     *
+     * @param text 原始文本
+     * @return 转义后的文本，text 为 null 或空时原样返回
+     */
     public static String escapeXml(String text) {
         if (text == null || text.isEmpty()) {
             return text;
@@ -263,6 +269,12 @@ public class StaxXmlUtil {
         return sb.toString();
     }
 
+    /**
+     * 还原 XML 转义字符。
+     *
+     * @param text 转义后的文本
+     * @return 还原后的文本，text 为 null 或空时原样返回
+     */
     public static String unescapeXml(String text) {
         if (text == null || text.isEmpty()) {
             return text;
