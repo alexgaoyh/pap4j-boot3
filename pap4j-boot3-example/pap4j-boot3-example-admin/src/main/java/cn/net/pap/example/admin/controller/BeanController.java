@@ -217,14 +217,65 @@ public class BeanController {
         return arrays.toString();
     }
 
+    /**
+     * 测试 SSE 流式输出接口，用于验证反向代理（如 Nginx）在热重载 (Reload) 时无法友好中断长连接的现象。
+     *
+     * <p><strong>1. Nginx 关键配置改动（完整生产级配置）：</strong></p>
+     * <pre>{@code
+     * # 全局配置（设置老 Worker 优雅退役的等待上限，超期强制掐断）
+     * worker_shutdown_timeout 3s;
+     *
+     * server {
+     *     listen       18080;
+     *     server_name  127.0.0.1;
+     *     location /test-stream {
+     *         proxy_pass http://127.0.0.1:8080/test-stream;
+     *
+     *         # 1. 禁用缓冲区，确保 SSE 流式数据实时输出
+     *         proxy_buffering off;
+     *         proxy_cache off;
+     *
+     *         # 2. 长连接与真实客户端信息透传
+     *         proxy_http_version 1.1;
+     *         proxy_set_header Connection "";
+     *         proxy_set_header Host $host;
+     *         proxy_set_header X-Real-IP $remote_addr;
+     *         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+     *
+     *         # 3. 超时设置（避免默认 60s 闲置主动断开）
+     *         proxy_read_timeout 3600s;
+     *         proxy_send_timeout 3600s;
+     *     }
+     * }
+     * }</pre>
+     *
+     * <p><strong>2. 客户端调用与复现步骤：</strong></p>
+     * <ul>
+     *     <li>终端 A 执行：{@code curl.exe -N "http://localhost:18080/test-stream?count=30"}</li>
+     *     <li>推送期间，终端 B 执行：{@code nginx.exe -s reload}</li>
+     * </ul>
+     *
+     * <p><strong>3. 报错现象（表明 Nginx 无法友好中断长连接）：</strong></p>
+     * <ul>
+     *     <li><strong>客户端（curl）：</strong>报错 {@code curl: (18) transfer closed with outstanding read data remaining}，数据未推完即被强行关闭连接。</li>
+     *     <li><strong>服务端（Spring Boot）：</strong>Tomcat 抛出 {@code java.io.IOException: 你的主机中的软件中止了一个已建立的连接} (Linux 下为 Broken Pipe)。</li>
+     *     <li><strong>结论：</strong>Nginx 的平滑重启在长连接（SSE/WebSocket）场景下无法实现完全无感零中断，老 Worker 超时后只能暴力掐断连接。</li>
+     * </ul>
+     *
+     * @param request HTTP 请求对象
+     * @param count   推送次数，默认10次，测试时可传入30以增加观察窗口
+     * @return 用于 SSE 长连接推送的 {@link SseEmitter} 实例
+     */
     @Operation(summary = "测试 SSE 流式输出", description = "使用 SseEmitter 异步且逐秒向客户端推送 10 次消息。")
     @GetMapping(value = "/test-stream", produces = "text/event-stream")
     @CrossOrigin
-    public SseEmitter conversation(HttpServletRequest request) {
+    public SseEmitter conversation(HttpServletRequest request,
+                                   @Parameter(description = "推送次数，默认10次，测试时可传入30以增加观察窗口")
+                                   @RequestParam(defaultValue = "10") int count) {
         final SseEmitter emitter = new SseEmitter();
         taskExecutor.execute(() -> {
             try {
-                for (int i = 0; i < 10; i++) {
+                for (int i = 0; i < count; i++) {
                     try {
                         // 模拟某些耗时操作
                         Thread.sleep(1000L);
