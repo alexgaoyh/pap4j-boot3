@@ -14,6 +14,12 @@
         <property name="files" value="AAA\.java|BBB\.java"/>
     </module>
 
+    <!-- 第三方 gStore HTTP API 客户端（jgsc.GstoreConnector）沿用旧式手动关流写法，对其豁免 try-with-resources 强制规则；仅豁免本条规则、仅本文件，其他检查规则与文件不受影响。 -->
+    <module name="SuppressionSingleFilter">
+        <property name="id" value="Common-Closeable-Resources-Must-Use-With-Try"/>
+        <property name="files" value="GstoreConnector\.java"/>
+    </module>
+
     <module name="TreeWalker">
         <!-- 禁止直接实例化 CheckStyleDTO -->
         <module name="IllegalInstantiation">
