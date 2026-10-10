@@ -32,6 +32,7 @@ public class BackGroundExecutors {
 
     /**
      * 获取全局后台线程池
+     * @return 处理结果对象
      */
     public static ExecutorService background() {
         return BACKGROUND_EXECUTOR;

@@ -14,7 +14,7 @@ public class ResponseEntityUtils {
      * @param body
      * @param lastModified
      * @param <T>
-     * @return
+     * @return 处理结果对象
      */
     public static <T> ResponseEntity<T> buildResponse(boolean isModified, T body, Instant lastModified) {
         if (!isModified) {

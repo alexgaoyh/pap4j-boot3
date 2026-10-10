@@ -53,6 +53,7 @@ public class RateLimitedUtil {
 
     /**
      * 获取当前限流状态
+     * @return 文本结果
      */
     public static String getRateLimitStatus() {
         return String.format("可用许可:%d, 等待队列:%d", semaphore.availablePermits(), semaphore.getQueueLength());

@@ -19,11 +19,13 @@ public interface ITaskDataService {
 
     /**
      * 手动重试失败的数据
+     * @param dataIds
      */
     public void retryFailedData(List<Long> dataIds);
 
     /**
      * 获取处理统计信息
+     * @return 结果映射
      */
     public Map<String, Long> getProcessingStats();
 

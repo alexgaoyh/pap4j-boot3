@@ -43,6 +43,8 @@ public class HLMListDTO implements Serializable {
 
     /**
      * 如果 details 里面的值去重后也完全相同，则移除这个对象。 从而达到获得最纯粹的一个环。
+     * @param inputList
+     * @return 结果集合
      */
     public static List<HLMListDTO> distinct(List<HLMListDTO> inputList) {
         List<HLMListDTO> returnList = new ArrayList<>();

@@ -48,7 +48,7 @@ public class WeChatService {
     /**
      * 获取稳定版接口调用凭据
      * https://developers.weixin.qq.com/doc/offiaccount/Basic_Information/getStableAccessToken.html
-     * @return
+     * @return 处理结果对象
      */
     public Result<String> getStableAccessToken() {
         try {
@@ -93,7 +93,8 @@ public class WeChatService {
     /**
      * 用户基本信息
      * https://developers.weixin.qq.com/doc/offiaccount/User_Management/Get_users_basic_information_UnionID.html#UinonId
-     * @return
+     * @param code
+     * @return 处理结果对象
      */
     public Result<Object> cgibin_user_info(String code) {
         try {
@@ -116,7 +117,7 @@ public class WeChatService {
     /**
      * https://developers.weixin.qq.com/doc/offiaccount/User_Management/Get_users_basic_information_UnionID.html#UinonId
      * @param openid
-     * @return
+     * @return 处理结果对象
      */
     public Result<Object> cgibin_user_info_UnionID(String openid) {
         try {
@@ -139,7 +140,7 @@ public class WeChatService {
     /**
      * https://developers.weixin.qq.com/doc/offiaccount/OA_Web_Apps/Wechat_webpage_authorization.html#3
      * @param code
-     * @return
+     * @return 处理结果对象
      */
     public Result<String> sns_oauth2_access_token(String code) {
         try {
@@ -162,7 +163,7 @@ public class WeChatService {
      * https://developers.weixin.qq.com/doc/offiaccount/User_Management/Configuring_user_notes.html
      * @param openid
      * @param remark
-     * @return
+     * @return 处理结果对象
      */
     public Result<String> cgibin_user_info_updateremark(String openid, String remark) {
         try {
@@ -190,7 +191,7 @@ public class WeChatService {
 
     /**
      * Thread sleep
-     * @return
+     * @return 处理结果对象
      */
     public Result<String> sleep() {
         try {

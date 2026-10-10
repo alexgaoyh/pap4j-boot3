@@ -76,6 +76,7 @@ public class TfIdfDataSketchesUtil {
 
     /**
      * 处理文档流，构建 TF 和 DF 统计
+     * @param filePath
      */
     public void processDocuments(String filePath) throws IOException {
         try (BufferedReader reader = new BufferedReader(new FileReader(filePath, StandardCharsets.UTF_8), 2 * 1024 * 1024)) {
@@ -95,6 +96,7 @@ public class TfIdfDataSketchesUtil {
 
     /**
      * 处理单个文档（一行）
+     * @param documentText
      */
     public void processDocument(String documentText) {
         String[] words = preprocessAndTokenize(documentText);
@@ -123,6 +125,9 @@ public class TfIdfDataSketchesUtil {
 
     /**
      * 计算单个词的 TF-IDF 值
+     * @param word
+     * @param documentIndex
+     * @return 计算结果值
      */
     public double calculateTfIdf(String word, int documentIndex) {
         if (documentIndex < 0 || documentIndex >= documentTfSketches.size()) {
@@ -151,6 +156,9 @@ public class TfIdfDataSketchesUtil {
     /**
      * 获取文档中所有词的 TF-IDF 分数（注意：CMS 无法直接枚举所有词）
      * 这里建议结合 dfSketch 的 frequent items 作为候选
+     * @param documentIndex
+     * @param topCandidateWords
+     * @return 结果映射
      */
     public Map<String, Double> getDocumentTfIdfScores(int documentIndex, int topCandidateWords) {
         if (documentIndex < 0 || documentIndex >= documentTfSketches.size()) {
@@ -177,6 +185,8 @@ public class TfIdfDataSketchesUtil {
 
     /**
      * 获取所有文档中某个词的 TF-IDF 向量
+     * @param word
+     * @return 处理结果数组
      */
     public double[] getTfIdfVector(String word) {
         double[] vector = new double[documentTfSketches.size()];
@@ -188,6 +198,8 @@ public class TfIdfDataSketchesUtil {
 
     /**
      * 获取高频词列表
+     * @param topN
+     * @return 结果集合
      */
     public List<String> getFrequentWords(int topN) {
         // 返回满足默认阈值（max error）的频繁项
@@ -206,6 +218,7 @@ public class TfIdfDataSketchesUtil {
 
     /**
      * 合并多个 Sketch
+     * @param other
      */
     public void merge(TfIdfDataSketchesUtil other) {
         this.dfSketch.merge(other.dfSketch);

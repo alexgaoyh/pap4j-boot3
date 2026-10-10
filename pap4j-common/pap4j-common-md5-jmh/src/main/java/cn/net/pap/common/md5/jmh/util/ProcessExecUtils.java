@@ -109,6 +109,11 @@ public class ProcessExecUtils {
      * 自动使用 shell（/bin/sh -c 或 cmd /c）来执行 rawCommand，并且
      * 会把 System.getenv() 与你传入的 env 合并（保留 PATH 等），
      * 这样环境变量就会真正传到子进程。
+     * @param rawCommand
+     * @param extraEnv
+     * @param workingDir
+     * @param timeoutMs
+     * @return 处理结果对象
      */
     public static ExecResult execWithShell(String rawCommand, Map<String, String> extraEnv, File workingDir, long timeoutMs) throws IOException {
         boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");

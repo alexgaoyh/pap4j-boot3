@@ -18,7 +18,7 @@ public interface TempQueryRepository extends JpaRepository<TempQuery, TempQueryI
      * 根据业务类型查询
      *
      * @param bizType
-     * @return
+     * @return 结果集合
      */
     List<TempQuery> findByBizType(String bizType);
 
@@ -27,7 +27,7 @@ public interface TempQueryRepository extends JpaRepository<TempQuery, TempQueryI
      *
      * @param bizType
      * @param ids
-     * @return
+     * @return 结果集合
      */
     List<TempQuery> findByBizTypeAndIdIn(String bizType, Collection<Long> ids);
 
@@ -35,7 +35,7 @@ public interface TempQueryRepository extends JpaRepository<TempQuery, TempQueryI
      * 根据业务类型统计数量
      *
      * @param bizType
-     * @return
+     * @return 处理结果值
      */
     long countByBizType(String bizType);
 
@@ -44,7 +44,7 @@ public interface TempQueryRepository extends JpaRepository<TempQuery, TempQueryI
      *
      * @param bizType
      * @param id
-     * @return
+     * @return 是否处理成功
      */
     boolean existsByBizTypeAndId(String bizType, Long id);
 
@@ -52,7 +52,7 @@ public interface TempQueryRepository extends JpaRepository<TempQuery, TempQueryI
      * 根据业务类型删除
      *
      * @param bizType
-     * @return
+     * @return 处理结果值
      */
     @Modifying
     @Query("DELETE FROM TempQuery t WHERE t.bizType = :bizType")
@@ -63,7 +63,7 @@ public interface TempQueryRepository extends JpaRepository<TempQuery, TempQueryI
      *
      * @param startId
      * @param endId
-     * @return
+     * @return 结果集合
      */
     @Query("SELECT t FROM TempQuery t WHERE t.id BETWEEN :startId AND :endId")
     List<TempQuery> findByIdRange(@Param("startId") Long startId, @Param("endId") Long endId);
@@ -72,7 +72,7 @@ public interface TempQueryRepository extends JpaRepository<TempQuery, TempQueryI
      * 根据业务类型分页查询
      *
      * @param bizType
-     * @return
+     * @return 结果集合
      */
     @Query("SELECT t FROM TempQuery t WHERE t.bizType = :bizType ORDER BY t.id")
     List<TempQuery> findByBizTypeOrderById(@Param("bizType") String bizType);

@@ -26,7 +26,7 @@ public @interface CacheableField {
     /**
      * 指定要缓存的字段
      *
-     * @return
+     * @return 处理结果数组
      */
     CacheableType[] fields() default {};
 

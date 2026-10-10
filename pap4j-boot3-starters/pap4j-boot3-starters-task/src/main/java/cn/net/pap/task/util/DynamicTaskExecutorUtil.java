@@ -104,6 +104,10 @@ public class DynamicTaskExecutorUtil {
 
     /**
      * 执行无返回值任务
+     * @param executor
+     * @param tasks
+     * @param maxConcurrent
+     * @param progressListener
      */
     public static void executeTasks(ExecutorService executor, Collection<Runnable> tasks, Integer maxConcurrent, Consumer<TaskProgress> progressListener) {
         executeCallableTasks(executor, wrapRunnables(tasks), maxConcurrent, progressListener);

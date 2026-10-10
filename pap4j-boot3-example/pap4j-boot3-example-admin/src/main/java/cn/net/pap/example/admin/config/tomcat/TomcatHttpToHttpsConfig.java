@@ -42,6 +42,9 @@ public class TomcatHttpToHttpsConfig implements WebServerFactoryCustomizer<Tomca
     /**
      * 自定义 SSL 配置属性记录类.
      * 绑定前缀：app.ssl
+     * @param port
+     * @param certificate
+     * @param privateKey
      */
     @ConfigurationProperties(prefix = "app.ssl")
     public record SslProperties(int port, String certificate, String privateKey) {

@@ -84,7 +84,7 @@ public class DeadLockRetryDemoController {
     /**
      * h2 的数据库，可能不能重现到这个死锁，但是写法思路是相同的
      * 可以将 updateTwoRowsOrderly 这个函数内部的某一个sql的表名改为不存在的表名，然后是会出发异常到 recover 的。
-     * @return
+     * @return 文本结果
      * @throws InterruptedException
      */
     @Operation(summary = "触发并测试死锁重试逻辑", description = "使用线程池并发以相反的顺序更新两条数据库记录，以此产生死锁，并测试 Retry 重试。")

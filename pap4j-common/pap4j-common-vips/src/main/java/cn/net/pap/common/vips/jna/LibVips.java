@@ -31,7 +31,7 @@ public interface LibVips extends Library {
             try {
                 return Native.load(name, LibVips.class, OPTIONS);
             } catch (UnsatisfiedLinkError e) {
-                log.debug("尝试加载 libvips 动态库失败: {}", name, e);
+                log.error("尝试加载 libvips 动态库失败: {}", name, e);
                 lastError = e;
             }
         }
@@ -104,6 +104,8 @@ public interface LibVips extends Library {
 
     /**
      * @see <a href="https://www.libvips.org/API/current/func.init.html">vips_init API</a>
+     * @param argv0
+     * @return 处理结果值
      */
     int vips_init(String argv0);
 
@@ -119,6 +121,9 @@ public interface LibVips extends Library {
 
     /**
      * @see <a href="https://www.libvips.org/API/current/ctor.Image.new_from_file.html">vips_image_new_from_file API</a>
+     * @param filename
+     * @param varargs
+     * @return 处理结果对象
      */
     Pointer vips_image_new_from_file(String filename, Object... varargs);
 
@@ -232,6 +237,10 @@ public interface LibVips extends Library {
 
     /**
      * @see <a href="https://www.libvips.org/API/current/method.Image.write_to_file.html">vips_image_write_to_file API</a>
+     * @param image
+     * @param name
+     * @param varargs
+     * @return 处理结果值
      */
     int vips_image_write_to_file(Pointer image, String name, Object... varargs);
 
@@ -302,6 +311,7 @@ public interface LibVips extends Library {
 
     /**
      * @see <a href="https://www.libvips.org/API/current/func.error_buffer.html">vips_error_buffer API</a>
+     * @return 文本结果
      */
     String vips_error_buffer();
 
@@ -348,7 +358,7 @@ public interface LibVips extends Library {
                 try {
                     return Native.load(name, GLib.class, OPTIONS);
                 } catch (UnsatisfiedLinkError e) {
-                    log.debug("尝试加载 gobject 动态库失败: {}", name, e);
+                    log.error("尝试加载 gobject 动态库失败: {}", name, e);
                     lastError = e;
                 }
             }
@@ -359,6 +369,7 @@ public interface LibVips extends Library {
          * 释放 GObject 指针引用
          *
          * @see <a href="https://docs.gtk.org/gobject/method.Object.unref.html">g_object_unref API</a>
+         * @param object
          */
         void g_object_unref(Pointer object);
     }
@@ -391,7 +402,7 @@ public interface LibVips extends Library {
                 try {
                     return Native.load(name, GLibBase.class, OPTIONS);
                 } catch (UnsatisfiedLinkError e) {
-                    log.debug("尝试加载 glib-2.0 基础动态库失败: {}", name, e);
+                    log.error("尝试加载 glib-2.0 基础动态库失败: {}", name, e);
                     lastError = e;
                 }
             }
@@ -402,6 +413,7 @@ public interface LibVips extends Library {
          * 释放由 GLib 分配的内存
          *
          * @see <a href="https://docs.gtk.org/glib/func.free.html">g_free API</a>
+         * @param mem
          */
         void g_free(Pointer mem);
 

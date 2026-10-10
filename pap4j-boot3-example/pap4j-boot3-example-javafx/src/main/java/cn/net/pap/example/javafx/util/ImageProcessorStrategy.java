@@ -66,6 +66,13 @@ public interface ImageProcessorStrategy {
 
     /**
      * 去除区域内
+     * @param inputPath
+     * @param outputPath
+     * @param x1
+     * @param y1
+     * @param x2
+     * @param y2
+     * @return 处理结果对象
      */
     ExecResult imageRemoveIn(String inputPath, String outputPath, double x1, double y1, double x2, double y2);
 
@@ -200,6 +207,11 @@ public interface ImageProcessorStrategy {
      * 自动使用 shell（/bin/sh -c 或 cmd /c）来执行 rawCommand，并且
      * 会把 System.getenv() 与你传入的 env 合并（保留 PATH 等），
      * 这样环境变量就会真正传到子进程。
+     * @param rawCommand
+     * @param extraEnv
+     * @param workingDir
+     * @param timeoutMs
+     * @return 处理结果对象
      */
     static ExecResult execWithShell(String rawCommand, Map<String, String> extraEnv, File workingDir, long timeoutMs) throws IOException {
         boolean isWindows = System.getProperty("os.name").toLowerCase().contains("win");

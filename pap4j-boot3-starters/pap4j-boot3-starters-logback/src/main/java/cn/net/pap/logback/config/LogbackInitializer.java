@@ -29,6 +29,7 @@ public class LogbackInitializer implements ApplicationListener<ApplicationReadyE
 
     /**
      * 初始化Logback配置
+     * @param dataSource
      */
     public static void initLogbackConfiguration(DataSource dataSource) {
         // todo 这里根据实际情况进行调整，仿照如下调用，可以做到将不同包下的日志写到一起.

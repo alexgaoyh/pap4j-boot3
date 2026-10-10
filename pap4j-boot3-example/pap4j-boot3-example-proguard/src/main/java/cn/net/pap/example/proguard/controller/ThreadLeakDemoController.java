@@ -107,6 +107,7 @@ public class ThreadLeakDemoController {
      * 业务接口：模拟线程池的正确与错误使用
      *
      * @param useCorrectPool 开关：true-使用全局正确的线程池，false-使用局部错误的线程池（默认）
+     * @return 文本结果
      */
     @Operation(summary = "模拟提交业务异步任务", description = "可选择使用全局健康的线程池或者每调用一次都会新建线程池导致线程泄露的错误线程池。")
     @GetMapping("/process")
@@ -150,6 +151,7 @@ public class ThreadLeakDemoController {
 
     /**
      * 监控接口：使用 ThreadMXBean 排查并揪出泄露的线程
+     * @return 结果映射
      */
     @Operation(summary = "分析查找活动/泄露线程", description = "获取系统当前的活跃线程数量、总创建线程数、以及以‘bad-biz-pool-’开头的异常泄露线程列表。")
     @GetMapping("/analyze")

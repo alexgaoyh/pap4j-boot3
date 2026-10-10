@@ -35,7 +35,7 @@ public class ExcelUtil {
      * 获得表头信息
      *
      * @param fileAbsolutePath
-     * @return
+     * @return 结果映射
      */
     public static Map<String, List<String>> getHeadMap(String fileAbsolutePath) {
         Map<String, List<String>> resultData = new LinkedHashMap<>();
@@ -68,6 +68,7 @@ public class ExcelUtil {
      *
      * @param fileAbsolutePath
      * @param sheetName
+     * @param indexNoConstantKey
      * @return List 数据集合， 内部 map 有序(同 rowList 顺序)
      */
     public static List<Map<String, Object>> getRowList(String fileAbsolutePath, String sheetName, String indexNoConstantKey) {
@@ -103,7 +104,7 @@ public class ExcelUtil {
      * @param fileAbsolutePath
      * @param sheetName
      * @param indexNoConstantKey
-     * @return
+     * @return 结果集合
      */
     public static List<Map<String, Object>> getRowListWithMergeCell(String fileAbsolutePath, String sheetName, String indexNoConstantKey) {
         List<Map<String, Object>> resultData = new ArrayList<>();
@@ -179,7 +180,7 @@ public class ExcelUtil {
      * @param rowMapList    excel提取的数据
      * @param subjectMapKey 主语对应的key
      * @param fileterMapKeyList 需要过滤的map
-     * @return
+     * @return 结果集合
      */
     public static List<SimpleTriple<String, String, Object>> convert2SimpleTriple(List<Map<String, Object>> rowMapList, String subjectMapKey, List<String> fileterMapKeyList) {
         List<SimpleTriple<String, String, Object>> returnTripleList = new ArrayList<>();
@@ -207,7 +208,7 @@ public class ExcelUtil {
      * 隐藏行 查找指定sheet中所有隐藏的行号
      * @param sourceFileAbsolutePath
      * @param sourceSheetName
-     * @return
+     * @return 结果集合
      * @throws IOException
      */
     public static List<Integer> findHiddenRows(String sourceFileAbsolutePath, String sourceSheetName) {

@@ -19,6 +19,7 @@ public class AsyncFileChunkReader implements AutoCloseable {
 
     /**
      * 使用系统默认线程池创建 AsynchronousFileChannel
+     * @param filePath
      */
     public AsyncFileChunkReader(Path filePath) throws IOException {
         Objects.requireNonNull(filePath, "filePath cannot be null");
@@ -27,6 +28,9 @@ public class AsyncFileChunkReader implements AutoCloseable {
 
     /**
      * 异步读取指定偏移量和长度的文件内容
+     * @param offset
+     * @param length
+     * @return 处理结果对象
      */
     public Future<byte[]> readChunk(long offset, int length) {
         ByteBuffer buffer = ByteBuffer.allocate(length);
@@ -52,6 +56,9 @@ public class AsyncFileChunkReader implements AutoCloseable {
 
     /**
      * 异步读取指定位置的数据块
+     * @param position
+     * @param size
+     * @return 处理结果对象
      */
     public CompletableFuture<byte[]> readChunkAsync(long position, int size) {
         CompletableFuture<byte[]> future = new CompletableFuture<>();
@@ -81,6 +88,9 @@ public class AsyncFileChunkReader implements AutoCloseable {
 
     /**
      * 同步封装（可选）
+     * @param offset
+     * @param length
+     * @return 处理结果数组
      */
     public byte[] readChunkBlocking(long offset, int length) throws IOException {
         try {

@@ -19,6 +19,7 @@ public class DynamicExamEngine {
 
     /**
      * 开放 API：允许外部注册新的任务处理器 (插件化核心)
+     * @param handler
      */
     public void registerHandler(TaskHandler handler) {
         this.handlers.add(handler);
@@ -30,6 +31,7 @@ public class DynamicExamEngine {
      * @param pipeline    流水线节点定义数组
      * @param context     学生上下文
      * @param startCursor 从哪个索引开始执行 (用于断点续传)
+     * @return 处理结果对象
      */
     public EngineResult run(List<ExamNode> pipeline, StudentContext context, int startCursor) {
 

@@ -93,6 +93,8 @@ public class WebDavUtil {
 
     /**
      * 上传文件前，自动检测并创建不存在的父目录
+     * @param uri
+     * @param fis
      */
     public void upload(String uri, FileInputStream fis) throws IOException {
         // 1. 尝试截取文件的父目录并递归创建
@@ -117,6 +119,7 @@ public class WebDavUtil {
 
     /**
      *  递归创建多级目录 (类似 Java 的 File.mkdirs)
+     * @param uri
      */
     public void mkdirs(String uri) throws IOException {
         if (uri == null || uri.equals(this.root) || uri.length() <= this.root.length()) {
@@ -179,6 +182,8 @@ public class WebDavUtil {
 
     /**
      * 【改造点】增加 HTTP 状态码校验，防止 404 解析 XML 报错及 NPE 空指针异常
+     * @param testuri
+     * @return 处理结果数组
      */
     public MultiStatusResponse[] propfind(String testuri) throws IOException {
         try {

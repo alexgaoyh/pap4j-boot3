@@ -9,6 +9,7 @@ public class ProcessPoolUtilExample {
 
     /**
      * main 方法，可以通过 args 接收参数
+     * @param args
      */
     public static void main(String[] args) {
         try {
@@ -26,6 +27,8 @@ public class ProcessPoolUtilExample {
 
     /**
      * 真正逻辑方法，返回 int
+     * @param args
+     * @return 处理结果值
      */
     public static int run(String[] args) {
         // 简单示例：把参数长度作为返回值

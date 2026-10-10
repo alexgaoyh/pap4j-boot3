@@ -27,7 +27,8 @@ public interface ProguardRepository extends JpaRepository<Proguard,Long>, JpaSpe
      * 查询指定字段
      * @param proguardId
      * @param type 形如 ProguardDTO.java 这个 interface
-     * @return
+     * @param <T> 泛型参数
+     * @return 结果集合
      */
     <T> Optional<T> getProguardByProguardId(@Param("proguardId") Long proguardId, Class<T> type);
 
@@ -39,7 +40,7 @@ public interface ProguardRepository extends JpaRepository<Proguard,Long>, JpaSpe
      * 避免深度分页，增加延迟关联分页
      * @param proguardName
      * @param pageable
-     * @return
+     * @return 处理结果对象
      */
     @Query(
             value = """

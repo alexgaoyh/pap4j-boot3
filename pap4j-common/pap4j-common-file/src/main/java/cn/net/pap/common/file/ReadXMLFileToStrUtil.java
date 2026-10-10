@@ -16,7 +16,7 @@ public class ReadXMLFileToStrUtil {
     /**
      * 不同编码下读取 XML
      * @param filePath
-     * @return
+     * @return 文本结果
      * @throws IOException
      * @throws XMLStreamException
      */

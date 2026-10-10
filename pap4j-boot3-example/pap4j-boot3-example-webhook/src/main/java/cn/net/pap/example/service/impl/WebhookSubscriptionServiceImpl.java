@@ -18,6 +18,8 @@ public class WebhookSubscriptionServiceImpl implements IWebhookSubscriptionServi
 
     /**
      * 根据事件类型获取活跃的订阅
+     * @param eventType
+     * @return 结果集合
      */
     public List<WebhookSubscription> getActiveSubscriptions(String eventType) {
         return subscriptionRepository.findByEventTypeAndActiveTrue(eventType);
@@ -25,6 +27,11 @@ public class WebhookSubscriptionServiceImpl implements IWebhookSubscriptionServi
 
     /**
      * 创建新的订阅
+     * @param name
+     * @param callbackUrl
+     * @param eventType
+     * @param secret
+     * @return 处理结果对象
      */
     public WebhookSubscription createSubscription(String name, String callbackUrl,
                                                   String eventType, String secret) {

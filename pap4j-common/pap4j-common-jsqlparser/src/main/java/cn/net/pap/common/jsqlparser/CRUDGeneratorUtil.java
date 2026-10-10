@@ -14,7 +14,7 @@ public class CRUDGeneratorUtil {
     /**
      * select
      * @param clazz
-     * @return
+     * @return 文本结果
      */
     public static String generateSelectSQL(Class<?> clazz) {
         StringBuilder sql = new StringBuilder("SELECT ");
@@ -33,7 +33,7 @@ public class CRUDGeneratorUtil {
     /**
      * insert
      * @param entity
-     * @return
+     * @return 文本结果
      * @throws IllegalAccessException
      */
     public static String generateInsertSQL(Object entity) throws IllegalAccessException {
@@ -61,7 +61,7 @@ public class CRUDGeneratorUtil {
     /**
      * update
      * @param entity
-     * @return
+     * @return 文本结果
      * @throws IllegalAccessException
      */
     public static String generateUpdateSQL(Object entity) throws IllegalAccessException {
@@ -94,7 +94,7 @@ public class CRUDGeneratorUtil {
     /**
      * delete
      * @param entity
-     * @return
+     * @return 文本结果
      * @throws IllegalAccessException
      */
     public static String generateDeleteSQL(Object entity) throws IllegalAccessException {
@@ -118,7 +118,7 @@ public class CRUDGeneratorUtil {
     /**
      * 驼峰 to 下划线
      * @param camelCaseStr
-     * @return
+     * @return 文本结果
      */
     public static String toUnderScoreCase(String camelCaseStr) {
         StringBuilder builder = new StringBuilder();

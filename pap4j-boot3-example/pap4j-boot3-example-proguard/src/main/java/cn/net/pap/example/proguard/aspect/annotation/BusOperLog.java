@@ -11,11 +11,13 @@ public @interface BusOperLog {
 
     /**
      * 记录ID（支持SpEL表达式）
+     * @return 文本结果
      */
     String recId() default "";
 
     /**
      * 操作描述（支持SpEL表达式）
+     * @return 文本结果
      */
     String message() default "";
 

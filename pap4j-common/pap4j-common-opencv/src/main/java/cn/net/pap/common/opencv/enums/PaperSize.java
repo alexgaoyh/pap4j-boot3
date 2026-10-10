@@ -47,7 +47,7 @@ public enum PaperSize {
      * @param dpi
      * @param paperSize
      * @param landscape 是否横向
-     * @return
+     * @return 处理结果对象
      */
     public static Dimension calculatePixelSize(int dpi, PaperSize paperSize, boolean landscape) {
         double widthMM = paperSize.getWidthMM();

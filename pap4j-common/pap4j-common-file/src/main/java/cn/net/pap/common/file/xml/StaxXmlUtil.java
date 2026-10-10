@@ -153,6 +153,8 @@ public class StaxXmlUtil {
      * 将百分比坐标字符串转换为保留两位小数的 BigDecimal 列表
      * 输入: "10%, 12.5%, 2.001%"
      * 输出: [10.00, 12.50, 2.00]
+     * @param rectStr
+     * @return 结果集合
      */
     public static List<BigDecimal> convertCoordsToList(String rectStr) {
         if (rectStr == null || rectStr.trim().isEmpty()) {
@@ -319,6 +321,9 @@ public class StaxXmlUtil {
 
     /**
      * 获取某节点文本内容
+     * @param xmlText
+     * @param nodeName
+     * @return 结果集合
      */
     public static Optional<String> readNodeValueByStax(String xmlText, String nodeName) {
         if (xmlText == null || xmlText.isBlank() || nodeName == null) {
@@ -364,7 +369,7 @@ public class StaxXmlUtil {
     /**
      * @param xmlText
      * @param parentNodeName
-     * @return
+     * @return 结果集合
      */
     public static Optional<String> readChildrenXmlValueByStax(String xmlText, String parentNodeName) {
         if (xmlText == null || xmlText.isBlank() || parentNodeName == null) {
@@ -428,6 +433,9 @@ public class StaxXmlUtil {
 
     /**
      * 统计节点数量
+     * @param xmlText
+     * @param nodeName
+     * @return 处理结果值
      */
     public static int countNodesByStax(String xmlText, String nodeName) {
         if (xmlText == null || xmlText.isBlank() || nodeName == null) {

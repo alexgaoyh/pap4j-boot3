@@ -18,6 +18,10 @@ public interface TaskDataRepository extends JpaRepository<TaskData, Long> {
      * 原子性地抢占一批数据的所有权
      * 【注意】增加过滤条件：(d.nextProcessTime IS NULL OR d.nextProcessTime <= CURRENT_TIMESTAMP)，
      * 确保只有到了重试允许时间的任务，或者尚未失败重试过的任务，才会被本次并发批处理捡起。
+     * @param ids
+     * @param processToken
+     * @param maxAttempts
+     * @return 处理结果值
      */
     @Modifying
     @Query("UPDATE TaskData d SET d.processStatus = 'PROCESSING', d.processToken = :processToken, d.processAttempts = d.processAttempts + 1, d.lastProcessTime = CURRENT_TIMESTAMP WHERE d.id IN :ids AND d.processStatus IN ('PENDING', 'RETRYABLE_FAILED') AND (d.nextProcessTime IS NULL OR d.nextProcessTime <= CURRENT_TIMESTAMP) AND d.processAttempts < :maxAttempts")
@@ -25,6 +29,9 @@ public interface TaskDataRepository extends JpaRepository<TaskData, Long> {
 
     /**
      * 原子性地标记单条数据成功
+     * @param id
+     * @param processToken
+     * @return 处理结果值
      */
     @Modifying
     @Query("UPDATE TaskData d SET d.processStatus = 'SUCCESS', d.processToken = NULL, d.finishTime = CURRENT_TIMESTAMP WHERE d.id = :id AND d.processToken = :processToken")
@@ -32,6 +39,10 @@ public interface TaskDataRepository extends JpaRepository<TaskData, Long> {
 
     /**
      * 原子性地标记单条数据失败
+     * @param id
+     * @param processToken
+     * @param errorMessage
+     * @return 处理结果值
      */
     @Modifying
     @Query("UPDATE TaskData d SET d.processStatus = 'FAILED', d.processToken = NULL, d.errorMessage = :errorMessage, d.finishTime = CURRENT_TIMESTAMP WHERE d.id = :id AND d.processToken = :processToken")
@@ -41,6 +52,11 @@ public interface TaskDataRepository extends JpaRepository<TaskData, Long> {
      * 原子性地标记单条数据为可重试失败
      * 【注意】在标记为 RETRYABLE_FAILED 的同时，需要更新 nextProcessTime 字段。
      * 这告诉数据库，该任务在 nextProcessTime 之前应当被锁定/过滤，以实现退避重试延迟。
+     * @param id
+     * @param processToken
+     * @param errorMessage
+     * @param nextProcessTime
+     * @return 处理结果值
      */
     @Modifying
     @Query("UPDATE TaskData d SET d.processStatus = 'RETRYABLE_FAILED', d.processToken = NULL, d.errorMessage = :errorMessage, d.nextProcessTime = :nextProcessTime WHERE d.id = :id AND d.processToken = :processToken")
@@ -50,12 +66,17 @@ public interface TaskDataRepository extends JpaRepository<TaskData, Long> {
      * 查询待处理的数据（不锁定）
      * 【注意】增加过滤条件：(d.nextProcessTime IS NULL OR d.nextProcessTime <= CURRENT_TIMESTAMP)，
      * 用于排他性地仅捞取过了退避重试时间点的数据。
+     * @param pageable
+     * @return 结果集合
      */
     @Query("SELECT d FROM TaskData d WHERE d.processStatus IN ('PENDING', 'RETRYABLE_FAILED') AND (d.nextProcessTime IS NULL OR d.nextProcessTime <= CURRENT_TIMESTAMP) ORDER BY d.lastProcessTime NULLS FIRST, d.id")
     List<TaskData> findPendingData(Pageable pageable);
 
     /**
      * 重置卡在 PROCESSING 状态的数据
+     * @param timeout
+     * @param maxAttempts
+     * @return 处理结果值
      */
     @Modifying
     @Query("UPDATE TaskData d SET d.processStatus = 'RETRYABLE_FAILED', d.processToken = NULL WHERE d.processStatus = 'PROCESSING' AND d.lastProcessTime < :timeout AND d.processAttempts < :maxAttempts")
@@ -63,16 +84,23 @@ public interface TaskDataRepository extends JpaRepository<TaskData, Long> {
 
     /**
      * 根据处理令牌查询数据
+     * @param processToken
+     * @return 结果集合
      */
     List<TaskData> findByProcessToken(String processToken);
 
     /**
      * 根据处理状态统计数据数量
+     * @param processStatus
+     * @return 处理结果值
      */
     long countByProcessStatus(String processStatus);
 
     /**
      * 在服务销毁时，原子地回滚被中断且未真正执行完成的任务状态，避免长耗时的 stuck timeout 等待。
+     * @param id
+     * @param processToken
+     * @return 处理结果值
      */
     @Modifying
     @Query("UPDATE TaskData d SET d.processStatus = 'RETRYABLE_FAILED', d.processToken = NULL, d.processAttempts = d.processAttempts - 1, d.nextProcessTime = CURRENT_TIMESTAMP WHERE d.id = :id AND d.processToken = :processToken AND d.processStatus = 'PROCESSING'")

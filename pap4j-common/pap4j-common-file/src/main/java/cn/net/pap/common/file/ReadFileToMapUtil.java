@@ -23,7 +23,7 @@ public class ReadFileToMapUtil {
      *
      * @param filePath
      * @param separator
-     * @return
+     * @return 结果映射
      */
     public static ConcurrentHashMap<String, String> toMap(String filePath, byte separator) {
         try (RandomAccessFile file = new RandomAccessFile(filePath, "r");
@@ -158,7 +158,7 @@ public class ReadFileToMapUtil {
      *
      * @param filePath
      * @param separator
-     * @return
+     * @return 结果映射
      */
     @Deprecated
     public static ConcurrentHashMap<String, String> toMap1(String filePath, byte separator) {

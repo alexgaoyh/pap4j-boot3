@@ -90,7 +90,7 @@ public class DorisService {
     /**
      * 部分字段更新
      *
-     * @return
+     * @return 处理结果值
      */
     public int partFieldUpdateTest() {
         try (SqlSession session = sqlSessionFactory.openSession();
@@ -117,7 +117,7 @@ public class DorisService {
 
     /**
      * 验证如果外部调用者使用 @Transactional 注解控制事务的处理， connection 的获取方式对比
-     * @return
+     * @return 处理结果值
      */
     public int updateTestThrowExceptionInMysqlDB() {
         try (SqlSession session = sqlSessionFactory.openSession();
@@ -143,7 +143,7 @@ public class DorisService {
 
     /**
      * 验证如果外部调用者使用 @Transactional 注解控制事务的处理， connection 的获取方式对比
-     * @return
+     * @return 处理结果值
      */
     public int updateTestNoExceptionInMysqlDB() {
         try (Connection conn = dataSource.getConnection();
@@ -159,7 +159,7 @@ public class DorisService {
 
     /**
      * 做事务的控制与验证
-     * @return
+     * @return 处理结果值
      */
     public int updateTestTestInMysqlDB() {
         TransactionTemplate transactionTemplate = new TransactionTemplate(platformTransactionManager);

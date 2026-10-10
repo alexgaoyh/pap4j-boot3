@@ -23,7 +23,7 @@ public class BoofcvUtil {
      *
      * @param input
      * @param brightness >0增加亮度， <0减少亮度
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage adjustBrightness(BufferedImage input, float brightness) {
         Planar<GrayF32> image = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayF32.class);
@@ -45,7 +45,7 @@ public class BoofcvUtil {
      * 亮度 并行
      * @param input
      * @param brightness
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage adjustBrightness2(BufferedImage input, float brightness) {
         Planar<GrayF32> image = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayF32.class);
@@ -81,7 +81,7 @@ public class BoofcvUtil {
      *
      * @param input
      * @param contrast ==1无变化， >1增加对比度，<1减少对比度
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage adjustContrast(BufferedImage input, float contrast) {
         Planar<GrayF32> image = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayF32.class);
@@ -105,7 +105,7 @@ public class BoofcvUtil {
      * 对比度 并行
      * @param input
      * @param contrast
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage adjustContrast2(BufferedImage input, float contrast) {
         Planar<GrayF32> image = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayF32.class);
@@ -144,7 +144,7 @@ public class BoofcvUtil {
      * @param input
      * @param brightness brightness 参数可以平滑地控制图像的亮度，从完全变黑（-1）到正常亮度（0），再到完全变白（1）
      * @param contrast contrast 参数的有效范围应该是 -255 到 255（不包括 259），因为当 contrast 为 -255 时，因子 factor 将变为 0，这将导致图像变黑；而当 contrast 接近 259 时，因子 factor 将趋向于无穷大，这可能导致图像过曝或完全变白。
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage adjustTwo(BufferedImage input, float brightness, float contrast) {
         Planar<GrayF32> image = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayF32.class);
@@ -187,7 +187,7 @@ public class BoofcvUtil {
      * @param y
      * @param width
      * @param height
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage crop(BufferedImage input, Integer x, Integer y, Integer width, Integer height) {
         Planar<GrayU8> colorImage = ConvertBufferedImage.convertFromPlanar(input, null, true, GrayU8.class);
@@ -204,7 +204,7 @@ public class BoofcvUtil {
      * BufferedImage to Base64
      * @param image
      * @param type
-     * @return
+     * @return 文本结果
      */
     public static String getBase64(BufferedImage image, String type) {
         String imageString = null;

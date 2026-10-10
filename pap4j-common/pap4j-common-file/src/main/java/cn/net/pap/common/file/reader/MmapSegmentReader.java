@@ -39,34 +39,60 @@ public final class MmapSegmentReader implements AutoCloseable {
         this.fileSize = channel.size();
     }
 
-    /** 一次性读取指定字节区间的文本（UTF-8 解码，自动剥离 BOM）。 */
+    /**
+     * 一次性读取指定字节区间的文本（UTF-8 解码，自动剥离 BOM）。
+     * @param path
+     * @param offset
+     * @param length
+     * @return 文本结果
+     */
     public static String readSegment(Path path, long offset, int length) throws IOException {
         try (MmapSegmentReader reader = new MmapSegmentReader(path)) {
             return reader.readSegment(offset, length);
         }
     }
 
-    /** 一次性读取指定字节区间的原始字节。 */
+    /**
+     * 一次性读取指定字节区间的原始字节。
+     * @param path
+     * @param offset
+     * @param length
+     * @return 处理结果数组
+     */
     public static byte[] readSegmentRaw(Path path, long offset, int length) throws IOException {
         try (MmapSegmentReader reader = new MmapSegmentReader(path)) {
             return reader.readSegmentRaw(offset, length);
         }
     }
 
-    /** 一次性读取从 startLine 起的连续 lineCount 行（不足则截断到 EOF）。 */
+    /**
+     * 一次性读取从 startLine 起的连续 lineCount 行（不足则截断到 EOF）。
+     * @param path
+     * @param startLine
+     * @param lineCount
+     * @return 文本结果
+     */
     public static String readLineRange(Path path, long startLine, int lineCount) throws IOException {
         try (MmapSegmentReader reader = new MmapSegmentReader(path)) {
             return reader.readLineRange(startLine, lineCount);
         }
     }
 
-    /** 读取指定字节区间的文本（UTF-8 解码，自动剥离 BOM）。 */
+    /**
+     * 读取指定字节区间的文本（UTF-8 解码，自动剥离 BOM）。
+     * @param offset
+     * @param length
+     * @return 文本结果
+     */
     public String readSegment(long offset, int length) throws IOException {
         return decode(readSegmentRaw(offset, length), offset == 0);
     }
 
     /**
      * 读取指定字节区间的原始字节。区间越界时自动截断；offset 超出文件长度返回空数组。
+     * @param offset
+     * @param length
+     * @return 处理结果数组
      */
     public byte[] readSegmentRaw(long offset, int length) throws IOException {
         if (offset < 0 || length < 0) {
@@ -85,6 +111,9 @@ public final class MmapSegmentReader implements AutoCloseable {
 
     /**
      * 读取从 startLine（1-based）起的连续 lineCount 行；不足则返回实际行数，越界返回空串。
+     * @param startLine
+     * @param lineCount
+     * @return 文本结果
      */
     public String readLineRange(long startLine, int lineCount) throws IOException {
         if (startLine <= 0) {

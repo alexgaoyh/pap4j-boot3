@@ -31,6 +31,7 @@ public class TimestampCryptoUtil {
 
     /**
      * 加密当前时间戳（最简单版本）
+     * @return 文本结果
      */
     public static String encryptNow() {
         return encrypt(System.currentTimeMillis());
@@ -38,6 +39,8 @@ public class TimestampCryptoUtil {
 
     /**
      * 加密指定时间戳
+     * @param timestamp
+     * @return 文本结果
      */
     public static String encrypt(long timestamp) {
         try {
@@ -60,6 +63,8 @@ public class TimestampCryptoUtil {
 
     /**
      * 解密时间戳
+     * @param encryptedStr
+     * @return 处理结果值
      */
     public static long decrypt(String encryptedStr) {
         try {
@@ -82,6 +87,9 @@ public class TimestampCryptoUtil {
 
     /**
      * 验证时间戳是否在有效期内
+     * @param encryptedStr
+     * @param maxAgeMillis
+     * @return 是否处理成功
      */
     public static boolean isValid(String encryptedStr, long maxAgeMillis) {
         try {
@@ -95,6 +103,8 @@ public class TimestampCryptoUtil {
 
     /**
      * 快速验证（5分钟内有效）
+     * @param encryptedStr
+     * @return 是否处理成功
      */
     public static boolean isValid5Min(String encryptedStr) {
         return isValid(encryptedStr, 5 * 60 * 1000);
@@ -102,6 +112,8 @@ public class TimestampCryptoUtil {
 
     /**
      * 快速验证（1分钟内有效）
+     * @param encryptedStr
+     * @return 是否处理成功
      */
     public static boolean isValid1Min(String encryptedStr) {
         return isValid(encryptedStr, 60 * 1000);

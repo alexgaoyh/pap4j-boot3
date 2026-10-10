@@ -18,7 +18,7 @@ public class VectorUtil {
      * 图像转向量表示
      *
      * @param image
-     * @return
+     * @return 处理结果数组
      */
     public static float[] convertImageToVector(BufferedImage image) {
         int width = image.getWidth();

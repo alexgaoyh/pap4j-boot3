@@ -20,7 +20,7 @@ public class GetThreadsWithFullStackTraceUtil {
      * 获取 JVM 当前所有线程的运行状态及完整堆栈信息。等价于 “程序内版 jstack”。
      * 会一次性抓取 JVM 中所有线程的快照
      *
-     * @return
+     * @return 结果集合
      */
     public List<Map<String, Object>> getAll() {
         ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();

@@ -225,6 +225,14 @@ public class DataTraceIdUtil {
 
         /**
          * <p>构造一个映射基本结构的完整元信封容器表示。</p>
+         * @param biz
+         * @param source
+         * @param time
+         * @param level
+         * @param branch
+         * @param parentLevel
+         * @param parentBranch
+         * @param checksum
          */
         public TraceMeta(String biz, String source, long time, int level, int branch, int parentLevel, int parentBranch, String checksum) {
             this.biz = biz;

@@ -47,7 +47,7 @@ public class MinioUtil {
      *
      * @param bucketName
      * @param objectName
-     * @return
+     * @return 处理结果对象
      * @throws Exception
      */
     public static InputStream download(String bucketName, String objectName) throws Exception {
@@ -69,7 +69,7 @@ public class MinioUtil {
      * 重载方法：默认 bucket
      *
      * @param objectName
-     * @return
+     * @return 处理结果对象
      * @throws Exception
      */
     public static InputStream download(String objectName) throws Exception {

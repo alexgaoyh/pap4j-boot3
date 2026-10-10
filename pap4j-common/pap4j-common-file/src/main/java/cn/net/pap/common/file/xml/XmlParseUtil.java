@@ -55,6 +55,8 @@ public final class XmlParseUtil {
 
     /**
      * 从文件路径创建 Document 对象
+     * @param filePath
+     * @return 处理结果对象
      */
     public static Document getDocumentByPath(String filePath) throws IOException {
         try {
@@ -90,7 +92,7 @@ public final class XmlParseUtil {
      *
      * @param document
      * @param root
-     * @return
+     * @return 处理结果对象
      * @throws XPathExpressionException
      */
     public static NodeList parseChild(Document document, String root) throws XPathExpressionException {
@@ -104,6 +106,7 @@ public final class XmlParseUtil {
      *
      * @param xml   XML字符串
      * @param level 层级，从1开始
+     * @param allowSelfClosing
      * @return 剪裁后的XML字符串
      * @throws Exception
      */
@@ -172,6 +175,8 @@ public final class XmlParseUtil {
 
     /**
      * 将节点内容转换为原始 XML 字符串
+     * @param node
+     * @return 文本结果
      */
     public static String nodeToString(Node node) {
         try {
@@ -196,6 +201,8 @@ public final class XmlParseUtil {
 
     /**
      * 打印节点的内部 HTML/XML 内容（不包含自身标签）
+     * @param node
+     * @return 文本结果
      */
     public static String getInnerContent(Node node) {
         StringBuilder sb = new StringBuilder();
@@ -213,7 +220,7 @@ public final class XmlParseUtil {
      * 锚点切分，
      *
      * @param xmlString
-     * @return
+     * @return 结果映射
      */
     public static Map<String, String> splitByAnchor(String xmlString) {
         Map<String, String> result = new LinkedHashMap<>();
@@ -247,6 +254,9 @@ public final class XmlParseUtil {
 
     /**
      * 使用XPath获取单个值
+     * @param doc
+     * @param xpath
+     * @return 文本结果
      */
     public static String getValueByXPath(Document doc, String xpath) {
         try {
@@ -270,7 +280,7 @@ public final class XmlParseUtil {
      * @param attributesMap         带属性的节点配置
      * @param delimiter             多值合并分隔符
      * @param nodesDelimiterMap     特定字段分隔符配置
-     * @return
+     * @return 结果集合
      */
     public static List<Map<String, Object>> parse(Document document, String root, Map<String, String> nodeMap, Map<String, String> nodesMap, Map<String, Map<String, String>> nodeFromAttributeMap, Map<String, Map<String, String>> nodesFromAttributeMap, Map<String, Map<String, String>> attributesMap, String delimiter, Map<String, String> nodesDelimiterMap) {
 
@@ -306,6 +316,9 @@ public final class XmlParseUtil {
 
     /**
      * 检查 XML 中是否存在指定路径
+     * @param document
+     * @param rootPath
+     * @return 是否处理成功
      */
     public static boolean hasRootPath(Document document, String rootPath) {
         try {
@@ -517,6 +530,7 @@ public final class XmlParseUtil {
 
     /**
      * 打印带父子关系和缩进的结果
+     * @param list
      */
     public static void printWithParent(List<Map<String, Object>> list) {
         log.info("===== 带父子关系的目录结构（缩进表示层级） =====");
@@ -641,6 +655,8 @@ public final class XmlParseUtil {
 
     /**
      * 根据 anchor 标签切割 XML，并自动补齐缺失节点
+     * @param xml
+     * @return 结果集合
      */
     public static List<Segment> splitByAnchorAddMissingNode(String xml) {
         List<Segment> result = new ArrayList<>();

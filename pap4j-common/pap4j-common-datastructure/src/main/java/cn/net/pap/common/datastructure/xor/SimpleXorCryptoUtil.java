@@ -18,6 +18,7 @@ public class SimpleXorCryptoUtil {
      * 原位处理数据（更省内存）
      * 由于异或操作不需要前后依赖，直接在原数组上操作可以显著减少 GC 压力，
      * 尤其是在处理你项目中提到的大规模图像存档时。
+     * @param data
      */
     public static void processInPlace(byte[] data) {
         if (data == null || data.length == 0) return;
@@ -31,6 +32,8 @@ public class SimpleXorCryptoUtil {
 
     /**
      * 返回新数组的处理方式（保持原有逻辑不变）
+     * @param data
+     * @return 处理结果数组
      */
     public static byte[] process(byte[] data) {
         if (data == null) return null;

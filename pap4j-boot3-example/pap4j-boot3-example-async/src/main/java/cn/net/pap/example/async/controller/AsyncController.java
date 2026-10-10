@@ -154,7 +154,7 @@ public class AsyncController {
     /**
      * 组合任务
      *
-     * @return
+     * @return 处理结果对象
      */
     @Operation(summary = "获取多阶段组合异步任务结果")
     @GetMapping("/composite-async")

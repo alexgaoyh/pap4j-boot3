@@ -50,7 +50,7 @@ public class AbsNodeWithChildrensDTO implements Serializable {
      * 对象转换 convert(absNodeRepository.getParentWithChildrens("parent1"));
      *
      * @param inputObjectArrayList
-     * @return
+     * @return 结果集合
      */
     public static List<AbsNodeWithChildrensDTO> convert(List<Object[]> inputObjectArrayList) {
         List<AbsNodeWithChildrensDTO> dtoList = new ArrayList<>();

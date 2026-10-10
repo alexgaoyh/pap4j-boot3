@@ -50,6 +50,9 @@ public class ChunkUploadController {
     /**
      * 分片上传接口 - 流式写入
      * 前端需传 headers: X-Upload-Id, X-Chunk-Index
+     * @param request
+     * @param body
+     * @return 处理结果对象
      */
     @Operation(summary = "上传分片 (流式写入)", description = "接收一个分片的数据流，并根据请求头中的 X-Upload-Id 和 X-Chunk-Index 写入指定的临时分片文件中。")
     @PostMapping
@@ -82,6 +85,8 @@ public class ChunkUploadController {
     /**
      * 合并 chunk 文件
      * 前端需传 JSON: { uploadId, fileName, totalChunks }
+     * @param request
+     * @return 处理结果对象
      */
     @Operation(summary = "合并已上传的分片文件")
     @PostMapping("/merge")
@@ -130,6 +135,8 @@ public class ChunkUploadController {
 
     /**
      * 可选：清理某个 uploadId 的所有分片（用于异常中断恢复）
+     * @param uploadId
+     * @return 处理结果对象
      */
     @Operation(summary = "清理某个 Upload ID 的所有分片文件")
     @DeleteMapping("/cleanup/{uploadId}")

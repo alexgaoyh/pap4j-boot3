@@ -16,6 +16,9 @@ public class ElasticsearchDomainEventPublisher {
 
     /**
      * 单条
+     * @param <T> 泛型参数
+     * @param entity
+     * @param type
      */
     public <T extends ElasticSearchIndexAware> void publish(
             T entity,
@@ -26,6 +29,9 @@ public class ElasticsearchDomainEventPublisher {
 
     /**
      * 批量
+     * @param <T> 泛型参数
+     * @param entities
+     * @param type
      */
     public <T extends ElasticSearchIndexAware> void publish(
             List<T> entities,

@@ -37,6 +37,7 @@ public class HttpClientBatchExecutor implements AutoCloseable {
 
     /**
      * 创建一个忽略 SSL 证书校验的 CloseableHttpClient
+     * @return 处理结果对象
      */
     public static CloseableHttpClient createUnsafeHttpClient() {
         return createUnsafeHttpClient(null);
@@ -44,6 +45,8 @@ public class HttpClientBatchExecutor implements AutoCloseable {
 
     /**
      * 创建一个忽略 SSL 证书校验的 CloseableHttpClient，并附加默认请求头
+     * @param headers
+     * @return 处理结果对象
      */
     public static CloseableHttpClient createUnsafeHttpClient(Map<String, String> headers) {
         try {
@@ -79,6 +82,10 @@ public class HttpClientBatchExecutor implements AutoCloseable {
 
     /**
      * 同步发送单笔 POST 请求（JSON Body）并直接返回响应字符串内容
+     * @param client
+     * @param url
+     * @param jsonBody
+     * @return 文本结果
      */
     public static String executePost(CloseableHttpClient client, String url, String jsonBody) throws IOException {
         if (client == null) {

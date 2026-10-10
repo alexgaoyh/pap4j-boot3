@@ -252,6 +252,8 @@ public class VipsImageProcessor {
 
     /**
      * 图像元数据实体（包含宽高）
+     * @param width
+     * @param height
      */
     public record ImageMetadata(int width, int height) {}
 

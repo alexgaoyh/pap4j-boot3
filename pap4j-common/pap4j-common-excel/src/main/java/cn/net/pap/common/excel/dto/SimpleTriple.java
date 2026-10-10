@@ -93,7 +93,7 @@ public class SimpleTriple<T1, T2, T3> implements Serializable {
 
     /**
      * 转换为三元组格式：  <s> <p> <o> .
-     * @return
+     * @return 文本结果
      */
     public String toTriple() {
         final StringBuffer sb = new StringBuffer("");
@@ -108,7 +108,7 @@ public class SimpleTriple<T1, T2, T3> implements Serializable {
      * 特殊字符转换，比如空格
      *
      * @param input
-     * @return
+     * @return 文本结果
      */
     public static String convertSpecialCharsToUnicode(Object input) {
         if (input == null) {

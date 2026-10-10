@@ -26,6 +26,7 @@ public class DeferredResultController {
      *
      * @param processTime 模拟处理时间(秒)
      * @param timeout     超时时间(秒)
+     * @return 处理结果对象
      */
     @Operation(summary = "通过 DeferredResult 简单实现异步任务和超时回调", description = "演示将耗时请求交给自定义工作线程完成，Tomcat 线程快速回收，并能精细化控制超时。")
     @GetMapping("/deferred-result-simple1")

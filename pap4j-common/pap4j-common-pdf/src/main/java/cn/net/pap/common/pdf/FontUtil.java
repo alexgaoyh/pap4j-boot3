@@ -62,7 +62,7 @@ public class FontUtil {
      * @param width
      * @param height
      * @param font
-     * @return
+     * @return 结果集合
      */
     public static List<cn.net.pap.common.pdf.dto.TextPointDTO> cutTextInVertical(String columnText, Float x, Float y, Float width, Float height, Font font) {
         if(null != columnText && !"".equals(columnText) && null != x && null != y && null != width && null != height && null != font) {
@@ -130,7 +130,7 @@ public class FontUtil {
     /**
      * 数据类型转换
      * @param textPointDTOS
-     * @return
+     * @return 结果集合
      */
     public static List<CoordsDTO> convertTextPointDTO(List<TextPointDTO> textPointDTOS) {
         List<CoordsDTO> coordsDTOS = new ArrayList<>();
@@ -148,7 +148,7 @@ public class FontUtil {
 
     /**
      * 读取操作系统下的字体
-     * @return
+     * @return 结果集合
      */
     public static List<File> findSystemFontFiles() {
         List<File> fontFiles = new ArrayList<>();
@@ -171,7 +171,7 @@ public class FontUtil {
 
     /**
      * 字体目录
-     * @return
+     * @return 处理结果数组
      */
     public static String[] getSystemFontDirectories() {
         String os = System.getProperty("os.name").toLowerCase();
@@ -199,7 +199,7 @@ public class FontUtil {
     /**
      * 根据后缀判断是否是字体文件
      * @param filename
-     * @return
+     * @return 是否处理成功
      */
     public static boolean isFontFile(String filename) {
         String lower = filename.toLowerCase();
@@ -210,7 +210,7 @@ public class FontUtil {
     /**
      * 字体格式校验
      * @param header
-     * @return
+     * @return 文本结果
      */
     public static String detectFontFormat(byte[] header) {
         if (header.length < 4) return "Unknown";

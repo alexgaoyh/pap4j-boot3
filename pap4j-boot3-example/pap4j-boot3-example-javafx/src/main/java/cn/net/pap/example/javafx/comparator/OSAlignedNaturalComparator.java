@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 
 /**
  * 一个与操作系统排序规则接近的自然排序比较器。 支持 String 和 Path 类型（自动比较文件名部分）。
+ * @param <T> 泛型参数
  */
 public class OSAlignedNaturalComparator<T> implements Comparator<T> {
     private static final Pattern PATTERN = Pattern.compile("(\\d+)|(\\D+)");

@@ -47,7 +47,7 @@ public enum ChineseFont {
     /**
      * 获得位置
      * @param fontName
-     * @return
+     * @return 文本结果
      */
     public static String getLocation(String fontName) {
         for(ChineseFont chineseFont : ChineseFont.values()){

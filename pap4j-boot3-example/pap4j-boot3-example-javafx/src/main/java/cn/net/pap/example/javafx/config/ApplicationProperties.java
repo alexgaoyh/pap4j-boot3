@@ -67,7 +67,7 @@ public class ApplicationProperties {
 
     /**
      * 临时文件的目录
-     * @return
+     * @return 文本结果
      */
     public static String getImageTmpFolder() {
         try {

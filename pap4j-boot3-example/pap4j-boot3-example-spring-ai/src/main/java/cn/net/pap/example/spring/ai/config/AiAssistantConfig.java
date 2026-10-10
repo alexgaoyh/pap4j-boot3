@@ -53,6 +53,8 @@ public class AiAssistantConfig {
 
     /**
      * 1. 声明知识库向量数据库 Bean
+     * @param embeddingModel
+     * @return 处理结果对象
      */
     @Bean(name = "knowledgeVectorStore")
     @Primary
@@ -69,6 +71,8 @@ public class AiAssistantConfig {
 
     /**
      * 1b. 声明 Emoji 向量数据库 Bean
+     * @param embeddingModel
+     * @return 处理结果对象
      */
     @Bean(name = "emojiVectorStore")
     public VectorStore emojiVectorStore(@org.springframework.beans.factory.annotation.Qualifier("customEmbeddingModel") EmbeddingModel embeddingModel) {
@@ -154,6 +158,8 @@ public class AiAssistantConfig {
 
     /**
      * 2. 声明聊天记忆组件（内存型）
+     * @param repository
+     * @return 处理结果对象
      */
     @Bean
     public ChatMemory chatMemory(ChatMemoryRepository repository) {
@@ -165,6 +171,8 @@ public class AiAssistantConfig {
 
     /**
      * 3. 预置主大模型 ChatClient（搭载多轮记忆）
+     * @param chatMemory
+     * @return 处理结果对象
      */
     @Bean(name = "customChatClient")
     @Primary
@@ -179,6 +187,7 @@ public class AiAssistantConfig {
 
     /**
      * 4. 预置专用于 Query 改写与提炼的极速 ChatClient
+     * @return 处理结果对象
      */
     @Bean(name = "queryRewriteChatClient")
     public ChatClient queryRewriteChatClient() {
@@ -218,6 +227,7 @@ public class AiAssistantConfig {
      *    它会根据运行时参数 {@code ai.embedding-model.provider} 的设定，自适应实例化对应的向量化计算引擎。
      *    - 当配置为 'onnx' 时，才会在本方法中实例化本地模型并初始化本地 C++ 计算引擎（产生约 400MB 物理内存开销）；
      *    - 当配置为 'openai'、'ollama' 时，本地 C++ 引擎完全不会被装载，保持低开销。
+     * @return 处理结果对象
      */
     @Bean(name = "customEmbeddingModel")
     @Primary

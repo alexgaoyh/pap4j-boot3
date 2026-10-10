@@ -37,7 +37,7 @@ public class ImageUtil {
 
     /**
      * 创建1x1像素的最小JPEG图像 背景色白色 的 jpg 图像字符串， 可以直接 response.getOutputStream().write(generateEmptyJpeg()); 写入响应流
-     * @return
+     * @return 处理结果数组
      */
     public static byte[] generateEmptyJpeg() {
         try {
@@ -64,7 +64,7 @@ public class ImageUtil {
      * @param y
      * @param width
      * @param height
-     * @return
+     * @return 是否处理成功
      */
     public static Boolean cropImageCut(String inputFilePath, String outputFilePath, int x, int y, int width, int height) {
         try {
@@ -108,7 +108,7 @@ public class ImageUtil {
      * 在一张图像中同时截取多个矩形区域并按顺序返回 base64.
      * @param inputFilePath
      * @param regions
-     * @return
+     * @return 结果集合
      */
     public static List<String> cropImageCutList(String inputFilePath, List<Rectangle> regions) {
         List<String> base64Images = new ArrayList<>();
@@ -150,7 +150,7 @@ public class ImageUtil {
      * @param inputPath
      * @param outputPath
      * @param widthHeight
-     * @return
+     * @return 是否处理成功
      */
     public static boolean scaleAndGray(String inputPath, String outputPath, Integer widthHeight) {
         try {
@@ -220,7 +220,7 @@ public class ImageUtil {
      * @param inputFilePath
      * @param outputFilePath
      * @param angle
-     * @return
+     * @return 是否处理成功
      */
     public static boolean rotateImage(String inputFilePath, String outputFilePath, double angle) {
         try {
@@ -262,7 +262,9 @@ public class ImageUtil {
 
     /**
      * 水平镜像
-     * @return
+     * @param inputFilePath
+     * @param outputFilePath
+     * @return 是否处理成功
      * @throws Exception
      */
     public static boolean horizontalMirror(String inputFilePath, String outputFilePath) throws Exception {
@@ -305,7 +307,7 @@ public class ImageUtil {
      * 垂直镜像
      * @param inputFilePath
      * @param outputFilePath
-     * @return
+     * @return 是否处理成功
      */
     public static boolean verticalMirror(String inputFilePath, String outputFilePath) {
         try {
@@ -352,7 +354,7 @@ public class ImageUtil {
      * @param sourceHeight
      * @param targetX
      * @param targetY
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage cover(BufferedImage originalImage, int sourceX, int sourceY, int sourceWidth, int sourceHeight, int targetX, int targetY) {
         BufferedImage subImage = originalImage.getSubimage(sourceX, sourceY, sourceWidth, sourceHeight);
@@ -379,7 +381,7 @@ public class ImageUtil {
      * @param rightPoint1Y 右图像上边点 Y 坐标
      * @param rightPoint2X 右图像下边点 X 坐标
      * @param rightPoint2Y 右图像下边点 Y 坐标
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage mergeByPointInTwoPic(BufferedImage leftImage, int leftPoint1X, int leftPoint1Y, int leftPoint2X, int leftPoint2Y,
                                                      BufferedImage rightImage, int rightPoint1X, int rightPoint1Y, int rightPoint2X, int rightPoint2Y) {
@@ -438,6 +440,7 @@ public class ImageUtil {
      * @param height 图像的高度
      * @param regions 一个二维数组，每个子数组包含四个元素：x, y, width, height（区域的左上角坐标和宽高）
      *                以及第五个元素：颜色值（例如：Color.RED.getRGB()）
+     * @param backColor
      * @return 创建的BufferedImage对象
      */
     public static BufferedImage createImageWithRegions(int width, int height, Color backColor, int[][] regions) {
@@ -599,7 +602,7 @@ public class ImageUtil {
      * 高效生成图像缩略图（低内存占用版本）本方法使用 ImageIO 的子采样（Subsampling）技术，在解码阶段直接跳过像素， 从而大幅降低内存占用，特别适合处理大尺寸图像。
      * @param inputFileStr
      * @param targetWidth
-     * @return
+     * @return 处理结果对象
      * @throws IOException
      */
     public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {

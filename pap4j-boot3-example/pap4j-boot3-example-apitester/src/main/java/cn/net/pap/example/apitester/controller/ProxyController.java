@@ -30,6 +30,8 @@ public class ProxyController {
 
     /**
      * 通用代理接口，支持 JSON / x-www-form-urlencoded / raw text
+     * @param request
+     * @return 处理结果对象
      */
     @Operation(summary = "通用请求代理转发", description = "接收目标 URL、HTTP 方法、Headers 和 Body 并通过 WebClient 执行非阻塞的代理转发请求。")
     @PostMapping
@@ -124,6 +126,8 @@ public class ProxyController {
 
     /**
      * multipart/form-data 文件上传代理
+     * @param exchange
+     * @return 处理结果对象
      */
     @Operation(summary = "多部分表单 (Multipart) 文件上传代理转发")
     @PostMapping("/multipart")

@@ -91,6 +91,8 @@ public class AiController {
 
     /**
      * 响应式流式对话接口 (POST 方式)
+     * @param request
+     * @return 处理结果对象
      */
     @Operation(summary = "响应式流式对话接口 (RAG)")
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
@@ -365,6 +367,8 @@ public class AiController {
 
     /**
      * Emoji 检索请求 DTO
+     * @param prompt UI 功能 / 按钮名称 / 业务场景描述
+     * @param topK 返回候选数量上限
      */
     public record EmojiRequest(
             @Schema(description = "UI 功能 / 按钮名称 / 业务场景描述") String prompt,
@@ -372,6 +376,9 @@ public class AiController {
 
     /**
      * Emoji 检索响应 DTO
+     * @param emoji Emoji 字符
+     * @param description Emoji 语义描述
+     * @param score 相似度得分
      */
     public record EmojiResponse(
             @Schema(description = "Emoji 字符") String emoji,
@@ -380,6 +387,8 @@ public class AiController {
 
     /**
      * 对话请求 DTO
+     * @param prompt 用户提问内容
+     * @param chatId 会话 ID（用于多轮记忆）
      */
     public record ChatRequest(
             @Schema(description = "用户提问内容") String prompt,

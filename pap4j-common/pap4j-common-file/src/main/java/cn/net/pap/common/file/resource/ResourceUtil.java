@@ -18,6 +18,7 @@ public class ResourceUtil {
 
     /**
      * 复制 resources/native/{osType} 下的所有文件到目标目录，保持路径结构
+     * @param targetDir
      */
     public static void copyNativeResources(String targetDir) throws IOException {
         String osFolder = detectOSFolder();

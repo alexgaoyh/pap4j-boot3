@@ -277,7 +277,7 @@ public class BeanController {
      * /getArray?arrays=1&arrays=2
      *
      * @param arrays
-     * @return
+     * @return 文本结果
      * @throws IOException
      */
     @Operation(summary = "获取数组参数", description = "接收一个以 Query 参数传递的 List 集合并将其 toString 形式返回。")

@@ -12,7 +12,7 @@ public interface DepartmentRepository extends Neo4jRepository<DepartmentEntity, 
     /**
      * 查找兄弟，有同样的根
      * @param remark
-     * @return
+     * @return 结果集合
      */
     @Query("MATCH (dept:department)-[:parent]->(top:department)<-[:parent]-(d:department {remark: {remark}}) WHERE dept <> d RETURN dept")
     List<DepartmentEntity> getBrothersByRemark(@Param("remark") String remark);

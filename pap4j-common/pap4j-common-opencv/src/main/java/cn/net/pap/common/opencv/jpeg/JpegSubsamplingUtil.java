@@ -198,6 +198,8 @@ public class JpegSubsamplingUtil {
 
     /**
      * 获取 JPEG 图像的准确保存质量 (返回 1-100)
+     * @param jpegFile
+     * @return 处理结果值
      */
     public static int getExactJpegQuality(File jpegFile) throws IOException {
         try (ImageInputStream iis = ImageIO.createImageInputStream(jpegFile)) {

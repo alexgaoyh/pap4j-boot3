@@ -16,7 +16,7 @@ public interface HLMRelationshipRepository extends Neo4jRepository<HLMRelationsh
      * 根据 startNode.name 查询关联节点，并制定节点方向
      *
      * @param startNodeName
-     * @return
+     * @return 处理结果对象
      */
     @Query("MATCH (HLM { name: {startNodeName} })-[r]->(node) RETURN DISTINCT node AS node, r.type AS nodeType, 'OUT' AS direction " +
             "UNION  " +
@@ -28,14 +28,14 @@ public interface HLMRelationshipRepository extends Neo4jRepository<HLMRelationsh
      *
      * @param startNodeName
      * @param endNodeName
-     * @return
+     * @return 结果集合
      */
     @Query("match p = shortestpath((a:HLM)-[r*0..4]-(b:HLM)) where a.name = {startNodeName} and b.name={endNodeName} return p")
     List<List<PathValue>> getShortestPathBetweenNodesByName(@Param("startNodeName") String startNodeName, @Param("endNodeName") String endNodeName);
 
     /**
      * 查询所有关系 去重
-     * @return
+     * @return 结果集合
      */
     @Query("MATCH ()-[r]-() RETURN distinct r.type")
     List<String> getDistinctRelationshipType();

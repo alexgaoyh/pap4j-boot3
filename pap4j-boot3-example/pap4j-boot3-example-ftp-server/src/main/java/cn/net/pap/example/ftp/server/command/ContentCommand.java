@@ -87,6 +87,8 @@ public class ContentCommand implements Command {
 
     /**
      * 读取文件内容并自动检测编码
+     * @param filePath
+     * @return 文本结果
      */
     public static String readFileContent(String filePath) throws IOException {
         String encode = FileUtil.detectCharsetUsingICU4J(filePath);

@@ -122,7 +122,7 @@ public class ListMapGroupUtil {
      *
      * @param dataList
      * @param groupFields
-     * @return
+     * @return 结果集合
      */
     public static List<Map<String, Object>> groupByFields(List<Map<String, Object>> dataList, String... groupFields) {
         return groupByFields(dataList, groupFields, new GroupOptions());

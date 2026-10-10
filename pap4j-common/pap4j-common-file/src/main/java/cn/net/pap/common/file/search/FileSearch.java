@@ -312,11 +312,21 @@ public final class FileSearch {
         }
     }
 
-    /** 单行命中：1-based 行号 + 该行文本（不含行尾换行符）。 */
+    /**
+     * 单行命中：1-based 行号 + 该行文本（不含行尾换行符）。
+     * @param lineNumber
+     * @param text
+     */
     public record LineMatch(long lineNumber, String text) {
     }
 
-    /** 单文件命中：文件路径、相对路径、字节大小、命中的行（含上下文行）。 */
+    /**
+     * 单文件命中：文件路径、相对路径、字节大小、命中的行（含上下文行）。
+     * @param file
+     * @param relativePath
+     * @param size
+     * @param lines
+     */
     public record FileMatch(Path file, String relativePath, long size, List<LineMatch> lines) {
     }
 

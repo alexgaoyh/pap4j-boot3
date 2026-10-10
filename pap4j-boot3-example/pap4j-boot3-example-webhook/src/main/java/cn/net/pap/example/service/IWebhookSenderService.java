@@ -10,6 +10,8 @@ public interface IWebhookSenderService {
 
     /**
      * 异步发送 Webhook
+     * @param subscription
+     * @param event
      */
     public void sendWebhookAsync(WebhookSubscription subscription, WebhookEvent event);
 

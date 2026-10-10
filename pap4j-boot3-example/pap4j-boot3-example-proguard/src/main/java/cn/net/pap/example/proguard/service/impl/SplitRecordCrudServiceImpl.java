@@ -3,14 +3,14 @@ package cn.net.pap.example.proguard.service.impl;
 import cn.net.pap.example.proguard.dto.SplitRecordDTO;
 import cn.net.pap.example.proguard.exception.SplitRecordException;
 import cn.net.pap.example.proguard.service.ISplitRecordCrudService;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.support.GeneratedKeyHolder;
-import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.List;
 import java.util.Map;
@@ -62,24 +62,29 @@ public class SplitRecordCrudServiceImpl implements ISplitRecordCrudService {
             throw new SplitRecordException("data 不能为 null");
         }
 
-        KeyHolder keyHolder = new GeneratedKeyHolder();
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement("""
-                    INSERT INTO %s (data, %s)
-                    VALUES (?, ?, ?, ?)""".formatted(safeTable, EXT_COLUMNS), Statement.RETURN_GENERATED_KEYS);
-            ps.setString(1, dto.getData());
-            ps.setString(2, dto.getExtStr1());
-            ps.setString(3, dto.getExtStr2());
-            ps.setBigDecimal(4, dto.getExtNum1());
-            return ps;
-        }, keyHolder);
-
-        Number key = keyHolder.getKey();
+        String sql = """
+                INSERT INTO %s (data, %s)
+                VALUES (?, ?, ?, ?)""".formatted(safeTable, EXT_COLUMNS);
+        Long key = jdbcTemplate.execute((ConnectionCallback<Long>) connection -> {
+            try (PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+                ps.setString(1, dto.getData());
+                ps.setString(2, dto.getExtStr1());
+                ps.setString(3, dto.getExtStr2());
+                ps.setBigDecimal(4, dto.getExtNum1());
+                ps.executeUpdate();
+                try (ResultSet rs = ps.getGeneratedKeys()) {
+                    if (rs.next()) {
+                        return rs.getLong(1);
+                    }
+                    throw new SplitRecordException("取回自增 id 失败，表: " + safeTable);
+                }
+            }
+        });
         if (key == null) {
             throw new SplitRecordException("取回自增 id 失败，表: " + safeTable);
         }
-        dto.setId(key.longValue());
-        return key.longValue();
+        dto.setId(key);
+        return key;
     }
 
     @Override

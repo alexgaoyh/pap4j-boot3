@@ -168,7 +168,7 @@ public class ProguardController {
 
     /**
      * Cache Test Interface .
-     * @return
+     * @return 文本结果
      */
     @GetMapping(value = "/print", produces = "application/json;charset=UTF-8")
     public String print() {
@@ -180,7 +180,7 @@ public class ProguardController {
      * Set Cache-Control in response
      * @param request
      * @param response
-     * @return
+     * @return 文本结果
      */
     @GetMapping("cacheControlTest")
     public String cacheControlTest(HttpServletRequest request, HttpServletResponse response) {
@@ -193,7 +193,7 @@ public class ProguardController {
 
     /**
      * LAST_MODIFIED 响应头处理
-     * @return
+     * @return 处理结果对象
      */
     @GetMapping("/lastModifiedTest")
     public ResponseEntity<String> lastModifiedTest() {
@@ -239,7 +239,7 @@ public class ProguardController {
      * 在创建新记录时，通过事务获取对应 user_id 的行。 使用 PESSIMISTIC_WRITE 锁住该行，确保同一时间只有一个线程可以更新 last_seq。
      * 计算下一个 seq 并更新辅助表 下一个 seq = last_seq + 1 更新 user_seq 表的 last_seq 为新值
      * @param proguardName
-     * @return
+     * @return 处理结果对象
      */
     @GetMapping("/saveProguardWithIdxSeq")
     public ResponseEntity<Proguard> saveProguardWithIdxSeq(@RequestParam(required = false, defaultValue = "proguardName") String proguardName) {
@@ -566,7 +566,7 @@ public class ProguardController {
      * 注意这里需要手动注册实体类，便于找到对应的对象
      * @param entityName
      * @param json
-     * @return
+     * @return 处理结果对象
      */
     @PostMapping("/saveOrUpdateSignalCRUD/{entityName}")
     public Object saveOrUpdateSignalCRUD(@PathVariable String entityName, @RequestBody String json) throws JsonProcessingException {
@@ -589,7 +589,7 @@ public class ProguardController {
      * @param proguardName
      * @param pageNumber
      * @param pageSize
-     * @return
+     * @return 处理结果对象
      * @throws Exception
      */
     @GetMapping("pageByProguardNameDeepPaging")
@@ -605,7 +605,7 @@ public class ProguardController {
      * 增加一个字符串，里面直接存 json, 然后界面进行展示的时候还是原始 json
      * @param request
      * @param response
-     * @return
+     * @return 处理结果对象
      * @throws Exception
      */
     @GetMapping("saveJson")

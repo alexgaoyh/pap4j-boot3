@@ -32,7 +32,7 @@ public class CannyEdgeUtilss {
      * 传入一张图像，获得四周的边框对应的 MarginDTO 对象，记录四个方向的距离。
      *
      * @param imgPath
-     * @return
+     * @return 处理结果对象
      */
     public static MarginDTO getBlackMargin(String imgPath) {
         BufferedImage image = UtilImageIO.loadImageNotNull(UtilIO.pathExample(imgPath));
@@ -304,7 +304,7 @@ public class CannyEdgeUtilss {
      * @param y1
      * @param x2
      * @param y2
-     * @return
+     * @return 计算结果值
      */
     public static double getAngleByPoint(Double x1, Double y1, Double x2, Double y2) {
         // 计算斜率

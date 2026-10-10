@@ -20,7 +20,7 @@ public class SearchUtil {
      * @param entityManager
      * @param entityClass
      * @param <T>
-     * @return
+     * @return 结果集合
      */
     public static <T> List<T> filterEntities(List<SearchConditionDTO> conditions, EntityManager entityManager, Class<T> entityClass) {
         TypedQuery<T> query = geneQuery(conditions, entityManager, entityClass);
@@ -36,7 +36,7 @@ public class SearchUtil {
      * @param pageNumber
      * @param pageSize
      * @param <T>
-     * @return
+     * @return 结果集合
      */
     public static <T> List<T> filterEntities(List<SearchConditionDTO> conditions, EntityManager entityManager, Class<T> entityClass, int pageNumber, int pageSize) {
 

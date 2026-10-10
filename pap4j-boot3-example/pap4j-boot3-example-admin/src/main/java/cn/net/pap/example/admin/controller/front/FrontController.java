@@ -38,6 +38,9 @@ public class FrontController {
     /**
      * 起点接口：创建用户
      * 注意：operationId 必须全局唯一，Link 依靠它来寻找目标
+     *
+     * @param request 用户创建请求
+     * @return 创建成功的用户响应
      */
     @Operation(summary = "创建新用户", operationId = "createUser", responses = {@ApiResponse(responseCode = "201", description = "用户创建成功", content = @Content(schema = @Schema(implementation = UserResponse.class)), links = {@Link(name = "GetUserDetails", // Link 的名称，在 UI 上显示的按钮名
             operationId = "getUserById", // 目标接口的 operationId
@@ -54,6 +57,8 @@ public class FrontController {
 
     /**
      * 终点接口：查询用户
+     * @param userId 用户 ID
+     * @return 处理结果对象
      */
     @Operation(summary = "根据ID获取用户详情", operationId = "getUserById" // 被上面的 Link 引用
     )
@@ -65,7 +70,7 @@ public class FrontController {
     /**
      * switchByParam
      * @param picPath
-     * @return
+     * @return 处理结果对象
      */
     @GetMapping("/switchByParam")
     public ResponseEntity switchByParam(@RequestParam String picPath) {

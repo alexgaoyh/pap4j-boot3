@@ -2,6 +2,18 @@ package cn.net.pap.example.dynamic.form.dto;
 
 /**
  * Mock API 配置传输 Record。
+ * @param id
+ * @param url
+ * @param method
+ * @param responseBody
+ * @param responseStatus
+ * @param contentType
+ * @param requestHeaders
+ * @param requestParams
+ * @param requestBody
+ * @param responseHeaders
+ * @param delayMs
+ * @param curlCommand
  */
 public record MockApiDTO(
         Long id,

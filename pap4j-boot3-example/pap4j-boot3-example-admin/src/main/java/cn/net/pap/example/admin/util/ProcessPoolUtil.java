@@ -35,6 +35,7 @@ public class ProcessPoolUtil {
      * @param args       参数
      * @param timeoutSec 超时时间(秒)
      * @param executor   外部传入的线程池，用于异步读取流
+     * @return 处理结果对象
      */
     @Deprecated
     public static ProcessResult runJavaClass(String mainClass, String[] args, long timeoutSec, ExecutorService executor) {

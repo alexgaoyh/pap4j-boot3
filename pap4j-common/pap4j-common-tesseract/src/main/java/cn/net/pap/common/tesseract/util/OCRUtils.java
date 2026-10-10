@@ -88,6 +88,7 @@ public class OCRUtils {
      *
      * @param imagePath 图像文件路径
      * @param language  语言代码 (如: "eng", "chi_sim", "eng+chi_sim")
+     * @param tessdataPath
      * @return 带坐标的 OCR 结果列表
      * @throws OCRException 如果 OCR 处理失败
      */
@@ -102,6 +103,7 @@ public class OCRUtils {
      * @param imagePath   图像文件路径
      * @param language    语言代码
      * @param pageSegMode 页面分割模式
+     * @param tessdataPath
      * @return 带坐标的 OCR 结果列表
      * @throws OCRException 如果 OCR 处理失败
      */
@@ -217,6 +219,8 @@ public class OCRUtils {
 
     /**
      * 处理行级别结果
+     * @param api
+     * @param results
      */
     public static void processComponentLevelResults(TessBaseAPI api, List<OCRResult> results) {
         // 获取结果迭代器

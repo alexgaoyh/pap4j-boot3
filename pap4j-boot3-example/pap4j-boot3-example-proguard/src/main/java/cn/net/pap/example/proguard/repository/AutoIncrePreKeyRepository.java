@@ -13,6 +13,8 @@ public interface AutoIncrePreKeyRepository extends JpaRepository<AutoIncrePreKey
 
     /**
      * 使用临时表 JOIN，替代 IN 查询
+     * @param bizType
+     * @return 处理结果对象
      */
     @Query("""
         SELECT a

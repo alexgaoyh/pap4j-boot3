@@ -179,6 +179,8 @@ public class UnicodeBlocks {
 
     /**
      * 根据 codePoint 查找其所属区块名称
+     * @param codePoint
+     * @return 文本结果
      */
     public String getBlockName(int codePoint) {
         Block block = findBlock(codePoint);
@@ -187,6 +189,8 @@ public class UnicodeBlocks {
 
     /**
      * 根据 codePoint 查找其所属区块
+     * @param codePoint
+     * @return 处理结果对象
      */
     public Block findBlock(int codePoint) {
         int lo = 0, hi = blocks.size() - 1;
@@ -206,6 +210,8 @@ public class UnicodeBlocks {
 
     /**
      * 根据区块名称查找区块
+     * @param blockName
+     * @return 处理结果对象
      */
     public Block findBlock(String blockName) {
         return blocks.stream()
@@ -216,6 +222,7 @@ public class UnicodeBlocks {
 
     /**
      * 获取所有区块
+     * @return 结果集合
      */
     public List<Block> getAllBlocks() {
         return new ArrayList<>(blocks);
@@ -223,6 +230,9 @@ public class UnicodeBlocks {
 
     /**
      * 检查某个字体是否完整覆盖某个区块（使用已记录的结果）
+     * @param fontName
+     * @param blockName
+     * @return 是否处理成功
      */
     public boolean checkFontCoverage(String fontName, String blockName) {
         Block block = findBlock(blockName);
@@ -234,6 +244,8 @@ public class UnicodeBlocks {
 
     /**
      * 获取支持指定区块的所有字体
+     * @param blockName
+     * @return 结果集合
      */
     public List<String> getFontsSupportingBlock(String blockName) {
         Block block = findBlock(blockName);
@@ -242,6 +254,8 @@ public class UnicodeBlocks {
 
     /**
      * 获取指定字体支持的所有区块名称
+     * @param fontName
+     * @return 结果集合
      */
     public List<String> getBlocksSupportedByFont(String fontName) {
         List<String> supportedBlocks = new ArrayList<>();
@@ -273,6 +287,7 @@ public class UnicodeBlocks {
 
     /**
      * 打印区块的字符信息
+     * @param blockName
      */
     public void printBlockCharacters(String blockName) {
         Block block = findBlock(blockName);

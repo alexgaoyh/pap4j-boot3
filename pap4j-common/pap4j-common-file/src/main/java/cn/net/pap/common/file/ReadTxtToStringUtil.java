@@ -28,6 +28,8 @@ public class ReadTxtToStringUtil {
 
     /**
      * 检测文件编码，先检测 BOM，如果没有再使用 UniversalDetector
+     * @param file
+     * @return 文本结果
      */
     public static String detectEncoding(File file) throws IOException {
         try (BufferedInputStream bis = new BufferedInputStream(Files.newInputStream(file.toPath()))) {
@@ -86,7 +88,7 @@ public class ReadTxtToStringUtil {
      *        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
      *        boolean success = ftpClient.retrieveFile(TEST_FILE, outputStream);
      * @param outputStream
-     * @return
+     * @return 文本结果
      * @throws IOException
      */
     public static String detectEncoding(ByteArrayOutputStream outputStream) throws IOException {
@@ -143,6 +145,8 @@ public class ReadTxtToStringUtil {
 
     /**
      * 读取文件内容为 String（自动识别编码）
+     * @param file
+     * @return 文本结果
      */
     public static String readFileContent(File file) throws IOException {
         if(!file.exists()) {
@@ -154,6 +158,8 @@ public class ReadTxtToStringUtil {
 
     /**
      * 读取文件内容为 List<String>
+     * @param file
+     * @return 结果集合
      */
     public static List<String> readFileLines(File file) throws IOException {
         String encoding = detectEncoding(file);
@@ -163,7 +169,7 @@ public class ReadTxtToStringUtil {
     /**
      * 文件编码
      * @param filePath
-     * @return
+     * @return 文本结果
      * @throws IOException
      */
     public static String detectCharsetUsingICU4J(String filePath) throws IOException {

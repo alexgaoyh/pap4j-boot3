@@ -37,6 +37,8 @@ public class PathHistoryManager {
 
     /**
      * 添加历史文件路径（线程安全）
+     * @param directory
+     * @param historicalFile
      */
     public static void registerHistoricalFile(String directory, String historicalFile) {
         registryLock.writeLock().lock();
@@ -51,6 +53,7 @@ public class PathHistoryManager {
     /**
      * 获取并删除最近一次历史记录（LIFO）
      *
+     * @param directory
      * @return 最近一次历史文件路径；如果不存在返回 null
      */
     public static String popLatestHistoricalFile(String directory) {

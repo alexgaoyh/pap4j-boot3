@@ -7,13 +7,13 @@ public @interface CacheableType {
 
     /**
      * 字段名称
-     * @return
+     * @return 文本结果
      */
     String field();
 
     /**
      * 字段类型
-     * @return
+     * @return 文本结果
      */
     String type();
 

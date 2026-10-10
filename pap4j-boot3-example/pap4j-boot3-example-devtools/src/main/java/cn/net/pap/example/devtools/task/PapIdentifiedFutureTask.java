@@ -4,6 +4,7 @@ import java.util.concurrent.FutureTask;
 
 /**
  * 继承 FutureTask，用于在 shutdownNow() 时，安全地返回原始 PapIdentifiedTask 实例。
+ * @param <T> 泛型参数
  */
 public class PapIdentifiedFutureTask<T> extends FutureTask<T> {
 
@@ -23,6 +24,7 @@ public class PapIdentifiedFutureTask<T> extends FutureTask<T> {
 
     /**
      * 暴露一个公共方法，返回被包装的 PapIdentifiedTask 实例。
+     * @return 处理结果对象
      */
     public PapIdentifiedTask getOriginalTask() {
         return originalTask;

@@ -30,7 +30,7 @@ public class ImageUtil {
      * 图像读取
      *
      * @param path
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage read(String path) {
         try {
@@ -46,7 +46,7 @@ public class ImageUtil {
      *
      * @param path
      * @param currShownImage
-     * @return
+     * @return 处理结果对象
      */
     public static Image readFXImageWithCurrShownImage(String path, Image currShownImage) {
         BufferedImage read = read(path);
@@ -71,7 +71,7 @@ public class ImageUtil {
      *
      * @param path             文件路径
      * @param targetWidthLimit 限制加载后的最大宽度（例如：屏幕宽度 1920，或者预览区域宽度）
-     * @return
+     * @return 处理结果对象
      * @throws Exception
      */
     public static ImageViewDTO readFXImageEfficiently(String path, int targetWidthLimit) throws Exception {
@@ -142,7 +142,7 @@ public class ImageUtil {
      *
      * @param inputFileStr
      * @param targetWidth
-     * @return
+     * @return 处理结果对象
      * @throws IOException
      */
     public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {

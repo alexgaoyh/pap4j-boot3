@@ -19,7 +19,7 @@ public class SQLUtil {
     /**
      * json 2 list map
      * @param jsonStr
-     * @return
+     * @return 结果集合
      * @throws Exception
      */
     public static List<Map<String, JsonNode>> generateJsonNodeFromJson(String jsonStr) throws Exception {

@@ -308,7 +308,7 @@ public class ImgSendCommand extends AbstractCommand {
      * 压测代码详见： pap4j-common-md5-jmh cn.net.pap.common.md5.jmh.Md5FastBenchmark
      * @param inputFileStr
      * @param targetWidth
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {
         File file = new File(inputFileStr);
@@ -349,7 +349,7 @@ public class ImgSendCommand extends AbstractCommand {
      * 不管入参是什么图像，强制返回的就是 jpg， 目前测试了 jpg tif 两种格式的图像，都能够正确的返回图像。
      * @param inputFileStr
      * @param targetWidth
-     * @return
+     * @return 处理结果对象
      * @throws IOException
      */
     public static ImageThumbnailDTO convertOriginJPG(String inputFileStr, int targetWidth) throws IOException {

@@ -14,6 +14,8 @@ public interface NumberSegmentRepository extends JpaRepository<NumberSegment, St
 
     /**
      * 批量更新号段的currentValue
+     * @param name
+     * @param increment
      */
     @Modifying
     @Query("UPDATE NumberSegment ns SET ns.currentValue = ns.currentValue + :increment WHERE ns.name = :name")

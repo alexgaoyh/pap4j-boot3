@@ -27,12 +27,20 @@ public final class DbMetadataReader {
 
     /**
      * 表元数据只读记录类。
+     * @param tableName
+     * @param remarks
      */
     public record TableMetadata(String tableName, String remarks) {
     }
 
     /**
      * 字段元数据只读记录类。
+     * @param columnName
+     * @param typeName
+     * @param dataType
+     * @param size
+     * @param nullable
+     * @param remarks
      */
     public record ColumnMetadata(String columnName, String typeName, int dataType, int size, boolean nullable,
                                  String remarks) {

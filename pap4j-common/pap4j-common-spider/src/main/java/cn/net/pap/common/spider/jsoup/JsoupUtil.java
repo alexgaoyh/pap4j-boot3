@@ -33,7 +33,7 @@ public class JsoupUtil {
      * @param indexList
      * @param outerCssBegin
      * @param outerCssEnd
-     * @return
+     * @return 文本结果
      */
     public static String parse(List<SpiderDTO> spiderDTOList, List<String> indexList, String outerCssBegin, String outerCssEnd) {
         StringBuilder sb = new StringBuilder();
@@ -89,6 +89,11 @@ public class JsoupUtil {
 
     /**
      * 按页码分组解析SpiderDTO列表，删除跨页的索引范围
+     * @param spiderDTOList
+     * @param indexList
+     * @param outerCssBegin
+     * @param outerCssEnd
+     * @return 结果映射
      */
     public static Map<Integer, String> parseByPage(List<SpiderDTO> spiderDTOList, List<String> indexList, String outerCssBegin, String outerCssEnd) {
         // 按页码分组
@@ -193,7 +198,7 @@ public class JsoupUtil {
     /**
      * 把字符串按“所见字符（grapheme cluster）”切分
      * @param text
-     * @return
+     * @return 结果集合
      */
     public static List<String> splitToGraphemes(String text) {
         List<String> result = new ArrayList<>();
@@ -217,7 +222,7 @@ public class JsoupUtil {
      * @param html
      * @param keyword
      * @param css
-     * @return
+     * @return 文本结果
      */
     public static String highlightSequential(String html, String keyword, String css) {
 

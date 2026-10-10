@@ -44,6 +44,8 @@ public class WebhookManagementController {
 
     /**
      * 创建订阅
+     * @param request
+     * @return 处理结果对象
      */
     @Operation(summary = "创建 Webhook 订阅")
     @PostMapping("/subscriptions")
@@ -58,6 +60,9 @@ public class WebhookManagementController {
 
     /**
      * 测试事件触发
+     * @param eventType
+     * @param testData
+     * @return 处理结果对象
      */
     @Operation(summary = "测试触发 Webhook 事件")
     @PostMapping("/test/{eventType}")
@@ -98,6 +103,8 @@ public class WebhookManagementController {
 
     /**
      * 获取订阅
+     * @param eventType
+     * @return 结果集合
      */
     @Operation(summary = "获取指定事件类型的活跃订阅列表")
     @GetMapping("/subscriptions/{eventType}")

@@ -16,7 +16,7 @@ public interface ProguardIdxSeqRepository extends JpaRepository<ProguardIdxSeq, 
      * 使用场景： 分组自增 seq    库存扣减    并发更新计数器
      *
      * @param proguardName
-     * @return
+     * @return 结果集合
      */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     Optional<ProguardIdxSeq> findByProguardName(String proguardName);

@@ -33,6 +33,7 @@ public class MockApiService {
 
     /**
      * 获取所有配置规则
+     * @return 结果集合
      */
     public List<MockApiDTO> listAll() {
         List<MockApi> list = mockApiRepository.findAll();
@@ -46,6 +47,8 @@ public class MockApiService {
     /**
      * 保存或更新 Mock 配置。
      * 若包含 curlCommand 则自动解析并覆盖特征匹配字段。
+     * @param dto
+     * @return 处理结果对象
      */
     @Transactional(rollbackFor = Exception.class)
     public MockApiDTO save(MockApiDTO dto) {
@@ -76,6 +79,7 @@ public class MockApiService {
 
     /**
      * 删除指定 Mock API 配置
+     * @param id
      */
     @Transactional(rollbackFor = Exception.class)
     public void delete(Long id) {
@@ -85,6 +89,12 @@ public class MockApiService {
     /**
      * 极高精度特征比对匹配。
      * 必须保证 Path 完全一致，Query 参数去空白全等，Body 去空白全等，且 Header 完全匹配。
+     * @param url
+     * @param method
+     * @param actualHeaders
+     * @param actualQueryStr
+     * @param actualBody
+     * @return 结果集合
      */
     public Optional<MockApi> matchRequest(String url, String method, Map<String, String> actualHeaders, String actualQueryStr, String actualBody) {
         List<String> methods = List.of(method.toUpperCase(), "ANY", "*");

@@ -32,6 +32,8 @@ public class PapIdentifiedThreadPoolExecutor extends ThreadPoolExecutor {
 
     /**
      * 唯一允许的 submit 方法
+     * @param task
+     * @return 处理结果对象
      */
     public Future<?> submit(PapIdentifiedTask task) {
         if (task == null) {

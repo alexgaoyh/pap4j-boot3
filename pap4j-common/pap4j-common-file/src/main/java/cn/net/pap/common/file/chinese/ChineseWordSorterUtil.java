@@ -15,7 +15,7 @@ public class ChineseWordSorterUtil {
      * 按照字典序添加词语到不同文件
      * @param basePathDir
      * @param word
-     * @return
+     * @return 是否处理成功
      */
     public static final Boolean add(String basePathDir, String word) {
         String firstChar = "0";

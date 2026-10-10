@@ -105,6 +105,10 @@ public class WebClientUtil {
 
     /**
      * 异步POST请求 - 返回Mono，由调用方决定是否阻塞
+     * @param url
+     * @param bodyJSON
+     * @param headers
+     * @return 处理结果对象
      */
     public static Mono<ClientResponse> postMono(String url, String bodyJSON, HttpHeaders headers) {
         String traceId = UUID.randomUUID().toString();
@@ -149,7 +153,7 @@ public class WebClientUtil {
      * @param objectJSON
      * @param headers
      * @param maxByteCount 10*1024*1024代表10MB
-     * @return
+     * @return 文本结果
      */
     public static String postBodyObjectSimple(String url,
                                               Object objectJSON,
@@ -195,7 +199,8 @@ public class WebClientUtil {
      *
      * @param url
      * @param bodyJSON
-     * @return
+     * @param headers
+     * @return 处理结果对象
      */
     public static ClientResponse postBody(String url, String bodyJSON, org.springframework.http.HttpHeaders headers) {
         // 配置连接超时和读取超时

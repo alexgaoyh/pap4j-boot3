@@ -62,6 +62,8 @@ public class TaskExecutorUtil {
      *
      * @param beanName
      * @param tasks
+     * @param <V> 泛型参数
+     * @return 结果集合
      */
     public static <V> List<TaskResult<V>> executeTasks(String beanName, List<PapCallable<V>> tasks) {
         if (tasks == null || tasks.isEmpty()) {

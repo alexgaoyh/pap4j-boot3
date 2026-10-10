@@ -31,6 +31,9 @@ public class JsonRawWrapper {
 
     /**
      * 包装对象，使指定字段按原始 JSON 输出
+     * @param value
+     * @param rawFieldNames
+     * @return 处理结果对象
      */
     public static MappingJacksonValue wrap(Object value, String... rawFieldNames) {
         return wrap(value, Set.of(rawFieldNames));
@@ -38,6 +41,9 @@ public class JsonRawWrapper {
 
     /**
      * 包装对象，使指定字段按原始 JSON 输出
+     * @param value
+     * @param rawFields
+     * @return 处理结果对象
      */
     public static MappingJacksonValue wrap(Object value, Set<String> rawFields) {
         ObjectMapper mapper = buildRawFieldMapper(rawFields);

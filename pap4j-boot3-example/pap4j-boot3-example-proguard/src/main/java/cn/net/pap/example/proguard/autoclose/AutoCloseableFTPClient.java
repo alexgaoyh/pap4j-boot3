@@ -118,7 +118,7 @@ public class AutoCloseableFTPClient extends FTPClient implements AutoCloseable {
      */
     @Override
     protected Socket _openDataConnection_(String command, String arg) throws IOException {
-        Socket s = super._openDataConnection_(command, arg);
+        java.net.Socket s = super._openDataConnection_(command, arg);
         if (s != null && closeWithRst && isServerToClientTransfer(command)) {
             s.setSoLinger(true, 0);
         }

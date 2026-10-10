@@ -130,7 +130,7 @@ public class ProcessPoolUtilController {
 
     /**
      * NOT SUPPORT IN FAT JAR
-     * @return
+     * @return 文本结果
      */
     @Operation(summary = "异步请求")
     @GetMapping("/java")
@@ -155,7 +155,7 @@ public class ProcessPoolUtilController {
 
     /**
      * NOT SUPPORT IN FAT JAR
-     * @return
+     * @return 结果映射
      */
     @Operation(summary = "异步请求")
     @GetMapping("/javaResults")

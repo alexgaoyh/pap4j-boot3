@@ -14,7 +14,7 @@ public class DigestUtils {
      * MD5
      *
      * @param inputStream
-     * @return
+     * @return 文本结果
      * @throws NoSuchAlgorithmException
      * @throws IOException
      */

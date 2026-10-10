@@ -80,7 +80,7 @@ public class QuartzAutoConfiguration {
 
     /**
      * quartzDataSource
-     * @return
+     * @return 处理结果对象
      * @throws SQLException
      */
     @Bean("quartzDataSource")
@@ -97,7 +97,7 @@ public class QuartzAutoConfiguration {
     /**
      * quartzDataSourceInitializer
      * @param dataSource
-     * @return
+     * @return 处理结果对象
      */
     @Bean("quartzDataSourceInitializer")
     public DataSourceInitializer quartzDataSourceInitializer(DataSource dataSource) {
@@ -123,7 +123,7 @@ public class QuartzAutoConfiguration {
 
     /**
      * schedulerFactoryBean
-     * @return
+     * @return 处理结果对象
      * @throws Exception
      */
     @Bean
@@ -174,7 +174,7 @@ public class QuartzAutoConfiguration {
 
     /**
      * schedulerThreadPool
-     * @return
+     * @return 处理结果对象
      */
     @Bean
     public ThreadPoolTaskExecutor schedulerThreadPool() {
@@ -268,7 +268,7 @@ public class QuartzAutoConfiguration {
     /**
      * 自定义 EntityManagerFactory
      * @param dataSource
-     * @return
+     * @return 处理结果对象
      */
     @Bean
     @Primary

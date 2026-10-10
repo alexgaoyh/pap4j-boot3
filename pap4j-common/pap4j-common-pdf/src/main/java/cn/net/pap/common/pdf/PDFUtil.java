@@ -98,6 +98,7 @@ public class PDFUtil {
      * @param pdfFilePath   PDF文件绝对路径
      * @param outputPath    JPG文件绝对路径
      * @param DPI           DPI
+     * @return 是否处理成功
      */
     public static boolean convertPDFToJPG(String pdfFilePath, String outputPath, Integer DPI) {
         try (PDDocument document = Loader.loadPDF(new File(pdfFilePath))) {
@@ -246,6 +247,7 @@ public class PDFUtil {
      * @param pdfPath
      * @param coordsDTOList
      * @throws IOException
+     * @param widthAndHeight
      */
     public static void drawText(String pdfPath, List<CoordsDTO> coordsDTOList, Integer... widthAndHeight) throws IOException {
         // 创建或加载PDF文档
@@ -318,7 +320,7 @@ public class PDFUtil {
      * <b>绝对不要在生产环境使用。</b> 请使用内部重构后的 findFontInternal。</p>
      *
      * @param text
-     * @return
+     * @return 处理结果对象
      * @deprecated 返回的字体绑定到了一个已关闭的 PDDocument，会导致 PDF/A 字体嵌入失败及保存报错。
      */
     @Deprecated

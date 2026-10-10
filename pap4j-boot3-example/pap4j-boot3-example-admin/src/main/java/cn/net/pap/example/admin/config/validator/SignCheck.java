@@ -22,11 +22,13 @@ public @interface SignCheck {
 
     /**
      * 时间容差（毫秒），默认 5 秒
+     * @return 处理结果值
      */
     long timeTolerance() default 5000;
 
     /**
      * 错误提示信息
+     * @return 文本结果
      */
     String message() default "签名验证失败";
 

@@ -16,7 +16,7 @@ public class PathValue2KGConvert {
      * 将 List<List<PathValue>> shortestPaths 类型的数据转换为 知识图谱需要的数据结构
      *
      * @param shortestPaths
-     * @return
+     * @return 结果映射
      */
     public static Map<String, Object> convertToKnowledgeGraph(List<List<PathValue>> shortestPaths) {
         Map<String, Object> knowledgeGraph = new HashMap<>();
@@ -46,7 +46,7 @@ public class PathValue2KGConvert {
      *
      * @param pathValues
      * @param relationKey   取得是关系部分的属性标签，比如如果是 红楼梦 数据的话，关系类型的属性是 type
-     * @return
+     * @return 结果映射
      */
     public static Map<String, Object> convertToKnowledgeGraph2(List<PathValue> pathValues, String relationKey) {
         Map<String, Object> knowledgeGraph = new HashMap<>();

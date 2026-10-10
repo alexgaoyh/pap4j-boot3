@@ -15,7 +15,7 @@ public class MilvusUtilss {
      * @param username      root
      * @param password      ""
      * @param maxRetryTimes 3
-     * @return
+     * @return Milvus 客户端实例
      */
     public MilvusClient milvusClient(String host, Integer port, String username, String password, Integer maxRetryTimes) {
         ConnectParam connectParam = ConnectParam.newBuilder()

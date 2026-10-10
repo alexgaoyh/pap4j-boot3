@@ -11,35 +11,35 @@ public interface HLMRepository extends Neo4jRepository<HLMEntity, String> {
     /**
      * 根据 name 查询
      * @param name
-     * @return
+     * @return 结果集合
      */
     public List<HLMEntity> findByName(String name);
 
     /**
      * 根据ID 匹配数据，这里的 ID 是 neo4j里默认会创建的一个Long型自增ID
      * @param id
-     * @return
+     * @return 处理结果对象
      */
     @Query("MATCH (n:HLM) WHERE id(n)={id} RETURN n")
     public HLMEntity getById(Long id);
 
     /**
      * 查询根节点，顶级 无入
-     * @return
+     * @return 结果集合
      */
     @Query("MATCH (n) WHERE not ()-->(n) RETURN DISTINCT n")
     public List<HLMEntity> getRoot();
 
     /**
      * 查询叶子节点，底级 无出
-     * @return
+     * @return 结果集合
      */
     @Query("MATCH (n) WHERE not (n)-->() RETURN DISTINCT n")
     public List<HLMEntity> getLeaf();
 
     /**
      * 查询循环节点
-     * @return
+     * @return 结果集合
      */
     @Query("MATCH (n)-[*]->(n) RETURN DISTINCT n")
     public List<HLMEntity> getCycle();

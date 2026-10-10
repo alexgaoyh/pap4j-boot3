@@ -139,6 +139,7 @@ public class DynamicRecordService {
      * 获取指定类型的记录列表
      *
      * @param formCode 表单编码
+     * @param pageable
      * @return 还原后的 Map 列表
      */
     @Transactional(readOnly = true)

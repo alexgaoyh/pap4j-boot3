@@ -124,7 +124,7 @@ public class OpenCVUtils {
 
     /**
      * 显示调用一下，初始化加载 library。
-     * @return
+     * @return 是否处理成功
      */
     public static Boolean empty() {
         return true;
@@ -136,6 +136,7 @@ public class OpenCVUtils {
      * @param sourceImg   原始大图   image abs path test image(https://sm.ms/image/S4wj2dLm5N1pM8c)
      * @param templateImg 模板小图   image abs path test image(https://sm.ms/image/9RV7wI6QfYJlxhn)
      * @param targetImg   匹配出来的结果   image abs path test image(https://sm.ms/image/QZPycMl3FSgihJ1)
+     * @return 是否处理成功
      */
     public static Boolean templateMatching(String sourceImg, String templateImg, String targetImg) {
         Mat src = null;
@@ -174,7 +175,7 @@ public class OpenCVUtils {
      * @param image1Path 图像1路径
      * @param image2Path 图像2路径
      * @param type       相似度算法： Histogram
-     * @return
+     * @return 计算结果值
      */
     public static double similarityImage(String image1Path, String image2Path, String type) {
         Mat image1 = null;
@@ -197,7 +198,7 @@ public class OpenCVUtils {
      * @param image
      * @param targetWidth
      * @param targetHeight
-     * @return
+     * @return 处理结果对象
      */
     public static Mat resizeAndCenter(Mat image, int targetWidth, int targetHeight) {
         Mat resizedImage = null;
@@ -236,7 +237,10 @@ public class OpenCVUtils {
      * 图像特征
      *
      * @param imagePath
-     * @return
+     * @param resizeFlag
+     * @param targetWidth
+     * @param targetHeight
+     * @return 处理结果数组
      */
     public static byte[] matOfKeyPointImage(String imagePath, Boolean resizeFlag, Integer targetWidth, Integer targetHeight) {
         Mat image = null;
@@ -354,7 +358,7 @@ public class OpenCVUtils {
      * 获得图像特征，可以指定特征长度。
      * @param imagePath
      * @param arrayLength
-     * @return
+     * @return 处理结果数组
      */
     public static float[] matOfKeyPointImage3(String imagePath, Long arrayLength) {
         Mat image = null;
@@ -398,7 +402,7 @@ public class OpenCVUtils {
      * HOG 特征提取器， 将原始图像灰度化，并且将原始图像缩放至相同大小后获得特征向量.
      * @param imagePath
      * @param widthOrHeight
-     * @return
+     * @return 处理结果数组
      */
     public static float[] hogFeatureExtraction(String imagePath, Integer widthOrHeight) {
         Mat image = null;
@@ -437,7 +441,8 @@ public class OpenCVUtils {
     /**
      * 将byte类型的arr转换成float
      *
-     * @return
+     * @param bytes
+     * @return 结果集合
      */
     public static List<Float> byteArrayToFloatList(byte[] bytes) {
         List<Float> d = new ArrayList<>(bytes.length / 8);
@@ -453,7 +458,7 @@ public class OpenCVUtils {
      * 将byte数组数据转换成float
      *
      * @param arr
-     * @return
+     * @return 计算结果值
      */
     public static float bytes2Float(byte[] arr) {
         int accum = 0;
@@ -487,7 +492,7 @@ public class OpenCVUtils {
     /**
      * 最大最小  归一化
      * @param data
-     * @return
+     * @return 处理结果数组
      */
     public static float[] normalize(float[] data) {
         if (data == null || data.length == 0) {
@@ -1164,7 +1169,7 @@ public class OpenCVUtils {
     /**
      * 图像倾斜角度
      * @param inputPath
-     * @return
+     * @return 计算结果值
      */
     public static double autoCorrectionGetAngle(String inputPath) {
         Mat src = null;
@@ -1227,7 +1232,7 @@ public class OpenCVUtils {
      * 可以配合 ImageMagick 生成这个边缘图： magick 20.jpg -canny  0x1+10%+30% edges.png
      * 角度通常是 顺时针为正，逆时针为负
      * @param inputPath
-     * @return
+     * @return 计算结果值
      */
     public static Double autoCorrectionGetAngle2(String inputPath) {
         Mat src = null;
@@ -1444,7 +1449,7 @@ public class OpenCVUtils {
      *
      * @param img_1
      * @param img_2
-     * @return
+     * @return 计算结果值
      */
     public static double faceCompare(String img_1, String img_2) throws Exception {
         Mat mat_1 = null;
@@ -1499,6 +1504,7 @@ public class OpenCVUtils {
      * @param imgPath1 第一张图像的文件路径
      * @param imgPath2 第二张图像的文件路径
      * @param resultPath 拼接后图像的保存路径
+     * @return 是否处理成功
      */
     public static boolean stitchImages(String imgPath1, String imgPath2, String resultPath) {
         Mat img1 = null;
@@ -1707,7 +1713,7 @@ public class OpenCVUtils {
      * "灰度世界" 白平衡算法
      * @param imgPath
      * @param resultPath
-     * @return
+     * @return 是否处理成功
      */
     public static boolean whiteBalance(String imgPath, String resultPath) {
         Mat image = null;
@@ -1803,7 +1809,7 @@ public class OpenCVUtils {
      * @param jA
      * @param iB
      * @param jB
-     * @return
+     * @return 处理结果对象
      */
     public static Mat stitchImagesByPoint(Mat imageA, Mat imageB, Point iA, Point jA, Point iB, Point jB) {
         Mat transformMatrix = null;

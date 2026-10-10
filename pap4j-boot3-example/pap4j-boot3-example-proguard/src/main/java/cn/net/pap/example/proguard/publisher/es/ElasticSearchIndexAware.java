@@ -7,6 +7,7 @@ public interface ElasticSearchIndexAware {
 
     /**
      * 返回 ES index 名称
+     * @return 文本结果
      */
     String esIndex();
 

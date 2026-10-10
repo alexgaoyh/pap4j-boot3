@@ -47,7 +47,7 @@ public class PointDTO implements Serializable {
     /**
      * 数据类型转换
      * @param coords  一个8位长度的集合，两两一组，分别对应 左下、右下、右上、左上 四个坐标点  [1744, 324, 2241, 324, 2241, 484, 1744, 484]
-     * @return
+     * @return 处理结果数组
      */
     public static PointDTO[] convert2RectangleBy4Point(List<Integer> coords) {
         if(coords == null || coords.size() != 8) {

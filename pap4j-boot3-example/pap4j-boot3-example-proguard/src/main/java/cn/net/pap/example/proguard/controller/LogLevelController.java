@@ -21,6 +21,8 @@ public class LogLevelController {
     /**
      * 获取指定logger的当前日志级别
      * GET /api/log-level/getLogLevel?logger=com.example
+     * @param logger
+     * @return 处理结果对象
      */
     @Operation(summary = "获取指定 Logger 的当前日志级别")
     @GetMapping("/getLogLevel")
@@ -37,6 +39,9 @@ public class LogLevelController {
     /**
      * 修改指定logger的日志级别
      * GET /api/log-level/setLogLevel?logger=com.example&level=DEBUG
+     * @param logger
+     * @param level
+     * @return 处理结果对象
      */
     @Operation(summary = "修改指定 Logger 的日志级别")
     @GetMapping("/setLogLevel")
@@ -58,6 +63,7 @@ public class LogLevelController {
     /**
      * 获取所有logger及其级别
      * GET /api/log-level/all
+     * @return 处理结果对象
      */
     @Operation(summary = "获取所有 Logger 及其当前的有效级别")
     @GetMapping("/all")

@@ -301,7 +301,7 @@ public class RectangleUtil {
      *
      * @param rectangleList1 矩形区域集合1 [x, x', y, y']
      * @param rectangleList2 矩形区域集合2 [x, x', y, y']
-     * @return
+     * @return 是否处理成功
      */
     public static boolean isOverlap(List<List<Double>> rectangleList1, List<List<Double>> rectangleList2) {
         if (rectangleList1 == null || rectangleList1.size() == 0 || rectangleList2 == null || rectangleList2.size() == 0) {
@@ -342,7 +342,7 @@ public class RectangleUtil {
      *
      * @param rect     [x y x' y']  (x,y)左上角  (x',y')右下角
      * @param partSize 切分的份数
-     * @return
+     * @return 结果集合
      */
     public static List<Double[]> verticalPart(Double[] rect, Integer partSize) {
         List<Double[]> subRects = new ArrayList<>();
@@ -389,6 +389,10 @@ public class RectangleUtil {
      * <p>
      * 每个 box = [leftTopX, rightBottomX, leftTopY, rightBottomY]
      *
+     * @param box1
+     * @param box2
+     * @param box3
+     * @param box4
      * @return 合并后的矩形结构：[minX, maxX, minY, maxY]
      */
     public static List<Double> mergeRectangles(List<Double> box1, List<Double> box2, List<Double> box3, List<Double> box4) {

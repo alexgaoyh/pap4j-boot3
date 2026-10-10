@@ -18,16 +18,23 @@ public interface ISplitRecordCrudService {
      * 建表（幂等）：{@code CREATE TABLE IF NOT EXISTS}。
      * DDL 自动提交、不随业务事务回滚；MySQL 下隐式提交，勿在 {@code @Transactional} 方法内调用。
      * 生产环境尽量不用自增，以保证不同数据库下规则一致（自增语法随方言而异）。
+     * @param tableName
      */
     void createTableIfNotExists(String tableName);
 
     /**
      * 新增：data 与 ext 检索副本同一事务双写，返回 DB 自增 id 并回填到 {@code dto.id}。
+     * @param tableName
+     * @param dto
+     * @return 处理结果值
      */
     Long save(String tableName, SplitRecordDTO dto);
 
     /**
      * 单条读取：按 id 查询，无结果返回 null。
+     * @param tableName
+     * @param id
+     * @return 处理结果对象
      */
     SplitRecordDTO get(String tableName, Long id);
 }

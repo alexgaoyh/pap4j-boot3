@@ -24,7 +24,7 @@ public class DetectLineUtilss {
      * @param bufferedImage
      * @param maxLines
      * @param type 1=houghLinePolar  2=houghLineFoot  3=houghLineFootSub
-     * @return
+     * @return 计算结果值
      */
     public static Double getAngleByHoughLines(BufferedImage bufferedImage, int maxLines, Integer type) {
         List<Double> anglesByHoughLines = getAnglesByHoughLines(bufferedImage, maxLines, type);

@@ -664,6 +664,8 @@ public class ZoomableImageView extends StackPane {
 
     /**
      * 自适应填充
+     * @param width
+     * @param height
      **/
     public void fitImage(double width, double height) {
         if (imageView.getImage() == null) {
@@ -726,6 +728,7 @@ public class ZoomableImageView extends StackPane {
 
     /**
      * 获取当前选择框的坐标和尺寸（相对于图像视图）
+     * @return 处理结果对象
      **/
     public Rectangle getSelectionRect() {
         return selectionRect;
@@ -733,6 +736,7 @@ public class ZoomableImageView extends StackPane {
 
     /**
      * 获取当前选择框在图像原始坐标中的位置 (Rectangle2D)
+     * @return 处理结果对象
      **/
     public javafx.geometry.Rectangle2D getSelectionInImageCoordinates() {
         if (!selectionRect.isVisible() || imageView.getImage() == null) {
@@ -803,6 +807,10 @@ public class ZoomableImageView extends StackPane {
 
     /**
      * 重新加载当前图像并刷新 UI
+     * @param scaleX
+     * @param scaleY
+     * @param translateX
+     * @param translateY
      */
     public void reloadCurrentImage(double scaleX, double scaleY, double translateX, double translateY) {
         if (imageList == null || imageList.isEmpty() || currentIndex < 0 || currentIndex >= imageList.size()) {

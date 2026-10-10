@@ -52,6 +52,7 @@ public class GenericCrudController {
      * 查询记录列表
      *
      * @param formCode 表单编码
+     * @param pageable
      * @return 数据 Map 列表
      */
     @GetMapping("/list")

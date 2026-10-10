@@ -52,6 +52,7 @@ public class LogbackConfigurationUtil {
      * @param sharedPackages 需要共享日志文件的包路径列表
      * @param sharedLogName  共享日志文件名(不含扩展名)
      * @param level          日志级别
+     * @param dataSource
      */
     public static void initSharedLogConfiguration(List<String> sharedPackages, String sharedLogName, Level level, DataSource dataSource) {
         LoggerContext context = getLoggerContext();
@@ -110,6 +111,7 @@ public class LogbackConfigurationUtil {
      * @param fileAppender    文件Appender
      * @param consoleAppender 控制台Appender
      * @param additive        是否传递给父Logger
+     * @param dbAppender
      */
     public static void configureLogger(LoggerContext context, String loggerName, Level level, Appender<ILoggingEvent> fileAppender, Appender<ILoggingEvent> consoleAppender, Appender<ILoggingEvent> dbAppender, boolean additive) {
         Logger logger = context.getLogger(loggerName);
@@ -202,7 +204,7 @@ public class LogbackConfigurationUtil {
      * @param context
      * @param appenderName
      * @param dataSource
-     * @return
+     * @return 处理结果对象
      */
     public static PapDBAppender createDBAppender(LoggerContext context, String appenderName, DataSource dataSource) {
         PapDBAppender appender = new PapDBAppender(dataSource);
@@ -214,6 +216,12 @@ public class LogbackConfigurationUtil {
 
     /**
      * 异步Appender封装器
+     * @param context
+     * @param asyncName
+     * @param targetAppender
+     * @param queueSize
+     * @param includeCallerData
+     * @return 处理结果对象
      */
     public static AsyncAppender createAsyncAppender(LoggerContext context,
                                                     String asyncName,

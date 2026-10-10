@@ -32,7 +32,7 @@ public class SimpleTaskQueue {
     /**
      * 因为限制了队列长度，所以这里增加一下返回值。
      * @param task
-     * @return
+     * @return 是否处理成功
      */
     public boolean addTask(SimpleTaskQueueDTO task) {
         return queue.offer(task);

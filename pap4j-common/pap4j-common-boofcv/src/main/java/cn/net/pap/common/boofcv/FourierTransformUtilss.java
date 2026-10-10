@@ -19,7 +19,7 @@ public class FourierTransformUtilss {
     /**
      * 仿照 https://github.com/lessthanoptimal/BoofCV/blob/v1.1.4/examples/src/main/java/boofcv/examples/imageprocessing/ExampleFourierTransform.java
      * @param filePath
-     * @return
+     * @return 处理结果对象
      */
     public static BufferedImage fourierTransformConvert(String filePath) {
         GrayF32 input = UtilImageIO.loadImage(UtilIO.pathExample(filePath), GrayF32.class);

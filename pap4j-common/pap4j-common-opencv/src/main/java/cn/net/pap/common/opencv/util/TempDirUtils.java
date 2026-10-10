@@ -54,6 +54,7 @@ public final class TempDirUtils {
      *
      * @param prefix   文件名前缀
      * @param function 使用临时文件的回调
+     * @param <T> 泛型参数
      * @return 回调函数的返回值
      */
     public static <T> T withTempFile(String prefix, Function<Path, T> function) throws Exception {
@@ -98,6 +99,7 @@ public final class TempDirUtils {
      * @param dir      指定目录
      * @param prefix   文件名前缀
      * @param function 使用临时文件的回调
+     * @param <T> 泛型参数
      * @return 回调函数的返回值
      */
     public static <T> T withTempFile(Path dir, String prefix, Function<Path, T> function) throws Exception {
@@ -136,6 +138,7 @@ public final class TempDirUtils {
      *
      * @param prefix   目录名前缀
      * @param function 使用临时目录的回调
+     * @param <T> 泛型参数
      * @return 回调函数的返回值
      */
     public static <T> T withTempDir(String prefix, Function<Path, T> function) throws Exception {
@@ -172,6 +175,7 @@ public final class TempDirUtils {
      * @param dir      指定目录
      * @param prefix   目录名前缀
      * @param function 使用临时目录的回调
+     * @param <T> 泛型参数
      * @return 回调函数的返回值
      */
     public static <T> T withTempDir(Path dir, String prefix, Function<Path, T> function) throws Exception {

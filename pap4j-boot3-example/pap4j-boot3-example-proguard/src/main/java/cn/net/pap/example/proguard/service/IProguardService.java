@@ -20,7 +20,7 @@ public interface IProguardService {
     /**
      * 批量保存，返回值含主键
      * @param proguards
-     * @return
+     * @return 结果集合
      */
     List<Proguard> saveAllAndFlush(List<Proguard> proguards);
 
@@ -33,7 +33,7 @@ public interface IProguardService {
     /**
      * 范围查询 参数格式为：  A-D,H   代表从 A 到 D，并且包含 H 的 数据   in (A,B,C,D,H)
      * @param proguardNameRange
-     * @return
+     * @return 结果集合
      */
     List<Proguard> searchAllByProguardNameRange(String proguardNameRange);
 
@@ -41,7 +41,7 @@ public interface IProguardService {
      * 原生SQL 分页查询
      * @param naiveSQL
      * @param pageable
-     * @return
+     * @return 处理结果对象
      */
     Page<Proguard> searchAllByNaiveSQL(String naiveSQL, Pageable pageable);
 
@@ -49,7 +49,7 @@ public interface IProguardService {
      * 原生SQL 分页查询 返回 Map
      * @param naiveSQL
      * @param pageable
-     * @return
+     * @return 处理结果对象
      */
     Page<Map> searchAllByNaiveSQLMap(String naiveSQL, Pageable pageable);
 
@@ -58,7 +58,7 @@ public interface IProguardService {
      * 实现类增加 org.springframework.transaction.annotation.Transactional 注解
      * @param naiveSQLList
      * @param paramsList
-     * @return
+     * @return 是否处理成功
      */
     Boolean executeNaiveSQLBatch(List<String> naiveSQLList, List<List<Object>> paramsList);
 
@@ -68,7 +68,7 @@ public interface IProguardService {
      * 批量执行多个SQL
      * 实现类增加 org.springframework.transaction.annotation.Transactional 注解
      * @param paramsList
-     * @return
+     * @return 是否处理成功
      */
     Boolean executeNaiveSQLInsertBatchUsingJDBC(List<String> paramsList);
 
@@ -76,7 +76,7 @@ public interface IProguardService {
      * 批量执行多个SQL
      * 实现类增加 org.springframework.transaction.annotation.Transactional 注解
      * @param executeSQLList
-     * @return
+     * @return 是否处理成功
      */
     Boolean executeNaiveSQLBatchUsingJDBC(List<String> executeSQLList);
 
@@ -84,7 +84,7 @@ public interface IProguardService {
      * 使用 JdbcTemplate 批量执行 SQL 更新
      * @param sql
      * @param paramsList
-     * @return
+     * @return 是否处理成功
      */
     Boolean executeNaiveSQLUpdateBatchUsingJdbcTemplate(String sql, List<List<Object>> paramsList);
 
@@ -101,7 +101,7 @@ public interface IProguardService {
     /**
      * 根据 proguardName 来设置 proguardIdx 的值，做一个插入操作
      * @param proguard
-     * @return
+     * @return 处理结果对象
      */
     Proguard saveProguardWithIdxSeq(Proguard proguard);
 
@@ -109,7 +109,7 @@ public interface IProguardService {
      * 避免深度分页，增加延迟关联分页
      * @param proguardName
      * @param pageable
-     * @return
+     * @return 处理结果对象
      */
     Page<Proguard> pageByProguardNameDeepPaging(String proguardName, Pageable pageable);
 

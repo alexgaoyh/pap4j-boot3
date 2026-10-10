@@ -10,7 +10,7 @@ public class SimilarityUtils {
      *
      * @param a
      * @param b
-     * @return
+     * @return 计算结果值
      */
     public static double cosineSimilarity(byte[] a, byte[] b) {
         if (a.length != b.length) {

@@ -42,6 +42,8 @@ public class DemoEnvAspect {
 
     /**
      * 拦截Controller和Service层的方法
+     * @param joinPoint 连接点
+     * @return 处理结果对象
      */
     @Around("within(@org.springframework.stereotype.Controller *) || " +
             "within(@org.springframework.web.bind.annotation.RestController *) || " +

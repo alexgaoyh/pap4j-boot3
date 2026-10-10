@@ -25,7 +25,7 @@ public class SQLCheckerUtil {
     /**
      * 是否是包含 where 语句 的 Select
      * @param sql
-     * @return
+     * @return 是否处理成功
      */
     public static Boolean isSelectWithNoWhere(String sql) {
         try {

@@ -10,7 +10,7 @@ public interface PersonRepository extends Neo4jRepository<PersonEntity, String> 
     /**
      * 根据 personName 查询
      * @param personName
-     * @return
+     * @return 结果集合
      */
     public List<PersonEntity> findByPersonName(String personName);
 

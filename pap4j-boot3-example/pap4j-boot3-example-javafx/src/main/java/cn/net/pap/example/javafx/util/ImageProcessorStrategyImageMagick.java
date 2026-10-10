@@ -37,6 +37,8 @@ public class ImageProcessorStrategyImageMagick implements ImageProcessorStrategy
     /**
      * 获取ImageMagick可执行文件路径
      * 如果文件不存在，则从resources中提取到临时目录
+     * @param extractDir
+     * @return 文本结果
      */
     public static String getMagickPath(String extractDir) throws Exception {
 
