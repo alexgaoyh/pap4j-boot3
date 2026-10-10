@@ -560,6 +560,18 @@
     </build>
 
     <profiles>
+        <!-- 快速打包：$env:JAVA_HOME="D:\openlogic-openjdk-17.0.12+7-windows-x64"; & "D:\apache-maven-3.8.8\bin\mvn.cmd" clean install -B -T 1C -Pquick -->
+        <profile>
+            <id>quick</id>
+            <properties>
+                <maven.skipTests>true</maven.skipTests>
+                <default.skip>true</default.skip>
+                <enforcer.skip>true</enforcer.skip>
+                <mdep.analyze.skip>true</mdep.analyze.skip>
+                <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+            </properties>
+        </profile>
         <profile>
             <id>agent</id>
             <properties>
