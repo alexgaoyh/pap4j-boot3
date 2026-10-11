@@ -31,10 +31,6 @@ import java.util.Map;
 public class JdbcAccessTemplateTest {
     private static final Logger log = LoggerFactory.getLogger(JdbcAccessTemplateTest.class);
 
-    static {
-        System.setProperty("hsqldb.method_class_names", "net.ucanaccess.*");
-    }
-
     @Configuration
     static class Config implements DisposableBean {
 
