@@ -125,6 +125,7 @@
 
 ## 👁️ AI 协同与运行时诊断 (AI & Run-time Diagnostics)
 *   [TakeScreenshotTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/html/TakeScreenshotTest.java): Headless 截图及 Console/Network 日志获取工具。支持前端页面渲染、交互与网络日志诊断，在无图沙箱环境下为 AI 提供“视觉之眼”。
+*   [PrintToPdfTest](../pap4j-common/pap4j-common-spider/src/test/java/cn/net/pap/common/spider/html/PrintToPdfTest.java): 基于 CDP (Chrome DevTools Protocol) 导出网页为 PDF。
 *   [JSONAPIController](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/main/java/cn/net/pap/example/dynamic/form/controller/JSONAPIController.java): 高精度语义匹配 Mock 转发控制器。支持 JSON/Query 无序比对、二进制流模拟、状态码与延时自定义；配合 [mock-api.html](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/main/resources/static/mock-api.html) 支持 cURL 导入实现离线业务联调。使用用例见 [MockApiServiceTests](../pap4j-boot3-example/pap4j-boot3-example-dynamic-form/src/test/java/cn/net/pap/example/dynamic/form/MockApiServiceTests.java)。
 *   [ApiRouterCatalogExporterTest](../pap4j-boot3-example/pap4j-boot3-example-proguard/src/test/java/cn/net/pap/example/proguard/diagnostics/ApiRouterCatalogExporterTest.java): Springdoc OpenAPI 接口契约自动生成器。单测编译运行时自动导出最新 OpenAPI 标准 JSON 文件至项目根目录的 `.ai/openapi/` 文件夹中（以当前子模块名称命名），在无图沙箱环境下为 AI 提供“API 契约活地图”。
     *   **多模块同步触发命令**（Git Bash / PowerShell 通用）：`mvn clean test "-Dtest=ApiRouterCatalogExporterTest" "-Dsurefire.failIfNoSpecifiedTests=false"` （可在项目根目录下执行，同步触发所有子模块中的该单测并生成对应的 `openapi.json`，且不会因其他子模块中找不到该测试类而导致构建失败）。
