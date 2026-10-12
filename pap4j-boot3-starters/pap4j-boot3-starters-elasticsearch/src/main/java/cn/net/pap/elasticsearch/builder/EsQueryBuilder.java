@@ -9,9 +9,11 @@ import org.springframework.util.StringUtils;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * 通用 Elasticsearch 查询 DSL 构建器
@@ -63,8 +65,9 @@ public class EsQueryBuilder {
         }
 
         // 5. 高亮 Highlight
-        if (request.getHighlight() != null && !CollectionUtils.isEmpty(request.getHighlight().getFields())) {
-            dsl.put("highlight", buildHighlight(request.getHighlight()));
+        Map<String, Object> highlightDsl = resolveHighlight(request);
+        if (highlightDsl != null && !highlightDsl.isEmpty()) {
+            dsl.put("highlight", highlightDsl);
         }
 
         // 6. 聚合 Aggregations
@@ -85,6 +88,7 @@ public class EsQueryBuilder {
 
     /**
      * 构建根 Bool 查询
+     *
      * @param request
      * @return Map<String, Object>
      */
@@ -204,6 +208,7 @@ public class EsQueryBuilder {
 
     /**
      * 构建单条 Leaf 查询
+     *
      * @param condition condition
      * @param innerHits innerHits
      * @return Map<String, Object>
@@ -214,19 +219,21 @@ public class EsQueryBuilder {
         }
 
         String rawField = condition.getField().trim();
-        String field;
-        if (rawField.startsWith("-")) {
-            String base = rawField.substring(1);
-            field = base.endsWith(".keyword") ? base : base + ".keyword";
-        } else {
-            field = rawField;
-        }
-
         String match = condition.getMatch();
         if (match == null) {
             match = "fuzzy";
         }
         match = match.trim().toLowerCase(Locale.ROOT);
+
+        String field;
+        if (rawField.startsWith("-")) {
+            String base = rawField.substring(1);
+            field = base.endsWith(".keyword") ? base : base + ".keyword";
+        } else if ("term".equals(match) || "terms".equals(match) || "wildcard".equals(match) || "prefix".equals(match)) {
+            field = (rawField.endsWith(".keyword") || isNestedField(rawField)) ? rawField : rawField + ".keyword";
+        } else {
+            field = rawField;
+        }
 
         Map<String, Object> leaf = new LinkedHashMap<>();
 
@@ -274,8 +281,9 @@ public class EsQueryBuilder {
 
     /**
      * 通用推导 nested 路径
+     *
      * @param condition condition
-     * @param field field
+     * @param field     field
      * @param innerHits innerHits
      * @return String
      */
@@ -291,9 +299,10 @@ public class EsQueryBuilder {
 
     /**
      * 包装为 nested 查询
-     * @param path path
+     *
+     * @param path       path
      * @param innerQuery innerQuery
-     * @param innerHits innerHits
+     * @param innerHits  innerHits
      * @return Map<String, Object>
      */
     private static Map<String, Object> wrapNested(String path, Map<String, Object> innerQuery, EsSearchRequest.InnerHits innerHits) {
@@ -325,6 +334,8 @@ public class EsQueryBuilder {
                 hlFields.put(field, fieldConf);
             }
             Map<String, Object> highlight = new LinkedHashMap<>();
+            highlight.put("pre_tags", Collections.singletonList("<span style='color:red;font-weight:bold'>"));
+            highlight.put("post_tags", Collections.singletonList("</span>"));
             highlight.put("fields", hlFields);
             ih.put("highlight", highlight);
         }
@@ -367,23 +378,26 @@ public class EsQueryBuilder {
         List<Object> shouldList = new ArrayList<>();
 
         if (!normalFields.isEmpty()) {
-            Map<String, Object> mm = new LinkedHashMap<>();
-            mm.put("query", keyword);
-            mm.put("fields", normalFields);
-            shouldList.add(Collections.singletonMap("multi_match", mm));
+            for (String f : normalFields) {
+                shouldList.add(Collections.singletonMap("match_phrase", Collections.singletonMap(f, keyword)));
+            }
         }
 
         if (!nestedFields.isEmpty()) {
-            Map<String, Object> nestedMatch;
-            if (nestedFields.size() == 1) {
-                nestedMatch = Collections.singletonMap("match", Collections.singletonMap(nestedFields.get(0), keyword));
-            } else {
-                Map<String, Object> mm = new LinkedHashMap<>();
-                mm.put("query", keyword);
-                mm.put("fields", nestedFields);
-                nestedMatch = Collections.singletonMap("multi_match", mm);
+            List<Object> nestedShouldList = new ArrayList<>();
+            for (String f : nestedFields) {
+                nestedShouldList.add(Collections.singletonMap("match_phrase", Collections.singletonMap(f, keyword)));
             }
-            shouldList.add(wrapNested(nestedPath, nestedMatch, innerHits));
+            Map<String, Object> nestedQuery;
+            if (nestedShouldList.size() == 1) {
+                nestedQuery = (Map<String, Object>) nestedShouldList.get(0);
+            } else {
+                Map<String, Object> nb = new LinkedHashMap<>();
+                nb.put("should", nestedShouldList);
+                nb.put("minimum_should_match", 1);
+                nestedQuery = Collections.singletonMap("bool", nb);
+            }
+            shouldList.add(wrapNested(nestedPath, nestedQuery, innerHits));
         }
 
         if (shouldList.isEmpty()) {
@@ -401,17 +415,102 @@ public class EsQueryBuilder {
     }
 
     /**
+     * 解析推导高亮配置
+     *
+     * @param request 检索请求
+     * @return 高亮 Map 配置，若无高亮则返回 null
+     */
+    private static Map<String, Object> resolveHighlight(EsSearchRequest request) {
+        if (request.getHighlight() != null && !CollectionUtils.isEmpty(request.getHighlight().getFields())) {
+            return buildHighlight(request.getHighlight());
+        }
+        if (Boolean.FALSE.equals(request.getAutoHighlight())) {
+            return null;
+        }
+        Set<String> hlFields = new LinkedHashSet<>();
+        if (StringUtils.hasText(request.getKeyword()) && !CollectionUtils.isEmpty(request.getKeywordFields())) {
+            for (String field : request.getKeywordFields()) {
+                if (StringUtils.hasText(field) && !isNestedField(field.trim())) {
+                    hlFields.add(field.trim());
+                }
+            }
+        }
+        if (!CollectionUtils.isEmpty(request.getConditions())) {
+            for (EsSearchRequest.Condition condition : request.getConditions()) {
+                String condField = resolveConditionHighlightField(condition);
+                if (condField != null && !isNestedField(condField)) {
+                    hlFields.add(condField);
+                }
+            }
+        }
+        if (!hlFields.isEmpty()) {
+            EsSearchRequest.Highlight autoHl = new EsSearchRequest.Highlight();
+            autoHl.setFields(new ArrayList<>(hlFields));
+            autoHl.setNumberOfFragments(0);
+            return buildHighlight(autoHl);
+        }
+        return null;
+    }
+
+    private static String resolveConditionHighlightField(EsSearchRequest.Condition condition) {
+        if (condition == null || !StringUtils.hasText(condition.getField())) {
+            return null;
+        }
+        String field = condition.getField().trim();
+        boolean navigationField = field.startsWith("-");
+        String normalizedField = navigationField ? field.substring(1) : field;
+        if (!StringUtils.hasText(normalizedField)) {
+            return null;
+        }
+        String match = condition.getMatch();
+        if (match != null) {
+            match = match.trim().toLowerCase(Locale.ROOT);
+        }
+        if (!navigationField && "range".equals(match)) {
+            return null;
+        }
+        if (navigationField || "term".equals(match) || "terms".equals(match)
+            || "wildcard".equals(match) || "prefix".equals(match)) {
+            return normalizedField.endsWith(".keyword") ? normalizedField : normalizedField + ".keyword";
+        }
+        return normalizedField;
+    }
+
+    /**
+     * 判断字段是否为 nested 嵌套字段路径
+     *
+     * @param field 字段名
+     * @return true 如果是 nested 嵌套字段路径
+     */
+    private static boolean isNestedField(String field) {
+        int separator = field.lastIndexOf('.');
+        if (separator <= 0) {
+            return false;
+        }
+        return !"keyword".equals(field.substring(separator + 1));
+    }
+
+    /**
      * 构建高亮 Highlight 配置
+     *
+     * @param highlight 高亮配置对象
+     * @return 高亮 Map 配置
      */
     private static Map<String, Object> buildHighlight(EsSearchRequest.Highlight highlight) {
         Map<String, Object> hl = new LinkedHashMap<>();
-        hl.put("pre_tags", Collections.singletonList(highlight.getPreTag()));
-        hl.put("post_tags", Collections.singletonList(highlight.getPostTag()));
+        String preTag = StringUtils.hasText(highlight.getPreTag())
+                ? highlight.getPreTag() : "<span style='color:red;font-weight:bold'>";
+        String postTag = StringUtils.hasText(highlight.getPostTag())
+                ? highlight.getPostTag() : "</span>";
+        hl.put("pre_tags", Collections.singletonList(preTag));
+        hl.put("post_tags", Collections.singletonList(postTag));
 
         Map<String, Object> fieldsMap = new LinkedHashMap<>();
         for (String f : highlight.getFields()) {
             Map<String, Object> conf = new LinkedHashMap<>();
-            conf.put("fragment_size", highlight.getFragmentSize() != null ? highlight.getFragmentSize() : 150);
+            if (highlight.getFragmentSize() != null) {
+                conf.put("fragment_size", highlight.getFragmentSize());
+            }
             conf.put("number_of_fragments", highlight.getNumberOfFragments() != null ? highlight.getNumberOfFragments() : 3);
             fieldsMap.put(f, conf);
         }

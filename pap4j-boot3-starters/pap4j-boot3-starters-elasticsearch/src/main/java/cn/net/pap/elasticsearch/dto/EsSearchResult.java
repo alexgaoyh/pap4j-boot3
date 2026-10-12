@@ -34,10 +34,21 @@ public class EsSearchResult {
     private Integer pageSize;
 
     /**
-     * 检索命中文档列表（SEARCH 用）
+     * 总页数（SEARCH 用）
+     */
+    private Long pages;
+
+    /**
+     * 检索命中文档列表（已合并高亮，SEARCH 用）
      */
     @Builder.Default
-    private List<HitRow> rows = Collections.emptyList();
+    private List<Map<String, Object>> rows = Collections.emptyList();
+
+    /**
+     * 命中文档行明细（包含 id / score / 原始 highlight，SEARCH 用）
+     */
+    @Builder.Default
+    private List<HitRow> hitRows = Collections.emptyList();
 
     /**
      * 聚合计算结果（AGGREGATE 用）

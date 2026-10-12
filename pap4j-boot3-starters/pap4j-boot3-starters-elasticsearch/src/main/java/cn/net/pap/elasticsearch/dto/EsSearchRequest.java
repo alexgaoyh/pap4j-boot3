@@ -82,6 +82,14 @@ public class EsSearchRequest {
     private Highlight highlight;
 
     /**
+     * 是否根据 keywordFields / conditions 自动推导高亮字段（默认 true）。
+     * <p>
+     * SEARCH 动作与参照实现一致会自动推导；NEIGHBORS 等场景可关闭以避免污染返回字段。
+     * </p>
+     */
+    private Boolean autoHighlight = Boolean.TRUE;
+
+    /**
      * nested inner_hits 高亮与子文档返回配置
      */
     private InnerHits innerHits;
@@ -95,6 +103,11 @@ public class EsSearchRequest {
      * 聚合后过滤（AGGREGATE 用，不影响聚合结果）
      */
     private List<Condition> postFilters;
+
+    /**
+     * 相邻定位匹配条件（NEIGHBORS 用，匹配当前记录在结果集中的位置）
+     */
+    private java.util.Map<String, Object> locate;
 
     // ==================== 聚合参数（AGGREGATE 专用） ====================
 

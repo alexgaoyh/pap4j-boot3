@@ -13,12 +13,12 @@ public enum SortOrder {
     /**
      * 升序
      */
-    ASC("asc"),
+    ASC("Asc"),
 
     /**
      * 降序
      */
-    DESC("desc");
+    DESC("Desc");
 
     private final String value;
 
