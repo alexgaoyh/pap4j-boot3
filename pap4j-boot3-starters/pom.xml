@@ -26,6 +26,7 @@
         <module>pap4j-boot3-starters-task</module>
         <module>pap4j-boot3-starters-quartz</module>
         <module>pap4j-boot3-starters-cache</module>
+        <module>pap4j-boot3-starters-elasticsearch</module>
     </modules>
 
     <properties>
