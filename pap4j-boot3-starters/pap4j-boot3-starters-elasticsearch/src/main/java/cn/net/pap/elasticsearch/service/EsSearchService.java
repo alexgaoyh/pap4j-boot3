@@ -19,7 +19,7 @@ import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -42,6 +42,12 @@ public class EsSearchService {
      * 默认每页条数（与参照实现保持一致）
      */
     private static final int DEFAULT_PAGE_SIZE = 10;
+
+    /**
+     * ES 响应反序列化类型，静态复用，避免每次请求创建匿名 TypeReference 实例
+     */
+    private static final TypeReference<Map<String, Object>> RESPONSE_TYPE = new TypeReference<>() {
+    };
 
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
@@ -97,9 +103,7 @@ public class EsSearchService {
         try {
             Request req = new Request("GET", endpoint);
             Response res = restClient.performRequest(req);
-            String json = EntityUtils.toString(res.getEntity(), StandardCharsets.UTF_8);
-            Map<String, Object> respMap = objectMapper.readValue(json, new TypeReference<>() {
-            });
+            Map<String, Object> respMap = readResponse(res);
 
             Boolean found = (Boolean) respMap.get("found");
             if (Boolean.TRUE.equals(found)) {
@@ -141,8 +145,11 @@ public class EsSearchService {
      * @return 检索结果
      */
     public EsSearchResult search(EsSearchRequest request) {
-        request.setPageNum(normalizePageNum(request.getPageNum()));
-        request.setPageSize(normalizePageSize(request.getPageSize()));
+        int pageNum = normalizePageNum(request.getPageNum());
+        int pageSize = normalizePageSize(request.getPageSize());
+        validateResultWindow(pageNum, pageSize);
+        request.setPageNum(pageNum);
+        request.setPageSize(pageSize);
 
         String targetIndex = resolveIndexName(request.getIndexName());
         Map<String, Object> dsl = EsQueryBuilder.buildSearchDsl(request);
@@ -181,9 +188,7 @@ public class EsSearchService {
             req.setJsonEntity(requestBody);
 
             Response res = restClient.performRequest(req);
-            String respBody = EntityUtils.toString(res.getEntity(), StandardCharsets.UTF_8);
-            return objectMapper.readValue(respBody, new TypeReference<>() {
-            });
+            return readResponse(res);
         } catch (IOException e) {
             log.error("[ES-Search] Failed to execute search query on index: {}", indexName, e);
             throw new RuntimeException("ES search execution failed on index: " + indexName);
@@ -201,7 +206,7 @@ public class EsSearchService {
     private EsSearchResult parseSearchResponse(EsSearchRequest request, Map<String, Object> respMap) {
         Map<String, Object> hitsWrapper = (Map<String, Object>) respMap.get("hits");
         long total = 0L;
-        List<Map<String, Object>> sourceRows = new ArrayList<>();
+        List<Map<String, Object>> sourceRows = Collections.emptyList();
         List<EsSearchResult.HitRow> rowList = new ArrayList<>();
 
         if (hitsWrapper != null) {
@@ -363,6 +368,36 @@ public class EsSearchService {
             }
         }
         return list;
+    }
+
+    /**
+     * 读取并解析 ES 响应体，直接流式反序列化，避免整段响应字符串拷贝
+     *
+     * @param res ES 响应
+     * @return 响应 Map
+     * @throws IOException 读取失败
+     */
+    private Map<String, Object> readResponse(Response res) throws IOException {
+        try (InputStream content = res.getEntity().getContent()) {
+            return objectMapper.readValue(content, RESPONSE_TYPE);
+        }
+    }
+
+    /**
+     * 深分页保护：from + size 不得超过 max_result_window，否则 ES 需跳过分片排序并按偏移量回溯，代价极高
+     *
+     * @param pageNum  页码
+     * @param pageSize 每页条数
+     */
+    private void validateResultWindow(int pageNum, int pageSize) {
+        long maxResultWindow = properties.getMaxResultWindow();
+        long from = (long) (pageNum - 1) * pageSize;
+        if (from + pageSize > maxResultWindow) {
+            throw new IllegalArgumentException(
+                    "Deep pagination rejected: from + size (" + (from + pageSize)
+                            + ") exceeds elasticsearch.max-result-window (" + maxResultWindow
+                            + "); pageNum=" + pageNum + ", pageSize=" + pageSize);
+        }
     }
 
     private int normalizePageNum(Integer pageNum) {
