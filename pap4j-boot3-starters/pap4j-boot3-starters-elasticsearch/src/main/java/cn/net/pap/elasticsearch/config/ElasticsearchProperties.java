@@ -1,6 +1,7 @@
 package cn.net.pap.elasticsearch.config;
 
 import lombok.Data;
+import lombok.ToString;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.ArrayList;
@@ -10,6 +11,7 @@ import java.util.List;
  * Elasticsearch 配置属性
  */
 @Data
+@ToString(exclude = "password")
 @ConfigurationProperties(prefix = "elasticsearch")
 public class ElasticsearchProperties {
 

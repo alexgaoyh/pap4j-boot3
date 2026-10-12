@@ -50,8 +50,9 @@ public class EsSearchResult {
     private Map<String, Object> record;
 
     /**
-     * ES 原始响应数据
+     * ES 原始响应数据（内部调试使用，JSON 序列化忽略防泄露）
      */
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Map<String, Object> rawResponse;
 
     /**

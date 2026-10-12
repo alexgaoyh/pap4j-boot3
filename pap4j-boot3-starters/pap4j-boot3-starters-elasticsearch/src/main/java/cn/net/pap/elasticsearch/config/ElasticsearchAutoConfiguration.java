@@ -73,7 +73,21 @@ public class ElasticsearchAutoConfiguration {
                         .setSocketTimeout(properties.getSocketTimeout())
         );
 
-        log.info("[ES-Client] Initialized RestClient with uris: {}", uris);
+        // 脱敏打印 URI
+        List<String> maskedUris = uris.stream()
+                .map(u -> {
+                    try {
+                        URI parsed = URI.create(u);
+                        if (parsed.getUserInfo() != null) {
+                            return u.replace(parsed.getUserInfo(), "***:***");
+                        }
+                    } catch (Exception ignored) {
+                        return "***";
+                    }
+                    return u;
+                })
+                .toList();
+        log.info("[ES-Client] Initialized RestClient with uris: {}", maskedUris);
         return builder.build();
     }
 

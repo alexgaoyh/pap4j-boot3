@@ -114,10 +114,10 @@ public class EsSearchService {
                 return EsSearchResult.builder().total(0L).record(null).build();
             }
             log.error("[ES-Record] Failed to query document rid: {} in index: {}", rid, targetIndex, e);
-            throw new RuntimeException("ES query record error: " + e.getMessage(), e);
+            throw new RuntimeException("ES query record failed on index: " + targetIndex);
         } catch (IOException e) {
             log.error("[ES-Record] IO error while querying document rid: {} in index: {}", rid, targetIndex, e);
-            throw new RuntimeException("ES IO error: " + e.getMessage(), e);
+            throw new RuntimeException("ES IO error on index: " + targetIndex);
         }
     }
 
@@ -170,7 +170,7 @@ public class EsSearchService {
             });
         } catch (IOException e) {
             log.error("[ES-Search] Failed to execute search query on index: {}", indexName, e);
-            throw new RuntimeException("ES search execution error: " + e.getMessage(), e);
+            throw new RuntimeException("ES search execution failed on index: " + indexName);
         }
     }
 
