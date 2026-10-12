@@ -45,10 +45,24 @@ public class PostmanCollectionReaderTest {
 
     private static final Path OUTPUT = Paths.get(System.getProperty("java.io.tmpdir"), "postman-collection.json");
 
-    /** 在页面里执行的 JS：读 IndexedDB 并把集合拼成树。 __NAME__ 会被替换成集合名。 */
+    private static final String VAR_OVERRIDES = buildVarOverrides();
+
+    private static String buildVarOverrides() {
+        ObjectNode node = MAPPER.createObjectNode();
+        for (String pair : System.getProperty("postman.vars", "").split("[;,]")) {
+            int i = pair.indexOf('=');
+            if (i > 0) node.put(pair.substring(0, i).trim(), pair.substring(i + 1).trim());
+        }
+        return node.toString();
+    }
+
+    /** 在页面里执行的 JS：读 IndexedDB，展平成 [{ name, curl }]。 __NAME__ 会被替换成集合名。 */
     private static final String JS = """
         (async () => {
           const COLLECTION_NAME = '__NAME__';
+          const OVERRIDES = __VARS__;   // -Dpostman.vars 注入的变量，优先级最高
+          const SQ = String.fromCharCode(39);   // '
+          const BS = String.fromCharCode(92);   // backslash
 
           function open(name) {
             return new Promise((res, rej) => {
@@ -72,25 +86,51 @@ public class PostmanCollectionReaderTest {
           }
 
           // shell 单引号转义
-          const q = s => "'" + String(s == null ? '' : s).replace(/'/g, "'\\''") + "'";
+          const q = s => SQ + String(s == null ? '' : s).split(SQ).join(SQ + BS + SQ + SQ) + SQ;
 
-          // 由内部实体拼一条 curl（partial 实体只有 descriptor/url）
-          function toCurl(v) {
+          // 用变量表把 {{var}} 替换成实际值（解析不了就保留原样）
+          const resolve = (s, vars) => String(s == null ? '' : s)
+            .replace(/\\{\\{([^}]+)\\}\\}/g, (m, k) => vars[k] ? vars[k] : m);
+
+          // 把单独的 queryParams 合并进 url（url 里已有的不重复）
+          function withQuery(url, queryParams) {
+            const enabled = (queryParams || []).filter(p => p && !p.disabled && p.key);
+            if (!enabled.length) return url;
+            const existing = new Set((url.split('?')[1] || '').split('&').filter(Boolean)
+              .map(p => decodeURIComponent(p.split('=')[0])));
+            const extra = enabled.filter(p => !existing.has(p.key))
+              .map(p => encodeURIComponent(p.key) + '=' + encodeURIComponent(p.value == null ? '' : p.value));
+            return extra.length ? url + (url.indexOf('?') === -1 ? '?' : '&') + extra.join('&') : url;
+          }
+
+          // 请求体 -> curl data 参数（兼容 {type,content} 与 v2 的 {mode,raw} / 表单）
+          function dataArgs(body, vars) {
+            if (!body) return [];
+            if (typeof body.content === 'string' && body.content !== '') return ['--data-raw ' + q(resolve(body.content, vars))];
+            if (typeof body.raw === 'string' && body.raw !== '') return ['--data-raw ' + q(resolve(body.raw, vars))];
+            if (Array.isArray(body.urlencoded)) {
+              const d = body.urlencoded.filter(x => x && !x.disabled && x.key)
+                .map(x => encodeURIComponent(x.key) + '=' + encodeURIComponent(x.value == null ? '' : x.value)).join('&');
+              return d ? ['--data-raw ' + q(d)] : [];
+            }
+            if (Array.isArray(body.formdata)) {
+              return body.formdata.filter(x => x && !x.disabled && x.key)
+                .map(x => x.type === 'file' ? '-F ' + q(x.key + '=@' + (x.src || '')) : '-F ' + q(x.key + '=' + (x.value || '')));
+            }
+            return [];
+          }
+
+          // 由内部实体拼一条可执行 curl
+          function toCurl(v, vars) {
             const method = (v.method || v.descriptor || 'GET').toUpperCase();
+            const url = typeof v.url === 'string' ? v.url : (v.url && v.url.raw ? v.url.raw : '');
             const parts = ['curl'];
             if (method !== 'GET') parts.push('-X ' + method);
-            parts.push(q(v.url));
+            parts.push(q(withQuery(resolve(url, vars), v.queryParams)));
             (v.headers || []).forEach(h => {
-              if (h && !h.disabled && h.key) parts.push('-H ' + q(h.key + ': ' + (h.value || '')));
+              if (h && !h.disabled && h.key) parts.push('-H ' + q(resolve(h.key + ': ' + (h.value || ''), vars)));
             });
-            const b = v.body;
-            if (b && b.mode === 'raw' && b.raw) {
-              parts.push('--data-raw ' + q(b.raw));
-            } else if (b && b.mode === 'urlencoded' && Array.isArray(b.urlencoded)) {
-              const d = b.urlencoded.filter(x => x && !x.disabled && x.key)
-                .map(x => encodeURIComponent(x.key) + '=' + encodeURIComponent(x.value || '')).join('&');
-              if (d) parts.push('--data-raw ' + q(d));
-            }
+            dataArgs(v.body, vars).forEach(a => parts.push(a));
             return parts.join(' ');
           }
 
@@ -101,24 +141,10 @@ public class PostmanCollectionReaderTest {
 
           const db = await open(target.name);
           const [keys, vals] = await getAll(db, 'v3-collections');
-
           const map = new Map();
           for (let i = 0; i < keys.length; i++) {
             const v = vals[i] && vals[i].value ? vals[i].value : vals[i];
             map.set(keys[i], v);
-          }
-
-          // 展平成 [{ name: '集合 / 目录 / 接口', curl: '...' }]
-          const out = [];
-          function walk(node, path) {
-            const v = map.get(node.id);
-            if (!v) return;
-            const name = path ? path + ' / ' + v.name : v.name;
-            if (v.$kind === 'collection' || v.$kind === 'folder') {
-              (v.items || []).forEach(child => walk(child, name));
-            } else if (v.$kind === 'http-request') {
-              out.push({ name: name, curl: toCurl(v) });
-            }
           }
 
           let rootId = null;
@@ -130,7 +156,38 @@ public class PostmanCollectionReaderTest {
             for (const [k, v] of map) if (v && v.$kind === 'collection') all.push({ id: k, name: v.name });
             return JSON.stringify({ error: '未找到集合: ' + COLLECTION_NAME, collections: all }, null, 2);
           }
-          walk({ id: rootId }, '');
+
+          // 变量表：环境变量兜底，集合变量优先
+          const vars = {};
+          const addVars = (list, overwrite) => (list || []).forEach(x => {
+            if (x && x.key && x.disabled !== true && x.enabled !== false && x.value != null && x.value !== ''
+                && (overwrite || vars[x.key] == null)) vars[x.key] = x.value;
+          });
+          const envDb = dbs.find(d => d.name && d.name.indexOf('-environments') !== -1);
+          if (envDb) {
+            const edb = await open(envDb.name);
+            const [ek, ev] = await getAll(edb, 'environments');
+            for (let i = 0; i < ek.length; i++) {
+              const e = ev[i] && ev[i].value ? ev[i].value : ev[i];
+              addVars(e && e.values, false);
+            }
+          }
+          addVars(map.get(rootId).variables, true);
+          addVars(Object.keys(OVERRIDES).map(k => ({ key: k, value: OVERRIDES[k] })), true);
+
+          // 展平成 [{ name: '集合 / 目录 / 接口', curl: '...' }]
+          const out = [];
+          (function walk(node, path) {
+            const v = map.get(node.id);
+            if (!v) return;
+            const name = path ? path + ' / ' + v.name : v.name;
+            if (v.$kind === 'collection' || v.$kind === 'folder') {
+              (v.items || []).forEach(child => walk(child, name));
+            } else if (v.$kind === 'http-request') {
+              out.push({ name: name, curl: toCurl(v, vars) });
+            }
+          })({ id: rootId }, '');
+
           return JSON.stringify(out, null, 2);
         })()
         """;
@@ -150,7 +207,7 @@ public class PostmanCollectionReaderTest {
         String wsUrl = findPageWebSocket(port, COLLECTION_NAME);
         log.info("[2/3] 页面 target = {}", wsUrl);
 
-        String json = evaluate(wsUrl, JS.replace("__NAME__", COLLECTION_NAME));
+        String json = evaluate(wsUrl, JS.replace("__NAME__", COLLECTION_NAME).replace("__VARS__", VAR_OVERRIDES));
         Files.writeString(OUTPUT, json, StandardCharsets.UTF_8);
         JsonNode arr = MAPPER.readTree(json);
         log.info("[3/3] 已写入 {}（{} 个接口）", OUTPUT.toAbsolutePath(), arr.isArray() ? arr.size() : 0);
