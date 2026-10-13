@@ -89,8 +89,8 @@ public class EsQueryBuilder {
     /**
      * 构建根 Bool 查询
      *
-     * @param request
-     * @return Map<String, Object>
+     * @param request 统一检索请求
+     * @return 根查询 DSL Map
      */
     private static Map<String, Object> buildRootQuery(EsSearchRequest request) {
         List<Object> mustClauses = new ArrayList<>();
@@ -210,10 +210,10 @@ public class EsQueryBuilder {
     /**
      * 构建单条 Leaf 查询
      *
-     * @param condition       condition
-     * @param innerHitsList   innerHits 列表
+     * @param condition       检索条件
+     * @param innerHitsList   innerHits 配置列表
      * @param enableInnerHits 是否挂载 inner_hits
-     * @return Map<String, Object>
+     * @return 叶子查询 DSL Map
      */
     private static Map<String, Object> buildLeafQuery(EsSearchRequest.Condition condition, List<EsSearchRequest.InnerHits> innerHitsList, boolean enableInnerHits) {
         if (condition == null || !StringUtils.hasText(condition.getField())) {
@@ -285,10 +285,10 @@ public class EsQueryBuilder {
     /**
      * 通用推导 nested 路径
      *
-     * @param condition     condition
-     * @param field         field
-     * @param innerHitsList innerHits 列表
-     * @return String
+     * @param condition     检索条件
+     * @param field         字段名
+     * @param innerHitsList innerHits 配置列表
+     * @return nested 路径字符串，非 nested 字段时返回 null
      */
     private static String resolveNestedPath(EsSearchRequest.Condition condition, String field, List<EsSearchRequest.InnerHits> innerHitsList) {
         if (StringUtils.hasText(condition.getNestedPath())) {
@@ -343,10 +343,10 @@ public class EsQueryBuilder {
     /**
      * 包装为 nested 查询（支持单层以及多级 nested 嵌套洋葱模型包装）
      *
-     * @param path       path（可为单级如 "comments"，也可为多级如 "dept.employee"）
-     * @param innerQuery innerQuery
-     * @param innerHits  innerHits
-     * @return Map<String, Object>
+     * @param path       nested 路径（可为单级如 comments，也可为多级如 dept.employee）
+     * @param innerQuery 内部查询 DSL
+     * @param innerHits  innerHits 配置
+     * @return 包装后的 nested 查询 DSL Map
      */
     private static Map<String, Object> wrapNested(String path, Map<String, Object> innerQuery, EsSearchRequest.InnerHits innerHits) {
         if (!StringUtils.hasText(path)) {
@@ -370,10 +370,11 @@ public class EsQueryBuilder {
         }
 
         String deepestPath = levels.get(levels.size() - 1);
-        Map<String, Object> currentNested = wrapSingleNested(deepestPath, innerQuery, innerHits);
+        Map<String, Object> currentNested = wrapSingleNested(deepestPath, innerQuery, null);
 
         for (int i = levels.size() - 2; i >= 0; i--) {
-            currentNested = wrapSingleNested(levels.get(i), currentNested, null);
+            boolean isTopLevel = (i == 0);
+            currentNested = wrapSingleNested(levels.get(i), currentNested, isTopLevel ? innerHits : null);
         }
 
         return currentNested;
@@ -483,7 +484,7 @@ public class EsQueryBuilder {
             }
             Map<String, Object> nestedQuery;
             if (nestedShouldList.size() == 1) {
-                nestedQuery = (Map<String, Object>) nestedShouldList.get(0);
+                nestedQuery = castToMap(nestedShouldList.get(0));
             } else {
                 Map<String, Object> nb = new LinkedHashMap<>();
                 nb.put("should", nestedShouldList);
@@ -498,7 +499,7 @@ public class EsQueryBuilder {
         }
 
         if (shouldList.size() == 1) {
-            return (Map<String, Object>) shouldList.get(0);
+            return castToMap(shouldList.get(0));
         }
 
         Map<String, Object> bool = new LinkedHashMap<>();
@@ -523,15 +524,19 @@ public class EsQueryBuilder {
         Set<String> hlFields = new LinkedHashSet<>();
         if (StringUtils.hasText(request.getKeyword()) && !CollectionUtils.isEmpty(request.getKeywordFields())) {
             for (String field : request.getKeywordFields()) {
-                if (StringUtils.hasText(field) && !isNestedField(field.trim())) {
+                if (StringUtils.hasText(field) && !isNestedPathField(field.trim(), request.getInnerHits())) {
                     hlFields.add(field.trim());
                 }
             }
         }
         if (!CollectionUtils.isEmpty(request.getConditions())) {
             for (EsSearchRequest.Condition condition : request.getConditions()) {
+                if (condition != null && StringUtils.hasText(condition.getNestedPath())) {
+                    // nested 字段的高亮应由 inner_hits 承载，不注入顶层 highlight
+                    continue;
+                }
                 String condField = resolveConditionHighlightField(condition);
-                if (condField != null && !isNestedField(condField)) {
+                if (condField != null && !isNestedPathField(condField, request.getInnerHits())) {
                     hlFields.add(condField);
                 }
             }
@@ -584,6 +589,25 @@ public class EsQueryBuilder {
     }
 
     /**
+     * 判断字段是否属于 nested 检索范畴：优先依据 innerHits 声明的路径前缀，其次回退到字段名启发式判断。
+     *
+     * @param field         字段名
+     * @param innerHitsList innerHits 配置列表
+     * @return true 表示属于 nested 字段
+     */
+    private static boolean isNestedPathField(String field, List<EsSearchRequest.InnerHits> innerHitsList) {
+        if (!CollectionUtils.isEmpty(innerHitsList)) {
+            for (EsSearchRequest.InnerHits ih : innerHitsList) {
+                String path = resolvePathFromInnerHits(ih);
+                if (StringUtils.hasText(path) && field.startsWith(path + ".")) {
+                    return true;
+                }
+            }
+        }
+        return isNestedField(field);
+    }
+
+    /**
      * 构建高亮 Highlight 配置
      *
      * @param highlight 高亮配置对象
@@ -623,15 +647,10 @@ public class EsQueryBuilder {
             String scriptSource = scriptSort.getScriptSource();
 
             // 若未提供自定义脚本，但提供了 baseDayOfYear 和 目标排序字段，则自动生成通用月日邻近度排序脚本
-            if (!StringUtils.hasText(scriptSource) && scriptSort.getBaseDayOfYear() != null && StringUtils.hasText(scriptSort.getField())) {
-                scriptSource = "String d = doc['" + scriptSort.getField() + "'].value; " +
-                               "if (d == null || d.length() < 8) return 999; " +
-                               "int m = Integer.parseInt(d.substring(4, 6)); " +
-                               "int day = Integer.parseInt(d.substring(6, 8)); " +
-                               "int[] daysBefore = new int[]{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}; " +
-                               "int doy = daysBefore[m - 1] + day; " +
-                               "double diff = Math.abs(doy - params.baseDayOfYear); " +
-                               "return Math.min(diff, 365.0 - diff);";
+            if (!StringUtils.hasText(scriptSource)
+                    && scriptSort.getBaseDayOfYear() != null
+                    && StringUtils.hasText(scriptSort.getField())) {
+                scriptSource = buildDefaultDateSortScript(scriptSort.getField());
             }
 
             if (StringUtils.hasText(scriptSource)) {
@@ -643,10 +662,13 @@ public class EsQueryBuilder {
                 scriptDetail.put("lang", "painless");
 
                 if (scriptSort.getBaseDayOfYear() != null) {
-                    scriptDetail.put("params", Collections.singletonMap("baseDayOfYear", scriptSort.getBaseDayOfYear()));
+                    scriptDetail.put("params", Collections.singletonMap("baseDayOfYear",
+                            scriptSort.getBaseDayOfYear()));
                 }
                 scriptObj.put("script", scriptDetail);
-                scriptObj.put("order", scriptSort.getOrder() != null ? scriptSort.getOrder().getValue() : "asc");
+                String orderVal = scriptSort.getOrder() != null
+                        ? scriptSort.getOrder().getValue() : "asc";
+                scriptObj.put("order", orderVal);
 
                 sortList.add(Collections.singletonMap("_script", scriptObj));
             }
@@ -706,7 +728,8 @@ public class EsQueryBuilder {
                     terms.put("field", node.getField());
                     terms.put("size", node.getSize() != null ? node.getSize() : 10);
                     if (StringUtils.hasText(node.getOrderKey())) {
-                        String orderDir = node.getOrderDir() != null ? node.getOrderDir().getValue() : "desc";
+                        String orderDir = (node.getOrderDir() != null)
+                                ? node.getOrderDir().getValue() : "desc";
                         terms.put("order", Collections.singletonMap(node.getOrderKey(), orderDir));
                     }
                     aggBody.put("terms", terms);
@@ -737,8 +760,10 @@ public class EsQueryBuilder {
                     if (!CollectionUtils.isEmpty(node.getSorts())) {
                         List<Object> sortList = new ArrayList<>();
                         for (EsSearchRequest.Sort sort : node.getSorts()) {
-                            String dir = sort.getOrder() != null ? sort.getOrder().getValue() : "desc";
-                            sortList.add(Collections.singletonMap(sort.getField(), Collections.singletonMap("order", dir)));
+                            String dir = (sort.getOrder() != null)
+                                    ? sort.getOrder().getValue() : "desc";
+                            sortList.add(Collections.singletonMap(sort.getField(),
+                                    Collections.singletonMap("order", dir)));
                         }
                         topHits.put("sort", sortList);
                     }
@@ -764,5 +789,21 @@ public class EsQueryBuilder {
         }
 
         return aggsMap;
+    }
+
+    private static String buildDefaultDateSortScript(String field) {
+        return "String d = doc['" + field + "'].value; "
+                + "if (d == null || d.length() < 8) return 999; "
+                + "int m = Integer.parseInt(d.substring(4, 6)); "
+                + "int day = Integer.parseInt(d.substring(6, 8)); "
+                + "int[] daysBefore = new int[]{0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334}; "
+                + "int doy = daysBefore[m - 1] + day; "
+                + "double diff = Math.abs(doy - params.baseDayOfYear); "
+                + "return Math.min(diff, 365.0 - diff);";
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Map<String, Object> castToMap(Object obj) {
+        return (Map<String, Object>) obj;
     }
 }

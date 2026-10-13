@@ -85,7 +85,7 @@ public class EsSearchRequest {
     /**
      * 是否根据 keywordFields / conditions 自动推导高亮字段（默认 true）。
      * <p>
-     * SEARCH 动作与参照实现一致会自动推导；NEIGHBORS 等场景可关闭以避免污染返回字段。
+     * SEARCH 动作会自动推导；若业务已自行拼装返回字段、不希望额外注入高亮，可置为 false。
      * </p>
      */
     private Boolean autoHighlight = Boolean.TRUE;
@@ -106,11 +106,6 @@ public class EsSearchRequest {
      */
     private List<Condition> postFilters;
 
-    /**
-     * 相邻定位匹配条件（NEIGHBORS 用，匹配当前记录在结果集中的位置）
-     */
-    private java.util.Map<String, Object> locate;
-
     // ==================== 聚合参数（AGGREGATE 专用） ====================
 
     /**
@@ -119,7 +114,11 @@ public class EsSearchRequest {
     private List<AggNode> aggregations;
 
     /**
-     * 是否只返回 buckets（默认 true）
+     * 是否只返回结构化 buckets（默认 true）。
+     * <p>
+     * true：返回简化的桶结构（terms/nested 为 {key,count} 列表，cardinality/value_count 为标量）；
+     * false：返回 ES 原始 aggregations 结构，便于业务方读取完整 metric 信息。
+     * </p>
      */
     private Boolean returnBucketsOnly = Boolean.TRUE;
 

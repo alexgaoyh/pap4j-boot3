@@ -47,10 +47,7 @@ public class ElasticsearchAutoConfiguration {
         }
 
         HttpHost[] httpHosts = uris.stream()
-                .map(uriStr -> {
-                    URI uri = URI.create(uriStr);
-                    return new HttpHost(uri.getHost(), uri.getPort(), uri.getScheme());
-                })
+                .map(this::toHttpHost)
                 .toArray(HttpHost[]::new);
 
         RestClientBuilder builder = RestClient.builder(httpHosts);
@@ -62,33 +59,38 @@ public class ElasticsearchAutoConfiguration {
                     new UsernamePasswordCredentials(properties.getUsername(), properties.getPassword()));
 
             builder.setHttpClientConfigCallback(httpClientBuilder ->
-                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider)
-            );
+                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
         }
 
         // 配置超时参数
         builder.setRequestConfigCallback(requestConfigBuilder ->
                 requestConfigBuilder
                         .setConnectTimeout(properties.getConnectionTimeout())
-                        .setSocketTimeout(properties.getSocketTimeout())
-        );
+                        .setSocketTimeout(properties.getSocketTimeout()));
 
         // 脱敏打印 URI
         List<String> maskedUris = uris.stream()
-                .map(u -> {
-                    try {
-                        URI parsed = URI.create(u);
-                        if (parsed.getUserInfo() != null) {
-                            return u.replace(parsed.getUserInfo(), "***:***");
-                        }
-                    } catch (Exception ignored) {
-                        return "***";
-                    }
-                    return u;
-                })
+                .map(this::maskUri)
                 .toList();
         log.info("[ES-Client] Initialized RestClient with uris: {}", maskedUris);
         return builder.build();
+    }
+
+    private HttpHost toHttpHost(String uriStr) {
+        URI uri = URI.create(uriStr);
+        return new HttpHost(uri.getHost(), uri.getPort(), uri.getScheme());
+    }
+
+    private String maskUri(String uriStr) {
+        try {
+            URI parsed = URI.create(uriStr);
+            if (parsed.getUserInfo() != null) {
+                return uriStr.replace(parsed.getUserInfo(), "***:***");
+            }
+        } catch (Exception ignored) {
+            return "***";
+        }
+        return uriStr;
     }
 
     /**

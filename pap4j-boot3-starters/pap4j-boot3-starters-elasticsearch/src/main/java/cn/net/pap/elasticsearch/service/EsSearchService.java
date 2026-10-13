@@ -126,12 +126,19 @@ public class EsSearchService {
                         .build();
             }
         } catch (ResponseException e) {
-            if (e.getResponse().getStatusLine().getStatusCode() == 404) {
+            int status = e.getResponse().getStatusLine().getStatusCode();
+            if (status == 404) {
                 log.info("[ES-Record] Document not found for rid: {} in index: {}", rid, targetIndex);
-                return EsSearchResult.builder().total(0L).record(null).build();
+                return EsSearchResult.builder()
+                        .total(0L)
+                        .pageNum(1)
+                        .pageSize(1)
+                        .record(null)
+                        .build();
             }
             log.error("[ES-Record] Failed to query document rid: {} in index: {}", rid, targetIndex, e);
-            throw new RuntimeException("ES query record failed on index: " + targetIndex);
+            throw new RuntimeException("ES query record failed on index: " + targetIndex
+                    + ", status=" + status + ", reason=" + extractFailureReason(e));
         } catch (IOException e) {
             log.error("[ES-Record] IO error while querying document rid: {} in index: {}", rid, targetIndex, e);
             throw new RuntimeException("ES IO error on index: " + targetIndex);
@@ -189,6 +196,11 @@ public class EsSearchService {
 
             Response res = restClient.performRequest(req);
             return readResponse(res);
+        } catch (ResponseException e) {
+            log.error("[ES-Search] Elasticsearch rejected the search on index: {}", indexName, e);
+            throw new RuntimeException("ES search execution failed on index: " + indexName
+                    + ", status=" + e.getResponse().getStatusLine().getStatusCode()
+                    + ", reason=" + extractFailureReason(e));
         } catch (IOException e) {
             log.error("[ES-Search] Failed to execute search query on index: {}", indexName, e);
             throw new RuntimeException("ES search execution failed on index: " + indexName);
@@ -206,7 +218,7 @@ public class EsSearchService {
     private EsSearchResult parseSearchResponse(EsSearchRequest request, Map<String, Object> respMap) {
         Map<String, Object> hitsWrapper = (Map<String, Object>) respMap.get("hits");
         long total = 0L;
-        List<Map<String, Object>> sourceRows = Collections.emptyList();
+        List<Map<String, Object>> sourceRows = new ArrayList<>();
         List<EsSearchResult.HitRow> rowList = new ArrayList<>();
 
         if (hitsWrapper != null) {
@@ -236,6 +248,12 @@ public class EsSearchService {
                             .highlight(highlight)
                             .innerHits(innerHits)
                             .build());
+
+                    Map<String, Object> row = source != null ? new LinkedHashMap<>(source) : new LinkedHashMap<>();
+                    if (!CollectionUtils.isEmpty(highlight)) {
+                        row.put("highlight", highlight);
+                    }
+                    sourceRows.add(row);
                 }
             }
         }
@@ -280,7 +298,12 @@ public class EsSearchService {
         }
 
         Map<String, Object> rawAggs = (Map<String, Object>) respMap.get("aggregations");
-        Map<String, Object> aggs = parseAggregations(rawAggs, request.getAggregations());
+        Map<String, Object> aggs;
+        if (Boolean.FALSE.equals(request.getReturnBucketsOnly())) {
+            aggs = rawAggs != null ? rawAggs : new LinkedHashMap<>();
+        } else {
+            aggs = parseAggregations(rawAggs, request.getAggregations());
+        }
 
         return EsSearchResult.builder()
                 .total(total)
@@ -390,6 +413,24 @@ public class EsSearchService {
         try (InputStream content = res.getEntity().getContent()) {
             return objectMapper.readValue(content, RESPONSE_TYPE);
         }
+    }
+
+    /**
+     * 尽力从 ES 错误响应中提取原因正文，避免把 400/404/401 等业务可诊断的信息吞成一句笼统错误。
+     *
+     * @param e ES 响应异常
+     * @return 原始错误正文；若不可读则回退到异常 message
+     */
+    private String extractFailureReason(ResponseException e) {
+        try {
+            String body = EntityUtils.toString(e.getResponse().getEntity());
+            if (StringUtils.hasText(body)) {
+                return body;
+            }
+        } catch (IOException | RuntimeException ex) {
+            log.error("[ES] Failed to read Elasticsearch error response body", ex);
+        }
+        return e.getMessage();
     }
 
     /**
