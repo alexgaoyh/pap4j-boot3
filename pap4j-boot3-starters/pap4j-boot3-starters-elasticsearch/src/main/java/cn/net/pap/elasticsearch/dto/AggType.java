@@ -27,7 +27,12 @@ public enum AggType {
     /**
      * 取 Top N 文档 (top_hits)
      */
-    TOP_HITS;
+    TOP_HITS,
+
+    /**
+     * 嵌套聚合包装器 (nested)
+     */
+    NESTED;
 
     /**
      * 根据字符串解析聚合类型

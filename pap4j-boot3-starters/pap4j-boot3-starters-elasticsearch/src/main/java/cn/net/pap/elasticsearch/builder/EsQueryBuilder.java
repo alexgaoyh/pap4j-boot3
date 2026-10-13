@@ -341,14 +341,48 @@ public class EsQueryBuilder {
     }
 
     /**
-     * 包装为 nested 查询
+     * 包装为 nested 查询（支持单层以及多级 nested 嵌套洋葱模型包装）
      *
-     * @param path       path
+     * @param path       path（可为单级如 "comments"，也可为多级如 "dept.employee"）
      * @param innerQuery innerQuery
      * @param innerHits  innerHits
      * @return Map<String, Object>
      */
     private static Map<String, Object> wrapNested(String path, Map<String, Object> innerQuery, EsSearchRequest.InnerHits innerHits) {
+        if (!StringUtils.hasText(path)) {
+            return innerQuery;
+        }
+
+        int dotIdx = path.indexOf('.');
+        if (dotIdx <= 0) {
+            return wrapSingleNested(path, innerQuery, innerHits);
+        }
+
+        String[] parts = path.split("\\.");
+        List<String> levels = new ArrayList<>(parts.length);
+        StringBuilder sb = new StringBuilder();
+        for (String part : parts) {
+            if (sb.length() > 0) {
+                sb.append(".");
+            }
+            sb.append(part);
+            levels.add(sb.toString());
+        }
+
+        String deepestPath = levels.get(levels.size() - 1);
+        Map<String, Object> currentNested = wrapSingleNested(deepestPath, innerQuery, innerHits);
+
+        for (int i = levels.size() - 2; i >= 0; i--) {
+            currentNested = wrapSingleNested(levels.get(i), currentNested, null);
+        }
+
+        return currentNested;
+    }
+
+    /**
+     * 单层 nested 包装
+     */
+    private static Map<String, Object> wrapSingleNested(String path, Map<String, Object> innerQuery, EsSearchRequest.InnerHits innerHits) {
         Map<String, Object> nestedBody = new LinkedHashMap<>();
         nestedBody.put("path", path);
         nestedBody.put("query", innerQuery);
@@ -712,6 +746,12 @@ public class EsQueryBuilder {
                         topHits.put("_source", Collections.singletonMap("includes", node.getSourceIncludes()));
                     }
                     aggBody.put("top_hits", topHits);
+                    break;
+
+                case NESTED:
+                    Map<String, Object> nested = new LinkedHashMap<>();
+                    nested.put("path", node.getField());
+                    aggBody.put("nested", nested);
                     break;
             }
 

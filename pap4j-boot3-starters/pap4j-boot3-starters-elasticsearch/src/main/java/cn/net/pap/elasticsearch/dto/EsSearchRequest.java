@@ -949,6 +949,60 @@ public class EsSearchRequest {
         }
 
         /**
+         * 静态工厂方法：构建嵌套聚合节点 (nested)
+         *
+         * @param name 聚合名称
+         * @param path nested 路径
+         * @return AggNode 实例
+         */
+        public static AggNode nested(String name, String path) {
+            return new AggNode(name, AggType.NESTED, path);
+        }
+
+        /**
+         * 静态工厂方法：构建分桶聚合节点 (terms)
+         *
+         * @param name  聚合名称
+         * @param field 聚合字段
+         * @return AggNode 实例
+         */
+        public static AggNode terms(String name, String field) {
+            return new AggNode(name, AggType.TERMS, field);
+        }
+
+        /**
+         * 静态工厂方法：构建基数去重节点 (cardinality)
+         *
+         * @param name  聚合名称
+         * @param field 聚合字段
+         * @return AggNode 实例
+         */
+        public static AggNode cardinality(String name, String field) {
+            return new AggNode(name, AggType.CARDINALITY, field);
+        }
+
+        /**
+         * 静态工厂方法：构建值计数节点 (value_count)
+         *
+         * @param name  聚合名称
+         * @param field 聚合字段
+         * @return AggNode 实例
+         */
+        public static AggNode valueCount(String name, String field) {
+            return new AggNode(name, AggType.VALUE_COUNT, field);
+        }
+
+        /**
+         * 静态工厂方法：构建 top_hits 聚合节点
+         *
+         * @param name 聚合名称
+         * @return AggNode 实例
+         */
+        public static AggNode topHits(String name) {
+            return new AggNode(name, AggType.TOP_HITS, null);
+        }
+
+        /**
          * 设置桶大小
          *
          * @param size 桶数

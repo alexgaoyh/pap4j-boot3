@@ -323,8 +323,17 @@ public class EsSearchService {
             case CARDINALITY, VALUE_COUNT -> aggData.get("value");
             case TOP_HITS -> parseTopHits(aggData);
             case TERMS -> parseTermsBuckets(aggData, node);
+            case NESTED -> parseNestedAgg(aggData, node);
             default -> aggData;
         };
+    }
+
+    @SuppressWarnings("unchecked")
+    private Object parseNestedAgg(Map<String, Object> aggData, EsSearchRequest.AggNode node) {
+        if (CollectionUtils.isEmpty(node.getChildren())) {
+            return aggData.get("doc_count");
+        }
+        return parseAggregations(aggData, node.getChildren());
     }
 
     @SuppressWarnings("unchecked")
