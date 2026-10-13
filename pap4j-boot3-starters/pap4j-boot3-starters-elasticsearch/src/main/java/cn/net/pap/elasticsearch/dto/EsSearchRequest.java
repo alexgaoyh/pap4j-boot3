@@ -1,5 +1,6 @@
 package cn.net.pap.elasticsearch.dto;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -90,9 +91,10 @@ public class EsSearchRequest {
     private Boolean autoHighlight = Boolean.TRUE;
 
     /**
-     * nested inner_hits 高亮与子文档返回配置
+     * nested inner_hits 高亮与子文档返回配置列表
      */
-    private InnerHits innerHits;
+    @JsonFormat(with = JsonFormat.Feature.ACCEPT_SINGLE_VALUE_AS_ARRAY)
+    private List<InnerHits> innerHits;
 
     /**
      * 脚本排序配置（SEARCH 用）
@@ -311,13 +313,44 @@ public class EsSearchRequest {
     }
 
     /**
-     * 设置 nested inner_hits 配置
+     * 设置 nested inner_hits 配置列表
      *
-     * @param innerHits innerHits 配置
+     * @param innerHits innerHits 配置列表
      * @return 当前请求对象
      */
-    public EsSearchRequest innerHits(InnerHits innerHits) {
+    public EsSearchRequest innerHits(List<InnerHits> innerHits) {
         this.innerHits = innerHits;
+        return this;
+    }
+
+    /**
+     * 设置 nested inner_hits 配置列表（支持单个或多个）
+     *
+     * @param innerHits innerHits 可变参数
+     * @return 当前请求对象
+     */
+    public EsSearchRequest innerHits(InnerHits... innerHits) {
+        if (innerHits != null) {
+            this.innerHits = new ArrayList<>(List.of(innerHits));
+        } else {
+            this.innerHits = null;
+        }
+        return this;
+    }
+
+    /**
+     * 添加单条 nested inner_hits 配置
+     *
+     * @param innerHits 单条 innerHits 配置
+     * @return 当前请求对象
+     */
+    public EsSearchRequest addInnerHits(InnerHits innerHits) {
+        if (this.innerHits == null) {
+            this.innerHits = new ArrayList<>();
+        }
+        if (innerHits != null) {
+            this.innerHits.add(innerHits);
+        }
         return this;
     }
 
@@ -649,14 +682,42 @@ public class EsSearchRequest {
     public static class InnerHits {
 
         /**
-         * inner_hits 名称
+         * inner_hits 名称（未指定时默认使用 nested path 或 inner）
          */
-        private String name = "inner";
+        private String name;
 
         /**
          * nested 路径（可选，当未指定时默认从 highlightFields 推导或作为通用标识）
          */
         private String path;
+
+        /**
+         * 静态工厂方法：指定 nested path
+         *
+         * @param path nested 路径
+         * @return InnerHits 实例
+         */
+        public static InnerHits of(String path) {
+            InnerHits ih = new InnerHits();
+            ih.setPath(path);
+            return ih;
+        }
+
+        /**
+         * 静态工厂方法：指定 nested path 和高亮字段
+         *
+         * @param path            nested 路径
+         * @param highlightFields 高亮字段列表
+         * @return InnerHits 实例
+         */
+        public static InnerHits of(String path, String... highlightFields) {
+            InnerHits ih = new InnerHits();
+            ih.setPath(path);
+            if (highlightFields != null) {
+                ih.setHighlightFields(new ArrayList<>(List.of(highlightFields)));
+            }
+            return ih;
+        }
 
         /**
          * 片段数量
