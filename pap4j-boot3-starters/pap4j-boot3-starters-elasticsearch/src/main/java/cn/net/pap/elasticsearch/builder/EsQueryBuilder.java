@@ -399,10 +399,10 @@ public class EsQueryBuilder {
     }
 
     /**
-     * 构建原始单条 Leaf 查询（不含 nested 包装）
+     * 构建原始 Leaf 查询（直接生成 term/match_phrase/range 等原子查询；普通字段可直接执行，nested 字段作为其内部查询）。
      *
      * @param condition 检索条件
-     * @return 叶子查询 DSL Map
+     * @return 原始叶子查询 DSL Map，若条件无效则返回 null
      */
     private static Map<String, Object> buildRawLeafQuery(EsSearchRequest.Condition condition) {
         if (condition == null || !StringUtils.hasText(condition.getField())) {
@@ -466,12 +466,12 @@ public class EsQueryBuilder {
     }
 
     /**
-     * 构建单条 Leaf 查询（含 nested 包装，用于导航过滤）
+     * 构建单条检索条件的独立 Leaf 查询（自适应完成 nested 路径推导与外壳包装）。
      *
      * @param condition     检索条件
-     * @param innerHitsList innerHits 配置列表
+     * @param innerHitsList innerHits 配置列表（用于推导 nested 路径）
      * @param nameCounts    inner_hits 名称计数器
-     * @return 叶子查询 DSL Map
+     * @return 自包含可执行的叶子查询 DSL Map，若条件无效则返回 null
      */
     private static Map<String, Object> buildLeafQuery(
             EsSearchRequest.Condition condition,
