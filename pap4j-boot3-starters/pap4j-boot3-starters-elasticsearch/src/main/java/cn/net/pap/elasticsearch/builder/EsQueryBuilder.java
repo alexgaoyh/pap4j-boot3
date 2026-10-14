@@ -104,9 +104,9 @@ public class EsQueryBuilder {
 
         if (!CollectionUtils.isEmpty(request.getConditions())) {
             for (EsSearchRequest.Condition condition : request.getConditions()) {
-                if (condition.getField() != null && condition.getField().startsWith("-")) {
+                if (condition != null && condition.getField() != null && condition.getField().startsWith("-")) {
                     navConditions.add(condition);
-                } else {
+                } else if (condition != null) {
                     normalConditions.add(condition);
                 }
             }
@@ -152,23 +152,6 @@ public class EsQueryBuilder {
         }
 
         return Collections.singletonMap("bool", boolBody);
-    }
-
-    /**
-     * 将多个检索条件按照传入顺序执行「左结合 (Left-associative)」折叠组合：
-     * E_0 = buildLeaf(C_0)
-     * E_i = combine(E_{i-1}, buildLeaf(C_i), C_i.relation)
-     * <p>
-     * 支持同 nested 路径属性的智能归拢（Smart Grouping），避免跨对象假阳性与 inner_hits 重名冲突。
-     *
-     * @param conditions    条件列表
-     * @param innerHitsList innerHits 配置列表（可选）
-     * @return 左结合组合后的 Query Map
-     */
-    public static Map<String, Object> buildLeftAssociativeQuery(
-            List<EsSearchRequest.Condition> conditions,
-            List<EsSearchRequest.InnerHits> innerHitsList) {
-        return buildLeftAssociativeQuery(conditions, innerHitsList, new LinkedHashMap<>());
     }
 
     /**
@@ -247,10 +230,6 @@ public class EsQueryBuilder {
     private static List<ConditionUnit> groupConditions(
             List<EsSearchRequest.Condition> conditions,
             List<EsSearchRequest.InnerHits> innerHitsList) {
-        if (CollectionUtils.isEmpty(conditions)) {
-            return Collections.emptyList();
-        }
-
         List<EsSearchRequest.Condition> validConditions = new ArrayList<>();
         for (EsSearchRequest.Condition c : conditions) {
             if (c != null && StringUtils.hasText(c.getField())) {
@@ -978,7 +957,7 @@ public class EsQueryBuilder {
      * @param aggNodes 聚合节点配置列表
      * @return 聚合 DSL Map
      */
-    public static Map<String, Object> buildAggregations(List<EsSearchRequest.AggNode> aggNodes) {
+    private static Map<String, Object> buildAggregations(List<EsSearchRequest.AggNode> aggNodes) {
         Map<String, Object> aggsMap = new LinkedHashMap<>();
 
         for (EsSearchRequest.AggNode node : aggNodes) {
