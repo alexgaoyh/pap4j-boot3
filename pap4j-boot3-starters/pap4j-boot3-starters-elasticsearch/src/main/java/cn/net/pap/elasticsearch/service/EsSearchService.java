@@ -239,7 +239,7 @@ public class EsSearchService {
                     Double score = hit.get("_score") instanceof Number ? ((Number) hit.get("_score")).doubleValue() : null;
                     Map<String, Object> source = (Map<String, Object>) hit.get("_source");
                     Map<String, List<String>> highlight = (Map<String, List<String>>) hit.get("highlight");
-                    Map<String, Object> innerHits = (Map<String, Object>) hit.get("inner_hits");
+                    Map<String, Object> innerHits = mergeInnerHitsSuffixes((Map<String, Object>) hit.get("inner_hits"));
 
                     rowList.add(EsSearchResult.HitRow.builder()
                             .id(id)
@@ -347,7 +347,6 @@ public class EsSearchService {
             case TOP_HITS -> parseTopHits(aggData);
             case TERMS -> parseTermsBuckets(aggData, node);
             case NESTED -> parseNestedAgg(aggData, node);
-            default -> aggData;
         };
     }
 
@@ -469,5 +468,236 @@ public class EsSearchService {
             return properties.getDefaultIndex().trim();
         }
         throw new IllegalArgumentException("Elasticsearch indexName must be specified");
+    }
+
+    /**
+     * 将带有动态序号后缀的 inner_hits（如 departments.members#2）透明合并归拢至基础路径（如 departments.members）
+     *
+     * @param rawInnerHits ES 原始返回的 inner_hits Map
+     * @return 合并归拢后的 inner_hits Map（基础路径聚合了所有相同子文档的命中和高亮，原有的带后缀 key 亦完整保留兼容）
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> mergeInnerHitsSuffixes(Map<String, Object> rawInnerHits) {
+        if (CollectionUtils.isEmpty(rawInnerHits)) {
+            return rawInnerHits;
+        }
+
+        boolean hasSuffix = false;
+        for (String key : rawInnerHits.keySet()) {
+            if (isSuffixKey(key)) {
+                hasSuffix = true;
+                break;
+            }
+        }
+        if (!hasSuffix) {
+            return rawInnerHits;
+        }
+
+        Map<String, Object> merged = new LinkedHashMap<>(rawInnerHits);
+        Map<String, List<String>> baseToKeys = new LinkedHashMap<>();
+        for (String key : rawInnerHits.keySet()) {
+            String baseKey = extractBaseKey(key);
+            baseToKeys.computeIfAbsent(baseKey, k -> new ArrayList<>()).add(key);
+        }
+
+        for (Map.Entry<String, List<String>> entry : baseToKeys.entrySet()) {
+            String baseKey = entry.getKey();
+            List<String> keys = entry.getValue();
+            if (keys.size() <= 1 && keys.contains(baseKey)) {
+                continue;
+            }
+            Map<String, Object> mergedBaseHitWrapper = mergeSingleBaseInnerHits(baseKey, keys, rawInnerHits);
+            merged.put(baseKey, mergedBaseHitWrapper);
+        }
+
+        return merged;
+    }
+
+    private boolean isSuffixKey(String key) {
+        if (!StringUtils.hasText(key)) {
+            return false;
+        }
+        int hashIdx = key.lastIndexOf('#');
+        if (hashIdx <= 0 || hashIdx >= key.length() - 1) {
+            return false;
+        }
+        String suffix = key.substring(hashIdx + 1);
+        for (int i = 0; i < suffix.length(); i++) {
+            if (!Character.isDigit(suffix.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private String extractBaseKey(String key) {
+        if (isSuffixKey(key)) {
+            return key.substring(0, key.lastIndexOf('#'));
+        }
+        return key;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> mergeSingleBaseInnerHits(
+            String baseKey,
+            List<String> keys,
+            Map<String, Object> rawInnerHits) {
+        String primaryKey = rawInnerHits.containsKey(baseKey) ? baseKey : keys.get(0);
+        Map<String, Object> baseWrapper = deepCopyMap(asMap(rawInnerHits.get(primaryKey)));
+        if (baseWrapper == null) {
+            return new LinkedHashMap<>();
+        }
+
+        Map<String, Object> baseHitsBlock = asMap(baseWrapper.get("hits"));
+        if (baseHitsBlock == null) {
+            return baseWrapper;
+        }
+
+        List<Map<String, Object>> mergedSubHits = new ArrayList<>();
+        List<?> rawBaseSubHits = (List<?>) baseHitsBlock.get("hits");
+        if (rawBaseSubHits != null) {
+            for (Object sub : rawBaseSubHits) {
+                if (sub instanceof Map) {
+                    mergedSubHits.add(deepCopyMap((Map<String, Object>) sub));
+                }
+            }
+        }
+
+        for (String k : keys) {
+            if (k.equals(primaryKey)) {
+                continue;
+            }
+            Object obj = rawInnerHits.get(k);
+            if (!(obj instanceof Map)) {
+                continue;
+            }
+            Map<String, Object> otherWrapper = (Map<String, Object>) obj;
+            Map<String, Object> otherHitsBlock = asMap(otherWrapper.get("hits"));
+            if (otherHitsBlock == null) {
+                continue;
+            }
+            List<?> otherSubHits = (List<?>) otherHitsBlock.get("hits");
+            if (otherSubHits == null) {
+                continue;
+            }
+
+            for (Object otherItem : otherSubHits) {
+                if (!(otherItem instanceof Map)) {
+                    continue;
+                }
+                Map<String, Object> otherSubHit = deepCopyMap((Map<String, Object>) otherItem);
+
+                boolean matched = false;
+                for (Map<String, Object> existingSubHit : mergedSubHits) {
+                    if (isSameSubHit(existingSubHit, otherSubHit)) {
+                        mergeSubHitHighlight(existingSubHit, otherSubHit);
+                        matched = true;
+                        break;
+                    }
+                }
+                if (!matched) {
+                    mergedSubHits.add(otherSubHit);
+                }
+            }
+        }
+
+        baseHitsBlock.put("hits", mergedSubHits);
+        Object totalObj = baseHitsBlock.get("total");
+        if (totalObj instanceof Map) {
+            ((Map<String, Object>) totalObj).put("value", mergedSubHits.size());
+        } else if (totalObj instanceof Number) {
+            baseHitsBlock.put("total", mergedSubHits.size());
+        }
+
+        return baseWrapper;
+    }
+
+    private boolean isSameSubHit(Map<String, Object> a, Map<String, Object> b) {
+        if (a == null || b == null) {
+            return false;
+        }
+        Object nestedA = a.get("_nested");
+        Object nestedB = b.get("_nested");
+        if (nestedA != null && nestedB != null) {
+            return java.util.Objects.equals(nestedA, nestedB);
+        }
+        Object idA = a.get("_id");
+        Object idB = b.get("_id");
+        if (idA != null && idB != null) {
+            return java.util.Objects.equals(idA, idB);
+        }
+        Object sourceA = a.get("_source");
+        Object sourceB = b.get("_source");
+        if (sourceA != null && sourceB != null) {
+            return java.util.Objects.equals(sourceA, sourceB);
+        }
+        return false;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void mergeSubHitHighlight(Map<String, Object> existingSubHit, Map<String, Object> otherSubHit) {
+        Map<String, Object> otherHl = asMap(otherSubHit.get("highlight"));
+        if (CollectionUtils.isEmpty(otherHl)) {
+            return;
+        }
+        Map<String, Object> existingHl = asMap(existingSubHit.get("highlight"));
+        if (existingHl == null) {
+            existingHl = new LinkedHashMap<>();
+            existingSubHit.put("highlight", existingHl);
+        }
+        for (Map.Entry<String, Object> entry : otherHl.entrySet()) {
+            if (!existingHl.containsKey(entry.getKey())) {
+                existingHl.put(entry.getKey(), entry.getValue());
+            } else {
+                Object exVal = existingHl.get(entry.getKey());
+                Object otVal = entry.getValue();
+                if (exVal instanceof List && otVal instanceof List) {
+                    List<Object> combined = new ArrayList<>((List<?>) exVal);
+                    for (Object frag : (List<?>) otVal) {
+                        if (!combined.contains(frag)) {
+                            combined.add(frag);
+                        }
+                    }
+                    existingHl.put(entry.getKey(), combined);
+                }
+            }
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> deepCopyMap(Map<String, Object> original) {
+        if (original == null) {
+            return null;
+        }
+        Map<String, Object> copy = new LinkedHashMap<>();
+        for (Map.Entry<String, Object> e : original.entrySet()) {
+            Object v = e.getValue();
+            if (v instanceof Map) {
+                copy.put(e.getKey(), deepCopyMap((Map<String, Object>) v));
+            } else if (v instanceof List) {
+                copy.put(e.getKey(), deepCopyList((List<?>) v));
+            } else {
+                copy.put(e.getKey(), v);
+            }
+        }
+        return copy;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Object> deepCopyList(List<?> original) {
+        if (original == null) {
+            return null;
+        }
+        List<Object> copy = new ArrayList<>(original.size());
+        for (Object item : original) {
+            if (item instanceof Map) {
+                copy.add(deepCopyMap((Map<String, Object>) item));
+            } else if (item instanceof List) {
+                copy.add(deepCopyList((List<?>) item));
+            } else {
+                copy.add(item);
+            }
+        }
+        return copy;
     }
 }

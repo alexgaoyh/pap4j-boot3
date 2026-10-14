@@ -51,7 +51,8 @@ public class EsQueryBuilder {
         buildSourceFiltering(request, dsl);
 
         // 3. 构建核心 Query (关键词 + 左结合条件 + 导航过滤)
-        Map<String, Object> query = buildRootQuery(request);
+        Map<String, Integer> nameCounts = new LinkedHashMap<>();
+        Map<String, Object> query = buildRootQuery(request, nameCounts);
         if (!query.isEmpty()) {
             dsl.put("query", query);
         }
@@ -77,7 +78,7 @@ public class EsQueryBuilder {
 
         // 7. PostFilter (AGGREGATE 专用)
         if (!CollectionUtils.isEmpty(request.getPostFilters())) {
-            Map<String, Object> postFilterQuery = buildLeftAssociativeQuery(request.getPostFilters(), null);
+            Map<String, Object> postFilterQuery = buildLeftAssociativeQuery(request.getPostFilters(), null, nameCounts);
             if (postFilterQuery != null && !postFilterQuery.isEmpty()) {
                 dsl.put("post_filter", postFilterQuery);
             }
@@ -89,10 +90,11 @@ public class EsQueryBuilder {
     /**
      * 构建根 Bool 查询
      *
-     * @param request 统一检索请求
+     * @param request    统一检索请求
+     * @param nameCounts inner_hits 名称计数器
      * @return 根查询 DSL Map
      */
-    private static Map<String, Object> buildRootQuery(EsSearchRequest request) {
+    private static Map<String, Object> buildRootQuery(EsSearchRequest request, Map<String, Integer> nameCounts) {
         List<Object> mustClauses = new ArrayList<>();
         List<Object> filterClauses = new ArrayList<>();
 
@@ -113,7 +115,7 @@ public class EsQueryBuilder {
         // 导航条件放入 filter
         for (EsSearchRequest.Condition navCond : navConditions) {
             // 导航属于 filter 过滤，不需要返回子文档细节和高亮（不挂载 inner_hits，但允许通过 innerHits 推导 nested 路径）
-            Map<String, Object> leaf = buildLeafQuery(navCond, request.getInnerHits(), false);
+            Map<String, Object> leaf = buildLeafQuery(navCond, request.getInnerHits(), nameCounts);
             if (leaf != null) {
                 filterClauses.add(leaf);
             }
@@ -121,7 +123,8 @@ public class EsQueryBuilder {
 
         // 普通检索条件：按传入顺序「左结合 (Left-associative)」构建复合查询
         if (!normalConditions.isEmpty()) {
-            Map<String, Object> leftAssocQuery = buildLeftAssociativeQuery(normalConditions, request.getInnerHits());
+            Map<String, Object> leftAssocQuery = buildLeftAssociativeQuery(
+                    normalConditions, request.getInnerHits(), nameCounts);
             if (leftAssocQuery != null) {
                 mustClauses.add(leftAssocQuery);
             }
@@ -129,7 +132,8 @@ public class EsQueryBuilder {
 
         // 关键词检索
         if (StringUtils.hasText(request.getKeyword())) {
-            Map<String, Object> keywordQuery = buildKeywordQuery(request.getKeyword(), request.getKeywordFields(), request.getInnerHits());
+            Map<String, Object> keywordQuery = buildKeywordQuery(
+                    request.getKeyword(), request.getKeywordFields(), request.getInnerHits(), nameCounts);
             if (keywordQuery != null) {
                 mustClauses.add(keywordQuery);
             }
@@ -154,53 +158,52 @@ public class EsQueryBuilder {
      * 将多个检索条件按照传入顺序执行「左结合 (Left-associative)」折叠组合：
      * E_0 = buildLeaf(C_0)
      * E_i = combine(E_{i-1}, buildLeaf(C_i), C_i.relation)
+     * <p>
+     * 支持同 nested 路径属性的智能归拢（Smart Grouping），避免跨对象假阳性与 inner_hits 重名冲突。
      *
      * @param conditions    条件列表
      * @param innerHitsList innerHits 配置列表（可选）
      * @return 左结合组合后的 Query Map
      */
-    public static Map<String, Object> buildLeftAssociativeQuery(List<EsSearchRequest.Condition> conditions, List<EsSearchRequest.InnerHits> innerHitsList) {
-        if (CollectionUtils.isEmpty(conditions)) {
+    public static Map<String, Object> buildLeftAssociativeQuery(
+            List<EsSearchRequest.Condition> conditions,
+            List<EsSearchRequest.InnerHits> innerHitsList) {
+        return buildLeftAssociativeQuery(conditions, innerHitsList, new LinkedHashMap<>());
+    }
+
+    /**
+     * 带 inner_hits 命名计数器的左结合构建
+     *
+     * @param conditions    条件列表
+     * @param innerHitsList innerHits 配置列表
+     * @param nameCounts    inner_hits 名称计数器
+     * @return 左结合组合后的 Query Map
+     */
+    private static Map<String, Object> buildLeftAssociativeQuery(
+            List<EsSearchRequest.Condition> conditions,
+            List<EsSearchRequest.InnerHits> innerHitsList,
+            Map<String, Integer> nameCounts) {
+        List<ConditionUnit> units = groupConditions(conditions, innerHitsList);
+        if (units.isEmpty()) {
             return null;
         }
 
         Map<String, Object> currentExpr = null;
 
-        for (EsSearchRequest.Condition condition : conditions) {
-            Map<String, Object> leafQuery = buildLeafQuery(condition, innerHitsList, true);
-            if (leafQuery == null) {
-                continue;
+        for (ConditionUnit unit : units) {
+            Map<String, Object> unitQuery;
+            if (StringUtils.hasText(unit.getNestedPath())) {
+                Map<String, Object> innerQuery = buildGroupInnerQuery(unit.getConditions());
+                EsSearchRequest.InnerHits matchedInnerHits = findInnerHitsByPath(unit.getNestedPath(), innerHitsList);
+                unitQuery = wrapNested(unit.getNestedPath(), innerQuery, matchedInnerHits, nameCounts);
+            } else {
+                unitQuery = buildRawLeafQuery(unit.getConditions().get(0));
             }
 
             if (currentExpr == null) {
-                currentExpr = leafQuery;
+                currentExpr = unitQuery;
             } else {
-                String relation = condition.getRelation();
-                if (relation == null) {
-                    relation = "must";
-                }
-                relation = relation.trim().toLowerCase(Locale.ROOT);
-
-                Map<String, Object> newBool = new LinkedHashMap<>();
-                if ("should".equals(relation) || "or".equals(relation)) {
-                    List<Object> shouldList = new ArrayList<>(2);
-                    shouldList.add(currentExpr);
-                    shouldList.add(leafQuery);
-                    newBool.put("should", shouldList);
-                    newBool.put("minimum_should_match", 1);
-                } else if ("must_not".equals(relation) || "not".equals(relation)) {
-                    List<Object> mustList = new ArrayList<>(1);
-                    mustList.add(currentExpr);
-                    newBool.put("must", mustList);
-                    newBool.put("must_not", Collections.singletonList(leafQuery));
-                } else {
-                    List<Object> mustList = new ArrayList<>(2);
-                    mustList.add(currentExpr);
-                    mustList.add(leafQuery);
-                    newBool.put("must", mustList);
-                }
-
-                currentExpr = Collections.singletonMap("bool", newBool);
+                currentExpr = combineExpressions(currentExpr, unitQuery, unit.getRelation());
             }
         }
 
@@ -208,14 +211,221 @@ public class EsQueryBuilder {
     }
 
     /**
-     * 构建单条 Leaf 查询
+     * 条件运算单元：封装归拢后的复合 nested 节点或单条普通条件
+     */
+    private static class ConditionUnit {
+        private final String relation;
+        private final String nestedPath;
+        private final List<EsSearchRequest.Condition> conditions;
+
+        ConditionUnit(String relation, String nestedPath, List<EsSearchRequest.Condition> conditions) {
+            this.relation = relation;
+            this.nestedPath = nestedPath;
+            this.conditions = conditions;
+        }
+
+        public String getRelation() {
+            return relation;
+        }
+
+        public String getNestedPath() {
+            return nestedPath;
+        }
+
+        public List<EsSearchRequest.Condition> getConditions() {
+            return conditions;
+        }
+    }
+
+    /**
+     * 智能条件分组归拢
      *
-     * @param condition       检索条件
-     * @param innerHitsList   innerHits 配置列表
-     * @param enableInnerHits 是否挂载 inner_hits
+     * @param conditions    原始条件列表
+     * @param innerHitsList innerHits 配置列表
+     * @return 归拢后的条件单元列表
+     */
+    private static List<ConditionUnit> groupConditions(
+            List<EsSearchRequest.Condition> conditions,
+            List<EsSearchRequest.InnerHits> innerHitsList) {
+        if (CollectionUtils.isEmpty(conditions)) {
+            return Collections.emptyList();
+        }
+
+        List<EsSearchRequest.Condition> validConditions = new ArrayList<>();
+        for (EsSearchRequest.Condition c : conditions) {
+            if (c != null && StringUtils.hasText(c.getField())) {
+                validConditions.add(c);
+            }
+        }
+        if (validConditions.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        boolean allMust = true;
+        for (EsSearchRequest.Condition c : validConditions) {
+            String rel = c.getRelation();
+            if (rel != null && !"must".equalsIgnoreCase(rel) && !"and".equalsIgnoreCase(rel)) {
+                allMust = false;
+                break;
+            }
+        }
+
+        List<ConditionUnit> units = new ArrayList<>();
+
+        if (allMust) {
+            // Case 1: 全体均为 must。利用 AND 结合律与交换律，对相同 nestedPath 集中归拢到其首次出现的物理位置
+            Map<String, List<EsSearchRequest.Condition>> nestedGroups = new LinkedHashMap<>();
+            for (EsSearchRequest.Condition c : validConditions) {
+                String field = c.getField().trim();
+                String nestedPath = resolveNestedPath(c, field, innerHitsList);
+                if (StringUtils.hasText(nestedPath)) {
+                    nestedGroups.computeIfAbsent(nestedPath, k -> new ArrayList<>()).add(c);
+                }
+            }
+
+            Set<String> processedPaths = new LinkedHashSet<>();
+            for (EsSearchRequest.Condition c : validConditions) {
+                String field = c.getField().trim();
+                String nestedPath = resolveNestedPath(c, field, innerHitsList);
+                if (StringUtils.hasText(nestedPath)) {
+                    if (!processedPaths.contains(nestedPath)) {
+                        processedPaths.add(nestedPath);
+                        List<EsSearchRequest.Condition> group = nestedGroups.get(nestedPath);
+                        units.add(new ConditionUnit("must", nestedPath, group));
+                    }
+                } else {
+                    units.add(new ConditionUnit("must", null, Collections.singletonList(c)));
+                }
+            }
+        } else {
+            // Case 2: 存在 should / must_not。为严格保持布尔优先级，仅对物理相邻（连续）且具有相同 nestedPath 的条件就地折叠
+            int i = 0;
+            while (i < validConditions.size()) {
+                EsSearchRequest.Condition c = validConditions.get(i);
+                String field = c.getField().trim();
+                String nestedPath = resolveNestedPath(c, field, innerHitsList);
+
+                if (StringUtils.hasText(nestedPath)) {
+                    List<EsSearchRequest.Condition> consecutiveGroup = new ArrayList<>();
+                    consecutiveGroup.add(c);
+                    int j = i + 1;
+                    while (j < validConditions.size()) {
+                        EsSearchRequest.Condition next = validConditions.get(j);
+                        String nextField = next.getField().trim();
+                        String nextPath = resolveNestedPath(next, nextField, innerHitsList);
+                        if (nestedPath.equals(nextPath)) {
+                            consecutiveGroup.add(next);
+                            j++;
+                        } else {
+                            break;
+                        }
+                    }
+                    units.add(new ConditionUnit(c.getRelation(), nestedPath, consecutiveGroup));
+                    i = j;
+                } else {
+                    units.add(new ConditionUnit(c.getRelation(), null, Collections.singletonList(c)));
+                    i++;
+                }
+            }
+        }
+
+        return units;
+    }
+
+    /**
+     * 构建归拢在同一 nested 块内部的复合查询
+     *
+     * @param groupConditions 归拢在同一 nested 路径下的条件列表
+     * @return 内部查询 DSL Map
+     */
+    private static Map<String, Object> buildGroupInnerQuery(List<EsSearchRequest.Condition> groupConditions) {
+        if (CollectionUtils.isEmpty(groupConditions)) {
+            return null;
+        }
+        if (groupConditions.size() == 1) {
+            return buildRawLeafQuery(groupConditions.get(0));
+        }
+
+        boolean allMust = true;
+        for (EsSearchRequest.Condition c : groupConditions) {
+            String rel = c.getRelation();
+            if (rel != null && !"must".equalsIgnoreCase(rel) && !"and".equalsIgnoreCase(rel)) {
+                allMust = false;
+                break;
+            }
+        }
+
+        if (allMust) {
+            List<Object> innerMustList = new ArrayList<>(groupConditions.size());
+            for (EsSearchRequest.Condition c : groupConditions) {
+                innerMustList.add(buildRawLeafQuery(c));
+            }
+            Map<String, Object> innerBool = new LinkedHashMap<>();
+            innerBool.put("must", innerMustList);
+            return Collections.singletonMap("bool", innerBool);
+        }
+
+        Map<String, Object> currentInner = null;
+        for (EsSearchRequest.Condition c : groupConditions) {
+            Map<String, Object> raw = buildRawLeafQuery(c);
+            if (currentInner == null) {
+                currentInner = raw;
+            } else {
+                currentInner = combineExpressions(currentInner, raw, c.getRelation());
+            }
+        }
+        return currentInner;
+    }
+
+    /**
+     * 将左右两个表达式按照关系符组合
+     *
+     * @param currentExpr 当前已有表达式
+     * @param nextExpr    新表达式
+     * @param relation    关系（must / should / must_not）
+     * @return 组合后的 bool Map
+     */
+    private static Map<String, Object> combineExpressions(
+            Map<String, Object> currentExpr,
+            Map<String, Object> nextExpr,
+            String relation) {
+        if (currentExpr == null) {
+            return nextExpr;
+        }
+        if (nextExpr == null) {
+            return currentExpr;
+        }
+        String rel = relation != null ? relation.trim().toLowerCase(Locale.ROOT) : "must";
+
+        Map<String, Object> newBool = new LinkedHashMap<>();
+        if ("should".equals(rel) || "or".equals(rel)) {
+            List<Object> shouldList = new ArrayList<>(2);
+            shouldList.add(currentExpr);
+            shouldList.add(nextExpr);
+            newBool.put("should", shouldList);
+            newBool.put("minimum_should_match", 1);
+        } else if ("must_not".equals(rel) || "not".equals(rel)) {
+            List<Object> mustList = new ArrayList<>(1);
+            mustList.add(currentExpr);
+            newBool.put("must", mustList);
+            newBool.put("must_not", Collections.singletonList(nextExpr));
+        } else {
+            List<Object> mustList = new ArrayList<>(2);
+            mustList.add(currentExpr);
+            mustList.add(nextExpr);
+            newBool.put("must", mustList);
+        }
+
+        return Collections.singletonMap("bool", newBool);
+    }
+
+    /**
+     * 构建原始单条 Leaf 查询（不含 nested 包装）
+     *
+     * @param condition 检索条件
      * @return 叶子查询 DSL Map
      */
-    private static Map<String, Object> buildLeafQuery(EsSearchRequest.Condition condition, List<EsSearchRequest.InnerHits> innerHitsList, boolean enableInnerHits) {
+    private static Map<String, Object> buildRawLeafQuery(EsSearchRequest.Condition condition) {
         if (condition == null || !StringUtils.hasText(condition.getField())) {
             return null;
         }
@@ -231,7 +441,8 @@ public class EsQueryBuilder {
         if (rawField.startsWith("-")) {
             String base = rawField.substring(1);
             field = base.endsWith(".keyword") ? base : base + ".keyword";
-        } else if ("term".equals(match) || "terms".equals(match) || "wildcard".equals(match) || "prefix".equals(match)) {
+        } else if ("term".equals(match) || "terms".equals(match)
+                || "wildcard".equals(match) || "prefix".equals(match)) {
             field = (rawField.endsWith(".keyword") || isNestedField(rawField)) ? rawField : rawField + ".keyword";
         } else {
             field = rawField;
@@ -272,15 +483,36 @@ public class EsQueryBuilder {
                 break;
         }
 
-        // 通用 nested 路径判断
+        return leaf;
+    }
+
+    /**
+     * 构建单条 Leaf 查询（含 nested 包装，用于导航过滤）
+     *
+     * @param condition     检索条件
+     * @param innerHitsList innerHits 配置列表
+     * @param nameCounts    inner_hits 名称计数器
+     * @return 叶子查询 DSL Map
+     */
+    private static Map<String, Object> buildLeafQuery(
+            EsSearchRequest.Condition condition,
+            List<EsSearchRequest.InnerHits> innerHitsList,
+            Map<String, Integer> nameCounts) {
+        if (condition == null || !StringUtils.hasText(condition.getField())) {
+            return null;
+        }
+
+        Map<String, Object> leaf = buildRawLeafQuery(condition);
+        String field = condition.getField().trim();
         String nestedPath = resolveNestedPath(condition, field, innerHitsList);
         if (StringUtils.hasText(nestedPath)) {
-            EsSearchRequest.InnerHits matchedInnerHits = enableInnerHits ? findInnerHitsByPath(nestedPath, innerHitsList) : null;
-            return wrapNested(nestedPath, leaf, matchedInnerHits);
+            return wrapNested(nestedPath, leaf, null, nameCounts);
         }
 
         return leaf;
     }
+
+
 
     /**
      * 通用推导 nested 路径
@@ -291,15 +523,21 @@ public class EsQueryBuilder {
      * @return nested 路径字符串，非 nested 字段时返回 null
      */
     private static String resolveNestedPath(EsSearchRequest.Condition condition, String field, List<EsSearchRequest.InnerHits> innerHitsList) {
-        if (StringUtils.hasText(condition.getNestedPath())) {
+        if (condition != null && StringUtils.hasText(condition.getNestedPath())) {
             return condition.getNestedPath();
         }
         if (!CollectionUtils.isEmpty(innerHitsList)) {
+            String bestMatch = null;
             for (EsSearchRequest.InnerHits ih : innerHitsList) {
                 String path = resolvePathFromInnerHits(ih);
                 if (StringUtils.hasText(path) && field.startsWith(path + ".")) {
-                    return path;
+                    if (bestMatch == null || path.length() > bestMatch.length()) {
+                        bestMatch = path;
+                    }
                 }
+            }
+            if (bestMatch != null) {
+                return bestMatch;
             }
         }
         return null;
@@ -340,22 +578,28 @@ public class EsQueryBuilder {
         return null;
     }
 
+
     /**
-     * 包装为 nested 查询（支持单层以及多级 nested 嵌套洋葱模型包装）
+     * 包装为 nested 查询（支持单层以及多级 nested 嵌套洋葱模型包装与动态命名计数）
      *
-     * @param path       nested 路径（可为单级如 comments，也可为多级如 dept.employee）
+     * @param path       nested 路径
      * @param innerQuery 内部查询 DSL
      * @param innerHits  innerHits 配置
+     * @param nameCounts inner_hits 名称计数器（用于生成唯一序号后缀）
      * @return 包装后的 nested 查询 DSL Map
      */
-    private static Map<String, Object> wrapNested(String path, Map<String, Object> innerQuery, EsSearchRequest.InnerHits innerHits) {
+    private static Map<String, Object> wrapNested(
+            String path,
+            Map<String, Object> innerQuery,
+            EsSearchRequest.InnerHits innerHits,
+            Map<String, Integer> nameCounts) {
         if (!StringUtils.hasText(path)) {
             return innerQuery;
         }
 
         int dotIdx = path.indexOf('.');
         if (dotIdx <= 0) {
-            return wrapSingleNested(path, innerQuery, innerHits);
+            return wrapSingleNested(path, innerQuery, innerHits, path, nameCounts);
         }
 
         String[] parts = path.split("\\.");
@@ -370,11 +614,11 @@ public class EsQueryBuilder {
         }
 
         String deepestPath = levels.get(levels.size() - 1);
-        Map<String, Object> currentNested = wrapSingleNested(deepestPath, innerQuery, null);
+        Map<String, Object> currentNested = wrapSingleNested(deepestPath, innerQuery, null, path, nameCounts);
 
         for (int i = levels.size() - 2; i >= 0; i--) {
             boolean isTopLevel = (i == 0);
-            currentNested = wrapSingleNested(levels.get(i), currentNested, isTopLevel ? innerHits : null);
+            currentNested = wrapSingleNested(levels.get(i), currentNested, isTopLevel ? innerHits : null, path, nameCounts);
         }
 
         return currentNested;
@@ -383,13 +627,18 @@ public class EsQueryBuilder {
     /**
      * 单层 nested 包装
      */
-    private static Map<String, Object> wrapSingleNested(String path, Map<String, Object> innerQuery, EsSearchRequest.InnerHits innerHits) {
+    private static Map<String, Object> wrapSingleNested(
+            String path,
+            Map<String, Object> innerQuery,
+            EsSearchRequest.InnerHits innerHits,
+            String defaultPath,
+            Map<String, Integer> nameCounts) {
         Map<String, Object> nestedBody = new LinkedHashMap<>();
         nestedBody.put("path", path);
         nestedBody.put("query", innerQuery);
 
         if (innerHits != null) {
-            nestedBody.put("inner_hits", buildInnerHits(innerHits, path));
+            nestedBody.put("inner_hits", buildInnerHits(innerHits, defaultPath, nameCounts));
         }
 
         return Collections.singletonMap("nested", nestedBody);
@@ -398,11 +647,25 @@ public class EsQueryBuilder {
     /**
      * 构建 inner_hits
      */
-    private static Map<String, Object> buildInnerHits(EsSearchRequest.InnerHits innerHits, String defaultPath) {
+    private static Map<String, Object> buildInnerHits(
+            EsSearchRequest.InnerHits innerHits,
+            String defaultPath,
+            Map<String, Integer> nameCounts) {
         Map<String, Object> ih = new LinkedHashMap<>();
-        String name = StringUtils.hasText(innerHits.getName())
+        String rawName = StringUtils.hasText(innerHits.getName())
                 ? innerHits.getName()
-                : (StringUtils.hasText(defaultPath) ? defaultPath : "inner");
+                : (StringUtils.hasText(innerHits.getPath())
+                        ? innerHits.getPath()
+                        : (StringUtils.hasText(defaultPath) ? defaultPath : "inner"));
+
+        String name = rawName;
+        if (nameCounts != null) {
+            int count = nameCounts.merge(rawName, 1, Integer::sum);
+            if (count > 1) {
+                name = rawName + "#" + count;
+            }
+        }
+
         ih.put("name", name);
         ih.put("size", 1);
 
@@ -410,8 +673,10 @@ public class EsQueryBuilder {
             Map<String, Object> hlFields = new LinkedHashMap<>();
             for (String field : innerHits.getHighlightFields()) {
                 Map<String, Object> fieldConf = new LinkedHashMap<>();
-                fieldConf.put("fragment_size", innerHits.getFragmentSize() != null ? innerHits.getFragmentSize() : 150);
-                fieldConf.put("number_of_fragments", innerHits.getNumberOfFragments() != null ? innerHits.getNumberOfFragments() : 1);
+                fieldConf.put("fragment_size", innerHits.getFragmentSize() != null
+                        ? innerHits.getFragmentSize() : 150);
+                fieldConf.put("number_of_fragments", innerHits.getNumberOfFragments() != null
+                        ? innerHits.getNumberOfFragments() : 1);
                 hlFields.put(field, fieldConf);
             }
             Map<String, Object> highlight = new LinkedHashMap<>();
@@ -427,7 +692,11 @@ public class EsQueryBuilder {
     /**
      * 构建关键词检索 Query (支持普通字段与多个 nested 字段)
      */
-    private static Map<String, Object> buildKeywordQuery(String keyword, List<String> keywordFields, List<EsSearchRequest.InnerHits> innerHitsList) {
+    private static Map<String, Object> buildKeywordQuery(
+            String keyword,
+            List<String> keywordFields,
+            List<EsSearchRequest.InnerHits> innerHitsList,
+            Map<String, Integer> nameCounts) {
         if (CollectionUtils.isEmpty(keywordFields)) {
             // 未指定具体字段时无法构建 nested 块，故 innerHits 不生效，退化为全局 multi_match 检索（匹配映射中所有符合条件的默认字段）
             return Collections.singletonMap("multi_match", Collections.singletonMap("query", keyword));
@@ -452,8 +721,9 @@ public class EsQueryBuilder {
             String matchedPath = null;
             for (String path : pathToConfigMap.keySet()) {
                 if (f.startsWith(path + ".")) {
-                    matchedPath = path;
-                    break;
+                    if (matchedPath == null || path.length() > matchedPath.length()) {
+                        matchedPath = path;
+                    }
                 }
             }
             if (matchedPath != null) {
@@ -491,11 +761,7 @@ public class EsQueryBuilder {
                 nb.put("minimum_should_match", 1);
                 nestedQuery = Collections.singletonMap("bool", nb);
             }
-            shouldList.add(wrapNested(path, nestedQuery, ih));
-        }
-
-        if (shouldList.isEmpty()) {
-            return Collections.singletonMap("match_all", Collections.emptyMap());
+            shouldList.add(wrapNested(path, nestedQuery, ih, nameCounts));
         }
 
         if (shouldList.size() == 1) {
@@ -507,6 +773,7 @@ public class EsQueryBuilder {
         bool.put("minimum_should_match", 1);
         return Collections.singletonMap("bool", bool);
     }
+
 
     /**
      * 解析推导高亮配置
