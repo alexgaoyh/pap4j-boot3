@@ -114,8 +114,8 @@ public class EsQueryBuilder {
 
         // 导航条件放入 filter
         for (EsSearchRequest.Condition navCond : navConditions) {
-            // 导航属于 filter 过滤，不需要返回子文档细节和高亮（不挂载 inner_hits，但允许通过 innerHits 推导 nested 路径）
-            Map<String, Object> leaf = buildLeafQuery(navCond, request.getInnerHits(), nameCounts);
+            // 导航属于 filter 过滤，不需要返回子文档细节和高亮（显式声明 attachInnerHits = false）
+            Map<String, Object> leaf = buildLeafQuery(navCond, request.getInnerHits(), false, nameCounts);
             if (leaf != null) {
                 filterClauses.add(leaf);
             }
@@ -468,14 +468,16 @@ public class EsQueryBuilder {
     /**
      * 构建单条检索条件的独立 Leaf 查询（自适应完成 nested 路径推导与外壳包装）。
      *
-     * @param condition     检索条件
-     * @param innerHitsList innerHits 配置列表（用于推导 nested 路径）
-     * @param nameCounts    inner_hits 名称计数器
+     * @param condition       检索条件
+     * @param innerHitsList   innerHits 配置列表（用于推导 nested 路径与匹配 inner_hits）
+     * @param attachInnerHits 是否挂载 inner_hits（filter 场景通常为 false，must 检索场景为 true）
+     * @param nameCounts      inner_hits 名称计数器
      * @return 自包含可执行的叶子查询 DSL Map，若条件无效则返回 null
      */
     private static Map<String, Object> buildLeafQuery(
             EsSearchRequest.Condition condition,
             List<EsSearchRequest.InnerHits> innerHitsList,
+            boolean attachInnerHits,
             Map<String, Integer> nameCounts) {
         if (condition == null || !StringUtils.hasText(condition.getField())) {
             return null;
@@ -485,7 +487,10 @@ public class EsQueryBuilder {
         String field = condition.getField().trim();
         String nestedPath = resolveNestedPath(condition, field, innerHitsList);
         if (StringUtils.hasText(nestedPath)) {
-            return wrapNested(nestedPath, leaf, null, nameCounts);
+            EsSearchRequest.InnerHits matchedInnerHits = attachInnerHits
+                    ? findInnerHitsByPath(nestedPath, innerHitsList)
+                    : null;
+            return wrapNested(nestedPath, leaf, matchedInnerHits, nameCounts);
         }
 
         return leaf;
