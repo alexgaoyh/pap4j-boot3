@@ -112,12 +112,22 @@ public class EsQueryBuilder {
             }
         }
 
-        // 导航条件放入 filter
-        for (EsSearchRequest.Condition navCond : navConditions) {
-            // 导航属于 filter 过滤，不需要返回子文档细节和高亮（显式声明 attachInnerHits = false）
-            Map<String, Object> leaf = buildLeafQuery(navCond, request.getInnerHits(), false, nameCounts);
-            if (leaf != null) {
-                filterClauses.add(leaf);
+        // 导航条件放入 filter：支持同一 nested 路径归拢（消除假阳性），并保持独立 filter 缓存
+        if (!navConditions.isEmpty()) {
+            List<ConditionUnit> navUnits = groupConditions(navConditions, request.getInnerHits());
+            for (ConditionUnit unit : navUnits) {
+                if (unit.getConditions().size() == 1) {
+                    Map<String, Object> leaf = buildLeafQuery(
+                            unit.getConditions().get(0), request.getInnerHits(), false, nameCounts);
+                    if (leaf != null) {
+                        filterClauses.add(leaf);
+                    }
+                } else {
+                    Map<String, Object> innerQuery = buildGroupInnerQuery(unit.getConditions());
+                    Map<String, Object> nestedLeaf = wrapNested(
+                            unit.getNestedPath(), innerQuery, null, nameCounts);
+                    filterClauses.add(nestedLeaf);
+                }
             }
         }
 
@@ -506,15 +516,19 @@ public class EsQueryBuilder {
      * @param innerHitsList innerHits 配置列表
      * @return nested 路径字符串，非 nested 字段时返回 null
      */
-    private static String resolveNestedPath(EsSearchRequest.Condition condition, String field, List<EsSearchRequest.InnerHits> innerHitsList) {
+    private static String resolveNestedPath(
+            EsSearchRequest.Condition condition,
+            String field,
+            List<EsSearchRequest.InnerHits> innerHitsList) {
         if (condition != null && StringUtils.hasText(condition.getNestedPath())) {
             return condition.getNestedPath();
         }
         if (!CollectionUtils.isEmpty(innerHitsList)) {
+            String actualField = (field != null && field.startsWith("-")) ? field.substring(1) : field;
             String bestMatch = null;
             for (EsSearchRequest.InnerHits ih : innerHitsList) {
                 String path = resolvePathFromInnerHits(ih);
-                if (StringUtils.hasText(path) && field.startsWith(path + ".")) {
+                if (StringUtils.hasText(path) && actualField != null && actualField.startsWith(path + ".")) {
                     if (bestMatch == null || path.length() > bestMatch.length()) {
                         bestMatch = path;
                     }
