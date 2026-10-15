@@ -263,6 +263,7 @@ public class EsQueryBuilder {
 
         if (allMust) {
             // Case 1: 全体均为 must。利用 AND 结合律与交换律，对相同 nestedPath 集中归拢到其首次出现的物理位置
+            // 把队伍里散落的“同班同学（同一个 Nested 路径的条件）”全部叫出来抱团，让他们在“第一个同学站的位置”整队站好；散客（普通字段）则保持原来的排队顺序不变。
             Map<String, List<EsSearchRequest.Condition>> nestedGroups = new LinkedHashMap<>();
             for (EsSearchRequest.Condition c : validConditions) {
                 String field = c.getField().trim();
@@ -277,10 +278,8 @@ public class EsQueryBuilder {
                 String field = c.getField().trim();
                 String nestedPath = resolveNestedPath(c, field, innerHitsList);
                 if (StringUtils.hasText(nestedPath)) {
-                    if (!processedPaths.contains(nestedPath)) {
-                        processedPaths.add(nestedPath);
-                        List<EsSearchRequest.Condition> group = nestedGroups.get(nestedPath);
-                        units.add(new ConditionUnit("must", nestedPath, group));
+                    if (processedPaths.add(nestedPath)) {
+                        units.add(new ConditionUnit("must", nestedPath, nestedGroups.get(nestedPath)));
                     }
                 } else {
                     units.add(new ConditionUnit("must", null, Collections.singletonList(c)));
