@@ -123,6 +123,7 @@ public class EsQueryBuilder {
                         filterClauses.add(leaf);
                     }
                 } else {
+                    // 导航筛选：同一 nestedPath 下归拢的多条件构建内部复合查询（放入 filter）
                     Map<String, Object> innerQuery = buildGroupInnerQuery(unit.getConditions());
                     Map<String, Object> nestedLeaf = wrapNested(
                             unit.getNestedPath(), innerQuery, null, nameCounts);
@@ -186,6 +187,7 @@ public class EsQueryBuilder {
         for (ConditionUnit unit : units) {
             Map<String, Object> unitQuery;
             if (StringUtils.hasText(unit.getNestedPath())) {
+                // 主检索：同一 nestedPath 下归拢的多条件构建内部复合查询（走左结合并挂载 inner_hits）
                 Map<String, Object> innerQuery = buildGroupInnerQuery(unit.getConditions());
                 EsSearchRequest.InnerHits matchedInnerHits = findInnerHitsByPath(unit.getNestedPath(), innerHitsList);
                 unitQuery = wrapNested(unit.getNestedPath(), innerQuery, matchedInnerHits, nameCounts);
@@ -716,6 +718,7 @@ public class EsQueryBuilder {
 
         for (String f : keywordFields) {
             String matchedPath = null;
+            // 最长前缀匹配
             for (String path : pathToConfigMap.keySet()) {
                 if (f.startsWith(path + ".")) {
                     if (matchedPath == null || path.length() > matchedPath.length()) {
@@ -739,7 +742,7 @@ public class EsQueryBuilder {
             }
         }
 
-        // 4. 每个 nested 路径独立构建并用 wrapNested 包装
+        // 4. 每个 nested 路径独立构建并用 wrapNested 包装。把同一 Nested 对象里的所有待搜字段打包成一个 bool.should（如果只有1个字段就不包），然后给它们统一套上一层带高亮的 nested 外壳。
         for (Map.Entry<String, List<String>> entry : nestedFieldsByPath.entrySet()) {
             String path = entry.getKey();
             List<String> fields = entry.getValue();
