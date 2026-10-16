@@ -340,6 +340,9 @@ public class ImageMagickEnvCheckerUtilTest {
     // 截取矩形区域。x,y 为左上角坐标，w,h 为宽高。-crop 使用标准 WxH+X+Y 语义，不需要 -1；+repage 用于清除裁剪后残留的页面偏移，避免后续拼接/裁剪坐标错乱。
     // magick 0001.jpg -crop 32x50+1785+362 +repage 0001-crop.jpg
 
+    // 生成一张 A4 大小、300 DPI、淡灰色底、居中写着"测试alexgaoyh"的 JPEG 2000 图像。
+    // magick -size 2480x3508 xc:"#f0f0f0" -units PixelsPerInch -density 300 -font "C:/Windows/Fonts/simsun.ttc" -pointsize 150 -fill black -gravity center -annotate +0+0 "测试alexgaoyh" -quality 100 output.jp2
+
     @Test
     public void streamTest() {
         List<String> command = Arrays.asList("magick", "no-exist.jpg", "no-exist-output.jpg");
