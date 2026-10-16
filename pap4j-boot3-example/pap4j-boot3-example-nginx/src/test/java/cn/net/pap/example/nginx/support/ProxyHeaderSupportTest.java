@@ -109,6 +109,51 @@ class ProxyHeaderSupportTest {
         assertEquals("Content-Type", headers.getFirst(HttpHeaders.ACCESS_CONTROL_ALLOW_HEADERS));
     }
 
+    @Test
+    void handlesNullRemoteAddress() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("/api/x").build();
+        HttpHeaders target = new HttpHeaders();
+        ProxyHeaderSupport.copyRequestHeaders(request, target);
+        assertNull(target.getFirst("X-Real-IP"));
+    }
+
+    @Test
+    void resolvesForwardedPortWhenPortIsDefaultOrUnset() {
+        MockServerHttpRequest httpsReq = MockServerHttpRequest.get("https://example.com/api/x").build();
+        HttpHeaders targetHttps = new HttpHeaders();
+        ProxyHeaderSupport.copyRequestHeaders(httpsReq, targetHttps);
+        assertEquals("443", targetHttps.getFirst("X-Forwarded-Port"));
+
+        MockServerHttpRequest httpReq = MockServerHttpRequest.get("http://example.com/api/x").build();
+        HttpHeaders targetHttp = new HttpHeaders();
+        ProxyHeaderSupport.copyRequestHeaders(httpReq, targetHttp);
+        assertEquals("80", targetHttp.getFirst("X-Forwarded-Port"));
+    }
+
+    @Test
+    void handlesMultipleXForwardedProtoAndWhitespaceInConnection() {
+        MockServerHttpRequest request = MockServerHttpRequest.get("http://example.com/api/x")
+                .header("X-Forwarded-Proto", "https, http")
+                .header("Connection", "  , close , ")
+                .build();
+        HttpHeaders target = new HttpHeaders();
+        ProxyHeaderSupport.copyRequestHeaders(request, target, true);
+        assertEquals("https", target.getFirst("X-Forwarded-Proto"));
+        assertNull(target.getFirst("Connection"));
+    }
+
+    @Test
+    void applyCorsSafelyIgnoresNullOrDisabled() {
+        HttpHeaders headers = new HttpHeaders();
+        ProxyHeaderSupport.applyCors(headers, null, "http://ok.example", false);
+        assertEquals(0, headers.size());
+
+        NginxProperties.Cors disabledCors = new NginxProperties.Cors();
+        disabledCors.setEnabled(false);
+        ProxyHeaderSupport.applyCors(headers, disabledCors, "http://ok.example", false);
+        assertEquals(0, headers.size());
+    }
+
     private static NginxProperties.Cors cors() {
         NginxProperties.Cors cors = new NginxProperties.Cors();
         cors.setEnabled(true);
@@ -120,3 +165,4 @@ class ProxyHeaderSupportTest {
     }
 
 }
+

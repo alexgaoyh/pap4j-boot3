@@ -58,4 +58,21 @@ class NginxProxyRouteTest {
         assertTrue(route.buildTargetUri(request).isEmpty());
     }
 
+    @Test
+    void rejectsNullByteTraversal() {
+        NginxProxyRoute route = route("/api", "http://127.0.0.1:8088");
+        MockServerHttpRequest request = MockServerHttpRequest.method(HttpMethod.GET, URI.create("/api/test%00admin")).build();
+        assertTrue(route.buildTargetUri(request).isEmpty());
+    }
+
+
+    @Test
+    void testGetters() {
+        NginxProxyRoute route = route("/api", "http://127.0.0.1:8088");
+        assertEquals("/api", route.getLocationPath());
+        assertEquals("http://127.0.0.1:8088", route.getProxy().getTarget());
+        org.junit.jupiter.api.Assertions.assertNotNull(route.getWebClient());
+    }
+
 }
+

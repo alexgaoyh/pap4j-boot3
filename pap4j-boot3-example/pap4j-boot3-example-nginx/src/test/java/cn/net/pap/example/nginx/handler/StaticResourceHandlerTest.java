@@ -215,4 +215,51 @@ class StaticResourceHandlerTest {
                 .expectBody(String.class).isEqualTo("body{color:red}");
     }
 
+    @Test
+    void servesWasmWoff2AndWebmanifestMimeTypes() throws IOException {
+        Files.writeString(tempDir.resolve("test.wasm"), "wasm");
+        client.get().uri("/test.wasm").exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueMatches(HttpHeaders.CONTENT_TYPE, "application/wasm.*");
+
+        Files.writeString(tempDir.resolve("font.woff2"), "woff2");
+        client.get().uri("/font.woff2").exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueMatches(HttpHeaders.CONTENT_TYPE, "font/woff2.*");
+
+        Files.writeString(tempDir.resolve("app.webmanifest"), "{}");
+        client.get().uri("/app.webmanifest").exchange()
+                .expectStatus().isOk()
+                .expectHeader().valueMatches(HttpHeaders.CONTENT_TYPE, "application/manifest\\+json.*");
+    }
+
+    @Test
+    void ignoresRangeWhenIfRangeDateMalformed() {
+        client.get().uri("/app.css")
+                .header(HttpHeaders.RANGE, "bytes=0-3")
+                .header(HttpHeaders.IF_RANGE, "not-a-valid-date-nor-quoted-etag")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).isEqualTo("body{color:red}");
+    }
+
+    @Test
+    void servesFromSubpathLocation() throws IOException {
+        Path docsDir = tempDir.resolve("docs");
+        Files.createDirectories(docsDir);
+        Files.writeString(docsDir.resolve("guide.html"), "GUIDE");
+
+        NginxProperties.Location location = new NginxProperties.Location();
+        location.setPath("/docs");
+        location.setRoot(docsDir.toString());
+        RouterFunction<ServerResponse> router = RouterFunctions.route(
+                RequestPredicates.all(), new StaticResourceHandler(location));
+        WebTestClient subClient = WebTestClient.bindToRouterFunction(router).build();
+
+        subClient.get().uri("/docs/guide.html").exchange()
+                .expectStatus().isOk()
+                .expectBody(String.class).isEqualTo("GUIDE");
+    }
+
 }
+

@@ -102,6 +102,18 @@ class NginxProxyWebFilterTest {
                 .expectHeader().valueEquals("Access-Control-Allow-Origin", "http://127.0.0.1:39001");
     }
 
+
+    @Test
+    void upstreamDownWithMissingErrorPageReturnsEmptyBody() {
+        NginxProperties.Proxy proxy = proxy("http://127.0.0.1:1");
+        proxy.setErrorPage("/non/existent/file.html");
+        WebTestClient client = client(proxy);
+        client.get().uri("/api/x").exchange()
+                .expectStatus().isEqualTo(HttpStatus.BAD_GATEWAY)
+                .expectBody().isEmpty();
+    }
+
+
     private static WebTestClient client(NginxProperties.Proxy proxy) {
         NginxProxyRoute route = new NginxProxyRoute(proxy, WebClient.builder().build());
         NginxProxyWebFilter filter = new NginxProxyWebFilter(List.of(route));
