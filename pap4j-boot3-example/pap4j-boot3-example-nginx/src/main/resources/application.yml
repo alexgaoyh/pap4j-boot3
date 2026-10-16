@@ -1,0 +1,74 @@
+server:
+  port: 39001
+  compression:
+    enabled: true
+    mime-types: text/html,text/xml,text/plain,text/css,text/javascript,application/javascript,application/json,application/xml,image/svg+xml
+    min-response-size: 1024
+
+spring:
+  application:
+    name: pap4j-boot3-example-nginx
+  web:
+    resources:
+      # 关闭框架默认的 classpath 静态资源映射，静态资源统一由 pap4j.nginx.resources 接管
+      add-mappings: false
+
+pap4j:
+  nginx:
+    # 反向代理共享连接池（全部为有界配置，防止资源耗尽）
+    pool:
+      max-connections: 500
+      pending-acquire-max-count: 1000
+      pending-acquire-timeout: 30s
+      max-idle-time: 30s
+
+    resources:
+      enabled: true
+      locations:
+        - path: /
+          root: D:/nginx-1.20.2/pap-docs
+          index:
+            - index.html
+            - index.htm
+          spa-fallback: /index.html
+          cache-control: ""
+          charset: utf-8
+
+    # 对应 nginx: location /api { proxy_pass http://127.0.0.1:8088/api; ... }
+    # 说明：target 只写 scheme://host:port 时，按原样转发完整原始路径（等价于 proxy_pass http://host:port/api;）
+    # CORS 方案 A：精准域名白名单 + 允许凭证；请把 allowed-origins 改成前端实际访问的地址
+    proxies:
+      - path: /api
+        target: http://127.0.0.1:8088
+        connect-timeout: 3s
+        response-timeout: 30s
+        # 读取（空闲）超时：防止上游慢速 trickle 长期占用连接
+        read-timeout: 30s
+        # 最大请求体大小：超限返回 413（对齐 Nginx client_max_body_size）
+        max-request-size: 1MB
+        # 上游不可用时的错误页文件（绝对路径），为空时返回空响应体
+        error-page: ""
+        # 是否信任客户端传入的 X-Forwarded-Proto；边缘代理保持 false（按连接协议取值，防伪造）
+        trust-forwarded-headers: false
+        cors:
+          enabled: true
+          allowed-origins:
+            - http://127.0.0.1:39001
+            - http://localhost:39001
+          allow-credentials: true
+          allowed-methods:
+            - GET
+            - POST
+            - OPTIONS
+          allowed-headers:
+            - DNT
+            - X-CustomHeader
+            - Keep-Alive
+            - User-Agent
+            - X-Requested-With
+            - If-Modified-Since
+            - Cache-Control
+            - Content-Type
+          # 允许前端读取的响应头（如文件下载名 Content-Disposition），按需开启
+          expose-headers: [ ]
+          max-age: 1h

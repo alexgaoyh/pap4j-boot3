@@ -34,6 +34,7 @@
         <module>pap4j-boot3-example-websocket</module>
         <module>pap4j-boot3-example-dynamic-form</module>
         <module>pap4j-boot3-example-spring-ai</module>
+        <module>pap4j-boot3-example-nginx</module>
     </modules>
 
     <properties>
