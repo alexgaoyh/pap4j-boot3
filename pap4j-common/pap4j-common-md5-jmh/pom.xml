@@ -85,7 +85,10 @@
                 <configuration>
                     <failOnError>false</failOnError>
                     <doclint>none</doclint>
-                    <skip>false</skip>
+                    <skip>${maven-javadoc-plugin.skip}</skip>
+                    <detectOfflineLinks>false</detectOfflineLinks>
+                    <detectJavaApiLink>false</detectJavaApiLink>
+                    <detectLinks>false</detectLinks>
                 </configuration>
             </plugin>
             <plugin>
