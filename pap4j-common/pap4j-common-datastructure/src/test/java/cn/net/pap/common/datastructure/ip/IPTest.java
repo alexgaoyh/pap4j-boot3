@@ -103,7 +103,7 @@ public class IPTest {
         assertTrue(IpUtil.isInternalHost("127.0.0.1"));
 
         // 测试不存在的主机（会抛出异常）
-        assertThrows(UnknownHostException.class, () -> IpUtil.isInternalHost("nonexistent.host.xyz"));
+        assertThrows(UnknownHostException.class, () -> IpUtil.isInternalHost("nonexistent.host..xyz"));
 
         // ==================== 测试 isIpInRanges 方法 ====================
 

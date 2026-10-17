@@ -50,7 +50,7 @@ public class IpUtil {
      * 如果 IP 地址为 {@code null}、空白字符串或解析失败，返回 {@code false}
      */
     public static boolean isInternalIp(String ip) {
-        if (ip == null || ip.isBlank()) {
+        if (ip == null || ip.isBlank() || !isIpLiteral(ip)) {
             return false;
         }
         try {
@@ -394,6 +394,140 @@ public class IpUtil {
         InetAddress address = InetAddress.getByName(ip);
         byte[] bytes = address.getAddress();
         return new BigInteger(1, bytes);
+    }
+
+    /**
+     * 判断字符串是否为合法的 IP（IPv4 或 IPv6）字面量格式。
+     * <p>
+     * 本方法仅做字面量格式检查，不触发任何 DNS 解析，用于防止非法 IP 字符串触发外部域名解析。
+     * </p>
+     *
+     * @param ip 待校验的 IP 字符串
+     * @return 如果是合法的 IPv4 或 IPv6 格式返回 {@code true}，否则返回 {@code false}
+     */
+    public static boolean isIpLiteral(String ip) {
+        if (ip == null || ip.isBlank()) {
+            return false;
+        }
+        return isIPv4Literal(ip) || isIPv6Literal(ip);
+    }
+
+    /**
+     * 判断字符串是否为合法的 IPv4 点分十进制字面量格式。
+     *
+     * @param ip 待校验字符串
+     * @return 如果是合法的 IPv4 地址返回 {@code true}
+     */
+    private static boolean isIPv4Literal(String ip) {
+        int dotCount = 0;
+        int len = ip.length();
+        if (len < 7 || len > 15) {
+            return false;
+        }
+        int current = 0;
+        int digits = 0;
+        for (int i = 0; i < len; i++) {
+            char c = ip.charAt(i);
+            if (c == '.') {
+                if (digits == 0 || current > 255) {
+                    return false;
+                }
+                if (digits > 1 && ip.charAt(i - digits) == '0') {
+                    return false;
+                }
+                dotCount++;
+                current = 0;
+                digits = 0;
+            } else if (c >= '0' && c <= '9') {
+                current = current * 10 + (c - '0');
+                digits++;
+                if (digits > 3) {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        if (dotCount != 3 || digits == 0 || current > 255) {
+            return false;
+        }
+        if (digits > 1 && ip.charAt(len - digits) == '0') {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * 判断字符串是否为合法的 IPv6 字面量格式。
+     *
+     * @param ip 待校验字符串
+     * @return 如果是合法的 IPv6 地址返回 {@code true}
+     */
+    private static boolean isIPv6Literal(String ip) {
+        if (ip == null || ip.isEmpty()) {
+            return false;
+        }
+        String str = ip;
+        if (str.startsWith("[") && str.endsWith("]")) {
+            str = str.substring(1, str.length() - 1);
+        }
+        int scopeIdx = str.indexOf('%');
+        if (scopeIdx != -1) {
+            str = str.substring(0, scopeIdx);
+        }
+        if ("::".equals(str)) {
+            return true;
+        }
+        if (!str.contains(":")) {
+            return false;
+        }
+        int doubleColonIdx = str.indexOf("::");
+        if (doubleColonIdx != -1 && str.indexOf("::", doubleColonIdx + 2) != -1) {
+            return false;
+        }
+        if (str.startsWith(":") && !str.startsWith("::")) {
+            return false;
+        }
+        if (str.endsWith(":") && !str.endsWith("::")) {
+            return false;
+        }
+
+        String[] parts = str.split(":", -1);
+        if (doubleColonIdx == -1) {
+            if (parts.length != 8) {
+                return false;
+            }
+        } else {
+            if (parts.length > 9) {
+                return false;
+            }
+        }
+
+        int emptyParts = 0;
+        for (int i = 0; i < parts.length; i++) {
+            String part = parts[i];
+            if (part.isEmpty()) {
+                emptyParts++;
+                if (emptyParts > 2) {
+                    return false;
+                }
+                continue;
+            }
+            if (part.length() > 4) {
+                if (i == parts.length - 1 && isIPv4Literal(part)) {
+                    continue;
+                }
+                return false;
+            }
+            for (int j = 0; j < part.length(); j++) {
+                char c = part.charAt(j);
+                boolean isHex = (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F');
+                if (!isHex) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
 }
