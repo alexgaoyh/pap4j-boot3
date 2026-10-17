@@ -42,7 +42,8 @@ public class DorisMapperTest {
         boolean isUp = false;
         try (Socket s = new Socket()) {
             s.connect(new InetSocketAddress("192.168.1.115", 9030), 1000);
-            isUp = true;
+            s.setSoTimeout(1000);
+            isUp = s.getInputStream().read() != -1;
         } catch (Exception e) {
             log.error("Doris 连接检查失败，将跳过测试", e);
             // connection failed
