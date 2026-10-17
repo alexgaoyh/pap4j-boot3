@@ -8,6 +8,8 @@ import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.IOException;
+import java.net.ConnectException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -201,13 +203,39 @@ public class PostmanCollectionReaderTest {
         Assumptions.assumeTrue(Files.exists(portFile),
                 "跳过：找不到 " + portFile + "，请确认 Postman 正在运行（且开启了远程调试端口）");
 
-        int port = Integer.parseInt(Files.readString(portFile).trim().split("\\R")[0].trim());
+        int port;
+        try {
+            port = Integer.parseInt(Files.readString(portFile).trim().split("\\R")[0].trim());
+        } catch (Exception e) {
+            Assumptions.assumeTrue(false, "跳过：解析 Postman DevToolsActivePort 端口失败：" + e.getMessage());
+            return;
+        }
         log.info("[1/3] DevTools 端口 = {}", port);
 
-        String wsUrl = findPageWebSocket(port, COLLECTION_NAME);
+        String wsUrl;
+        try {
+            wsUrl = findPageWebSocket(port, COLLECTION_NAME);
+        } catch (ConnectException e) {
+            Assumptions.assumeTrue(false,
+                    "跳过：无法连接到 Postman DevTools 端口 " + port + "，请确认 Postman 正在运行（且开启了远程调试端口）");
+            return;
+        } catch (IOException e) {
+            Assumptions.assumeTrue(false,
+                    "跳过：请求 Postman DevTools 端口 " + port + " I/O 异常：" + e.getMessage());
+            return;
+        } catch (IllegalStateException e) {
+            Assumptions.assumeTrue(false, "跳过：" + e.getMessage());
+            return;
+        }
         log.info("[2/3] 页面 target = {}", wsUrl);
 
-        String json = evaluate(wsUrl, JS.replace("__NAME__", COLLECTION_NAME).replace("__VARS__", VAR_OVERRIDES));
+        String json;
+        try {
+            json = evaluate(wsUrl, JS.replace("__NAME__", COLLECTION_NAME).replace("__VARS__", VAR_OVERRIDES));
+        } catch (Exception e) {
+            Assumptions.assumeTrue(false, "跳过：通过 CDP 执行脚本失败：" + e.getMessage());
+            return;
+        }
         Files.writeString(OUTPUT, json, StandardCharsets.UTF_8);
         JsonNode arr = MAPPER.readTree(json);
         log.info("[3/3] 已写入 {}（{} 个接口）", OUTPUT.toAbsolutePath(), arr.isArray() ? arr.size() : 0);
@@ -215,9 +243,14 @@ public class PostmanCollectionReaderTest {
 
     /** 从 /json/list 里挑出 desktop.postman.com 的页面 target，优先标题匹配集合名的那个。 */
     private static String findPageWebSocket(int port, String collectionName) throws Exception {
-        HttpClient http = HttpClient.newHttpClient();
+        HttpClient http = HttpClient.newBuilder()
+                .connectTimeout(Duration.ofSeconds(2))
+                .build();
         HttpResponse<String> resp = http.send(
-                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/json/list")).GET().build(),
+                HttpRequest.newBuilder(URI.create("http://127.0.0.1:" + port + "/json/list"))
+                        .timeout(Duration.ofSeconds(2))
+                        .GET()
+                        .build(),
                 HttpResponse.BodyHandlers.ofString());
         JsonNode arr = MAPPER.readTree(resp.body());
 
