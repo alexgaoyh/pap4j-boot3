@@ -386,6 +386,9 @@
                     <!--<target>17</target>-->
                     <additionalJOption>-Xdoclint:none</additionalJOption>
                     <skip>${maven-javadoc-plugin.skip}</skip>
+                    <detectOfflineLinks>false</detectOfflineLinks>
+                    <detectJavaApiLink>false</detectJavaApiLink>
+                    <detectLinks>false</detectLinks>
                 </configuration>
                 <executions>
                     <execution>
