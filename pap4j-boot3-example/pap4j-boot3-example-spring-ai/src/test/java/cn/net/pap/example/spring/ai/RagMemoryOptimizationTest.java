@@ -189,6 +189,11 @@ public class RagMemoryOptimizationTest {
                 return false;
             }
 
+            if ("10.0.0.0".equals(host) || "0.0.0.0".equals(host) || host.contains("dummy") || host.contains("example.com")) {
+                log.warn("大模型配置为占位符地址 ({})，跳过连通性测试。", baseUrl);
+                return false;
+            }
+
             log.info("正在对大模型端点执行轻量级 TCP 探活: {}:{}", host, port);
             try (java.net.Socket socket = new java.net.Socket()) {
                 socket.connect(new java.net.InetSocketAddress(host, port), 1000);
