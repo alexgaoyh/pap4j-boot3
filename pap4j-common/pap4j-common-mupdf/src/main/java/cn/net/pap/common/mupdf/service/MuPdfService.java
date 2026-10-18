@@ -321,7 +321,10 @@ public class MuPdfService implements AutoCloseable {
     }
 
     /**
-     * 周期性收缩 MuPDF 堆外全局 Store 缓存（建议在 Web 拦截器或定时任务中调用）。
+     * 周期性收缩 MuPDF 堆外全局 Store 缓存（建议在定时任务中调用，如每隔 15~30 分钟收缩一次）。
+     * <p>MuPDF 底层 C 库内部维护了一个进程级别的 Store 缓存池，用于缓存已解析的字体字形、常用流等。
+     * 在长期运行数周的生产服务中，建议通过 Spring {@code @Scheduled(fixedRate = 15, timeUnit = TimeUnit.MINUTES)}
+     * 定时收缩以确保堆外常驻内存平稳。</p>
      */
     public void shrinkStore() {
         if (!MuPdfNativeLoader.isLoaded()) {
