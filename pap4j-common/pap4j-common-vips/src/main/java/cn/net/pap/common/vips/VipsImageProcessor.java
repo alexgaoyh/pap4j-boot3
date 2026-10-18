@@ -247,6 +247,15 @@ public class VipsImageProcessor {
              *         卡住 JIT 优化机制，确保 C 语言底层在整个生命周期内都能安全、稳定地访问该内存。
              */
             java.lang.ref.Reference.reachabilityFence(memInput);
+            /*
+             * 8. 显式释放输入 JNA 内存
+             *
+             * JNA 的 {@code Memory} 底层通过 malloc 分配 C 堆内存，默认依赖 GC finalizer 回收。
+             * 在高吞吐（如 PDF 逐页转 WebP）场景下，JVM 堆压力很小、GC 很少触发，
+             * 待回收的 Memory 会在 C 堆中持续堆积，表现为进程 RSS 线性上涨甚至被 OOM Killer 杀死。
+             * 此处 libvips 已完成全部读取与求值（写入缓冲区会强制求值），可安全显式释放。
+             */
+            memInput.close();
         }
     }
 
@@ -864,6 +873,8 @@ public class VipsImageProcessor {
             }
             LibVips.INSTANCE.vips_thread_shutdown();
             java.lang.ref.Reference.reachabilityFence(memInput);
+            // 显式释放 JNA 输入的 C 堆内存，避免依赖 GC finalizer 造成堆外内存滞留
+            memInput.close();
         }
     }
 
@@ -928,6 +939,8 @@ public class VipsImageProcessor {
             }
             LibVips.INSTANCE.vips_thread_shutdown();
             java.lang.ref.Reference.reachabilityFence(memInput);
+            // 显式释放 JNA 输入的 C 堆内存，避免依赖 GC finalizer 造成堆外内存滞留
+            memInput.close();
         }
     }
 
