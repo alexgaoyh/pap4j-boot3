@@ -342,7 +342,7 @@ public class MuPdfNativeLoader {
             }
             return targetFile;
         } catch (Throwable t) {
-            log.warn("[MuPDF-Loader] 解压 native 动态库至 {} 失败: {}", baseDir.getAbsolutePath(), t.getMessage());
+            log.warn("[MuPDF-Loader] 解压 native 动态库至 {} 失败: ", baseDir.getAbsolutePath(), t);
             return null;
         } finally {
             if (tempFile != null) {
