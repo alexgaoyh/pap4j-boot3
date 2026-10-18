@@ -1,0 +1,31 @@
+version = 1
+
+# 模块级混合授权（SPDX 机器可读声明）
+#   仓库默认      : Apache-2.0（根目录 LICENSE，LICENSES/Apache-2.0.txt）
+#   例外          : pap4j-common-mupdf 模块 = AGPL-3.0-only（LICENSES/AGPL-3.0-only.txt）
+#   优先级规则    : REUSE 规范中「后出现的匹配优先」，因此先写宽泛路径，再写具体路径。
+#   说明          : 见 NOTICE 与 LICENSE-AGPL-3.0.txt
+
+# 0) 仓库默认：Apache-2.0（会被下面的具体路径覆盖）
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "alexgaoyh <alexgaoyh@sina.com>"
+SPDX-License-Identifier = "Apache-2.0"
+
+# 1) 该模块整体（含本项目自研的 service / loader 层，因其与 AGPL 绑定同进程链接）
+[[annotations]]
+path = "pap4j-common/pap4j-common-mupdf/**"
+SPDX-FileCopyrightText = "alexgaoyh <alexgaoyh@sina.com>"
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+# 2) 上游 MuPDF Java 绑定（版权归 Artifex；本项目仅修改了 Context.java，见 MODIFICATIONS.md）
+[[annotations]]
+path = "pap4j-common/pap4j-common-mupdf/src/main/java/com/artifex/mupdf/fitz/**"
+SPDX-FileCopyrightText = "2004-2026 Artifex Software, Inc."
+SPDX-License-Identifier = "AGPL-3.0-only"
+
+# 3) MuPDF 原生二进制及其随附 MinGW 运行时
+[[annotations]]
+path = "pap4j-common/pap4j-common-mupdf/src/main/resources/native/**"
+SPDX-FileCopyrightText = "2004-2026 Artifex Software, Inc."
+SPDX-License-Identifier = "AGPL-3.0-only"

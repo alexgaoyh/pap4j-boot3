@@ -1,0 +1,16 @@
+pap4j-common-mupdf
+Copyright (C) alexgaoyh <alexgaoyh@sina.com>
+
+本 jar 包含并链接 MuPDF：
+  * com/artifex/mupdf/fitz/*  —— MuPDF Java 绑定，Copyright (C) 2004-2026 Artifex Software, Inc.
+  * native/**/mupdf_java.dll  —— MuPDF 1.28.2 原生库，Copyright (C) 2004-2026 Artifex Software, Inc.
+
+授权：GNU Affero General Public License v3.0（全文见本目录 LICENSE 文件），
+      或 Artifex 商业授权（https://www.artifex.com/licensing/）。
+
+对应源码：
+  * https://github.com/ArtifexSoftware/mupdf （tag 1.28.2）
+  * 本模块对上游的修改见 MODIFICATIONS.md（仅 Context.java 一处）
+
+⚠️ 以 in-process JNI 方式链接本模块的应用，分发或以网络提供服务时须整体遵守
+   AGPL-3.0（含第 13 条：通过网络交互时须提供对应源码）。

@@ -12,7 +12,26 @@
     <groupId>cn.net.pap</groupId>
     <artifactId>pap4j-common-mupdf</artifactId>
     <name>pap4j-common-mupdf</name>
-    <description>pap4j-common-mupdf wrapping MuPDF JNI</description>
+    <description>pap4j-common-mupdf wrapping MuPDF JNI (AGPL-3.0, see NOTICE / LICENSE-AGPL-3.0.txt)</description>
+
+    <!--
+        许可证说明（覆盖父 POM 的 Apache-2.0 声明）：
+        本模块包含并链接 MuPDF（Java 绑定 + 原生二进制），MuPDF 以 AGPL-3.0 或 Artifex
+        商业授权双许可发布。因此本模块的发布元数据必须是 AGPL-3.0，不能沿用父 POM 的
+        Apache-2.0 声明（否则属错误许可声明）。详见仓库根目录 NOTICE / REUSE.toml。
+    -->
+    <licenses>
+        <license>
+            <name>GNU Affero General Public License v3.0</name>
+            <url>https://www.gnu.org/licenses/agpl-3.0.txt</url>
+            <distribution>repo</distribution>
+            <comments>
+                This module contains and links MuPDF (Java bindings and native library),
+                which is available under AGPL-3.0 or a commercial license from Artifex
+                Software, Inc. (https://www.artifex.com/licensing/).
+            </comments>
+        </license>
+    </licenses>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

@@ -1,0 +1,77 @@
+pap4j-boot3
+Copyright (C) alexgaoyh <alexgaoyh@sina.com>
+
+本仓库采用「模块级混合授权」：除下述 AGPL-3.0 组件外，其余全部代码以
+Apache License 2.0 授权（见根目录 LICENSE 文件）。
+
+================================================================================
+一、AGPL-3.0 组件清单（不适用 Apache-2.0）
+================================================================================
+
+模块：pap4j-common/pap4j-common-mupdf
+
+  1) MuPDF Java 绑定源码
+     路径：pap4j-common/pap4j-common-mupdf/src/main/java/com/artifex/mupdf/fitz/*
+     Copyright (C) 2004-2026 Artifex Software, Inc.
+     对应上游版本：MuPDF 1.28.2
+     授权：GNU Affero General Public License v3.0（见根目录 LICENSE-AGPL-3.0.txt）
+           或 Artifex 商业授权（https://www.artifex.com/licensing/）
+
+  2) MuPDF 原生二进制
+     路径：pap4j-common/pap4j-common-mupdf/src/main/resources/native/**/mupdf_java.dll
+     以及随附的 libwinpthread-1.dll、libgcc_s_seh-1.dll（MinGW 运行时，各自遵循其原始许可）
+     Copyright (C) 2004-2026 Artifex Software, Inc.
+     授权：AGPL-3.0（同上）
+
+  3) 上述文件的修改记录（AGPL-3.0 第 5(a) 条要求）
+     见：pap4j-common/pap4j-common-mupdf/MODIFICATIONS.md
+
+================================================================================
+二、对应源码（Corresponding Source）获取方式
+================================================================================
+
+  * MuPDF 上游源码：https://github.com/ArtifexSoftware/mupdf  （tag 1.28.2）
+  * Java 绑定源码：本仓库 pap4j-common-mupdf 模块 src/main/java/com/artifex/mupdf/fitz/
+                    （等于上游 1.28.2 版本 + MODIFICATIONS.md 中记录的补丁）
+  * 原生库构建方式：见 pap4j-common/pap4j-common-mupdf/README.md
+
+================================================================================
+三、对使用者的重要提示
+================================================================================
+
+  1) pap4j-common-mupdf 以 AGPL-3.0 授权。若你以 in-process JNI 方式链接该模块，
+     你分发或以网络提供服务时须整体遵守 AGPL-3.0（含第 13 条：通过网络与用户
+     交互时，须向用户提供对应源码）。若不愿承担该义务，请不要引入该模块，
+     改用 Apache-2.0 的 PDF 引擎实现，或通过独立进程方式调用。
+
+  2) 除 pap4j-common-mupdf 之外的其它模块（含 pap4j-common-pdf、pap4j-common-vips 等）
+     仍为 Apache License 2.0，不受 AGPL 约束。
+
+  3) 许可证更正说明：自本次提交起，pap4j-common-mupdf 模块的许可以本 NOTICE
+     与 LICENSE-AGPL-3.0.txt 为准。此前版本中该模块缺少 AGPL 许可声明、
+     修改标注与对应源码说明，属声明不完整，特此更正；本仓库 git 历史不予改写。
+
+================================================================================
+四、机器可读的许可声明
+================================================================================
+
+  各路径的 SPDX 许可标识见根目录 REUSE.toml；SPDX 许可证全文位于 LICENSES/ 目录：
+    * LICENSES/Apache-2.0.txt
+    * LICENSES/AGPL-3.0-only.txt
+
+================================================================================
+五、随包 MinGW 运行库（第三方，非本项目作品）
+================================================================================
+
+  pap4j-common/pap4j-common-mupdf/src/main/resources/native/win-amd64/ 下：
+
+    * libwinpthread-1.dll  —— MinGW-w64 项目（winpthreads），可再分发
+    * libgcc_s_seh-1.dll   —— GCC Runtime Library（受 GCC Runtime Library Exception 覆盖），可再分发
+
+  Copyright (C) 各自的贡献者（Free Software Foundation / MinGW-w64 项目）。
+  这两个文件未经修改，仅作为 MuPDF 原生库的运行时依赖随包附带；
+  其授权以各自上游发布物附带的许可证文本为准：
+    * https://gcc.gnu.org/onlinedocs/libstdc++/manual/license.html
+    * https://sourceforge.net/projects/mingw-w64/
+
+  本项目未修改上述二进制；若你需要严格的逐文件许可证全文，请从上述上游获取。

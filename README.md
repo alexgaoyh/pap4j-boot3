@@ -1,6 +1,7 @@
 # pap4j-boot3
 
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](https://gitee.com/alexgaoyh/pap4j-boot3/raw/master/LICENSE)
+[![License](https://img.shields.io/badge/pap4j--common--mupdf-AGPL--3.0-orange.svg)](LICENSE-AGPL-3.0.txt)
 [![Maven Central](https://img.shields.io/maven-central/v/cn.net.pap/pap4j-boot3.svg)](https://central.sonatype.com/namespace/cn.net.pap)
 [![Java](https://img.shields.io/badge/Java-17%2B-orange.svg)](https://www.oracle.com/java/technologies/javase/jdk17-archive-downloads.html)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5.x-green.svg)](https://spring.io/projects/spring-boot)
@@ -162,6 +163,21 @@ mvn clean install -Dfile.encoding=UTF-8
 - [ ] **多模态 AI 接入**: 集成图像识别与语音转文字模型到 Spring AI 模块。
 - [ ] **虚拟线程深度优化**: 在 `pap4j-common-worker` 中全面引入 JDK 21 虚拟线程支持。
 - [ ] **低代码支持**: 基于 `dynamic-form` 模块实现全自动 CRUD 代码生成器。
+
+---
+
+#### 📜 许可证（重要）
+
+&ensp;&ensp; 本仓库采用 **模块级混合授权**：
+
+- 除下述模块外，其余模块均为 **Apache License 2.0**（见 [LICENSE](LICENSE)）；
+- **`pap4j-common-mupdf`** 模块包含并链接 **MuPDF**（Java 绑定 + 原生二进制，MuPDF 1.28.2），
+  因此该模块以 **AGPL-3.0** 授权（见 [LICENSE-AGPL-3.0.txt](LICENSE-AGPL-3.0.txt)）。
+
+&ensp;&ensp; ⚠️ 以 in-process JNI 方式链接 `pap4j-common-mupdf` 的应用，在分发或通过网络提供服务时须整体遵守
+AGPL-3.0（含第 13 条：通过网络交互时向用户提供对应源码）。若不希望承担该义务，请不要引入该模块，
+或改用独立进程调用，或向 [Artifex](https://www.artifex.com/licensing/) 购买商业授权。
+详见 [NOTICE](NOTICE)、[REUSE.toml](REUSE.toml) 与模块内 [MODIFICATIONS.md](pap4j-common/pap4j-common-mupdf/MODIFICATIONS.md)。
 
 ---
 

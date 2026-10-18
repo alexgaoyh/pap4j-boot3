@@ -1,5 +1,12 @@
 // Copyright (C) 2004-2025 Artifex Software, Inc.
 //
+// MODIFIED by alexgaoyh <alexgaoyh@sina.com> on 2026-10-18:
+//   Context.init() no longer calls System.loadLibrary("mupdf_java") directly;
+//   it delegates to cn.net.pap.common.mupdf.loader.MuPdfNativeLoader.ensureLoaded()
+//   (platform detection + classpath extraction + external dir loading).
+//   This is the only modification to the MuPDF 1.28.2 Java bindings.
+//   See MODIFICATIONS.md in this module. Original license: AGPL-3.0.
+//
 // This file is part of MuPDF.
 //
 // MuPDF is free software: you can redistribute it and/or modify it under the
