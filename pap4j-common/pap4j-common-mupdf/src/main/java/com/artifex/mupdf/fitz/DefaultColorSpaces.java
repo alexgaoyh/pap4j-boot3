@@ -22,35 +22,40 @@
 
 package com.artifex.mupdf.fitz;
 
-public class DefaultColorSpaces implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class DefaultColorSpaces implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private DefaultColorSpaces(long p) {
-		pointer = p;
-	}
+    private DefaultColorSpaces(long p) {
+        pointer = p;
+    }
 
-	public native void setDefaultGray(ColorSpace cs);
-	public native void setDefaultRGB(ColorSpace cs);
-	public native void setDefaultCMYK(ColorSpace cs);
-	public native void setOutputIntent(ColorSpace cs);
+    public native void setDefaultGray(ColorSpace cs);
 
-	public native ColorSpace getDefaultGray();
-	public native ColorSpace getDefaultRGB();
-	public native ColorSpace getDefaultCMYK();
-	public native ColorSpace getOutputIntent();
+    public native void setDefaultRGB(ColorSpace cs);
+
+    public native void setDefaultCMYK(ColorSpace cs);
+
+    public native void setOutputIntent(ColorSpace cs);
+
+    public native ColorSpace getDefaultGray();
+
+    public native ColorSpace getDefaultRGB();
+
+    public native ColorSpace getDefaultCMYK();
+
+    public native ColorSpace getOutputIntent();
 }

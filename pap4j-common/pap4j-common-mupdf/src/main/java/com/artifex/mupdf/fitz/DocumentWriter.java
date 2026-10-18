@@ -22,46 +22,48 @@
 
 package com.artifex.mupdf.fitz;
 
-public class DocumentWriter implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class DocumentWriter implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	private native static long newNativeDocumentWriter(String filename, String format, String options);
-	private native static long newNativeDocumentWriterWithSeekableOutputStream(SeekableOutputStream stream, String format, String options);
-	private native static long newNativeDocumentWriterWithBuffer(Buffer buffer, String format, String options);
+    private native static long newNativeDocumentWriter(String filename, String format, String options);
 
-	public DocumentWriter(String filename, String format, String options) {
-		pointer = newNativeDocumentWriter(filename, format, options);
-	}
+    private native static long newNativeDocumentWriterWithSeekableOutputStream(SeekableOutputStream stream, String format, String options);
 
-	public DocumentWriter(SeekableOutputStream stream, String format, String options) {
-		pointer = newNativeDocumentWriterWithSeekableOutputStream(stream, format, options);
-	}
+    private native static long newNativeDocumentWriterWithBuffer(Buffer buffer, String format, String options);
 
-	public DocumentWriter(Buffer buffer, String format, String options) {
-		pointer = newNativeDocumentWriterWithBuffer(buffer, format, options);
-	}
+    public DocumentWriter(String filename, String format, String options) {
+        pointer = newNativeDocumentWriter(filename, format, options);
+    }
 
-	public native Device beginPage(Rect mediabox);
-	public native void endPage();
-	public native void close();
+    public DocumentWriter(SeekableOutputStream stream, String format, String options) {
+        pointer = newNativeDocumentWriterWithSeekableOutputStream(stream, format, options);
+    }
 
-	private long ocrlistener;
+    public DocumentWriter(Buffer buffer, String format, String options) {
+        pointer = newNativeDocumentWriterWithBuffer(buffer, format, options);
+    }
 
-	public interface OCRListener
-	{
-		boolean progress(int page, int percent);
-	}
+    public native Device beginPage(Rect mediabox);
 
-	public native void addOCRListener(OCRListener listener);
+    public native void endPage();
+
+    public native void close();
+
+    private long ocrlistener;
+
+    public interface OCRListener {
+        boolean progress(int page, int percent);
+    }
+
+    public native void addOCRListener(OCRListener listener);
 }

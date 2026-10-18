@@ -22,33 +22,36 @@
 
 package com.artifex.mupdf.fitz;
 
-public class Cookie implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class Cookie implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private native long newNative();
+    private native long newNative();
 
-	public Cookie() {
-		pointer = newNative();
-	}
+    public Cookie() {
+        pointer = newNative();
+    }
 
-	public native void abort();
-	public native int getProgress();
-	public native int getProgressMax();
-	public native int getErrors();
-	public native boolean getIncomplete();
+    public native void abort();
+
+    public native int getProgress();
+
+    public native int getProgressMax();
+
+    public native int getErrors();
+
+    public native boolean getIncomplete();
 }

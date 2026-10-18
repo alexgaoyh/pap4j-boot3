@@ -22,60 +22,62 @@
 
 package com.artifex.mupdf.fitz;
 
-public class DisplayList implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class DisplayList implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private native long newNative(Rect mediabox);
+    private native long newNative(Rect mediabox);
 
-	public DisplayList(Rect mediabox) {
-		pointer = newNative(mediabox);
-	}
+    public DisplayList(Rect mediabox) {
+        pointer = newNative(mediabox);
+    }
 
-	private DisplayList(long p) {
-		pointer = p;
-	}
+    private DisplayList(long p) {
+        pointer = p;
+    }
 
-	public native Rect getBounds();
+    public native Rect getBounds();
 
-	public native Pixmap toPixmap(Matrix ctm, ColorSpace colorspace, boolean alpha);
-	public native StructuredText toStructuredText(String options);
+    public native Pixmap toPixmap(Matrix ctm, ColorSpace colorspace, boolean alpha);
 
-	public StructuredText toStructuredText() {
-		return toStructuredText(null);
-	}
+    public native StructuredText toStructuredText(String options);
 
-	public native Quad[][] search(String needle, int style);
-	public Quad[][] search(String needle)
-	{
-		return search(needle, StructuredText.SEARCH_IGNORE_CASE);
-	}
+    public StructuredText toStructuredText() {
+        return toStructuredText(null);
+    }
 
-	public native void run(Device dev, Matrix ctm, Rect scissor, Cookie cookie);
+    public native Quad[][] search(String needle, int style);
 
-	public void run(Device dev, Matrix ctm, Cookie cookie) {
-		run(dev, ctm, null, cookie);
-	}
+    public Quad[][] search(String needle) {
+        return search(needle, StructuredText.SEARCH_IGNORE_CASE);
+    }
 
-	public native BarcodeInfo decodeBarcode(Rect subarea, float rotate);
-	public BarcodeInfo decodeBarcode(Rect subarea) {
-		return decodeBarcode(subarea, 0);
-	}
-	public BarcodeInfo decodeBarcode() {
-		return decodeBarcode(Rect.Infinite(), 0);
-	}
+    public native void run(Device dev, Matrix ctm, Rect scissor, Cookie cookie);
+
+    public void run(Device dev, Matrix ctm, Cookie cookie) {
+        run(dev, ctm, null, cookie);
+    }
+
+    public native BarcodeInfo decodeBarcode(Rect subarea, float rotate);
+
+    public BarcodeInfo decodeBarcode(Rect subarea) {
+        return decodeBarcode(subarea, 0);
+    }
+
+    public BarcodeInfo decodeBarcode() {
+        return decodeBarcode(Rect.Infinite(), 0);
+    }
 }

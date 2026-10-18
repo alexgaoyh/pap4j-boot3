@@ -22,29 +22,28 @@
 
 package com.artifex.mupdf.fitz;
 
-public class PDFGraftMap implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class PDFGraftMap implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	public native PDFObject graftObject(PDFObject obj);
+    public native PDFObject graftObject(PDFObject obj);
 
-	public native void graftPage(int pageTo, PDFDocument src, int pageFrom);
+    public native void graftPage(int pageTo, PDFDocument src, int pageFrom);
 
-	private PDFGraftMap(long p) {
-		pointer = p;
-	}
+    private PDFGraftMap(long p) {
+        pointer = p;
+    }
 }

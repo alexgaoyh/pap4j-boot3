@@ -31,68 +31,71 @@ import java.io.StringWriter;
 // The only publicly accessible method here is Context.setStoreSize, which
 // sets the store size to use. This must be called before any other MuPDF
 // function.
-public class Context
-{
-	// Make sure to initialize inited before calling
-	// init() from the static block below.
-	private static boolean inited = false;
+public class Context {
+    // Make sure to initialize inited before calling
+    // init() from the static block below.
+    private static boolean inited = false;
 
-	static {
-		init();
-	}
+    static {
+        init();
+    }
 
-	private static native int initNative();
+    private static native int initNative();
 
-	private static String stackTrace(Throwable t) {
-		StringWriter w = new StringWriter();
-		PrintWriter pw = new PrintWriter(w);
-		t.printStackTrace(pw);
-		pw.flush();
-		return w.toString();
-	}
+    private static String stackTrace(Throwable t) {
+        StringWriter w = new StringWriter();
+        PrintWriter pw = new PrintWriter(w);
+        t.printStackTrace(pw);
+        pw.flush();
+        return w.toString();
+    }
 
-	public static void init() {
-		if (!inited) {
-			inited = true;
-			cn.net.pap.common.mupdf.loader.MuPdfNativeLoader.ensureLoaded();
-			if (initNative() < 0)
-				throw new RuntimeException("cannot initialize mupdf library");
-		}
-	}
+    public static void init() {
+        if (!inited) {
+            inited = true;
+            cn.net.pap.common.mupdf.loader.MuPdfNativeLoader.ensureLoaded();
+            if (initNative() < 0)
+                throw new RuntimeException("cannot initialize mupdf library");
+        }
+    }
 
-	// empty and shrink the store
-	public native static void emptyStore();
-	public native static boolean shrinkStore(int percent);
+    // empty and shrink the store
+    public native static void emptyStore();
 
-	public native static void enableICC();
-	public native static void disableICC();
-	public native static void setAntiAliasLevel(int level);
+    public native static boolean shrinkStore(int percent);
 
-	// The way CSS is controlled may have breaking changes in the future.
-	public native static void setUserCSS(String css);
-	public native static void useDocumentCSS(boolean state);
+    public native static void enableICC();
 
-	public native static Version getVersion();
+    public native static void disableICC();
 
-	public static class Version {
-		public String version;
-		public int major;
-		public int minor;
-		public int patch;
-	}
+    public native static void setAntiAliasLevel(int level);
 
-	public static void setLog(Log log_) {
-		synchronized(lock) {
-			log = log_;
-		}
-	}
+    // The way CSS is controlled may have breaking changes in the future.
+    public native static void setUserCSS(String css);
 
-	public interface Log
-	{
-		void error(String message);
-		void warning(String message);
-	}
+    public native static void useDocumentCSS(boolean state);
 
-	private static Log log;
-	private final static Object lock = new Object();
+    public native static Version getVersion();
+
+    public static class Version {
+        public String version;
+        public int major;
+        public int minor;
+        public int patch;
+    }
+
+    public static void setLog(Log log_) {
+        synchronized (lock) {
+            log = log_;
+        }
+    }
+
+    public interface Log {
+        void error(String message);
+
+        void warning(String message);
+    }
+
+    private static Log log;
+    private final static Object lock = new Object();
 }

@@ -22,42 +22,46 @@
 
 package com.artifex.mupdf.fitz;
 
-public class Archive implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class Archive implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private native long newNativeArchiveWithPath(String path);
-	private native long newNativeArchiveWithStream(SeekableInputStream stream);
+    private native long newNativeArchiveWithPath(String path);
 
-	public Archive(String path) {
-		pointer = newNativeArchiveWithPath(path);
-	}
+    private native long newNativeArchiveWithStream(SeekableInputStream stream);
 
-	public Archive(SeekableInputStream stream) {
-		pointer = newNativeArchiveWithStream(stream);
-	}
+    public Archive(String path) {
+        pointer = newNativeArchiveWithPath(path);
+    }
 
-	protected Archive(long p) {
-		pointer = p;
-	}
+    public Archive(SeekableInputStream stream) {
+        pointer = newNativeArchiveWithStream(stream);
+    }
 
-	public native String getFormat();
-	public native int countEntries();
-	public native String listEntry(int idx);
-	public native boolean hasEntry(String name);
-	public native Buffer readEntry(String name);
+    protected Archive(long p) {
+        pointer = p;
+    }
+
+    public native String getFormat();
+
+    public native int countEntries();
+
+    public native String listEntry(int idx);
+
+    public native boolean hasEntry(String name);
+
+    public native Buffer readEntry(String name);
 }

@@ -22,153 +22,191 @@
 
 package com.artifex.mupdf.fitz;
 
-public class Pixmap implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class Pixmap implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private native long newNative(ColorSpace cs, int x, int y, int w, int h, boolean alpha);
-	private native long newNativeFromColorAndMask(Pixmap color, Pixmap mask);
-	private native long newNativeDeskew(float angle, int border);
+    private native long newNative(ColorSpace cs, int x, int y, int w, int h, boolean alpha);
 
-	private Pixmap(long p) {
-		pointer = p;
-	}
+    private native long newNativeFromColorAndMask(Pixmap color, Pixmap mask);
 
-	public Pixmap(ColorSpace cs, int x, int y, int w, int h, boolean alpha) {
-		pointer = newNative(cs, x, y, w, h, alpha);
-	}
+    private native long newNativeDeskew(float angle, int border);
 
-	public Pixmap(ColorSpace cs, int x, int y, int w, int h) {
-		this(cs, x, y, w, h, false);
-	}
+    private Pixmap(long p) {
+        pointer = p;
+    }
 
-	public Pixmap(ColorSpace cs, int w, int h, boolean alpha) {
-		this(cs, 0, 0, w, h, alpha);
-	}
+    public Pixmap(ColorSpace cs, int x, int y, int w, int h, boolean alpha) {
+        pointer = newNative(cs, x, y, w, h, alpha);
+    }
 
-	public Pixmap(ColorSpace cs, int w, int h) {
-		this(cs, 0, 0, w, h, false);
-	}
+    public Pixmap(ColorSpace cs, int x, int y, int w, int h) {
+        this(cs, x, y, w, h, false);
+    }
 
-	public Pixmap(ColorSpace cs, Rect rect, boolean alpha) {
-		this(cs, (int)rect.x0, (int)rect.y0, (int)(rect.x1 - rect.x0), (int)(rect.y1 - rect.y0), alpha);
-	}
+    public Pixmap(ColorSpace cs, int w, int h, boolean alpha) {
+        this(cs, 0, 0, w, h, alpha);
+    }
 
-	public Pixmap(ColorSpace cs, Rect rect) {
-		this(cs, rect, false);
-	}
+    public Pixmap(ColorSpace cs, int w, int h) {
+        this(cs, 0, 0, w, h, false);
+    }
 
-	public Pixmap(Pixmap color, Pixmap mask) {
-		pointer = newNativeFromColorAndMask(color, mask);
-	}
+    public Pixmap(ColorSpace cs, Rect rect, boolean alpha) {
+        this(cs, (int) rect.x0, (int) rect.y0, (int) (rect.x1 - rect.x0), (int) (rect.y1 - rect.y0), alpha);
+    }
 
-	public native void clear();
-	private native void clearWithValue(int value);
-	public void clear(int value) {
-		clearWithValue(value);
-	}
+    public Pixmap(ColorSpace cs, Rect rect) {
+        this(cs, rect, false);
+    }
 
-	public native Buffer asPNG();
-	public native Buffer asJPEG(int quality, boolean invertCMYK);
-	public native Buffer asPAM();
-	public native Buffer asPNM();
-	public native Buffer asPBM();
-	public native Buffer asPKM();
-	public native Buffer asJPX(int quality);
+    public Pixmap(Pixmap color, Pixmap mask) {
+        pointer = newNativeFromColorAndMask(color, mask);
+    }
 
-	public native void saveAsPNG(String filename);
-	public native void saveAsJPEG(String filename, int quality);
-	public native void saveAsPAM(String filename);
-	public native void saveAsPNM(String filename);
-	public native void saveAsPBM(String filename);
-	public native void saveAsPKM(String filename);
-	public native void saveAsJPX(String filename, int quality);
+    public native void clear();
 
-	public native int getX();
-	public native int getY();
-	public native int getWidth();
-	public native int getHeight();
-	public native int getStride();
-	public native int getNumberOfComponents();
-	public native boolean getAlpha();
-	public native ColorSpace getColorSpace();
-	public native byte[] getSamples();
-	public native byte getSample(int x, int y, int n);
-	public native int[] getPixels(); /* only valid for RGBA or BGRA pixmaps */
-	public native int getXResolution();
-	public native int getYResolution();
+    private native void clearWithValue(int value);
 
-	public native void setResolution(int xres, int yres);
+    public void clear(int value) {
+        clearWithValue(value);
+    }
 
-	public native void invert();
-	public native void invertLuminance();
-	public native void gamma(float gamma);
-	public native void tint(int black, int white);
-	public native Pixmap convertToColorSpace(ColorSpace cs, ColorSpace proof, DefaultColorSpaces defaultCs, int colorParams, boolean keepAlpha);
-	public native byte[] computeMD5();
+    public native Buffer asPNG();
 
-	public Rect getBounds() {
-		int x = getX();
-		int y = getY();
-		return new Rect(x, y, x + getWidth(), y+ getHeight());
-	}
+    public native Buffer asJPEG(int quality, boolean invertCMYK);
 
-	public String toString() {
-		return "Pixmap(w=" + getWidth() +
-			" h=" + getHeight() +
-			" x=" + getX() +
-			" y=" + getY() +
-			" n=" + getNumberOfComponents() +
-			" alpha=" + getAlpha() +
-			" cs=" + getColorSpace() +
-			")";
-	}
+    public native Buffer asPAM();
 
-	public static final int DESKEW_BORDER_INCREASE = 0;
-	public static final int DESKEW_BORDER_MAINTAIN = 1;
-	public static final int DESKEW_BORDER_DECREASE = 2;
+    public native Buffer asPNM();
 
-	public Pixmap deskew(float angle, int border)
-	{
-		return new Pixmap(newNativeDeskew(angle, border));
-	}
+    public native Buffer asPBM();
 
-	public native float detectSkew();
-	public native Pixmap warp(Quad points, int width, int height);
-	public native Pixmap autowarp(Quad points);
+    public native Buffer asPKM();
 
-	private native Quad detectDocument();
+    public native Buffer asJPX(int quality);
 
-	public native BarcodeInfo decodeBarcode(float rotate);
-	public BarcodeInfo decodeBarcode() {
-		return decodeBarcode(0);
-	}
+    public native void saveAsPNG(String filename);
 
-	public static native Pixmap encodeBarcode(int type, String contents, int size, int errorCorrectionLevel, boolean quietZones, boolean humanReadableText);
-	public static Pixmap encodeBarcode(int type, String contents, int size, int errorCorrectionLevel, boolean quietZones) {
-		return encodeBarcode(type, contents, size, errorCorrectionLevel, quietZones, false);
-	}
-	public static Pixmap encodeBarcode(int type, String contents, int size, int errorCorrectionLevel) {
-		return encodeBarcode(type, contents, size, errorCorrectionLevel, false, false);
-	}
-	public static Pixmap encodeBarcode(int type, String contents, int size) {
-		return encodeBarcode(type, contents, size, 2, false, false);
-	}
-	public static Pixmap encodeBarcode(int type, String contents) {
-		return encodeBarcode(type, contents, 0, 2, false, false);
-	}
+    public native void saveAsJPEG(String filename, int quality);
+
+    public native void saveAsPAM(String filename);
+
+    public native void saveAsPNM(String filename);
+
+    public native void saveAsPBM(String filename);
+
+    public native void saveAsPKM(String filename);
+
+    public native void saveAsJPX(String filename, int quality);
+
+    public native int getX();
+
+    public native int getY();
+
+    public native int getWidth();
+
+    public native int getHeight();
+
+    public native int getStride();
+
+    public native int getNumberOfComponents();
+
+    public native boolean getAlpha();
+
+    public native ColorSpace getColorSpace();
+
+    public native byte[] getSamples();
+
+    public native byte getSample(int x, int y, int n);
+
+    public native int[] getPixels(); /* only valid for RGBA or BGRA pixmaps */
+
+    public native int getXResolution();
+
+    public native int getYResolution();
+
+    public native void setResolution(int xres, int yres);
+
+    public native void invert();
+
+    public native void invertLuminance();
+
+    public native void gamma(float gamma);
+
+    public native void tint(int black, int white);
+
+    public native Pixmap convertToColorSpace(ColorSpace cs, ColorSpace proof, DefaultColorSpaces defaultCs, int colorParams, boolean keepAlpha);
+
+    public native byte[] computeMD5();
+
+    public Rect getBounds() {
+        int x = getX();
+        int y = getY();
+        return new Rect(x, y, x + getWidth(), y + getHeight());
+    }
+
+    public String toString() {
+        return "Pixmap(w=" + getWidth() +
+               " h=" + getHeight() +
+               " x=" + getX() +
+               " y=" + getY() +
+               " n=" + getNumberOfComponents() +
+               " alpha=" + getAlpha() +
+               " cs=" + getColorSpace() +
+               ")";
+    }
+
+    public static final int DESKEW_BORDER_INCREASE = 0;
+    public static final int DESKEW_BORDER_MAINTAIN = 1;
+    public static final int DESKEW_BORDER_DECREASE = 2;
+
+    public Pixmap deskew(float angle, int border) {
+        return new Pixmap(newNativeDeskew(angle, border));
+    }
+
+    public native float detectSkew();
+
+    public native Pixmap warp(Quad points, int width, int height);
+
+    public native Pixmap autowarp(Quad points);
+
+    private native Quad detectDocument();
+
+    public native BarcodeInfo decodeBarcode(float rotate);
+
+    public BarcodeInfo decodeBarcode() {
+        return decodeBarcode(0);
+    }
+
+    public static native Pixmap encodeBarcode(int type, String contents, int size, int errorCorrectionLevel, boolean quietZones, boolean humanReadableText);
+
+    public static Pixmap encodeBarcode(int type, String contents, int size, int errorCorrectionLevel, boolean quietZones) {
+        return encodeBarcode(type, contents, size, errorCorrectionLevel, quietZones, false);
+    }
+
+    public static Pixmap encodeBarcode(int type, String contents, int size, int errorCorrectionLevel) {
+        return encodeBarcode(type, contents, size, errorCorrectionLevel, false, false);
+    }
+
+    public static Pixmap encodeBarcode(int type, String contents, int size) {
+        return encodeBarcode(type, contents, size, 2, false, false);
+    }
+
+    public static Pixmap encodeBarcode(int type, String contents) {
+        return encodeBarcode(type, contents, 0, 2, false, false);
+    }
 }

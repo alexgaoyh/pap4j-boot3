@@ -22,57 +22,57 @@
 
 package com.artifex.mupdf.fitz;
 
-public class Link implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class Link implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	protected Link(long p) {
-		pointer = p;
-	}
+    protected Link(long p) {
+        pointer = p;
+    }
 
-	public native Rect getBounds();
-	public native void setBounds(Rect bbox);
+    public native Rect getBounds();
 
-	public native String getURI();
-	public native void setURI(String uri);
+    public native void setBounds(Rect bbox);
 
-	public boolean isExternal() {
-		return Link.isExternal(getURI());
-	}
+    public native String getURI();
 
-	public static boolean isExternal(String uri) {
-		char c = uri.charAt(0);
-		if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z'))
-			return false;
+    public native void setURI(String uri);
 
-		for (int i = 1; i < uri.length(); i++)
-		{
-			c = uri.charAt(i);
-			if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
-					(c >= '0' && c <= '9') ||
-					c == '+' || c == '-' || c == '.')
-				continue;
-			else
-				return c == ':';
-		}
-		return false;
-	}
+    public boolean isExternal() {
+        return Link.isExternal(getURI());
+    }
 
-	public String toString() {
-		return "Link(bounds="+getBounds()+",uri="+getURI()+")";
-	}
+    public static boolean isExternal(String uri) {
+        char c = uri.charAt(0);
+        if (!(c >= 'a' && c <= 'z') && !(c >= 'A' && c <= 'Z'))
+            return false;
+
+        for (int i = 1; i < uri.length(); i++) {
+            c = uri.charAt(i);
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                (c >= '0' && c <= '9') ||
+                c == '+' || c == '-' || c == '.')
+                continue;
+            else
+                return c == ':';
+        }
+        return false;
+    }
+
+    public String toString() {
+        return "Link(bounds=" + getBounds() + ",uri=" + getURI() + ")";
+    }
 }

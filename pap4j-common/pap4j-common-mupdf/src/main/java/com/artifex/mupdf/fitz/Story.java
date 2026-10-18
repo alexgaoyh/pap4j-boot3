@@ -24,79 +24,73 @@ package com.artifex.mupdf.fitz;
 
 import java.nio.charset.StandardCharsets;
 
-public class Story implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class Story implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	/* Flags for 3-args place() */
-	public static final int FLAGS_NO_OVERFLOW = 1;
+    /* Flags for 3-args place() */
+    public static final int FLAGS_NO_OVERFLOW = 1;
 
-	/* Return codes from 3-args place().
-	 * Also 'non-zero' means more to do.
-	 */
-	public static final int ALL_FITTED = 0;
-	public static final int OVERFLOW_WIDTH = 2;
+    /* Return codes from 3-args place().
+     * Also 'non-zero' means more to do.
+     */
+    public static final int ALL_FITTED = 0;
+    public static final int OVERFLOW_WIDTH = 2;
 
-	protected long pointer;
+    protected long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private static native long newStory(byte[] content, byte[] user_css, float em, Archive arch);
+    private static native long newStory(byte[] content, byte[] user_css, float em, Archive arch);
 
-	public Story(String content, String user_css, float em, Archive arch)
-	{
-		pointer = newStory(content.getBytes(StandardCharsets.UTF_8), user_css.getBytes(StandardCharsets.UTF_8), em, arch);
-	}
-	public Story(String content, String user_css, float em)
-	{
-		this(content, user_css, em, null);
-	}
+    public Story(String content, String user_css, float em, Archive arch) {
+        pointer = newStory(content.getBytes(StandardCharsets.UTF_8), user_css.getBytes(StandardCharsets.UTF_8), em, arch);
+    }
 
-	public Story(byte[] content, String user_css, float em, Archive arch)
-	{
-		pointer = newStory(content, user_css.getBytes(StandardCharsets.UTF_8), em, arch);
-	}
-	public Story(byte[] content, String user_css, float em)
-	{
-		this(content, user_css, em, null);
-	}
+    public Story(String content, String user_css, float em) {
+        this(content, user_css, em, null);
+    }
 
-	public Story(String content, byte[] user_css, float em, Archive arch)
-	{
-		pointer = newStory(content.getBytes(StandardCharsets.UTF_8), user_css, em, arch);
-	}
-	public Story(String content, byte[] user_css, float em)
-	{
-		this(content, user_css, em, null);
-	}
+    public Story(byte[] content, String user_css, float em, Archive arch) {
+        pointer = newStory(content, user_css.getBytes(StandardCharsets.UTF_8), em, arch);
+    }
 
-	public Story(byte[] content, byte[] user_css, float em, Archive arch)
-	{
-		pointer = newStory(content, user_css, em, arch);
-	}
-	public Story(byte[] content, byte[] user_css, float em)
-	{
-		this(content, user_css, em, null);
-	}
+    public Story(byte[] content, String user_css, float em) {
+        this(content, user_css, em, null);
+    }
 
-	public boolean place(Rect rect, Rect filled)
-	{
-		return place(rect, filled, 0) != 0;
-	}
+    public Story(String content, byte[] user_css, float em, Archive arch) {
+        pointer = newStory(content.getBytes(StandardCharsets.UTF_8), user_css, em, arch);
+    }
 
-	public native int place(Rect rect, Rect filled, int flags);
+    public Story(String content, byte[] user_css, float em) {
+        this(content, user_css, em, null);
+    }
 
-	public native void draw(Device dev, Matrix ctm);
+    public Story(byte[] content, byte[] user_css, float em, Archive arch) {
+        pointer = newStory(content, user_css, em, arch);
+    }
 
-	public native DOM document();
+    public Story(byte[] content, byte[] user_css, float em) {
+        this(content, user_css, em, null);
+    }
+
+    public boolean place(Rect rect, Rect filled) {
+        return place(rect, filled, 0) != 0;
+    }
+
+    public native int place(Rect rect, Rect filled, int flags);
+
+    public native void draw(Device dev, Matrix ctm);
+
+    public native DOM document();
 }

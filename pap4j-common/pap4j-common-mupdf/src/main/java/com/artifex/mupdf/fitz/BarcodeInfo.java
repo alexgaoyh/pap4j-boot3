@@ -22,41 +22,40 @@
 
 package com.artifex.mupdf.fitz;
 
-public class BarcodeInfo
-{
-	static {
-		Context.init();
-	}
+public class BarcodeInfo {
+    static {
+        Context.init();
+    }
 
-	public static final int BARCODE_NONE = 0;
-	public static final int BARCODE_AZTEC = 1;
-	public static final int BARCODE_CODABAR = 2;
-	public static final int BARCODE_CODE39 = 3;
-	public static final int BARCODE_CODE93 = 4;
-	public static final int BARCODE_CODE128 = 5;
-	public static final int BARCODE_DATABAR = 6;
-	public static final int BARCODE_DATABAREXPANDED = 7;
-	public static final int BARCODE_DATAMATRIX = 8;
-	public static final int BARCODE_EAN8 = 9;
-	public static final int BARCODE_EAN13 = 10;
-	public static final int BARCODE_ITF = 11;
-	public static final int BARCODE_MAXICODE = 12;
-	public static final int BARCODE_PDF417 = 13;
-	public static final int BARCODE_QRCODE = 14;
-	public static final int BARCODE_UPCA = 15;
-	public static final int BARCODE_UPCE = 16;
-	public static final int BARCODE_MICROQRCODE = 17;
-	public static final int BARCODE_RMQRCODE = 18;
-	public static final int BARCODE_DXFILMEDGE = 19;
-	public static final int BARCODE_DATABARLIMITED = 20;
+    public static final int BARCODE_NONE = 0;
+    public static final int BARCODE_AZTEC = 1;
+    public static final int BARCODE_CODABAR = 2;
+    public static final int BARCODE_CODE39 = 3;
+    public static final int BARCODE_CODE93 = 4;
+    public static final int BARCODE_CODE128 = 5;
+    public static final int BARCODE_DATABAR = 6;
+    public static final int BARCODE_DATABAREXPANDED = 7;
+    public static final int BARCODE_DATAMATRIX = 8;
+    public static final int BARCODE_EAN8 = 9;
+    public static final int BARCODE_EAN13 = 10;
+    public static final int BARCODE_ITF = 11;
+    public static final int BARCODE_MAXICODE = 12;
+    public static final int BARCODE_PDF417 = 13;
+    public static final int BARCODE_QRCODE = 14;
+    public static final int BARCODE_UPCA = 15;
+    public static final int BARCODE_UPCE = 16;
+    public static final int BARCODE_MICROQRCODE = 17;
+    public static final int BARCODE_RMQRCODE = 18;
+    public static final int BARCODE_DXFILMEDGE = 19;
+    public static final int BARCODE_DATABARLIMITED = 20;
 
-	public int type;
-	public String contents;
+    public int type;
+    public String contents;
 
-	public BarcodeInfo(int type, String contents) {
-		this.type = type;
-		this.contents = contents;
-	}
+    public BarcodeInfo(int type, String contents) {
+        this.type = type;
+        this.contents = contents;
+    }
 
-	public native String toString();
+    public native String toString();
 }

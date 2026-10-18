@@ -24,44 +24,43 @@ package com.artifex.mupdf.fitz;
 
 import java.util.Objects;
 
-public class Point
-{
-	public float x;
-	public float y;
+public class Point {
+    public float x;
+    public float y;
 
-	public Point(float x, float y) {
-		this.x = x;
-		this.y = y;
-	}
+    public Point(float x, float y) {
+        this.x = x;
+        this.y = y;
+    }
 
-	public Point(Point p) {
-		this.x = p.x;
-		this.y = p.y;
-	}
+    public Point(Point p) {
+        this.x = p.x;
+        this.y = p.y;
+    }
 
-	public String toString() {
-		return "[" + x + " " + y + "]";
-	}
+    public String toString() {
+        return "[" + x + " " + y + "]";
+    }
 
-	public Point transform(Matrix tm) {
-		float old_x = this.x;
+    public Point transform(Matrix tm) {
+        float old_x = this.x;
 
-		this.x = old_x * tm.a + y * tm.c + tm.e;
-		this.y = old_x * tm.b + y * tm.d + tm.f;
+        this.x = old_x * tm.a + y * tm.c + tm.e;
+        this.y = old_x * tm.b + y * tm.d + tm.f;
 
-		return this;
-	}
+        return this;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (!(obj instanceof Point))
-			return false;
-		Point other = (Point) obj;
-		return x == other.x && y == other.y;
-	}
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Point))
+            return false;
+        Point other = (Point) obj;
+        return x == other.x && y == other.y;
+    }
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(x, y);
-	}
+    @Override
+    public int hashCode() {
+        return Objects.hash(x, y);
+    }
 }

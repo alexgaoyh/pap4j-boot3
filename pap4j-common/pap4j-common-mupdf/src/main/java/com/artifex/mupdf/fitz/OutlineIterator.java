@@ -22,82 +22,85 @@
 
 package com.artifex.mupdf.fitz;
 
-public class OutlineIterator implements AutoCloseable
-{
-	protected long pointer;
+public class OutlineIterator implements AutoCloseable {
+    protected long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	protected OutlineIterator(long p) {
-		pointer = p;
-	}
+    protected OutlineIterator(long p) {
+        pointer = p;
+    }
 
-	public native int next();
-	public native int prev();
-	public native int up();
-	public native int down();
+    public native int next();
 
-	public native int insert(String title, String uri, boolean is_open, float r, float g, float b, int flags);
-	public int insert(OutlineItem item)
-	{
-		return insert(item.title, item.uri, item.is_open, item.r, item.g, item.b, item.flags);
-	}
-	public int insert(String title, String uri, boolean is_open)
-	{
-		return insert(title, uri, is_open, 0, 0, 0, 0);
-	}
-	public native void update(String title, String uri, boolean is_open, float r, float g, float b, int flags);
-	public void update(OutlineItem item)
-	{
-		update(item.title, item.uri, item.is_open, item.r, item.g, item.b, item.flags);
-	}
+    public native int prev();
 
-	public native OutlineItem item();
-	public native int delete();
+    public native int up();
 
-	public static final int ITERATOR_DID_NOT_MOVE = -1;
-	public static final int ITERATOR_AT_ITEM = 0;
-	public static final int ITERATOR_AT_EMPTY = 1;
+    public native int down();
 
-	public static final int FLAG_BOLD = 1;
-	public static final int FLAG_ITALIC = 2;
+    public native int insert(String title, String uri, boolean is_open, float r, float g, float b, int flags);
 
-	public static class OutlineItem {
-		public String title;
-		public String uri;
-		public boolean is_open;
-		public float r;
-		public float g;
-		public float b;
-		public int flags;
+    public int insert(OutlineItem item) {
+        return insert(item.title, item.uri, item.is_open, item.r, item.g, item.b, item.flags);
+    }
 
-		public OutlineItem(String title, String uri, boolean is_open, float r, float g, float b, int flags)
-		{
-			this.title = title;
-			this.uri = uri;
-			this.is_open = is_open;
-			this.r = r;
-			this.g = g;
-			this.b = b;
-			this.flags = flags;
-		}
-		public OutlineItem(String title, String uri, boolean is_open)
-		{
-			this.title = title;
-			this.uri = uri;
-			this.is_open = is_open;
-			this.r = 0;
-			this.g = 0;
-			this.b = 0;
-			this.flags = 0;
-		}
-	}
+    public int insert(String title, String uri, boolean is_open) {
+        return insert(title, uri, is_open, 0, 0, 0, 0);
+    }
+
+    public native void update(String title, String uri, boolean is_open, float r, float g, float b, int flags);
+
+    public void update(OutlineItem item) {
+        update(item.title, item.uri, item.is_open, item.r, item.g, item.b, item.flags);
+    }
+
+    public native OutlineItem item();
+
+    public native int delete();
+
+    public static final int ITERATOR_DID_NOT_MOVE = -1;
+    public static final int ITERATOR_AT_ITEM = 0;
+    public static final int ITERATOR_AT_EMPTY = 1;
+
+    public static final int FLAG_BOLD = 1;
+    public static final int FLAG_ITALIC = 2;
+
+    public static class OutlineItem {
+        public String title;
+        public String uri;
+        public boolean is_open;
+        public float r;
+        public float g;
+        public float b;
+        public int flags;
+
+        public OutlineItem(String title, String uri, boolean is_open, float r, float g, float b, int flags) {
+            this.title = title;
+            this.uri = uri;
+            this.is_open = is_open;
+            this.r = r;
+            this.g = g;
+            this.b = b;
+            this.flags = flags;
+        }
+
+        public OutlineItem(String title, String uri, boolean is_open) {
+            this.title = title;
+            this.uri = uri;
+            this.is_open = is_open;
+            this.r = 0;
+            this.g = 0;
+            this.b = 0;
+            this.flags = 0;
+        }
+    }
 }

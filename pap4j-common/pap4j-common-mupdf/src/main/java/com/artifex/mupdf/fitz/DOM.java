@@ -22,52 +22,73 @@
 
 package com.artifex.mupdf.fitz;
 
-public class DOM implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class DOM implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	protected long pointer;
+    protected long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	protected DOM(long p) {
-		pointer = p;
-	}
+    protected DOM(long p) {
+        pointer = p;
+    }
 
-	public native DOM body();
-	public native DOM document();
-	public native DOM createTextNode(String text);
-	public native DOM createElement(String tag);
+    public native DOM body();
 
-	public native void insertBefore(DOM toinsert);
-	public native void insertAfter(DOM toinsert);
-	public native void appendChild(DOM toinsert);
-	public native void remove();
-	public native DOM clone();
-	public native DOM parent();
-	public native DOM firstChild();
-	public native DOM next();
-	public native DOM previous();
-	public native DOM addAttribute(String att, String val);
-	public native DOM removeAttribute(String att);
-	public native String attribute(String att);
-	public static class DOMAttribute {
-		String attribute;
-		String value;
-	};
-	public native DOMAttribute[] attributes();
-	public native DOM find(String tag, String att, String val);
-	public native DOM findNext(String tag, String att, String val);
-	public native String getText();
-	public native String getTag();
+    public native DOM document();
+
+    public native DOM createTextNode(String text);
+
+    public native DOM createElement(String tag);
+
+    public native void insertBefore(DOM toinsert);
+
+    public native void insertAfter(DOM toinsert);
+
+    public native void appendChild(DOM toinsert);
+
+    public native void remove();
+
+    public native DOM clone();
+
+    public native DOM parent();
+
+    public native DOM firstChild();
+
+    public native DOM next();
+
+    public native DOM previous();
+
+    public native DOM addAttribute(String att, String val);
+
+    public native DOM removeAttribute(String att);
+
+    public native String attribute(String att);
+
+    public static class DOMAttribute {
+        String attribute;
+        String value;
+    }
+
+    ;
+
+    public native DOMAttribute[] attributes();
+
+    public native DOM find(String tag, String att, String val);
+
+    public native DOM findNext(String tag, String att, String val);
+
+    public native String getText();
+
+    public native String getTag();
 }

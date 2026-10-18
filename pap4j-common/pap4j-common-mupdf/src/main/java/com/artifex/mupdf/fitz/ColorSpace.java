@@ -22,70 +22,80 @@
 
 package com.artifex.mupdf.fitz;
 
-public class ColorSpace implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class ColorSpace implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private ColorSpace(long p) {
-		pointer = p;
-	}
+    private ColorSpace(long p) {
+        pointer = p;
+    }
 
-	private native long newNativeColorSpace(String name, Buffer buffer);
+    private native long newNativeColorSpace(String name, Buffer buffer);
 
-	public ColorSpace(String name, Buffer buffer) {
-		pointer = newNativeColorSpace(name, buffer);
-	}
+    public ColorSpace(String name, Buffer buffer) {
+        pointer = newNativeColorSpace(name, buffer);
+    }
 
-	private static native long nativeDeviceGray();
-	private static native long nativeDeviceRGB();
-	private static native long nativeDeviceBGR();
-	private static native long nativeDeviceCMYK();
+    private static native long nativeDeviceGray();
 
-	protected static ColorSpace fromPointer(long p) {
-		if (p == DeviceGray.pointer) return DeviceGray;
-		if (p == DeviceRGB.pointer) return DeviceRGB;
-		if (p == DeviceBGR.pointer) return DeviceBGR;
-		if (p == DeviceCMYK.pointer) return DeviceCMYK;
-		return new ColorSpace(p);
-	}
+    private static native long nativeDeviceRGB();
 
-	public static ColorSpace DeviceGray = new ColorSpace(nativeDeviceGray());
-	public static ColorSpace DeviceRGB = new ColorSpace(nativeDeviceRGB());
-	public static ColorSpace DeviceBGR = new ColorSpace(nativeDeviceBGR());
-	public static ColorSpace DeviceCMYK = new ColorSpace(nativeDeviceCMYK());
-	public native int getNumberOfComponents();
-	public native String toString();
+    private static native long nativeDeviceBGR();
 
-	public native boolean isGray();
-	public native boolean isRGB();
-	public native boolean isCMYK();
-	public native boolean isIndexed();
-	public native boolean isLab();
-	public native boolean isDeviceN();
-	public native boolean isSubtractive();
+    private static native long nativeDeviceCMYK();
 
-	public native int getType();
+    protected static ColorSpace fromPointer(long p) {
+        if (p == DeviceGray.pointer) return DeviceGray;
+        if (p == DeviceRGB.pointer) return DeviceRGB;
+        if (p == DeviceBGR.pointer) return DeviceBGR;
+        if (p == DeviceCMYK.pointer) return DeviceCMYK;
+        return new ColorSpace(p);
+    }
 
-	public static final int NONE = 0;
-	public static final int GRAY = 1;
-	public static final int RGB = 2;
-	public static final int BGR = 3;
-	public static final int CMYK = 4;
-	public static final int LAB = 5;
-	public static final int INDEXED = 6;
-	public static final int SEPARATION = 7;
+    public static ColorSpace DeviceGray = new ColorSpace(nativeDeviceGray());
+    public static ColorSpace DeviceRGB = new ColorSpace(nativeDeviceRGB());
+    public static ColorSpace DeviceBGR = new ColorSpace(nativeDeviceBGR());
+    public static ColorSpace DeviceCMYK = new ColorSpace(nativeDeviceCMYK());
+
+    public native int getNumberOfComponents();
+
+    public native String toString();
+
+    public native boolean isGray();
+
+    public native boolean isRGB();
+
+    public native boolean isCMYK();
+
+    public native boolean isIndexed();
+
+    public native boolean isLab();
+
+    public native boolean isDeviceN();
+
+    public native boolean isSubtractive();
+
+    public native int getType();
+
+    public static final int NONE = 0;
+    public static final int GRAY = 1;
+    public static final int RGB = 2;
+    public static final int BGR = 3;
+    public static final int CMYK = 4;
+    public static final int LAB = 5;
+    public static final int INDEXED = 6;
+    public static final int SEPARATION = 7;
 }

@@ -22,27 +22,26 @@
 
 package com.artifex.mupdf.fitz;
 
-public class Shade implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class Shade implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private Shade(long p) {
-		pointer = p;
-	}
+    private Shade(long p) {
+        pointer = p;
+    }
 
-	public native Rect getBounds(Matrix ctm);
+    public native Rect getBounds(Matrix ctm);
 }

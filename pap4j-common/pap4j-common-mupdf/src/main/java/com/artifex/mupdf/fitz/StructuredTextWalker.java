@@ -22,21 +22,28 @@
 
 package com.artifex.mupdf.fitz;
 
-public interface StructuredTextWalker
-{
-	void onImageBlock(Rect bbox, Matrix transform, Image image);
-	void beginTextBlock(Rect bbox, int flags);
-	void endTextBlock();
-	void beginLine(Rect bbox, int wmode, Point dir);
-	void endLine();
-	void onChar(int c, Point origin, Font font, float size, Quad q, int argb, int flags, int bidi);
-	void beginStruct(String standard, String raw, int index);
-	void endStruct();
-	void onVector(Rect bbox, VectorInfo info, int argb);
+public interface StructuredTextWalker {
+    void onImageBlock(Rect bbox, Matrix transform, Image image);
 
-	public static class VectorInfo {
-		public boolean isStroked;
-		public boolean isRectangle;
-		public boolean continues;
-	}
+    void beginTextBlock(Rect bbox, int flags);
+
+    void endTextBlock();
+
+    void beginLine(Rect bbox, int wmode, Point dir);
+
+    void endLine();
+
+    void onChar(int c, Point origin, Font font, float size, Quad q, int argb, int flags, int bidi);
+
+    void beginStruct(String standard, String raw, int index);
+
+    void endStruct();
+
+    void onVector(Rect bbox, VectorInfo info, int argb);
+
+    public static class VectorInfo {
+        public boolean isStroked;
+        public boolean isRectangle;
+        public boolean continues;
+    }
 }

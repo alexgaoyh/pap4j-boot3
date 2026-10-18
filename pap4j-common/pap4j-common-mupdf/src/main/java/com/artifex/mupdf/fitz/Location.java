@@ -24,36 +24,35 @@ package com.artifex.mupdf.fitz;
 
 import java.util.Objects;
 
-public class Location
-{
-	public final int chapter;
-	public final int page;
+public class Location {
+    public final int chapter;
+    public final int page;
 
-	public Location(int chapter, int page) {
-		this.chapter = chapter;
-		this.page = page;
-	}
+    public Location(int chapter, int page) {
+        this.chapter = chapter;
+        this.page = page;
+    }
 
-	@Override
-	public boolean equals(Object obj) {
-		if (!(obj instanceof Location))
-			return false;
-		Location other = (Location) obj;
-		return this.chapter == other.chapter && this.page == other.page;
-	}
+    @Override
+    public boolean equals(Object obj) {
+        if (!(obj instanceof Location))
+            return false;
+        Location other = (Location) obj;
+        return this.chapter == other.chapter && this.page == other.page;
+    }
 
-	@Override
-	public int hashCode() {
-		return Objects.hash(this.chapter, this.page);
-	}
+    @Override
+    public int hashCode() {
+        return Objects.hash(this.chapter, this.page);
+    }
 
-	public String toString() {
-		StringBuilder sb = new StringBuilder();
-		sb.append("Location(chapter=");
-		sb.append(chapter);
-		sb.append(", page=");
-		sb.append(page);
-		sb.append(")");
-		return sb.toString();
-	}
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Location(chapter=");
+        sb.append(chapter);
+        sb.append(", page=");
+        sb.append(page);
+        sb.append(")");
+        return sb.toString();
+    }
 }

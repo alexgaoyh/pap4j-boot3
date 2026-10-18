@@ -22,69 +22,73 @@
 
 package com.artifex.mupdf.fitz;
 
-public class Font implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class Font implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	public static final int SIMPLE_ENCODING_LATIN = 0;
-	public static final int SIMPLE_ENCODING_GREEK = 1;
-	public static final int SIMPLE_ENCODING_CYRILLIC = 2;
+    public static final int SIMPLE_ENCODING_LATIN = 0;
+    public static final int SIMPLE_ENCODING_GREEK = 1;
+    public static final int SIMPLE_ENCODING_CYRILLIC = 2;
 
-	public static final int ADOBE_CNS = 0;
-	public static final int ADOBE_GB = 1;
-	public static final int ADOBE_JAPAN = 2;
-	public static final int ADOBE_KOREA = 3;
+    public static final int ADOBE_CNS = 0;
+    public static final int ADOBE_GB = 1;
+    public static final int ADOBE_JAPAN = 2;
+    public static final int ADOBE_KOREA = 3;
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private native long newNative(String name, int index);
+    private native long newNative(String name, int index);
 
-	private Font(long p) {
-		pointer = p;
-	}
+    private Font(long p) {
+        pointer = p;
+    }
 
-	public Font(String name, int index) {
-		pointer = newNative(name, index);
-	}
+    public Font(String name, int index) {
+        pointer = newNative(name, index);
+    }
 
-	public Font(String name) {
-		pointer = newNative(name, 0);
-	}
+    public Font(String name) {
+        pointer = newNative(name, 0);
+    }
 
-	public native String getName();
+    public native String getName();
 
-	public native boolean isMono();
-	public native boolean isSerif();
-	public native boolean isBold();
-	public native boolean isItalic();
+    public native boolean isMono();
 
-	public native int encodeCharacter(int unicode);
-	public native float advanceGlyph(int glyph, boolean wmode);
+    public native boolean isSerif();
 
-	public float advanceGlyph(int glyph) {
-		return advanceGlyph(glyph, false);
-	}
+    public native boolean isBold();
 
-	public String toString() {
-		return "Font(" + getName() + ")";
-	}
+    public native boolean isItalic();
 
-	protected static FontLoader fontLoader;
-	public static native void installFontLoader(FontLoader loader);
+    public native int encodeCharacter(int unicode);
 
-	public interface FontLoader {
-		Font loadFont(String name, String script, boolean bold, boolean italic);
-	}
+    public native float advanceGlyph(int glyph, boolean wmode);
+
+    public float advanceGlyph(int glyph) {
+        return advanceGlyph(glyph, false);
+    }
+
+    public String toString() {
+        return "Font(" + getName() + ")";
+    }
+
+    protected static FontLoader fontLoader;
+
+    public static native void installFontLoader(FontLoader loader);
+
+    public interface FontLoader {
+        Font loadFont(String name, String script, boolean bold, boolean italic);
+    }
 }

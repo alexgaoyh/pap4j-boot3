@@ -22,19 +22,18 @@
 
 package com.artifex.mupdf.fitz;
 
-public final class DrawDevice extends NativeDevice
-{
-	static {
-		Context.init();
-	}
+public final class DrawDevice extends NativeDevice {
+    static {
+        Context.init();
+    }
 
-	private static native long newNative(Matrix transform, Pixmap pixmap);
+    private static native long newNative(Matrix transform, Pixmap pixmap);
 
-	public DrawDevice(Matrix transform, Pixmap pixmap) {
-		super(newNative(transform, pixmap));
-	}
+    public DrawDevice(Matrix transform, Pixmap pixmap) {
+        super(newNative(transform, pixmap));
+    }
 
-	public DrawDevice(Pixmap pixmap) {
-		super(newNative(Matrix.Identity(), pixmap));
-	}
+    public DrawDevice(Pixmap pixmap) {
+        super(newNative(Matrix.Identity(), pixmap));
+    }
 }

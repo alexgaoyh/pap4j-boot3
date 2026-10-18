@@ -22,58 +22,54 @@
 
 package com.artifex.mupdf.fitz;
 
-public class Outline
-{
-	public String title;
-	public String uri;
-	public Outline[] down;
-	public float r;
-	public float g;
-	public float b;
-	public int flags;
+public class Outline {
+    public String title;
+    public String uri;
+    public Outline[] down;
+    public float r;
+    public float g;
+    public float b;
+    public int flags;
 
-	public Outline(String title, String uri, Outline[] down) {
-		this.title = title;
-		this.uri = uri;
-		this.down = down;
-		this.r = 0;
-		this.g = 0;
-		this.b = 0;
-		this.flags = 0;
-	}
+    public Outline(String title, String uri, Outline[] down) {
+        this.title = title;
+        this.uri = uri;
+        this.down = down;
+        this.r = 0;
+        this.g = 0;
+        this.b = 0;
+        this.flags = 0;
+    }
 
-	public Outline(String title, String uri, Outline[] down, float r, float g, float b, int flags) {
-		this.title = title;
-		this.uri = uri;
-		this.down = down;
-		this.r = r;
-		this.g = g;
-		this.b = b;
-		this.flags = flags;
-	}
+    public Outline(String title, String uri, Outline[] down, float r, float g, float b, int flags) {
+        this.title = title;
+        this.uri = uri;
+        this.down = down;
+        this.r = r;
+        this.g = g;
+        this.b = b;
+        this.flags = flags;
+    }
 
-	public String toString()
-	{
-		StringBuffer s = new StringBuffer();
+    public String toString() {
+        StringBuffer s = new StringBuffer();
 
-		s.append(title);
-		s.append(' ');
-		s.append(uri);
-		s.append('\n');
+        s.append(title);
+        s.append(' ');
+        s.append(uri);
+        s.append('\n');
 
-		if (down != null)
-		{
-			for (int i = 0; i < down.length; i++)
-			{
-				s.append('\t');
-				s.append(down[i]);
-				s.append('\n');
-			}
-		}
+        if (down != null) {
+            for (int i = 0; i < down.length; i++) {
+                s.append('\t');
+                s.append(down[i]);
+                s.append('\n');
+            }
+        }
 
-		s.deleteCharAt(s.length() - 1);
+        s.deleteCharAt(s.length() - 1);
 
-		return s.toString();
-	}
+        return s.toString();
+    }
 
 }

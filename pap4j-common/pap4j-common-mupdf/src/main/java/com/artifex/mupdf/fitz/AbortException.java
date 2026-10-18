@@ -22,9 +22,8 @@
 
 package com.artifex.mupdf.fitz;
 
-public class AbortException extends RuntimeException
-{
-	AbortException(String message) {
-		super(message);
-	}
+public class AbortException extends RuntimeException {
+    AbortException(String message) {
+        super(message);
+    }
 }

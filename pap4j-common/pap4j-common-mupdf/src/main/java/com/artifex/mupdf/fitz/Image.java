@@ -22,64 +22,78 @@
 
 package com.artifex.mupdf.fitz;
 
-public class Image implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class Image implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	protected long pointer;
+    protected long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private native long newNativeFromPixmap(Pixmap pixmap);
-	private native long newNativeFromFile(String filename);
-	private native long newNativeFromBytes(byte[] bytes);
-	private native long newNativeFromBuffer(Buffer buffer);
+    private native long newNativeFromPixmap(Pixmap pixmap);
 
-	protected Image(long p) {
-		pointer = p;
-	}
+    private native long newNativeFromFile(String filename);
 
-	public Image(Pixmap pixmap) {
-		pointer = newNativeFromPixmap(pixmap);
-	}
+    private native long newNativeFromBytes(byte[] bytes);
 
-	public Image(String filename) {
-		pointer = newNativeFromFile(filename);
-	}
+    private native long newNativeFromBuffer(Buffer buffer);
 
-	public Image(byte[] bytes) {
-		pointer = newNativeFromBytes(bytes);
-	}
+    protected Image(long p) {
+        pointer = p;
+    }
 
-	public Image(Buffer buffer) {
-		pointer = newNativeFromBuffer(buffer);
-	}
+    public Image(Pixmap pixmap) {
+        pointer = newNativeFromPixmap(pixmap);
+    }
 
-	public native int getWidth();
-	public native int getHeight();
-	public native int getXResolution();
-	public native int getYResolution();
+    public Image(String filename) {
+        pointer = newNativeFromFile(filename);
+    }
 
-	public native ColorSpace getColorSpace();
-	public native int getNumberOfComponents();
-	public native int getBitsPerComponent();
-	public native boolean getImageMask();
-	public native boolean getInterpolate();
-	public native int[] getColorKey();
-	public native float[] getDecode();
-	public native int getOrientation();
-	public native Image getMask();
-	public native void setOrientation(int orientation);
+    public Image(byte[] bytes) {
+        pointer = newNativeFromBytes(bytes);
+    }
 
-	public native Pixmap toPixmap();
+    public Image(Buffer buffer) {
+        pointer = newNativeFromBuffer(buffer);
+    }
+
+    public native int getWidth();
+
+    public native int getHeight();
+
+    public native int getXResolution();
+
+    public native int getYResolution();
+
+    public native ColorSpace getColorSpace();
+
+    public native int getNumberOfComponents();
+
+    public native int getBitsPerComponent();
+
+    public native boolean getImageMask();
+
+    public native boolean getInterpolate();
+
+    public native int[] getColorKey();
+
+    public native float[] getDecode();
+
+    public native int getOrientation();
+
+    public native Image getMask();
+
+    public native void setOrientation(int orientation);
+
+    public native Pixmap toPixmap();
 }

@@ -22,58 +22,62 @@
 
 package com.artifex.mupdf.fitz;
 
-public class StrokeState implements AutoCloseable
-{
-	static {
-		Context.init();
-	}
+public class StrokeState implements AutoCloseable {
+    static {
+        Context.init();
+    }
 
-	public static final int LINE_CAP_BUTT = 0;
-	public static final int LINE_CAP_ROUND = 1;
-	public static final int LINE_CAP_SQUARE = 2;
-	public static final int LINE_CAP_TRIANGLE = 3;
+    public static final int LINE_CAP_BUTT = 0;
+    public static final int LINE_CAP_ROUND = 1;
+    public static final int LINE_CAP_SQUARE = 2;
+    public static final int LINE_CAP_TRIANGLE = 3;
 
-	public static final int LINE_JOIN_MITER = 0;
-	public static final int LINE_JOIN_ROUND = 1;
-	public static final int LINE_JOIN_BEVEL = 2;
-	public static final int LINE_JOIN_MITER_XPS = 3;
+    public static final int LINE_JOIN_MITER = 0;
+    public static final int LINE_JOIN_ROUND = 1;
+    public static final int LINE_JOIN_BEVEL = 2;
+    public static final int LINE_JOIN_MITER_XPS = 3;
 
-	private long pointer;
+    private long pointer;
 
-	protected native void finalize();
+    protected native void finalize();
 
-	public void destroy() {
-		finalize();
-	}
+    public void destroy() {
+        finalize();
+    }
 
-	public void close() {
-		destroy();
-	}
+    public void close() {
+        destroy();
+    }
 
-	private native long newNativeStrokeState(int lineCap, int lineJoin, float lineWidth, float miterLimit, float dashPhase, float[] dash);
+    private native long newNativeStrokeState(int lineCap, int lineJoin, float lineWidth, float miterLimit, float dashPhase, float[] dash);
 
-	// Private constructor for the C to use. Any objects created by the
-	// C are done for purposes of calling back to a java device, and
-	// should therefore be considered const. This is fine as we don't
-	// currently provide mechanisms for changing individual elements
-	// of the StrokeState.
-	private StrokeState(long p) {
-		pointer = p;
-	}
+    // Private constructor for the C to use. Any objects created by the
+    // C are done for purposes of calling back to a java device, and
+    // should therefore be considered const. This is fine as we don't
+    // currently provide mechanisms for changing individual elements
+    // of the StrokeState.
+    private StrokeState(long p) {
+        pointer = p;
+    }
 
-	public StrokeState(int lineCap, int lineJoin, float lineWidth, float miterLimit) {
-		pointer = newNativeStrokeState(lineCap, lineJoin, lineWidth, miterLimit, 0, null);
-	}
+    public StrokeState(int lineCap, int lineJoin, float lineWidth, float miterLimit) {
+        pointer = newNativeStrokeState(lineCap, lineJoin, lineWidth, miterLimit, 0, null);
+    }
 
-	public StrokeState(int lineCap, int lineJoin, float lineWidth, float miterLimit,
-			float dashPhase, float[] dash) {
-		pointer = newNativeStrokeState(lineCap, lineJoin, lineWidth, miterLimit, dashPhase, dash);
-	}
+    public StrokeState(int lineCap, int lineJoin, float lineWidth, float miterLimit,
+                       float dashPhase, float[] dash) {
+        pointer = newNativeStrokeState(lineCap, lineJoin, lineWidth, miterLimit, dashPhase, dash);
+    }
 
-	public native int getLineCap();
-	public native int getLineJoin();
-	public native float getLineWidth();
-	public native float getMiterLimit();
-	public native float getDashPhase();
-	public native float[] getDashPattern();
+    public native int getLineCap();
+
+    public native int getLineJoin();
+
+    public native float getLineWidth();
+
+    public native float getMiterLimit();
+
+    public native float getDashPhase();
+
+    public native float[] getDashPattern();
 }

@@ -22,18 +22,20 @@
 
 package com.artifex.mupdf.fitz;
 
-public class MultiArchive extends Archive
-{
-	static {
-		Context.init();
-	}
+public class MultiArchive extends Archive {
+    static {
+        Context.init();
+    }
 
-	private static native long newNativeMultiArchive();
-	private MultiArchive(long p) { super(p); }
-	public MultiArchive()
-	{
-		this(newNativeMultiArchive());
-	}
+    private static native long newNativeMultiArchive();
 
-	public native void mountArchive(Archive sub, String path);
+    private MultiArchive(long p) {
+        super(p);
+    }
+
+    public MultiArchive() {
+        this(newNativeMultiArchive());
+    }
+
+    public native void mountArchive(Archive sub, String path);
 }

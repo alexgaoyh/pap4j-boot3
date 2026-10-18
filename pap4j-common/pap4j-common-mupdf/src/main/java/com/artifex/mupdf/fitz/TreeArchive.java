@@ -22,20 +22,20 @@
 
 package com.artifex.mupdf.fitz;
 
-public class TreeArchive extends Archive
-{
-	static {
-		Context.init();
-	}
+public class TreeArchive extends Archive {
+    static {
+        Context.init();
+    }
 
-	private static native long newNativeTreeArchive();
-	private TreeArchive(long p) {
-		super(p);
-	}
-	public TreeArchive()
-	{
-		this(newNativeTreeArchive());
-	}
+    private static native long newNativeTreeArchive();
 
-	public native void add(String name, Buffer buf);
+    private TreeArchive(long p) {
+        super(p);
+    }
+
+    public TreeArchive() {
+        this(newNativeTreeArchive());
+    }
+
+    public native void add(String name, Buffer buf);
 }
