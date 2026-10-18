@@ -117,4 +117,79 @@ public class MuPdfServiceTest {
             doc.close();
         });
     }
+
+    @Test
+    public void testMaxDocsZeroNoWarningsAndFast() {
+        URL url = getClass().getResource("/sample.pdf");
+        if (url == null) return;
+        File pdfFile = new File(url.getFile());
+
+        String prev = System.getProperty(MuPdfService.CFG_CACHE_MAX_DOCS);
+        System.setProperty(MuPdfService.CFG_CACHE_MAX_DOCS, "0");
+        try (MuPdfService service = new MuPdfService()) {
+            long start = System.currentTimeMillis();
+            int pages = service.getPageCount(pdfFile.getAbsolutePath());
+            byte[] png = service.renderPageToPng(pdfFile.getAbsolutePath(), 0, 72);
+            long cost = System.currentTimeMillis() - start;
+
+            Assertions.assertTrue(pages > 0);
+            Assertions.assertNotNull(png);
+            Assertions.assertTrue(png.length > 0);
+            Assertions.assertEquals(0, service.cachedDocumentCount(), "禁用缓存时缓存数量必须为 0");
+            System.out.println("[Test] maxDocs=0 模式单页渲染总耗时: " + cost + "ms (无重试降级告警)");
+        } finally {
+            if (prev == null) System.clearProperty(MuPdfService.CFG_CACHE_MAX_DOCS);
+            else System.setProperty(MuPdfService.CFG_CACHE_MAX_DOCS, prev);
+        }
+    }
+
+    @Test
+    public void testEvictDuringConcurrentRendering() throws Exception {
+        URL url = getClass().getResource("/sample.pdf");
+        if (url == null) return;
+        File pdfFile = new File(url.getFile());
+        String path = pdfFile.getAbsolutePath();
+
+        try (MuPdfService service = new MuPdfService()) {
+            int threadCount = 4;
+            int rounds = 20;
+            java.util.concurrent.atomic.AtomicInteger errors = new java.util.concurrent.atomic.AtomicInteger();
+            java.util.concurrent.CountDownLatch latch = new java.util.concurrent.CountDownLatch(threadCount + 1);
+
+            // 4 个渲染并发线程
+            for (int i = 0; i < threadCount; i++) {
+                new Thread(() -> {
+                    try {
+                        for (int r = 0; r < rounds; r++) {
+                            service.renderPageToPng(path, 0, 96);
+                            service.extractCoordinatesJson(path, 0);
+                        }
+                    } catch (Throwable t) {
+                        errors.incrementAndGet();
+                        t.printStackTrace();
+                    } finally {
+                        latch.countDown();
+                    }
+                }).start();
+            }
+
+            // 1 个并发淘汰线程
+            new Thread(() -> {
+                try {
+                    for (int r = 0; r < rounds; r++) {
+                        service.evict(path);
+                        Thread.sleep(5);
+                    }
+                } catch (Throwable t) {
+                    errors.incrementAndGet();
+                    t.printStackTrace();
+                } finally {
+                    latch.countDown();
+                }
+            }).start();
+
+            Assertions.assertTrue(latch.await(15, java.util.concurrent.TimeUnit.SECONDS), "并发测试超时");
+            Assertions.assertEquals(0, errors.get(), "并发渲染与淘汰过程中不得出现任何异常");
+        }
+    }
 }

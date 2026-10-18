@@ -158,8 +158,8 @@ public class MuPdfService implements AutoCloseable {
             return buildPagedJson(pdfPath, pageJson);
 
         } finally {
-            destroyWriter(writer);
             destroyDevice(device);
+            destroyWriter(writer);
             closeQuietly(buf);
             closeQuietly(page);
             release(managed);
@@ -580,11 +580,19 @@ public class MuPdfService implements AutoCloseable {
         long lastModified = file.lastModified();
         long length = file.length();
 
+        // 缓存关闭时直接走私有文档快路径，绕过重试与表锁
+        if (maxCachedDocs <= 0) {
+            ManagedDoc privateDoc = new ManagedDoc(Document.openDocument(file.getPath()), key, lastModified, length);
+            privateDoc.uncached = true;
+            privateDoc.lock.lock();
+            return privateDoc;
+        }
+
         for (int attempt = 0; attempt < ACQUIRE_MAX_RETRIES; attempt++) {
             ManagedDoc managed = obtain(key, file, lastModified, length);
             managed.lock.lock();
             try {
-                if (!managed.closed.get() && isCurrent(key, managed)) {
+                if (!managed.closed.get() && (managed.uncached || isCurrent(key, managed))) {
                     managed.lastAccessNanos = System.nanoTime();
                     return managed;
                 }
@@ -716,15 +724,9 @@ public class MuPdfService implements AutoCloseable {
         if (managed == null) {
             return;
         }
-        boolean pendingClose = managed.closePending;
         managed.lock.unlock();
         if (managed.uncached) {
             managed.closeQuietly();
-            return;
-        }
-        if (pendingClose) {
-            // 关闭动作曾因 "当前线程正持有独占锁" 被延迟，此处补做
-            managed.forceClose();
         }
     }
 
@@ -769,10 +771,6 @@ public class MuPdfService implements AutoCloseable {
          * true 表示该文档不进入缓存表，release 时立即销毁。
          */
         volatile boolean uncached = false;
-        /**
-         * true 表示关闭动作因当前线程仍持有独占锁而延迟到 release 阶段。
-         */
-        volatile boolean closePending = false;
 
         ManagedDoc(Document doc, String cacheKey, long lastModified, long fileLength) {
             this.doc = doc;
@@ -786,31 +784,12 @@ public class MuPdfService implements AutoCloseable {
         }
 
         /**
-         * 幂等关闭。若当前线程正持有独占锁（例如渲染过程中触发淘汰），
-         * 则打上延迟关闭标记，由 release() 在解锁后完成真正的 fz_drop_document。
+         * 幂等关闭。在独占锁保护下释放底层原生 Document 句柄，杜绝 use-after-free。
          */
         void closeQuietly() {
             if (!closed.compareAndSet(false, true)) {
                 return;
             }
-            if (lock.isHeldByCurrentThread()) {
-                closePending = true;
-                return;
-            }
-            lock.lock();
-            try {
-                doc.close();
-            } catch (Throwable t) {
-                log.warn("[MuPDF] 释放文档原生句柄失败: {}", cacheKey, t);
-            } finally {
-                lock.unlock();
-            }
-        }
-
-        /**
-         * 关闭标记已由别的路径设置时，由最后持锁的线程完成真正的原生释放。
-         */
-        void forceClose() {
             lock.lock();
             try {
                 doc.close();
