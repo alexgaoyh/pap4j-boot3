@@ -20,6 +20,12 @@
         <property name="files" value="GstoreConnector\.java"/>
     </module>
 
+    <!-- 第三方 MuPDF JNI Java 绑定代码（com.artifex.mupdf.fitz.*），豁免所有 Checkstyle 规范检查 -->
+    <module name="SuppressionSingleFilter">
+        <property name="checks" value=".*"/>
+        <property name="files" value="[\\/]com[\\/]artifex[\\/]mupdf[\\/]fitz[\\/]"/>
+    </module>
+
     <module name="TreeWalker">
         <!-- 禁止直接实例化 CheckStyleDTO -->
         <module name="IllegalInstantiation">
