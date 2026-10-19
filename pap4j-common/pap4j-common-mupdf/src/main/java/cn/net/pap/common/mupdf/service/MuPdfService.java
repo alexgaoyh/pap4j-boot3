@@ -4,13 +4,19 @@ import cn.net.pap.common.mupdf.loader.MuPdfNativeLoader;
 import com.artifex.mupdf.fitz.Buffer;
 import com.artifex.mupdf.fitz.ColorSpace;
 import com.artifex.mupdf.fitz.Context;
-import com.artifex.mupdf.fitz.Device;
 import com.artifex.mupdf.fitz.Document;
-import com.artifex.mupdf.fitz.DocumentWriter;
+import com.artifex.mupdf.fitz.Font;
+import com.artifex.mupdf.fitz.Image;
 import com.artifex.mupdf.fitz.Matrix;
 import com.artifex.mupdf.fitz.Page;
 import com.artifex.mupdf.fitz.Pixmap;
+import com.artifex.mupdf.fitz.Point;
+import com.artifex.mupdf.fitz.Quad;
 import com.artifex.mupdf.fitz.Rect;
+import com.artifex.mupdf.fitz.StructuredText;
+import com.artifex.mupdf.fitz.StructuredTextWalker;
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -62,6 +68,7 @@ import java.util.concurrent.locks.ReentrantLock;
 public class MuPdfService implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(MuPdfService.class);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
      * 常驻文档缓存的最大文档数。0 或负数表示关闭缓存（每次调用即开即关，最保守但性能最低）。
@@ -132,39 +139,54 @@ public class MuPdfService implements AutoCloseable {
      * @throws IndexOutOfBoundsException 页码越界
      * @throws IllegalStateException     服务已关闭
      */
-    public String extractCoordinatesJson(String pdfPath, int pageNum) {
+    /**
+     * 极速提取单页结构化文本物理坐标（包含每个文字、行、段落、字体及字符边界框 BBox，强类型 Record 模型）。
+     *
+     * @param pdfPath PDF 文件物理路径
+     * @param pageNum 页码 (0-indexed)
+     * @return 包含文本块、字符尺寸与位置坐标的结构化结果对象
+     * @throws IllegalArgumentException  文件不存在 / 不可读
+     * @throws IndexOutOfBoundsException 页码越界
+     * @throws IllegalStateException     服务已关闭
+     */
+    public CoordinatesResult extractCoordinates(String pdfPath, int pageNum) {
         ManagedDoc managed = acquire(pdfPath);
         Page page = null;
-        Buffer buf = null;
-        DocumentWriter writer = null;
-        Device device = null;
+        StructuredText st = null;
         try {
             int pageCount = managed.doc.countPages();
             checkPageNumber(pageNum, pageCount);
 
             page = managed.doc.loadPage(pageNum);
-            buf = new Buffer();
-            writer = new DocumentWriter(buf, "stext.json", null);
-            // beginPage 在 JNI 层执行了 fz_keep_device，返回的 Device 由 Java 侧持有一份引用，
-            // 必须显式 destroy()，否则只能等待 GC 的 finalizer 回收，形成堆外内存滞留。
-            device = writer.beginPage(page.getBounds());
-            page.run(device, new Matrix());
-            writer.endPage();
-            // close 负责把 JSON 尾部（"]\n"）写入 Buffer，因此必须在读取 Buffer 之前调用。
-            writer.close();
-
-            String pageJson = new String(buf.asByteArray(), StandardCharsets.UTF_8).trim();
-            // 与 mutool draw -F stext.json 的格式完全一致（包含 file 与 pages 包装）
-            return buildPagedJson(pdfPath, pageJson);
+            st = page.toStructuredText();
+            PageResult pageResult = buildPageResult(st);
+            return new CoordinatesResult(pdfPath, List.of(pageResult));
 
         } finally {
-            destroyDevice(device);
-            destroyWriter(writer);
-            closeQuietly(buf);
+            destroyStructuredText(st);
             closeQuietly(page);
             release(managed);
             // JIT 安全屏障：防止底层 C 仍在运行时 managed 句柄被 GC 提前判定死亡
             Reference.reachabilityFence(managed);
+        }
+    }
+
+    /**
+     * 极速提取单页结构化文本物理坐标 JSON（包含每个文字、行、段落、字体及字符边界框 BBox）。
+     *
+     * @param pdfPath PDF 文件物理路径
+     * @param pageNum 页码 (0-indexed)
+     * @return 包含文本块、字符尺寸与位置坐标的 JSON 字符串
+     * @throws IllegalArgumentException  文件不存在 / 不可读
+     * @throws IndexOutOfBoundsException 页码越界
+     * @throws IllegalStateException     服务已关闭
+     */
+    public String extractCoordinatesJson(String pdfPath, int pageNum) {
+        CoordinatesResult result = extractCoordinates(pdfPath, pageNum);
+        try {
+            return OBJECT_MAPPER.writeValueAsString(result) + "\n";
+        } catch (IOException e) {
+            throw new IllegalStateException("序列化文本坐标 JSON 失败: " + pdfPath, e);
         }
     }
 
@@ -465,86 +487,208 @@ public class MuPdfService implements AutoCloseable {
         return q > 0 ? "webp[Q=" + q + ",effort=2]" : "webp";
     }
 
+    // ------------------------------------------------------------------
+    // 结构化坐标实体模型 (Records)
+    // ------------------------------------------------------------------
+
     /**
-     * 组装与 mutool draw -F stext.json 完全一致的 {"file":...,"pages":[...]} 包装。
+     * PDF 页面物理文本坐标总结果实体
+     *
+     * @param file  PDF 文件物理路径
+     * @param pages 页面列表
      */
-    private static String buildPagedJson(String pdfPath, String pageJsonArray) {
-        StringBuilder sb = new StringBuilder(pageJsonArray.length() + pdfPath.length() + 32);
-        sb.append("{\"file\":\"");
-        escapeJson(sb, pdfPath);
-        sb.append("\",\"pages\":").append(pageJsonArray).append("}\n");
-        return sb.toString();
+    public record CoordinatesResult(String file, List<PageResult> pages) {
     }
 
     /**
-     * 标准 JSON 字符串转义（旧实现仅处理了反斜杠，含引号/控制字符的路径会输出非法 JSON）。
+     * 单页物理布局实体
+     *
+     * @param blocks 页面内容块列表
      */
-    private static void escapeJson(StringBuilder sb, String value) {
-        for (int i = 0; i < value.length(); i++) {
-            char c = value.charAt(i);
-            switch (c) {
-                case '"':
-                    sb.append("\\\"");
-                    break;
-                case '\\':
-                    sb.append("\\\\");
-                    break;
-                case '\b':
-                    sb.append("\\b");
-                    break;
-                case '\f':
-                    sb.append("\\f");
-                    break;
-                case '\n':
-                    sb.append("\\n");
-                    break;
-                case '\r':
-                    sb.append("\\r");
-                    break;
-                case '\t':
-                    sb.append("\\t");
-                    break;
-                default:
-                    if (c < 0x20) {
-                        sb.append(String.format("\\u%04x", (int) c));
-                    } else {
-                        sb.append(c);
-                    }
-                    break;
+    public record PageResult(List<BlockResult> blocks) {
+    }
+
+    /**
+     * 内容块实体（文本块 / 图片块）
+     *
+     * @param type  块类型 ("text" 或 "image")
+     * @param bbox  块外接边界框
+     * @param lines 文本行列表（图片块时为 null，不序列化）
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record BlockResult(String type, Bbox bbox, List<LineResult> lines) {
+    }
+
+    /**
+     * 文本行实体
+     *
+     * @param wmode 写入模式 (0=水平, 1=垂直)
+     * @param bbox  行外接边界框
+     * @param font  行首字体信息
+     * @param x     行起始基线 X 坐标
+     * @param y     行起始基线 Y 坐标
+     * @param text  整行合并文本
+     * @param chars 单字坐标列表
+     */
+    public record LineResult(int wmode, Bbox bbox, FontInfo font, double x, double y, String text, List<CharResult> chars) {
+    }
+
+    /**
+     * 单字物理坐标与元数据实体
+     *
+     * @param c      字符文本
+     * @param origin 字符基线绘制物理坐标
+     * @param bbox   单字外接边界框
+     * @param font   字体名称
+     * @param size   字号大小
+     */
+    public record CharResult(String c, PointInfo origin, Bbox bbox, String font, double size) {
+    }
+
+    /**
+     * 物理边界框实体（72 DPI PDF 点坐标）
+     *
+     * @param x     左上角 X
+     * @param y     左上角 Y
+     * @param w     宽度
+     * @param h     高度
+     * @param flags 边界标志（仅行级包含 flags=0，其它块和单字为 null，不序列化）
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record Bbox(double x, double y, double w, double h, Integer flags) {
+    }
+
+    /**
+     * 字体元数据实体
+     *
+     * @param name   字体名称
+     * @param family 字体族 ("monospace" / "serif" / "sans-serif")
+     * @param weight 粗细 ("bold" / "normal")
+     * @param style  字形 ("italic" / "normal")
+     * @param size   字号
+     */
+    public record FontInfo(String name, String family, String weight, String style, double size) {
+    }
+
+    /**
+     * 二维物理坐标点实体
+     *
+     * @param x 物理 X 坐标
+     * @param y 物理 Y 坐标
+     */
+    public record PointInfo(double x, double y) {
+    }
+
+    private static PageResult buildPageResult(StructuredText st) {
+        List<BlockResult> blocks = new ArrayList<>();
+        st.walk(new StructuredTextWalker() {
+            List<LineResult> lines;
+            Rect blockBbox;
+            List<CharResult> chars;
+            StringBuilder lineText;
+            Rect lineBbox;
+            int lineWmode;
+            FontInfo lineFont;
+            PointInfo lineOrigin;
+
+            @Override
+            public void onImageBlock(Rect bbox, Matrix transform, Image image) {
+                blocks.add(new BlockResult("image", toBbox(bbox, null), null));
             }
+
+            @Override
+            public void beginTextBlock(Rect bbox, int flags) {
+                blockBbox = bbox;
+                lines = new ArrayList<>();
+            }
+
+            @Override
+            public void endTextBlock() {
+                blocks.add(new BlockResult("text", toBbox(blockBbox, null), lines));
+            }
+
+            @Override
+            public void beginLine(Rect bbox, int wmode, Point dir) {
+                lineBbox = bbox;
+                lineWmode = wmode;
+                chars = new ArrayList<>();
+                lineText = new StringBuilder();
+                lineFont = null;
+                lineOrigin = null;
+            }
+
+            @Override
+            public void endLine() {
+                double lx = lineOrigin != null ? lineOrigin.x() : (lineBbox != null ? round(lineBbox.x0) : 0.0);
+                double ly = lineOrigin != null ? lineOrigin.y() : (lineBbox != null ? round(lineBbox.y0) : 0.0);
+                FontInfo font = lineFont != null ? lineFont : defaultFont();
+                lines.add(new LineResult(lineWmode, toBbox(lineBbox, 0), font, lx, ly, lineText.toString(), chars));
+            }
+
+            @Override
+            public void onChar(int c, Point origin, Font font, float size, Quad q, int argb, int flags, int bidi) {
+                String str = new String(Character.toChars(c));
+                lineText.append(str);
+
+                PointInfo originInfo = origin != null ? new PointInfo(round(origin.x), round(origin.y)) : new PointInfo(0, 0);
+                if (lineOrigin == null) {
+                    lineOrigin = originInfo;
+                }
+                FontInfo fontInfo = toFontInfo(font, size);
+                if (lineFont == null) {
+                    lineFont = fontInfo;
+                }
+                Bbox charBbox = q != null ? toBbox(q.toRect(), null) : new Bbox(originInfo.x(), originInfo.y(), 0, 0, null);
+                chars.add(new CharResult(str, originInfo, charBbox, fontInfo.name(), fontInfo.size()));
+            }
+
+            @Override
+            public void beginStruct(String standard, String raw, int index) {}
+            @Override
+            public void endStruct() {}
+            @Override
+            public void onVector(Rect bbox, VectorInfo info, int argb) {}
+        });
+        return new PageResult(blocks);
+    }
+
+    private static double round(double val) {
+        return Math.round(val * 1000.0) / 1000.0;
+    }
+
+    private static Bbox toBbox(Rect r, Integer flags) {
+        if (r == null) {
+            return new Bbox(0, 0, 0, 0, flags);
         }
+        return new Bbox(round(r.x0), round(r.y0), round(Math.max(0, r.x1 - r.x0)), round(Math.max(0, r.y1 - r.y0)), flags);
+    }
+
+    private static FontInfo toFontInfo(Font font, float size) {
+        if (font == null) {
+            return defaultFont();
+        }
+        String family = font.isMono() ? "monospace" : (font.isSerif() ? "serif" : "sans-serif");
+        String weight = font.isBold() ? "bold" : "normal";
+        String style = font.isItalic() ? "italic" : "normal";
+        return new FontInfo(font.getName(), family, weight, style, round(size));
+    }
+
+    private static FontInfo defaultFont() {
+        return new FontInfo("unknown", "sans-serif", "normal", "normal", 0.0);
     }
 
     // ------------------------------------------------------------------
     // 原生句柄释放辅助
     // ------------------------------------------------------------------
 
-    private static void destroyWriter(DocumentWriter writer) {
-        if (writer == null) {
-            return;
-        }
-        // close 落盘/落 Buffer（幂等），destroy 才是真正 fz_drop_document_writer，
-        // 两者缺一都会导致堆外内存滞留到 GC finalizer 才回收。
-        try {
-            writer.close();
-        } catch (Throwable t) {
-            log.debug("[MuPDF] 关闭 DocumentWriter 失败: {}", t.getMessage());
-        }
-        try {
-            writer.destroy();
-        } catch (Throwable t) {
-            log.warn("[MuPDF] 释放 DocumentWriter 原生句柄失败", t);
-        }
-    }
-
-    private static void destroyDevice(Device device) {
-        if (device == null) {
+    private static void destroyStructuredText(StructuredText st) {
+        if (st == null) {
             return;
         }
         try {
-            device.destroy();
+            st.destroy();
         } catch (Throwable t) {
-            log.warn("[MuPDF] 释放 Device 原生句柄失败", t);
+            log.warn("[MuPDF] 释放 StructuredText 原生句柄失败", t);
         }
     }
 

@@ -60,11 +60,31 @@ public class MuPdfServiceTest {
         Assertions.assertTrue(pages > 0, "总页数应大于 0");
         System.out.println("[Test] PDF 总页数: " + pages);
 
-        // 2. 测试文字物理坐标 JSON 提取
+        // 2. 测试文字物理坐标（强类型 Record 提取与 JSON 提取）
+        MuPdfService.CoordinatesResult coords = service.extractCoordinates(pdfFile.getAbsolutePath(), 0);
+        Assertions.assertNotNull(coords);
+        Assertions.assertEquals(1, coords.pages().size());
+        Assertions.assertFalse(coords.pages().get(0).blocks().isEmpty());
+        MuPdfService.BlockResult firstBlock = coords.pages().get(0).blocks().get(0);
+        Assertions.assertEquals("text", firstBlock.type());
+        Assertions.assertFalse(firstBlock.lines().isEmpty());
+        MuPdfService.LineResult firstLine = firstBlock.lines().get(0);
+        Assertions.assertEquals("全嵌入字体测试", firstLine.text());
+        Assertions.assertEquals(7, firstLine.chars().size());
+        Assertions.assertEquals("全", firstLine.chars().get(0).c());
+        Assertions.assertEquals("试", firstLine.chars().get(6).c());
+        Assertions.assertEquals("FangSong", firstLine.chars().get(0).font());
+
         String json = service.extractCoordinatesJson(pdfFile.getAbsolutePath(), 0);
         Assertions.assertNotNull(json);
         Assertions.assertFalse(json.trim().isEmpty());
         System.out.println("[Test] 提取出的物理坐标 JSON 字符长度: " + json.length());
+        Assertions.assertTrue(json.contains("\"text\":\"全嵌入字体测试\""), "应包含整行文本");
+        Assertions.assertTrue(json.contains("\"chars\":["), "必须包含单字 chars 数组");
+        Assertions.assertTrue(json.contains("\"c\":\"全\""), "单字列表中必须包含字符 '全'");
+        Assertions.assertTrue(json.contains("\"c\":\"试\""), "单字列表中必须包含字符 '试'");
+        Assertions.assertTrue(json.contains("\"origin\":{"), "单字必须包含基线坐标 origin");
+        Assertions.assertTrue(json.contains("\"font\":\"FangSong\""), "单字必须包含字体属性");
 
         // 3. 测试页面渲染为 PNG
         byte[] pngBytes = service.renderPageToPng(pdfFile.getAbsolutePath(), 0, 110);

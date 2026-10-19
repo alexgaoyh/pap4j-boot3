@@ -53,6 +53,11 @@
         </dependency>
 
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
+        <dependency>
             <groupId>cn.net.pap</groupId>
             <artifactId>pap4j-common-vips</artifactId>
             <version>${revision}</version>
