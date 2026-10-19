@@ -115,6 +115,9 @@ public class MuPdfService implements AutoCloseable {
 
     private volatile boolean closed = false;
 
+    /**
+     * 初始化 MuPdfService 实例，确保底层原生库已加载并初始化缓存配置。
+     */
     public MuPdfService() {
         // 原生库加载失败时直接抛出 UnsatisfiedLinkError，避免运行期才暴露环境问题
         MuPdfNativeLoader.ensureLoaded();
@@ -186,6 +189,7 @@ public class MuPdfService implements AutoCloseable {
         try {
             return OBJECT_MAPPER.writeValueAsString(result) + "\n";
         } catch (IOException e) {
+            log.error("[MuPDF-Coord] 序列化文本坐标 JSON 失败: {}", pdfPath, e);
             throw new IllegalStateException("序列化文本坐标 JSON 失败: " + pdfPath, e);
         }
     }
@@ -310,17 +314,17 @@ public class MuPdfService implements AutoCloseable {
 
         try {
             return cn.net.pap.common.vips.VipsImageProcessor.convertFormat(payload, format);
-        } catch (LinkageError e) {
-            log.warn("[MuPDF] 未检测到可用的 pap4j-common-vips（{}），回退返回 PNG 图像", e.getMessage());
+        } catch (LinkageError optionalVipsEx) {
+            log.warn("[MuPDF] 未检测到可用的 pap4j-common-vips（{}），回退返回 PNG 图像", optionalVipsEx.getMessage());
             return renderPageToPng(pdfPath, pageNum, dpi);
-        } catch (IOException | RuntimeException e) {
+        } catch (IOException | RuntimeException pamEx) {
             // PAM 中继偶发不被 vips 接受时，改用 PNG 中继重试一次（Error 类不再包容，避免堆栈错误被吞）
-            log.debug("[MuPDF] PAM 转码 WebP 遇到问题，回退通过 PNG 中继转码: {}", e.getMessage());
+            log.debug("[MuPDF] PAM 转码 WebP 遇到问题，回退通过 PNG 中继转码: {}", pamEx.getMessage());
             byte[] pngBytes = renderPageToPayload(pdfPath, pageNum, dpi, true);
             try {
                 return cn.net.pap.common.vips.VipsImageProcessor.convertFormat(pngBytes, format);
-            } catch (LinkageError e2) {
-                log.warn("[MuPDF] 未检测到可用的 pap4j-common-vips（{}），回退返回 PNG 图像", e2.getMessage());
+            } catch (LinkageError optionalVipsEx2) {
+                log.warn("[MuPDF] 未检测到可用的 pap4j-common-vips（{}），回退返回 PNG 图像", optionalVipsEx2.getMessage());
                 return pngBytes;
             }
         }
@@ -356,7 +360,7 @@ public class MuPdfService implements AutoCloseable {
             Context.shrinkStore(50);
             log.debug("[MuPDF] 成功收缩 50% 全局 Store 堆外缓存");
         } catch (Throwable t) {
-            log.warn("[MuPDF] 收缩全局 Store 失败: ", t);
+            log.error("[MuPDF] 收缩全局 Store 失败: ", t);
         }
     }
 
@@ -395,7 +399,7 @@ public class MuPdfService implements AutoCloseable {
             try {
                 Context.emptyStore();
             } catch (Throwable t) {
-                log.warn("[MuPDF] 清空全局 Store 失败: ", t);
+                log.error("[MuPDF] 清空全局 Store 失败: ", t);
             }
         }
         log.info("[MuPDF] 已清空全部文档缓存与 Store 堆外内存");
@@ -688,7 +692,7 @@ public class MuPdfService implements AutoCloseable {
         try {
             st.destroy();
         } catch (Throwable t) {
-            log.warn("[MuPDF] 释放 StructuredText 原生句柄失败", t);
+            log.error("[MuPDF] 释放 StructuredText 原生句柄失败", t);
         }
     }
 
@@ -699,7 +703,7 @@ public class MuPdfService implements AutoCloseable {
         try {
             closeable.close();
         } catch (Throwable t) {
-            log.warn("[MuPDF] 释放原生句柄失败: {}", closeable.getClass().getSimpleName(), t);
+            log.error("[MuPDF] 释放原生句柄失败: {}", closeable.getClass().getSimpleName(), t);
         }
     }
 
@@ -744,6 +748,7 @@ public class MuPdfService implements AutoCloseable {
                     return managed;
                 }
             } catch (Throwable t) {
+                log.error("[MuPDF] 获取受管文档状态异常: {}", key, t);
                 managed.lock.unlock();
                 throw t;
             }
@@ -817,6 +822,7 @@ public class MuPdfService implements AutoCloseable {
                     return fresh;
                 }
             } catch (Throwable t) {
+                log.error("[MuPDF] 受管文档入表失败: {}", key, t);
                 // 入表失败（例如服务被并发关闭）：保证刚打开的句柄不会被漏关
                 synchronized (cacheLock) {
                     docCache.remove(key, fresh);
@@ -894,7 +900,7 @@ public class MuPdfService implements AutoCloseable {
     private static String cacheKey(File file) {
         try {
             return file.getCanonicalPath();
-        } catch (IOException e) {
+        } catch (IOException canonicalEx) {
             return file.getAbsolutePath();
         }
     }
@@ -941,7 +947,7 @@ public class MuPdfService implements AutoCloseable {
             try {
                 doc.close();
             } catch (Throwable t) {
-                log.warn("[MuPDF] 释放文档原生句柄失败: {}", cacheKey, t);
+                log.error("[MuPDF] 释放文档原生句柄失败: {}", cacheKey, t);
             } finally {
                 lock.unlock();
             }

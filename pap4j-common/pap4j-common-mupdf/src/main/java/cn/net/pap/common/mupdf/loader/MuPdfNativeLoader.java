@@ -68,6 +68,8 @@ public class MuPdfNativeLoader {
 
     /**
      * 获取当前平台原生动态库的默认文件名。
+     *
+     * @return 当前平台对应的动态库文件名（如 mupdf_java.dll、libmupdf_java.dylib 或 libmupdf_java.so）
      */
     public static String getNativeLibraryFileName() {
         String os = System.getProperty("os.name", "").toLowerCase();
@@ -113,13 +115,13 @@ public class MuPdfNativeLoader {
                     loaded = true;
                     log.info("[MuPDF-Loader] 成功从系统库路径加载动态库: {}", name);
                     return true;
-                } catch (UnsatisfiedLinkError e) {
-                    if (isAlreadyLoadedError(e)) {
+                } catch (UnsatisfiedLinkError probeEx) {
+                    if (isAlreadyLoadedError(probeEx)) {
                         loaded = true;
                         log.info("[MuPDF-Loader] 动态库已被其它 ClassLoader 加载，直接复用进程内实例: {}", name);
                         return true;
                     }
-                    lastError = e;
+                    lastError = probeEx;
                 }
             }
 
@@ -168,9 +170,9 @@ public class MuPdfNativeLoader {
                         return true;
                     }
                     lastError = e;
-                    log.warn("[MuPDF-Loader] 尝试解压并加载 Classpath 动态库失败: {}", resPath, e);
+                    log.error("[MuPDF-Loader] 尝试解压并加载 Classpath 动态库失败: {}", resPath, e);
                 } catch (Throwable t) {
-                    log.warn("[MuPDF-Loader] 尝试解压 Classpath 动态库失败: {}", resPath, t);
+                    log.error("[MuPDF-Loader] 尝试解压 Classpath 动态库失败: {}", resPath, t);
                 }
             }
 
@@ -196,7 +198,7 @@ public class MuPdfNativeLoader {
                                 return true;
                             }
                             lastError = e;
-                            log.warn("[MuPDF-Loader] 尝试加载备用文件失败: {}", libFile.getAbsolutePath(), e);
+                            log.error("[MuPDF-Loader] 尝试加载备用文件失败: {}", libFile.getAbsolutePath(), e);
                         }
                     }
                 }
@@ -250,7 +252,7 @@ public class MuPdfNativeLoader {
                     return extracted;
                 }
             } catch (Throwable t) {
-                log.warn("[MuPDF-Loader] 读取 Classpath 资源失败: {}", resource, t);
+                log.error("[MuPDF-Loader] 读取 Classpath 资源失败: {}", resource, t);
             }
         }
         log.error("[MuPDF-Loader] 解压 native 动态库至本地失败: {}", fileName);
@@ -329,7 +331,7 @@ public class MuPdfNativeLoader {
             try {
                 Files.move(tempFile.toPath(), targetFile.toPath(),
                         StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
-            } catch (AtomicMoveNotSupportedException e) {
+            } catch (AtomicMoveNotSupportedException fallbackEx) {
                 Files.move(tempFile.toPath(), targetFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }
             tempFile = null;
@@ -342,7 +344,7 @@ public class MuPdfNativeLoader {
             }
             return targetFile;
         } catch (Throwable t) {
-            log.warn("[MuPDF-Loader] 解压 native 动态库至 {} 失败: ", baseDir.getAbsolutePath(), t);
+            log.error("[MuPDF-Loader] 解压 native 动态库至 {} 失败: ", baseDir.getAbsolutePath(), t);
             return null;
         } finally {
             if (tempFile != null) {
@@ -369,7 +371,7 @@ public class MuPdfNativeLoader {
             if (read < 2) {
                 return false;
             }
-        } catch (Throwable t) {
+        } catch (Throwable ignored) {
             return false;
         }
 
@@ -389,8 +391,8 @@ public class MuPdfNativeLoader {
     private static long copyToFile(InputStream in, File target) throws IOException {
         long written = 0L;
         try (FileChannel channel = FileChannel.open(target.toPath(),
-                StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING)) {
-            OutputStream out = Channels.newOutputStream(channel);
+                StandardOpenOption.WRITE, StandardOpenOption.TRUNCATE_EXISTING);
+             OutputStream out = Channels.newOutputStream(channel)) {
             byte[] buffer = new byte[1 << 16];
             int read;
             while ((read = in.read(buffer)) > 0) {
@@ -418,7 +420,7 @@ public class MuPdfNativeLoader {
                     loadQuietly(companionGcc);
                 }
             } catch (Throwable t) {
-                log.warn("[MuPDF-Loader] Windows SetDllDirectoryW 临时注入失败: ", t);
+                log.error("[MuPDF-Loader] Windows SetDllDirectoryW 临时注入失败: ", t);
             }
         }
         try {
@@ -437,9 +439,9 @@ public class MuPdfNativeLoader {
     private static void loadQuietly(File lib) {
         try {
             System.load(lib.getAbsolutePath());
-        } catch (UnsatisfiedLinkError e) {
-            if (!isAlreadyLoadedError(e)) {
-                log.debug("[MuPDF-Loader] 预加载附属运行库失败（主库加载时会再次尝试）: {}", lib.getName(), e);
+        } catch (UnsatisfiedLinkError companionEx) {
+            if (!isAlreadyLoadedError(companionEx)) {
+                log.debug("[MuPDF-Loader] 预加载附属运行库失败（主库加载时会再次尝试）: {}", lib.getName(), companionEx);
             }
         }
     }
