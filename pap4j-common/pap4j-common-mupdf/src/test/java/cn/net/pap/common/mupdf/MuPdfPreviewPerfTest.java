@@ -152,7 +152,7 @@ public class MuPdfPreviewPerfTest {
      * 提取测试 resources 下旋转 PDF 的文本物理坐标 JSON，并输出至日志供核对.
      */
     @Test
-    public void testExtractRotatedPdfCoordinates() {
+    public void testExtractRotatedPdfCoordinates() throws Exception {
         String[] testFiles = {
                 "font_rotation_test.pdf",
                 "multi_angle_rotation_test.pdf",
@@ -161,6 +161,9 @@ public class MuPdfPreviewPerfTest {
                 "page_rotation_270_test.pdf",
                 "page_and_char_combined_rotation_test.pdf"
         };
+
+        File outputDir = new File(System.getProperty("java.io.tmpdir"));
+        log.info(">> 可视化输出根目录 (tmpdir): {}", outputDir.getAbsolutePath());
 
         for (String file : testFiles) {
             URL url = getClass().getResource("/" + file);
@@ -177,10 +180,13 @@ public class MuPdfPreviewPerfTest {
             Assertions.assertNotNull(json, file + " 提取的坐标 JSON 不应为空");
             Assertions.assertFalse(json.trim().isEmpty(), file + " 提取的坐标 JSON 内容不应为空");
 
-            log.info("================================================================================");
-            log.info(">> 成功提取 [{}] 文本物理坐标 JSON (耗时 {} ms):", file, cost);
-            log.info("{}", json);
-            log.info("================================================================================");
+            // 纯根据提取出的坐标 JSON 反推还原生成 SVG 可视化文件，输出至 tmpdir
+            String baseName = file.substring(0, file.lastIndexOf('.'));
+            File svgFile = new File(outputDir, baseName + ".svg");
+            MuPdfService.exportCoordinatesToSvg(json, svgFile);
+
+            log.info(">> [{}] 耗时 {} ms | JSON 反推还原 SVG: {}", file, cost, svgFile.getAbsolutePath());
+            log.info(">> [{}] 坐标 JSON: {}", file, json);
         }
     }
 }

@@ -18,7 +18,9 @@ import com.artifex.mupdf.fitz.Rect;
 import com.artifex.mupdf.fitz.StructuredText;
 import com.artifex.mupdf.fitz.StructuredTextWalker;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.file.Files;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -194,6 +196,107 @@ public class MuPdfService implements AutoCloseable {
             log.error("[MuPDF-Coord] 序列化文本坐标 JSON 失败: {}", pdfPath, e);
             throw new IllegalStateException("序列化文本坐标 JSON 失败: " + pdfPath, e);
         }
+    }
+
+    /**
+     * 基于提取的文本物理坐标 JSON 反推并还原生成可视化 SVG 页面.
+     * <p>
+     * 仅根据 JSON 数据逆向重构页面布局，包含字符级 Quad 倾斜多边形框与基线旋转文字，
+     * 便于直接在浏览器中核对文本坐标与旋转角度提取的真实度与还原保真度。
+     * </p>
+     *
+     * @param json       extractCoordinatesJson 输出的文本物理坐标 JSON 字符串
+     * @param outputFile 输出的目标 SVG 文件路径
+     * @throws IOException 文件写入或 JSON 解析异常
+     */
+    public static void exportCoordinatesToSvg(String json, File outputFile) throws IOException {
+        if (json == null || json.trim().isEmpty() || outputFile == null) {
+            throw new IllegalArgumentException("JSON 内容与输出目标文件不能为空");
+        }
+        JsonNode root = OBJECT_MAPPER.readTree(json);
+        JsonNode pages = root.get("pages");
+        if (pages == null || !pages.isArray() || pages.isEmpty()) {
+            return;
+        }
+        JsonNode page = pages.get(0);
+        double width = page.path("width").asDouble(595.0);
+        double height = page.path("height").asDouble(842.0);
+
+        StringBuilder svg = new StringBuilder(4096);
+        svg.append("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 ")
+                .append(width).append(" ").append(height).append("\" width=\"")
+                .append(width).append("\" height=\"").append(height).append("\">\n")
+                .append("  <!-- 页面底色与轮廓边框（便于浏览器中清晰呈现页面区域与边界） -->\n")
+                .append("  <rect width=\"100%\" height=\"100%\" fill=\"#f1f5f9\" stroke=\"#94a3b8\" stroke-width=\"1.5\" />\n");
+
+        JsonNode blocks = page.get("blocks");
+        if (blocks != null && blocks.isArray()) {
+            for (JsonNode block : blocks) {
+                appendBlockToSvg(svg, block);
+            }
+        }
+
+        svg.append("</svg>\n");
+        Files.writeString(outputFile.toPath(), svg, StandardCharsets.UTF_8);
+    }
+
+    private static void appendBlockToSvg(StringBuilder svg, JsonNode block) {
+        JsonNode lines = block.get("lines");
+        if (lines == null || !lines.isArray()) {
+            return;
+        }
+        for (JsonNode line : lines) {
+            JsonNode chars = line.get("chars");
+            if (chars == null || !chars.isArray()) {
+                continue;
+            }
+            for (JsonNode ch : chars) {
+                appendCharToSvg(svg, ch);
+            }
+        }
+    }
+
+    private static void appendCharToSvg(StringBuilder svg, JsonNode ch) {
+        JsonNode q = ch.get("quad");
+        if (q != null) {
+            svg.append("  <polygon points=\"")
+                    .append(q.path("ul").path("x").asDouble()).append(",")
+                    .append(q.path("ul").path("y").asDouble()).append(" ")
+                    .append(q.path("ur").path("x").asDouble()).append(",")
+                    .append(q.path("ur").path("y").asDouble()).append(" ")
+                    .append(q.path("lr").path("x").asDouble()).append(",")
+                    .append(q.path("lr").path("y").asDouble()).append(" ")
+                    .append(q.path("ll").path("x").asDouble()).append(",")
+                    .append(q.path("ll").path("y").asDouble())
+                    .append("\" fill=\"rgba(37,99,235,0.12)\" stroke=\"#2563eb\" stroke-width=\"0.6\" />\n");
+        }
+
+        JsonNode origin = ch.get("origin");
+        JsonNode rot = ch.get("rotation");
+        double ox = origin != null ? origin.path("x").asDouble() : 0.0;
+        double oy = origin != null ? origin.path("y").asDouble() : 0.0;
+        double visualAngle = rot != null ? rot.path("visual_angle").asDouble() : 0.0;
+        double size = ch.path("size").asDouble(12.0);
+        String text = ch.path("c").asText("");
+
+        svg.append("  <text x=\"").append(ox).append("\" y=\"").append(oy)
+                .append("\" font-size=\"").append(size)
+                .append("\" font-family=\"SimSun, Songti SC, STSong, sans-serif\"")
+                .append(" transform=\"rotate(").append(visualAngle).append(",").append(ox).append(",").append(oy).append(")\"")
+                .append(" fill=\"#0f172a\">")
+                .append(escapeXml(text))
+                .append("</text>\n");
+    }
+
+    private static String escapeXml(String text) {
+        if (text == null || text.isEmpty()) {
+            return "";
+        }
+        return text.replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&apos;");
     }
 
     /**
