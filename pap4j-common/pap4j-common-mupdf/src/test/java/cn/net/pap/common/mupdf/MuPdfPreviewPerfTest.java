@@ -147,4 +147,40 @@ public class MuPdfPreviewPerfTest {
         log.info(">> [JNI+Vips] 成功生成第 {} 页 WebP 底图: 耗时 {} ms, 大小 {} 字节 (约 {} KB)",
                 page, webpDuration, webpBytes.length, String.format("%.2f", webpBytes.length / 1024.0));
     }
+
+    /**
+     * 提取测试 resources 下旋转 PDF 的文本物理坐标 JSON，并输出至日志供核对.
+     */
+    @Test
+    public void testExtractRotatedPdfCoordinates() {
+        String[] testFiles = {
+                "font_rotation_test.pdf",
+                "multi_angle_rotation_test.pdf",
+                "page_rotation_90_test.pdf",
+                "page_rotation_180_test.pdf",
+                "page_rotation_270_test.pdf",
+                "page_and_char_combined_rotation_test.pdf"
+        };
+
+        for (String file : testFiles) {
+            URL url = getClass().getResource("/" + file);
+            if (url == null) {
+                log.warn("未找到测试资源文件: {}", file);
+                continue;
+            }
+
+            String path = new File(url.getFile()).getAbsolutePath();
+            long start = System.currentTimeMillis();
+            String json = service.extractCoordinatesJson(path, 0);
+            long cost = System.currentTimeMillis() - start;
+
+            Assertions.assertNotNull(json, file + " 提取的坐标 JSON 不应为空");
+            Assertions.assertFalse(json.trim().isEmpty(), file + " 提取的坐标 JSON 内容不应为空");
+
+            log.info("================================================================================");
+            log.info(">> 成功提取 [{}] 文本物理坐标 JSON (耗时 {} ms):", file, cost);
+            log.info("{}", json);
+            log.info("================================================================================");
+        }
+    }
 }

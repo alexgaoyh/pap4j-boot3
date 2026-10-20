@@ -8,7 +8,9 @@ import com.artifex.mupdf.fitz.Document;
 import com.artifex.mupdf.fitz.Font;
 import com.artifex.mupdf.fitz.Image;
 import com.artifex.mupdf.fitz.Matrix;
+import com.artifex.mupdf.fitz.PDFPage;
 import com.artifex.mupdf.fitz.Page;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.artifex.mupdf.fitz.Pixmap;
 import com.artifex.mupdf.fitz.Point;
 import com.artifex.mupdf.fitz.Quad;
@@ -162,7 +164,7 @@ public class MuPdfService implements AutoCloseable {
 
             page = managed.doc.loadPage(pageNum);
             st = page.toStructuredText();
-            PageResult pageResult = buildPageResult(st);
+            PageResult pageResult = buildPageResult(st, pageNum + 1, page);
             return new CoordinatesResult(pdfPath, List.of(pageResult));
 
         } finally {
@@ -187,7 +189,7 @@ public class MuPdfService implements AutoCloseable {
     public String extractCoordinatesJson(String pdfPath, int pageNum) {
         CoordinatesResult result = extractCoordinates(pdfPath, pageNum);
         try {
-            return OBJECT_MAPPER.writeValueAsString(result) + "\n";
+            return OBJECT_MAPPER.writeValueAsString(result);
         } catch (IOException e) {
             log.error("[MuPDF-Coord] 序列化文本坐标 JSON 失败: {}", pdfPath, e);
             throw new IllegalStateException("序列化文本坐标 JSON 失败: " + pdfPath, e);
@@ -505,11 +507,40 @@ public class MuPdfService implements AutoCloseable {
     }
 
     /**
-     * 单页物理布局实体
+     * 单页物理布局实体（方案 A：包含页面旋转、显示尺寸与文本块）。
      *
-     * @param blocks 页面内容块列表
+     * <p><b>坐标系约定：</b>页面内的全部坐标
+     * （{@code box} / {@code width} / {@code height} / 块 / 行 / 字的 {@code bbox} 与 {@code quad}）
+     * 均处于<b>应用页面旋转后的显示坐标系</b>中（原点左上、Y 轴向下、单位为 PDF Point 72 DPI），
+     * 与 {@code renderPageToPng / renderPageToWebp} 渲染出的位图完全同源。前端按
+     * {@code x / width * 100%}、{@code y / height * 100%} 定位，无需再对 {@code page_rotation} 二次旋转。</p>
+     *
+     * @param number       页码 (1-based)
+     * @param pageRotation PDF 页面本身的 /Rotate 角度 (0, 90, 180, 270)
+     * @param width        显示坐标系下的页宽 (Point)
+     * @param height       显示坐标系下的页高 (Point)
+     * @param box          显示坐标系下的页面边界框
+     * @param transform    PDF 用户空间 ➔ 显示坐标系 的 2D 仿射变换矩阵（非 PDF 为 null）
+     * @param blocks       页面内容块列表
      */
-    public record PageResult(List<BlockResult> blocks) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record PageResult(
+            int number,
+            @JsonProperty("page_rotation") int pageRotation,
+            double width,
+            double height,
+            Bbox box,
+            MatrixInfo transform,
+            List<BlockResult> blocks
+    ) {
+        /**
+         * 向下兼容历史单参数构造器
+         *
+         * @param blocks 页面内容块列表
+         */
+        public PageResult(List<BlockResult> blocks) {
+            this(1, 0, 0.0, 0.0, null, null, blocks);
+        }
     }
 
     /**
@@ -526,27 +557,106 @@ public class MuPdfService implements AutoCloseable {
     /**
      * 文本行实体
      *
-     * @param wmode 写入模式 (0=水平, 1=垂直)
-     * @param bbox  行外接边界框
-     * @param font  行首字体信息
-     * @param x     行起始基线 X 坐标
-     * @param y     行起始基线 Y 坐标
-     * @param text  整行合并文本
-     * @param chars 单字坐标列表
+     * @param wmode    写入模式 (0=水平, 1=垂直)
+     * @param dir      行书写方向单位向量（Y 轴向下显示坐标系）
+     * @param rotation 旋转信息实体（含行级 font_angle 与 visual_angle）
+     * @param bbox     行轴对齐外接框
+     * @param quad     行四边形（由单字 quad 沿 dir 方向正交投影得到的贴合旋转矩形）
+     * @param font     行首字体信息
+     * @param x        行起始基线 X 坐标
+     * @param y        行起始基线 Y 坐标
+     * @param text     整行合并文本
+     * @param chars    单字坐标列表
      */
-    public record LineResult(int wmode, Bbox bbox, FontInfo font, double x, double y, String text, List<CharResult> chars) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record LineResult(
+            int wmode,
+            PointInfo dir,
+            RotationInfo rotation,
+            Bbox bbox,
+            QuadInfo quad,
+            FontInfo font,
+            double x,
+            double y,
+            String text,
+            List<CharResult> chars
+    ) {
+        /**
+         * 向下兼容历史构造器
+         */
+        public LineResult(int wmode, Bbox bbox, FontInfo font, double x, double y, String text, List<CharResult> chars) {
+            this(wmode, null, null, bbox, null, font, x, y, text, chars);
+        }
     }
 
     /**
-     * 单字物理坐标与元数据实体
+     * 单字物理坐标与旋转元数据实体（方案 A）
      *
-     * @param c      字符文本
-     * @param origin 字符基线绘制物理坐标
-     * @param bbox   单字外接边界框
-     * @param font   字体名称
-     * @param size   字号大小
+     * @param c        字符文本
+     * @param origin   字符基线绘制物理坐标 (显示坐标系)
+     * @param bbox     单字轴对齐外接框（旋转后为外切矩形，供命中/回退使用）
+     * @param quad     单字真实 4 角点四边形（ul -> ur -> lr -> ll 顺时针，任意角度精确贴合）
+     * @param rotation 旋转双轨解耦信息（font_angle 为 PDF 内部原始角度，visual_angle 为位图视觉角度）
+     * @param font     字体名称
+     * @param size     字号大小
      */
-    public record CharResult(String c, PointInfo origin, Bbox bbox, String font, double size) {
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record CharResult(
+            String c,
+            PointInfo origin,
+            Bbox bbox,
+            QuadInfo quad,
+            RotationInfo rotation,
+            String font,
+            double size
+    ) {
+        /**
+         * 向下兼容历史构造器
+         */
+        public CharResult(String c, PointInfo origin, Bbox bbox, String font, double size) {
+            this(c, origin, bbox, null, null, font, size);
+        }
+    }
+
+    /**
+     * 旋转解耦实体（方案 A 核心）：分离原始字体角度与合成视觉角度。
+     *
+     * @param fontAngle   PDF 内部文本矩阵设定的原始字体旋转角（度，逆时针为正，0/45/90/180/270，用于逆向回写 PDF）
+     * @param visualAngle 最终渲染到屏幕底图上的视觉旋转角（度，顺时针为正，等价 CSS rotate(deg)，用于前端像素级直接定位）
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public record RotationInfo(
+            @JsonProperty("font_angle") double fontAngle,
+            @JsonProperty("visual_angle") double visualAngle
+    ) {
+    }
+
+    /**
+     * 四边形实体：按顺时针闭环顺序表达四个真实物理角点。
+     * <ul>
+     *   <li>{@code ul ➔ ur}：文字书写推进（基线）方向；</li>
+     *   <li>{@code ul ➔ ll}：文字字高方向。</li>
+     * </ul>
+     *
+     * @param ul 左上角 (Upper-Left)
+     * @param ur 右上角 (Upper-Right)
+     * @param lr 右下角 (Lower-Right)
+     * @param ll 左下角 (Lower-Left)
+     */
+    public record QuadInfo(PointInfo ul, PointInfo ur, PointInfo lr, PointInfo ll) {
+    }
+
+    /**
+     * 2D 仿射变换矩阵实体（PDF 的 [a b c d e f] 顺序）。
+     *
+     * @param a 水平缩放/旋转分量
+     * @param b 垂直错切/旋转分量
+     * @param c 水平错切/旋转分量
+     * @param d 垂直缩放/旋转分量
+     * @param e 水平平移
+     * @param f 垂直平移
+     */
+    public record MatrixInfo(double a, double b, double c, double d, double e, double f) {
     }
 
     /**
@@ -583,7 +693,17 @@ public class MuPdfService implements AutoCloseable {
     public record PointInfo(double x, double y) {
     }
 
-    private static PageResult buildPageResult(StructuredText st) {
+    private static PageResult buildPageResult(StructuredText st, int pageNumber, Page page) {
+        Rect bounds = page != null ? page.getBounds() : null;
+        boolean hasBounds = bounds != null && bounds.isValid() && !bounds.isInfinite();
+        double pageWidth = hasBounds ? round(bounds.x1 - bounds.x0) : 0.0;
+        double pageHeight = hasBounds ? round(bounds.y1 - bounds.y0) : 0.0;
+        Bbox pageBox = hasBounds
+                ? new Bbox(round(bounds.x0), round(bounds.y0), pageWidth, pageHeight, null)
+                : new Bbox(0, 0, 0, 0, null);
+        MatrixInfo pageTransform = pageTransform(page);
+        int pageRotation = pageTransform != null ? rotationOf(pageTransform) : 0;
+
         List<BlockResult> blocks = new ArrayList<>();
         st.walk(new StructuredTextWalker() {
             List<LineResult> lines;
@@ -592,6 +712,7 @@ public class MuPdfService implements AutoCloseable {
             StringBuilder lineText;
             Rect lineBbox;
             int lineWmode;
+            PointInfo lineDir;
             FontInfo lineFont;
             PointInfo lineOrigin;
 
@@ -615,6 +736,7 @@ public class MuPdfService implements AutoCloseable {
             public void beginLine(Rect bbox, int wmode, Point dir) {
                 lineBbox = bbox;
                 lineWmode = wmode;
+                lineDir = dir != null ? new PointInfo(round(dir.x, 6), round(dir.y, 6)) : null;
                 chars = new ArrayList<>();
                 lineText = new StringBuilder();
                 lineFont = null;
@@ -626,7 +748,13 @@ public class MuPdfService implements AutoCloseable {
                 double lx = lineOrigin != null ? lineOrigin.x() : (lineBbox != null ? round(lineBbox.x0) : 0.0);
                 double ly = lineOrigin != null ? lineOrigin.y() : (lineBbox != null ? round(lineBbox.y0) : 0.0);
                 FontInfo font = lineFont != null ? lineFont : defaultFont();
-                lines.add(new LineResult(lineWmode, toBbox(lineBbox, 0), font, lx, ly, lineText.toString(), chars));
+                QuadInfo lineQuad = buildLineQuad(chars, lineDir);
+                double lineVisualAngle = lineDir != null
+                        ? angleOf(lineDir.x(), lineDir.y())
+                        : (chars.isEmpty() || chars.get(0).rotation() == null ? 0.0 : chars.get(0).rotation().visualAngle());
+                RotationInfo lineRotation = toRotationInfo(lineVisualAngle, pageRotation);
+                lines.add(new LineResult(lineWmode, lineDir, lineRotation, toBbox(lineBbox, 0), lineQuad,
+                        font, lx, ly, lineText.toString(), chars));
             }
 
             @Override
@@ -642,8 +770,12 @@ public class MuPdfService implements AutoCloseable {
                 if (lineFont == null) {
                     lineFont = fontInfo;
                 }
-                Bbox charBbox = q != null ? toBbox(q.toRect(), null) : new Bbox(originInfo.x(), originInfo.y(), 0, 0, null);
-                chars.add(new CharResult(str, originInfo, charBbox, fontInfo.name(), fontInfo.size()));
+                boolean hasQuad = q != null && q.isValid() && !q.isInfinite();
+                QuadInfo quad = hasQuad ? toQuadInfo(q) : null;
+                double charVisualAngle = hasQuad ? angleOf(q.ur_x - q.ul_x, q.ur_y - q.ul_y) : 0.0;
+                RotationInfo charRotation = hasQuad ? toRotationInfo(charVisualAngle, pageRotation) : null;
+                Bbox charBbox = quad != null ? toBbox(quad) : new Bbox(originInfo.x(), originInfo.y(), 0, 0, null);
+                chars.add(new CharResult(str, originInfo, charBbox, quad, charRotation, fontInfo.name(), fontInfo.size()));
             }
 
             @Override
@@ -653,15 +785,122 @@ public class MuPdfService implements AutoCloseable {
             @Override
             public void onVector(Rect bbox, VectorInfo info, int argb) {}
         });
-        return new PageResult(blocks);
+        return new PageResult(pageNumber, pageRotation, pageWidth, pageHeight, pageBox, pageTransform, blocks);
+    }
+
+    /**
+     * 计算旋转双轨信息：结合视觉角度与页面旋转角，精确推导 PDF 内部原始字体旋转角。
+     */
+    private static RotationInfo toRotationInfo(double visualAngle, int pageRotation) {
+        double rawFontAngle = ((pageRotation - visualAngle) % 360.0 + 360.0) % 360.0;
+        return new RotationInfo(round(rawFontAngle), round(visualAngle));
+    }
+
+    private static MatrixInfo pageTransform(Page page) {
+        if (!(page instanceof PDFPage pdfPage)) {
+            return null;
+        }
+        try {
+            Matrix m = pdfPage.getTransform();
+            if (m == null) {
+                return null;
+            }
+            return new MatrixInfo(round(m.a, 3), round(m.b, 3), round(m.c, 3),
+                    round(m.d, 3), round(m.e, 3), round(m.f, 3));
+        } catch (Throwable t) {
+            log.debug("[MuPDF-Coord] 读取页面变换矩阵失败: {}", t.getMessage());
+            return null;
+        }
+    }
+
+    private static int rotationOf(MatrixInfo m) {
+        double deg = Math.toDegrees(Math.atan2(m.b(), m.a()));
+        int r = ((int) Math.round(deg) % 360 + 360) % 360;
+        return (int) (Math.round(r / 90.0) * 90) % 360;
+    }
+
+    private static QuadInfo buildLineQuad(List<CharResult> chars, PointInfo dir) {
+        if (chars == null || chars.isEmpty() || dir == null) {
+            return null;
+        }
+        double len = Math.hypot(dir.x(), dir.y());
+        if (!(len > 0) || Double.isNaN(len) || Double.isInfinite(len)) {
+            return null;
+        }
+        double dx = dir.x() / len;
+        double dy = dir.y() / len;
+        double uMin = Double.POSITIVE_INFINITY;
+        double uMax = Double.NEGATIVE_INFINITY;
+        double vMin = Double.POSITIVE_INFINITY;
+        double vMax = Double.NEGATIVE_INFINITY;
+        boolean any = false;
+        for (CharResult ch : chars) {
+            QuadInfo quad = ch.quad();
+            if (quad == null) {
+                continue;
+            }
+            for (PointInfo p : new PointInfo[]{quad.ul(), quad.ur(), quad.lr(), quad.ll()}) {
+                double u = p.x() * dx + p.y() * dy;
+                double v = -p.x() * dy + p.y() * dx;
+                uMin = Math.min(uMin, u);
+                uMax = Math.max(uMax, u);
+                vMin = Math.min(vMin, v);
+                vMax = Math.max(vMax, v);
+                any = true;
+            }
+        }
+        if (!any) {
+            return null;
+        }
+        return new QuadInfo(
+                projectToPage(uMin, vMin, dx, dy),
+                projectToPage(uMax, vMin, dx, dy),
+                projectToPage(uMax, vMax, dx, dy),
+                projectToPage(uMin, vMax, dx, dy));
+    }
+
+    private static PointInfo projectToPage(double u, double v, double dx, double dy) {
+        return new PointInfo(round(u * dx - v * dy), round(u * dy + v * dx));
+    }
+
+    private static double angleOf(double dx, double dy) {
+        if (dx == 0.0 && dy == 0.0) {
+            return 0.0;
+        }
+        double deg = round(Math.toDegrees(Math.atan2(dy, dx)));
+        return deg <= -180.0 ? 180.0 : deg;
+    }
+
+    private static QuadInfo toQuadInfo(Quad q) {
+        if (q == null || !q.isValid() || q.isInfinite()) {
+            return null;
+        }
+        return new QuadInfo(
+                new PointInfo(round(q.ul_x), round(q.ul_y)),
+                new PointInfo(round(q.ur_x), round(q.ur_y)),
+                new PointInfo(round(q.lr_x), round(q.lr_y)),
+                new PointInfo(round(q.ll_x), round(q.ll_y)));
     }
 
     private static double round(double val) {
-        return Math.round(val * 1000.0) / 1000.0;
+        return round(val, 3);
+    }
+
+    private static double round(double val, int decimals) {
+        double scale = Math.pow(10, decimals);
+        return Math.round(val * scale) / scale;
+    }
+
+    private static Bbox toBbox(QuadInfo quad) {
+        double x0 = Math.min(Math.min(quad.ul().x(), quad.ur().x()), Math.min(quad.lr().x(), quad.ll().x()));
+        double y0 = Math.min(Math.min(quad.ul().y(), quad.ur().y()), Math.min(quad.lr().y(), quad.ll().y()));
+        double x1 = Math.max(Math.max(quad.ul().x(), quad.ur().x()), Math.max(quad.lr().x(), quad.ll().x()));
+        double y1 = Math.max(Math.max(quad.ul().y(), quad.ur().y()), Math.max(quad.lr().y(), quad.ll().y()));
+        return new Bbox(round(x0), round(y0), round(Math.max(0, x1 - x0)), round(Math.max(0, y1 - y0)), null);
     }
 
     private static Bbox toBbox(Rect r, Integer flags) {
-        if (r == null) {
+        if (r == null || r.isInfinite()) {
             return new Bbox(0, 0, 0, 0, flags);
         }
         return new Bbox(round(r.x0), round(r.y0), round(Math.max(0, r.x1 - r.x0)), round(Math.max(0, r.y1 - r.y0)), flags);
