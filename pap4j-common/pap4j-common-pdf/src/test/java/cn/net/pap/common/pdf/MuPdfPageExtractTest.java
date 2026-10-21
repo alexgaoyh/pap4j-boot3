@@ -72,7 +72,7 @@ public class MuPdfPageExtractTest {
     public String generateTextCoordinates(String pdfPath, int page) throws IOException, InterruptedException {
         Process textProc = new ProcessBuilder(
                 MUTOOL, "draw", "-q", "-F", "stext.json", "-o", "-", pdfPath, String.valueOf(page)
-        ).start();
+        ).redirectError(ProcessBuilder.Redirect.DISCARD).start();
 
         String textJson;
         try (InputStream in = textProc.getInputStream()) {
@@ -115,7 +115,10 @@ public class MuPdfPageExtractTest {
             try {
                 String cmd = String.format("%s draw -q -F pam -r %d -o - %s %d | %s webpsave stdin %s --Q %d",
                         MUTOOL, dpi, pdfPath, page, VIPS, tmpWebp.toString(), quality);
-                Process proc = new ProcessBuilder("sh", "-c", cmd).start();
+                Process proc = new ProcessBuilder("sh", "-c", cmd)
+                        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                        .redirectError(ProcessBuilder.Redirect.DISCARD)
+                        .start();
                 int exitCode = proc.waitFor();
                 if (exitCode != 0) {
                     throw new IOException("Linux 管道渲染 WebP 失败，退出码: " + exitCode);
@@ -131,7 +134,9 @@ public class MuPdfPageExtractTest {
                 Process pamProc = new ProcessBuilder(
                         MUTOOL, "draw", "-q", "-F", "pam", "-r", String.valueOf(dpi),
                         "-o", tmpPam.toString(), pdfPath, String.valueOf(page)
-                ).start();
+                ).redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                 .redirectError(ProcessBuilder.Redirect.DISCARD)
+                 .start();
                 int pamExit = pamProc.waitFor();
                 if (pamExit != 0) {
                     throw new IOException("MuPDF 渲染 PAM 失败，退出码: " + pamExit);
@@ -140,7 +145,9 @@ public class MuPdfPageExtractTest {
                 Process vipsProc = new ProcessBuilder(
                         VIPS, "webpsave", tmpPam.toString(), tmpWebp.toString(),
                         "--Q", String.valueOf(quality)
-                ).start();
+                ).redirectOutput(ProcessBuilder.Redirect.DISCARD)
+                 .redirectError(ProcessBuilder.Redirect.DISCARD)
+                 .start();
                 int vipsExit = vipsProc.waitFor();
                 if (vipsExit != 0) {
                     throw new IOException("LibVips 转码 WebP 失败，退出码: " + vipsExit);

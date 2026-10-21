@@ -77,6 +77,16 @@ public class ProcessPoolUtil {
         Future<?> streamReaderFuture = null;
 
         try {
+            // ==================== 避坑说明：操作系统进程管道与死锁防护 ====================
+            // 1. 为什么必须主动抽流或使用 DISCARD：
+            //    子进程的 stdout/stderr 受操作系统管道缓冲区大小限制（Windows 约 4KB，Linux 约 64KB）。
+            //    若子进程输出超出缓冲区而父进程未消费，子进程写管道将阻塞挂起；此时若调用 waitFor() 会导致永久死锁。
+            // 2. 方案选择：
+            //    - 场景 A（需要日志/输出，如当前工具类）：使用 .redirectErrorStream(true) 合并流，
+            //      并由下方外部线程池 executor 异步实时读取消费（如下实现）。
+            //    - 场景 B（纯执行文件输出/无需日志）：可直接配置 .redirectOutput(ProcessBuilder.Redirect.DISCARD)
+            //      和 .redirectError(ProcessBuilder.Redirect.DISCARD)，从内核层丢弃输出，无需消耗线程读流即可杜绝死锁。
+            // ==============================================================================
             process = new ProcessBuilder(command).redirectErrorStream(true).start();
             final Process finalProcess = process;
 
