@@ -13,7 +13,7 @@ import org.apache.commons.imaging.formats.tiff.constants.TiffTagConstants;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.net.pap.common.opencv.jpeg.JpegDPIProcessor;
+import cn.net.pap.common.core.image.JpegDPIProcessor;
 import org.junit.jupiter.api.Test;
 
 import javax.imageio.ImageIO;

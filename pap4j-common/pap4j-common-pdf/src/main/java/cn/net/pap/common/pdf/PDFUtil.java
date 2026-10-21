@@ -3,7 +3,7 @@ package cn.net.pap.common.pdf;
 import cn.net.pap.common.pdf.dto.CoordsDTO;
 import cn.net.pap.common.pdf.dto.PointDTO;
 import cn.net.pap.common.pdf.enums.ChineseFont;
-import cn.net.pap.common.pdf.jpg.JpegDPIProcessor;
+import cn.net.pap.common.core.image.JpegDPIProcessor;
 import cn.net.pap.common.pdf.sign.SignatureInterfaceImpl;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.cos.*;

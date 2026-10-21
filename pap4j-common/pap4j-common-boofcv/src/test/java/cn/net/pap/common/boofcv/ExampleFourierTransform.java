@@ -12,7 +12,7 @@ import boofcv.io.image.ConvertBufferedImage;
 import boofcv.io.image.UtilImageIO;
 import boofcv.struct.image.GrayF32;
 import boofcv.struct.image.InterleavedF32;
-import cn.net.pap.common.boofcv.util.TempDirUtils;
+import cn.net.pap.common.core.util.TempDirUtils;
 import org.junit.jupiter.api.Test;
 
 import java.awt.image.BufferedImage;

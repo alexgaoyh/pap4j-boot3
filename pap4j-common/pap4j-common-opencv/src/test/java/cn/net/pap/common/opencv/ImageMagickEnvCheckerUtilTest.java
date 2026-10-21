@@ -1,6 +1,7 @@
 package cn.net.pap.common.opencv;
 
-import cn.net.pap.common.opencv.dto.ProcessResult;
+import cn.net.pap.common.core.dto.ProcessResult;
+import cn.net.pap.common.core.util.ProcessPoolUtil;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

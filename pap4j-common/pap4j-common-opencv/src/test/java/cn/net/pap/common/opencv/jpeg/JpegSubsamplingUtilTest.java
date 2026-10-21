@@ -3,7 +3,7 @@ package cn.net.pap.common.opencv.jpeg;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.net.pap.common.opencv.util.TempDirUtils;
+import cn.net.pap.common.core.util.TempDirUtils;
 import org.junit.jupiter.api.Test;
 
 import java.awt.image.BufferedImage;

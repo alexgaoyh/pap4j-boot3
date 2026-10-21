@@ -1,5 +1,7 @@
 package cn.net.pap.common.file.util;
 
+import cn.net.pap.common.core.util.TempDirUtils;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

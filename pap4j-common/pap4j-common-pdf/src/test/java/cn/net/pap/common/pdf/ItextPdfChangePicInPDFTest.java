@@ -1,6 +1,7 @@
 package cn.net.pap.common.pdf;
 
-import cn.net.pap.common.pdf.dto.ProcessResult;
+import cn.net.pap.common.core.dto.ProcessResult;
+import cn.net.pap.common.core.util.ProcessPoolUtil;
 import com.itextpdf.text.pdf.*;
 import com.itextpdf.text.pdf.parser.PdfImageObject;
 import org.junit.jupiter.api.Test;

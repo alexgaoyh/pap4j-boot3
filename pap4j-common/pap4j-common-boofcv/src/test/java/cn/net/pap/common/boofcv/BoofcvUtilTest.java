@@ -4,7 +4,7 @@ import boofcv.alg.misc.ImageMiscOps;
 import boofcv.io.image.ConvertBufferedImage;
 import boofcv.io.image.UtilImageIO;
 import boofcv.struct.image.*;
-import cn.net.pap.common.boofcv.util.TempDirUtils;
+import cn.net.pap.common.core.util.TempDirUtils;
 import org.junit.jupiter.api.Test;
 
 import java.awt.image.BufferedImage;

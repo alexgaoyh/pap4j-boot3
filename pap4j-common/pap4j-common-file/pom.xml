@@ -23,6 +23,12 @@
     <dependencies>
 
         <dependency>
+            <groupId>cn.net.pap</groupId>
+            <artifactId>pap4j-common-core</artifactId>
+            <version>${project.parent.version}</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
         </dependency>
