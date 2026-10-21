@@ -33,6 +33,10 @@ public class ExeApplication {
         try {
             log.info("[Exe-Main] Application started with {} args.", args != null ? args.length : 0);
             // 待补充的具体业务逻辑
+
+            // 问题：子进程存活且既不输出也不退出，管道写端未关且无数据，导致父进程 read 永久阻塞等不到 EOF。  Thread.sleep(Long.MAX_VALUE);
+            // 问题：子进程输出过量撑满内核管道缓冲区（或串行读取 stdout/stderr），反向堵死子进程引发父子互锁。  while (true) { log.info("{}", "A".repeat(4096)); }
+
             return 0;
         } catch (Exception e) {
             log.error("[Exe-Main] Application encountered exception: ", e);
