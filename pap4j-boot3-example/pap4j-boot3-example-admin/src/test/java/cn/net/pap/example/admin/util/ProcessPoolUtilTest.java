@@ -1,16 +1,20 @@
 package cn.net.pap.example.admin.util;
 
-import cn.net.pap.example.admin.dto.ProcessResult;
+import cn.net.pap.common.core.dto.ProcessResult;
+import cn.net.pap.common.core.util.ProcessPoolUtil;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.io.File;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -107,6 +111,31 @@ public class ProcessPoolUtilTest {
     }
 
     // ==========================================
+    // 测试辅助方法 (迁移自 ProcessPoolUtil)
+    // ==========================================
+
+    private static List<String> buildJavaCommand(String mainClass, String[] args) {
+        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+        String cp = System.getProperty("java.class.path");
+
+        List<String> cmd = new ArrayList<>();
+        cmd.add(javaBin);
+        cmd.add("-cp");
+        cmd.add(cp);
+        cmd.add(mainClass);
+
+        if (args != null) {
+            cmd.addAll(Arrays.asList(args));
+        }
+        return cmd;
+    }
+
+    private static ProcessResult runJavaClass(String mainClass, String[] args, long timeoutSec, ExecutorService executor) {
+        List<String> cmd = buildJavaCommand(mainClass, args);
+        return ProcessPoolUtil.runCommand(cmd, timeoutSec, executor);
+    }
+
+    // ==========================================
     // 测试用例
     // ==========================================
 
@@ -129,7 +158,7 @@ public class ProcessPoolUtilTest {
         String mainClass = NormalTask.class.getName();
 
         // 传入 testThreadPoolExecutor
-        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 5, testThreadPoolExecutor);
+        ProcessResult result = runJavaClass(mainClass, null, 5, testThreadPoolExecutor);
 
         assertEquals(0, result.getExitCode(), "正常执行的退出码应为 0");
         assertTrue(result.getOutput().contains("Hello from subprocess!"), "应能读取到标准输出");
@@ -141,7 +170,7 @@ public class ProcessPoolUtilTest {
         long startTime = System.currentTimeMillis();
 
         // 传入 testThreadPoolExecutor，设置 2 秒超时
-        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 2, testThreadPoolExecutor);
+        ProcessResult result = runJavaClass(mainClass, null, 2, testThreadPoolExecutor);
         long duration = System.currentTimeMillis() - startTime;
 
         assertEquals(-1, result.getExitCode(), "超时被强杀的退出码约定为 -1");
@@ -155,7 +184,7 @@ public class ProcessPoolUtilTest {
         String mainClass = HugeOutputTask.class.getName();
 
         // 传入 testThreadPoolExecutor
-        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 10, testThreadPoolExecutor);
+        ProcessResult result = runJavaClass(mainClass, null, 10, testThreadPoolExecutor);
 
         assertEquals(0, result.getExitCode(), "进程应正常结束退出码为 0");
 
@@ -171,7 +200,7 @@ public class ProcessPoolUtilTest {
         String mainClass = ErrorTask.class.getName();
 
         // 传入 testThreadPoolExecutor
-        ProcessResult result = ProcessPoolUtil.runJavaClass(mainClass, null, 5, testThreadPoolExecutor);
+        ProcessResult result = runJavaClass(mainClass, null, 5, testThreadPoolExecutor);
 
         assertEquals(1, result.getExitCode(), "异常退出的进程码应为 1");
         assertTrue(result.getOutput().contains("This is an error stream message."), "错误流应被合并并读取到");
@@ -186,7 +215,7 @@ public class ProcessPoolUtilTest {
         // 在新线程中执行
         Thread executorThread = new Thread(() -> {
             // 传入 testThreadPoolExecutor
-            ProcessResult res = ProcessPoolUtil.runJavaClass(mainClass, null, 10, testThreadPoolExecutor);
+            ProcessResult res = runJavaClass(mainClass, null, 10, testThreadPoolExecutor);
             resultRef.set(res);
             latch.countDown();
         });

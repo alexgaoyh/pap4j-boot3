@@ -1,7 +1,7 @@
 package cn.net.pap.example.admin.controller;
 
+import cn.net.pap.common.core.util.ProcessPoolUtil;
 import cn.net.pap.example.admin.dto.ProcessResult;
-import cn.net.pap.example.admin.util.ProcessPoolUtil;
 import cn.net.pap.example.admin.util.ProcessPoolUtilExample;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.io.File;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
@@ -142,8 +146,9 @@ public class ProcessPoolUtilController {
         results.put(taskId, result);
 
         executor.execute(() -> {
-            ProcessResult r = ProcessPoolUtil.runJavaClass(
-                    mainClass, null, 0, testThreadPoolExecutor
+            List<String> cmd = buildJavaCommand(mainClass, null);
+            cn.net.pap.common.core.dto.ProcessResult r = ProcessPoolUtil.runCommand(
+                    cmd, 0, testThreadPoolExecutor
             );
             result.exitCode = r.getExitCode();
             result.output = r.getOutput();
@@ -151,6 +156,22 @@ public class ProcessPoolUtilController {
         });
 
         return taskId;
+    }
+
+    private List<String> buildJavaCommand(String mainClass, String[] args) {
+        String javaBin = System.getProperty("java.home") + File.separator + "bin" + File.separator + "java";
+        String cp = System.getProperty("java.class.path");
+
+        List<String> cmd = new ArrayList<>();
+        cmd.add(javaBin);
+        cmd.add("-cp");
+        cmd.add(cp);
+        cmd.add(mainClass);
+
+        if (args != null) {
+            cmd.addAll(Arrays.asList(args));
+        }
+        return cmd;
     }
 
     /**
