@@ -1,6 +1,6 @@
 package cn.net.pap.common.datastructure.catalog;
 
-import cn.net.pap.common.datastructure.resource.TestResourceUtil;
+import cn.net.pap.common.core.util.TestResourceUtil;
 import cn.net.pap.common.datastructure.trie.DoubleArrayTrie;
 import org.junit.jupiter.api.Test;
 

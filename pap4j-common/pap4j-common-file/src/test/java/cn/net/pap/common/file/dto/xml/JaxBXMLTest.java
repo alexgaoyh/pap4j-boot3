@@ -3,7 +3,7 @@ package cn.net.pap.common.file.dto.xml;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import cn.net.pap.common.file.TestResourceUtil;
+import cn.net.pap.common.core.util.TestResourceUtil;
 import jakarta.xml.bind.JAXBContext;
 import jakarta.xml.bind.Unmarshaller;
 import org.junit.jupiter.api.Test;

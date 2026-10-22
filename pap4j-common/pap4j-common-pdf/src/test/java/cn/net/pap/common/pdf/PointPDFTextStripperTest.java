@@ -1,5 +1,7 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import cn.net.pap.common.pdf.textStripper.PointPDFTextStripper;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.pdfbox.Loader;

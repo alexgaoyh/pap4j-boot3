@@ -1,5 +1,7 @@
 package cn.net.pap.milvus;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import com.google.gson.JsonObject;
 import io.milvus.client.MilvusClient;
 import io.milvus.client.MilvusServiceClient;

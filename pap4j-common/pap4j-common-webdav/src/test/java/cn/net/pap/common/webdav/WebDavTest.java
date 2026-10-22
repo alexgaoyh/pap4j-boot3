@@ -1,5 +1,7 @@
 package cn.net.pap.common.webdav;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import org.apache.jackrabbit.webdav.MultiStatusResponse;
 
 import java.io.File;

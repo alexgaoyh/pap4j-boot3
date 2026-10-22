@@ -1,5 +1,7 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import cn.net.pap.common.pdf.dto.ChapterDTO;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.PdfWriter;

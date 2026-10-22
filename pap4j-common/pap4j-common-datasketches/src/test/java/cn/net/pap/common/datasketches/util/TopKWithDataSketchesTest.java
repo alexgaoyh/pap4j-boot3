@@ -1,5 +1,7 @@
 package cn.net.pap.common.datasketches.util;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

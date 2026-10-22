@@ -1,5 +1,7 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import cn.net.pap.common.pdf.enums.ChineseFont;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.itextpdf.awt.geom.Rectangle2D;

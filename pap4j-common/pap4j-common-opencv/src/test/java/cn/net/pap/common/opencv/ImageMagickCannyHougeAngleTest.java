@@ -1,5 +1,7 @@
 package cn.net.pap.common.opencv;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import cn.net.pap.common.core.dto.ProcessResult;
 import cn.net.pap.common.core.util.ProcessPoolUtil;
 import org.junit.jupiter.api.Test;

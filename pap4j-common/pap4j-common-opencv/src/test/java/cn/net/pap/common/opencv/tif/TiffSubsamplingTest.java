@@ -1,6 +1,6 @@
 package cn.net.pap.common.opencv.tif;
 
-import cn.net.pap.common.opencv.TestResourceUtil;
+import cn.net.pap.common.core.util.TestResourceUtil;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

@@ -1,5 +1,7 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;

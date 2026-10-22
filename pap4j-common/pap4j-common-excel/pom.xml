@@ -20,6 +20,13 @@
 
     <dependencies>
         <dependency>
+            <groupId>cn.net.pap</groupId>
+            <artifactId>pap4j-common-core</artifactId>
+            <version>${project.parent.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>com.alibaba</groupId>
             <artifactId>easyexcel</artifactId>
         </dependency>

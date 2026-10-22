@@ -1,5 +1,7 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import com.itextpdf.text.Document;
 import com.itextpdf.text.Image;
 import com.itextpdf.text.Rectangle;

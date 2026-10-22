@@ -1,5 +1,7 @@
 package cn.net.pap.common.docx;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;

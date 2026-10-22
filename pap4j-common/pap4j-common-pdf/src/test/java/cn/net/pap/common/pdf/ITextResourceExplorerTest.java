@@ -1,5 +1,7 @@
 package cn.net.pap.common.pdf;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import com.itextpdf.text.pdf.*;
 import org.junit.jupiter.api.Test;
 

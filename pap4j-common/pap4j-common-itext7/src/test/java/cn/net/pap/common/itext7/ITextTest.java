@@ -1,5 +1,7 @@
 package cn.net.pap.common.itext7;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import com.itextpdf.io.image.ImageType;
 import com.itextpdf.kernel.geom.Matrix;
 import com.itextpdf.kernel.geom.Rectangle;

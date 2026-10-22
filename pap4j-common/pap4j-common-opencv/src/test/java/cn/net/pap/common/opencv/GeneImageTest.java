@@ -1,5 +1,7 @@
 package cn.net.pap.common.opencv;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import com.drew.imaging.ImageMetadataReader;
 import com.drew.metadata.Metadata;
 import com.drew.metadata.exif.ExifIFD0Directory;

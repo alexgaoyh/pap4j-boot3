@@ -1,5 +1,7 @@
 package cn.net.pap.common.jena;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import org.apache.jena.query.*;
 import org.apache.jena.rdf.model.*;
 import org.apache.jena.vocabulary.VCARD;

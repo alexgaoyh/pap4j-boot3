@@ -1,5 +1,7 @@
 package cn.net.pap.common.jsonorm;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import cn.net.pap.common.jsonorm.parser.JsonRecursiveParser;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

@@ -1,5 +1,7 @@
 package cn.net.pap.common.itext7;
 
+import cn.net.pap.common.core.util.TestResourceUtil;
+
 import cn.net.pap.common.vips.VipsImageProcessor;
 import cn.net.pap.common.vips.jna.LibVips;
 import com.itextpdf.io.image.ImageData;
