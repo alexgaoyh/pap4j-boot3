@@ -65,6 +65,30 @@
                     </execution>
                 </executions>
             </plugin>
+            <!-- jpackage 生成的 app-image 启动 exe 带有 Windows 只读(R)属性， 而 maven-clean-plugin 使用 Files.delete 删除，遇到只读文件会抛 AccessDeniedException，
+                导致 "Failed to clean project: Failed to delete ... pap4j-common-exe.exe"。 因此先在 pre-clean 阶段清除只读属性并删除 jpackage 产物。 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>unlock-jpackage-app-image</id>
+                        <phase>pre-clean</phase>
+                        <goals>
+                            <goal>run</goal>
+                        </goals>
+                        <configuration>
+                            <target>
+                                <exec executable="cmd.exe" osfamily="windows" failonerror="false">
+                                    <arg value="/c"/>
+                                    <arg value="if exist &quot;${project.build.directory}\exe&quot; attrib -R -S -H &quot;${project.build.directory}\exe\*&quot; /S /D &amp; rmdir /s /q &quot;${project.build.directory}\exe&quot;"/>
+                                </exec>
+                            </target>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
