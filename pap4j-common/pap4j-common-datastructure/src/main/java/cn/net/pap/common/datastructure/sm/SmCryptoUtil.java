@@ -1,5 +1,6 @@
 package cn.net.pap.common.datastructure.sm;
 
+import cn.net.pap.common.core.util.HexUtil;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import javax.crypto.Cipher;
@@ -50,9 +51,6 @@ public class SmCryptoUtil {
      */
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(SmCryptoUtil.class);
 
-    // 十六进制字符表，用于将字节快速转为可读字符
-    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
-
     // 静态代码块：当类被加载时，自动向 Java 安全管理器注册 Bouncy Castle (BC) 加密库
     // 只有注册了 BC 提供者，Java 底层才能识别 "SM2", "SM3", "SM4" 算法名称
     static {
@@ -69,16 +67,7 @@ public class SmCryptoUtil {
      * @return 转换后的十六进制小写字符串
      */
     public static String toHex(byte[] bytes) {
-        if (bytes == null) {
-            return null;
-        }
-        char[] hexChars = new char[bytes.length * 2];
-        for (int i = 0; i < bytes.length; i++) {
-            int v = bytes[i] & 0xFF; // 取出字节的 8 位无符号整数值
-            hexChars[i * 2] = HEX_CHARS[v >>> 4]; // 获取高 4 位的十六进制字符
-            hexChars[i * 2 + 1] = HEX_CHARS[v & 0x0F]; // 获取低 4 位的十六进制字符
-        }
-        return new String(hexChars);
+        return HexUtil.toHex(bytes);
     }
 
     /**
@@ -89,17 +78,7 @@ public class SmCryptoUtil {
      * @return 还原后的二进制字节数组
      */
     public static byte[] fromHex(String hex) {
-        if (hex == null) {
-            return null;
-        }
-        int len = hex.length();
-        byte[] data = new byte[len / 2]; // 两个十六进制字符代表一个字节
-        for (int i = 0; i < len; i += 2) {
-            // 将相邻的两个字符解析为对应的 8 位字节值
-            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                    + Character.digit(hex.charAt(i + 1), 16));
-        }
-        return data;
+        return HexUtil.fromHex(hex);
     }
 
     /**

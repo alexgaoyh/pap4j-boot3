@@ -1,5 +1,8 @@
 package cn.net.pap.common.datastructure.md5;
 
+import cn.net.pap.common.core.util.DigestUtil;
+import cn.net.pap.common.core.util.HexUtil;
+
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
@@ -19,8 +22,6 @@ public class Md5HexUtil {
      */
     private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Md5HexUtil.class);
 
-    private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
-
     /**
      * <p>生成 MD5 哈希值的十六进制字符串表示。</p>
      *
@@ -31,6 +32,9 @@ public class Md5HexUtil {
      * @throws RuntimeException 如果 MD5 算法不可用。
      */
     public static String md5Hex(String source, String salt, int hashIterations) {
+        if (salt == null && hashIterations <= 1) {
+            return DigestUtil.md5Hex(source);
+        }
         try {
             byte[] bytes = source.getBytes();
             byte[] saltBytes = salt != null ? salt.getBytes() : new byte[0];
@@ -48,7 +52,7 @@ public class Md5HexUtil {
                 hashed = digest.digest(hashed);
             }
 
-            return toHex(hashed);
+            return HexUtil.toHex(hashed);
         } catch (NoSuchAlgorithmException e) {
             log.error("MD5 algorithm not available", e);
             throw new RuntimeException("MD5 algorithm not available", e);
@@ -62,13 +66,7 @@ public class Md5HexUtil {
      * @return 对应的十六进制字符串。
      */
     public static String toHex(byte[] bytes) {
-        char[] hexChars = new char[bytes.length * 2];
-        for (int i = 0; i < bytes.length; i++) {
-            int v = bytes[i] & 0xFF;
-            hexChars[i * 2] = HEX_CHARS[v >>> 4];
-            hexChars[i * 2 + 1] = HEX_CHARS[v & 0x0F];
-        }
-        return new String(hexChars);
+        return HexUtil.toHex(bytes);
     }
 
     /**
@@ -78,7 +76,7 @@ public class Md5HexUtil {
      * @return MD5 十六进制哈希字符串。
      */
     public static String md5Hex(String source) {
-        return md5Hex(source, null, 1);
+        return DigestUtil.md5Hex(source);
     }
 
 }

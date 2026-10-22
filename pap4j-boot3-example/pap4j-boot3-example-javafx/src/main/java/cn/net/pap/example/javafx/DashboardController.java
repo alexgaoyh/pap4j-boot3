@@ -926,18 +926,7 @@ public class DashboardController implements Initializable {
             }
 
             private void shutdownExecutor(ThreadPoolExecutor executor) {
-                executor.shutdown(); // 关闭线程池
-                try {
-                    // 等待 N 秒，给正在运行的任务一点时间
-                    if (!executor.awaitTermination(2, TimeUnit.SECONDS)) {
-                        log.warn("部分线程池任务未在 2 秒内结束，强制关闭");
-                        executor.shutdownNow(); // 超时强制关闭
-                    }
-                } catch (InterruptedException e) {
-                    log.error("关闭线程池时被中断", e);
-                    executor.shutdownNow();
-                    Thread.currentThread().interrupt();
-                }
+                cn.net.pap.common.core.util.ThreadPoolUtil.shutdownAndAwaitTermination(executor, 2, TimeUnit.SECONDS);
             }
 
             @Override

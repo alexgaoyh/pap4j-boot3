@@ -537,17 +537,7 @@ public final class FileSearch {
             return;
         }
         log.info("[FileSearch-Shutdown] 准备关闭文件检索线程池");
-        executor.shutdown();
-        try {
-            if (!executor.awaitTermination(60, TimeUnit.SECONDS)) {
-                log.warn("[FileSearch-Shutdown] 部分任务未在 60 秒内完成，强制关闭");
-                executor.shutdownNow();
-            }
-        } catch (InterruptedException e) {
-            log.error("[FileSearch-Shutdown] 等待关闭时被中断，强制关闭", e);
-            executor.shutdownNow();
-            Thread.currentThread().interrupt();
-        }
+        cn.net.pap.common.core.util.ThreadPoolUtil.shutdownAndAwaitTermination(executor, 60, TimeUnit.SECONDS);
         searchExecutorInstance = null;   // 置空，允许后续按需重新懒创建
     }
 

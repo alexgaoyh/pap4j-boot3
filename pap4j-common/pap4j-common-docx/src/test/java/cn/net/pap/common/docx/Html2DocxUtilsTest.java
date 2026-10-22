@@ -1,6 +1,10 @@
 package cn.net.pap.common.docx;
 
+import cn.net.pap.common.core.util.NetworkUtil;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -9,11 +13,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class Html2DocxUtilsTest {
 
-    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(Html2DocxUtilsTest.class);
+    private static final Logger log = LoggerFactory.getLogger(Html2DocxUtilsTest.class);
 
     @Test
     public void html2DocxTest() throws Exception {
-        org.junit.jupiter.api.Assumptions.assumeTrue(isUrlReachable("http://gips3.baidu.com"), "Baidu image host is not reachable. Skipping test.");
+        Assumptions.assumeTrue(NetworkUtil.isUrlReachable("http://gips3.baidu.com"), "Baidu image host is not reachable. Skipping test.");
         // 这里是从富文本编辑器里面获得的一个 html。
         String editorHTML = "<p><b><span style=\"font-size: 18px;\">备注内容</span></b></p><p>备注增加图片内容</p><p><img src=\"http://gips3.baidu.com/it/u=3886271102,3123389489&amp;fm=3028&amp;app=3028&amp;f=JPEG&amp;fmt=auto?w=1280&amp;h=960\" style=\"width: 1280px;\"><br></p>\t\t";
         String destFilePath = Files.createTempFile("html2DocxTest", ".docx").toAbsolutePath().toString();
@@ -25,21 +29,6 @@ public class Html2DocxUtilsTest {
             if (file.exists()) {
                 file.delete();
             }
-        }
-    }
-
-    private static boolean isUrlReachable(String urlStr) {
-        try {
-            java.net.URL url = new java.net.URL(urlStr);
-            String host = url.getHost();
-            int port = url.getPort() != -1 ? url.getPort() : (url.getProtocol().equalsIgnoreCase("https") ? 443 : 80);
-            try (java.net.Socket s = new java.net.Socket()) {
-                s.connect(new java.net.InetSocketAddress(host, port), 1500);
-                return true;
-            }
-        } catch (Exception e) {
-            log.error("URL 可达性检查异常", e);
-            return false;
         }
     }
 

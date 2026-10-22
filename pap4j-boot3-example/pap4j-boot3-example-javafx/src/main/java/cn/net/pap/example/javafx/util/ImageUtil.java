@@ -146,42 +146,7 @@ public class ImageUtil {
      * @throws IOException
      */
     public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {
-        File file = new File(inputFileStr);
-        if (file == null || !file.exists()) {
-            return null;
-        }
-
-        // 使用 try-with-resources 同时管理多个资源
-        try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
-            if (iis == null) {
-                return null;
-            }
-
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
-            if (!readers.hasNext()) {
-                return null;
-            }
-
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(iis);
-                //  获取原始尺寸 计算采样率 (Subsampling) 例如：原图 4000，目标 400，则每 10 个像素取 1 个
-                int actualWidth = reader.getWidth(0);
-                int sampling = Math.max(actualWidth / targetWidth, 1);
-
-                ImageReadParam param = reader.getDefaultReadParam();
-                param.setSourceSubsampling(sampling, sampling, 0, 0);
-
-                return reader.read(0, param);
-            } finally {
-                // 确保 reader 被清理
-                reader.dispose();
-            }
-        } catch (IOException e) {
-            // 记录异常
-            log.error("Failed to get low memory thumbnail for {}", inputFileStr, e);
-            return null;
-        }
+        return cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(inputFileStr, targetWidth);
     }
 
     /**
