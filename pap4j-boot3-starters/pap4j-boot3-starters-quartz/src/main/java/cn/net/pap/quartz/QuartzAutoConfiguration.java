@@ -183,6 +183,8 @@ public class QuartzAutoConfiguration {
         executor.setCorePoolSize(5);
         executor.setMaxPoolSize(10);
         executor.setQueueCapacity(1024);
+        // 显式开启优雅关闭，否则 shutdown() 会退化为 shutdownNow()，立即中断运行中的 Quartz 任务
+        executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.initialize();
         return executor;
     }

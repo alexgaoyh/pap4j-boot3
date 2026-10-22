@@ -20,6 +20,9 @@ public class AsyncConfig {
         executor.setQueueCapacity(100);
         executor.setThreadNamePrefix("Async-");
         executor.setTaskDecorator(new ContextTaskDecorator());
+        // 容器关闭时等待正在执行的异步任务结束，最多等待 30 秒
+        executor.setWaitForTasksToCompleteOnShutdown(true);
+        executor.setAwaitTerminationSeconds(30);
         executor.initialize();
         return executor;
     }

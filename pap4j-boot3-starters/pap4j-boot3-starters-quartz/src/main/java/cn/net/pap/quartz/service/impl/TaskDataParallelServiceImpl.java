@@ -87,6 +87,8 @@ public class TaskDataParallelServiceImpl implements ITaskDataService {
         executor.setQueueCapacity(50);
         executor.setAllowCoreThreadTimeOut(true);
         executor.setKeepAliveSeconds(60);
+        // 显式开启优雅关闭，否则 ThreadPoolTaskExecutor.shutdown() 会退化为 shutdownNow()
+        executor.setWaitForTasksToCompleteOnShutdown(true);
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         executor.initialize();
         this.taskDataExecutor = executor;
