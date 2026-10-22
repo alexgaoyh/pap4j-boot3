@@ -24,7 +24,6 @@
             <groupId>cn.net.pap</groupId>
             <artifactId>pap4j-common-core</artifactId>
             <version>${project.parent.version}</version>
-            <scope>test</scope>
         </dependency>
 
 

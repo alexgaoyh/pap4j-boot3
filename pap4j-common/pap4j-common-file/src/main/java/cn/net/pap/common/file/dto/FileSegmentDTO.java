@@ -1,53 +1,29 @@
 package cn.net.pap.common.file.dto;
 
-import java.io.Serializable;
 import java.nio.channels.FileChannel;
 
-public class FileSegmentDTO implements Serializable {
+/**
+ * 文件分段传输对象
+ *
+ * @deprecated 请直接使用 {@link cn.net.pap.common.core.dto.FileSegmentDTO}
+ */
+@Deprecated
+public class FileSegmentDTO extends cn.net.pap.common.core.dto.FileSegmentDTO {
 
-    private long start;
-
-    private long end;
-
-    private FileChannel fileChannel;
+    private static final long serialVersionUID = 1L;
 
     public FileSegmentDTO() {
+        super();
     }
 
     /**
-     * 构造文件分段。
+     * 文件分段构造。
      *
      * @param start       起始位置
      * @param end         结束位置
      * @param fileChannel 文件通道
      */
     public FileSegmentDTO(long start, long end, FileChannel fileChannel) {
-        this.start = start;
-        this.end = end;
-        this.fileChannel = fileChannel;
-    }
-
-    public long getStart() {
-        return start;
-    }
-
-    public void setStart(long start) {
-        this.start = start;
-    }
-
-    public long getEnd() {
-        return end;
-    }
-
-    public void setEnd(long end) {
-        this.end = end;
-    }
-
-    public FileChannel getFileChannel() {
-        return fileChannel;
-    }
-
-    public void setFileChannel(FileChannel fileChannel) {
-        this.fileChannel = fileChannel;
+        super(start, end, fileChannel);
     }
 }

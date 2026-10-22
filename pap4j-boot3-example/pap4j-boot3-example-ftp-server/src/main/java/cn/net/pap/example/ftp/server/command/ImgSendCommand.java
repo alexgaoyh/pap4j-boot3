@@ -311,38 +311,7 @@ public class ImgSendCommand extends AbstractCommand {
      * @return 处理结果对象
      */
     public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {
-        File file = new File(inputFileStr);
-        if (file == null || !file.exists()) {
-            return null;
-        }
-
-        try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
-            if (iis == null) {
-                return null;
-            }
-
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
-            if (!readers.hasNext()) {
-                return null;
-            }
-
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(iis);
-                int actualWidth = reader.getWidth(0);
-                int sampling = Math.max(actualWidth / targetWidth, 1);
-
-                ImageReadParam param = reader.getDefaultReadParam();
-                param.setSourceSubsampling(sampling, sampling, 0, 0);
-
-                return reader.read(0, param);
-            } finally {
-                reader.dispose();
-            }
-        } catch (IOException e) {
-            log.error("Failed to get low memory thumbnail for {}", inputFileStr, e);
-            return null;
-        }
+        return cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(inputFileStr, targetWidth);
     }
 
     /**

@@ -33,25 +33,14 @@ public class ImageUtil {
      *
      * response.getOutputStream().write(java.util.Base64.getDecoder().decode(oneXOneJpg));
      */
-    public static final String oneXOneJpg = "/9j/4AAQSkZJRgABAgAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/2wBDAQkJCQwLDBgNDRgyIRwhMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjIyMjL/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGRomJygpKjU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6goOEhYaHiImKkpOUlZaXmJmaoqOkpaanqKmqsrO0tba3uLm6wsPExcbHyMnK0tPU1dbX2Nna4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD3+iiigD//2Q==";
+    public static final String oneXOneJpg = cn.net.pap.common.core.util.ImageUtil.ONE_X_ONE_JPG;
 
     /**
      * 创建1x1像素的最小JPEG图像 背景色白色 的 jpg 图像字符串， 可以直接 response.getOutputStream().write(generateEmptyJpeg()); 写入响应流
      * @return 处理结果数组
      */
     public static byte[] generateEmptyJpeg() {
-        try {
-            // 创建1x1像素的最小JPEG图像
-            BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);
-            // 设置背景色（白色）
-            image.setRGB(0, 0, 0xFFFFFF);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ImageIO.write(image, "jpg", baos);
-            return baos.toByteArray();
-        } catch (IOException e) {
-            log.error("生成空JPEG失败", e);
-            return new byte[0];
-        }
+        return cn.net.pap.common.core.util.ImageUtil.generateEmptyJpeg();
     }
 
     /**
@@ -67,41 +56,7 @@ public class ImageUtil {
      * @return 是否处理成功
      */
     public static Boolean cropImageCut(String inputFilePath, String outputFilePath, int x, int y, int width, int height) {
-        try {
-            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName("JPEG");
-            if (!readers.hasNext()) {
-                return false;
-            }
-            ImageReader reader = readers.next();
-
-            ImageInputStream iis = ImageIO.createImageInputStream(new File(inputFilePath));
-            reader.setInput(iis);
-
-            ImageReadParam param = reader.getDefaultReadParam();
-            Rectangle rect = new Rectangle(x, y, width, height);
-            param.setSourceRegion(rect);
-            BufferedImage image = reader.read(0, param);
-
-            Iterator<ImageWriter> writers = ImageIO.getImageWritersByFormatName("JPEG");
-            if (!writers.hasNext()) {
-                return false;
-            }
-            ImageWriter writer = writers.next();
-
-            ImageOutputStream ios = ImageIO.createImageOutputStream(new File(outputFilePath));
-            writer.setOutput(ios);
-
-            writer.write(image);
-
-            reader.dispose();
-            writer.dispose();
-            iis.close();
-            ios.close();
-            return true;
-        } catch (Exception e) {
-            log.error("裁剪图片失败: {}", inputFilePath, e);
-            return false;
-        }
+        return cn.net.pap.common.core.util.ImageUtil.cropImageCut(inputFilePath, outputFilePath, x, y, width, height);
     }
 
     /**
@@ -606,42 +561,7 @@ public class ImageUtil {
      * @throws IOException
      */
     public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {
-        File file = new File(inputFileStr);
-        if (file == null || !file.exists()) {
-            return null;
-        }
-
-        // 使用 try-with-resources 同时管理多个资源
-        try (ImageInputStream iis = ImageIO.createImageInputStream(file)) {
-            if (iis == null) {
-                return null;
-            }
-
-            Iterator<ImageReader> readers = ImageIO.getImageReaders(iis);
-            if (!readers.hasNext()) {
-                return null;
-            }
-
-            ImageReader reader = readers.next();
-            try {
-                reader.setInput(iis);
-                //  获取原始尺寸 计算采样率 (Subsampling) 例如：原图 4000，目标 400，则每 10 个像素取 1 个
-                int actualWidth = reader.getWidth(0);
-                int sampling = Math.max(actualWidth / targetWidth, 1);
-
-                ImageReadParam param = reader.getDefaultReadParam();
-                param.setSourceSubsampling(sampling, sampling, 0, 0);
-
-                return reader.read(0, param);
-            } finally {
-                // 确保 reader 被清理
-                reader.dispose();
-            }
-        } catch (IOException e) {
-            // 记录异常
-            log.error("读取图片失败", e);
-            return null;
-        }
+        return cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(inputFileStr, targetWidth);
     }
 
     /**

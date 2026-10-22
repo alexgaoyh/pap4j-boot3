@@ -1,6 +1,6 @@
 package cn.net.pap.common.datastructure.catalog;
 
-import cn.net.pap.common.datastructure.catalog.dto.FileSegmentDTO;
+import cn.net.pap.common.core.dto.FileSegmentDTO;
 import cn.net.pap.common.datastructure.fst.FST;
 import cn.net.pap.common.datastructure.fst.FSTUtil;
 import cn.net.pap.common.datastructure.fst.ValueLocationDTO;
