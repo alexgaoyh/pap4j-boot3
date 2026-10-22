@@ -1,5 +1,6 @@
 package cn.net.pap.common.spider.util;
 
+import cn.net.pap.common.core.util.NamedThreadFactory;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -22,11 +23,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * <p><strong>OkHttpBatchExecutor</strong></p>
@@ -217,14 +216,7 @@ public class OkHttpBatchExecutor implements AutoCloseable {
                 maxPoolSize,
                 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(queueCapacity),
-                new ThreadFactory() {
-                    private final AtomicInteger counter = new AtomicInteger(1);
-
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        return new Thread(r, "okhttp-batch-" + counter.getAndIncrement());
-                    }
-                },
+                new NamedThreadFactory("okhttp-batch-"),
                 new ThreadPoolExecutor.AbortPolicy()
         );
     }

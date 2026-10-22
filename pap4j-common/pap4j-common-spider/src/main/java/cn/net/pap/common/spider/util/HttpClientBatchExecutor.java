@@ -1,5 +1,6 @@
 package cn.net.pap.common.spider.util;
 
+import cn.net.pap.common.core.util.NamedThreadFactory;
 import org.apache.hc.client5.http.classic.methods.HttpPost;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
@@ -24,7 +25,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * <p><strong>HttpClientBatchExecutor</strong></p>
@@ -145,14 +145,7 @@ public class HttpClientBatchExecutor implements AutoCloseable {
                 maxPoolSize,
                 60L, TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(queueCapacity),
-                new ThreadFactory() {
-                    private final AtomicInteger counter = new AtomicInteger(1);
-
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        return new Thread(r, "httpclient-batch-" + counter.getAndIncrement());
-                    }
-                },
+                new NamedThreadFactory("httpclient-batch-"),
                 new ThreadPoolExecutor.AbortPolicy()
         );
     }

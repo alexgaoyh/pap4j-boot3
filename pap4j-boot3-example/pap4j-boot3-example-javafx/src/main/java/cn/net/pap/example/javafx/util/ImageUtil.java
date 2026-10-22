@@ -138,18 +138,6 @@ public class ImageUtil {
     }
 
     /**
-     * 高效生成图像缩略图（低内存占用版本）本方法使用 ImageIO 的子采样（Subsampling）技术，在解码阶段直接跳过像素， 从而大幅降低内存占用，特别适合处理大尺寸图像。
-     *
-     * @param inputFileStr
-     * @param targetWidth
-     * @return 处理结果对象
-     * @throws IOException
-     */
-    public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {
-        return cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(inputFileStr, targetWidth);
-    }
-
-    /**
      * 判断文件名是否为支持的图片文件。
      *
      * @param fileName 文件名

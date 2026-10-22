@@ -899,7 +899,7 @@ public class DashboardController implements Initializable {
                 List<CompletableFuture<VBox>> futures = imagePaths.stream()
                         .map(file -> CompletableFuture.supplyAsync(() -> {
                             // 此处执行耗时操作
-                            BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(file.toAbsolutePath().toString(), thumbnailScrollPaneWidth - 20);
+                            BufferedImage lowMemoryThumbnail = cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(file.toAbsolutePath().toString(), thumbnailScrollPaneWidth - 20);
                             WritableImage fxImage = SwingFXUtils.toFXImage(lowMemoryThumbnail, null);
                             // 构建 UI 组件（注意：虽然在异步线程，但只要不挂载到 Stage 上的 Node 是允许创建的）
                             return createThumbContainer(file, fxImage);

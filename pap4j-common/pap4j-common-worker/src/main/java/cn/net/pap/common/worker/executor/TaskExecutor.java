@@ -1,12 +1,12 @@
 package cn.net.pap.common.worker.executor;
 
+import cn.net.pap.common.core.util.NamedThreadFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Map;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 轻量级异步任务执行器
@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *     <li><strong>工作进程/并发控制层面：</strong> 
  *         采用 <code>taskMap.compute()</code> 实现了原子性的状态判断与惰性复用，根除了并发重复提交导致的同一任务多次执行（即脏读和 Check-Then-Act 漏洞）；
  *         增加了工作线程异常卡死时的强制回收机制（防死锁）；
- *         引入了 AtomicInteger 保证了并发创建线程时命名的唯一性，避免线上排查时日志混乱。
+ *         引入了 NamedThreadFactory 保证了并发创建线程时命名的唯一性，避免线上排查时日志混乱。
  *     </li>
  * </ul>
  */
@@ -75,15 +75,7 @@ public class TaskExecutor implements AutoCloseable {
                 60,
                 TimeUnit.SECONDS,
                 new LinkedBlockingQueue<>(queueSize),
-                new ThreadFactory() {
-                    // 使用 AtomicInteger 保证并发创建线程时的线程安全，防止多个线程同名
-                    private final AtomicInteger i = new AtomicInteger(0);
-
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        return new Thread(r, "worker-" + i.getAndIncrement());
-                    }
-                },
+                new NamedThreadFactory("worker-", 0),
                 // 拒绝策略
                 new ThreadPoolExecutor.AbortPolicy()
         );

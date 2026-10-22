@@ -215,7 +215,7 @@ public class ImgSendCommand extends AbstractCommand {
      * @throws IOException IO异常
      */
     public static InputStream convert(String inputFileStr, int targetWidth) throws IOException {
-        BufferedImage image = getLowMemoryThumbnail(inputFileStr, targetWidth);
+        BufferedImage image = cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(inputFileStr, targetWidth);
         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
             ImageIO.write(image, getFormatName(inputFileStr), baos);
             String base64 = Base64.getEncoder().encodeToString(baos.toByteArray());
@@ -274,7 +274,7 @@ public class ImgSendCommand extends AbstractCommand {
      * @throws IOException IO异常
      */
     public static ImageThumbnailDTO convertOrigin(String inputFileStr, int targetWidth) throws IOException {
-        BufferedImage image = getLowMemoryThumbnail(inputFileStr, targetWidth);
+        BufferedImage image = cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(inputFileStr, targetWidth);
 
         String formatName = getFormatName(inputFileStr);
         if (formatName == null || formatName.isEmpty()) {
@@ -301,17 +301,6 @@ public class ImgSendCommand extends AbstractCommand {
             throw new IllegalArgumentException("Invalid image file name: " + inputFileStr);
         }
         return inputFileStr.substring(idx + 1).toLowerCase();
-    }
-
-    /**
-     * 经过压测，子采样的执行效率是比下面的Thumbnails库执行效率更高。建议优先使用当前方法。
-     * 压测代码详见： pap4j-common-md5-jmh cn.net.pap.common.md5.jmh.Md5FastBenchmark
-     * @param inputFileStr
-     * @param targetWidth
-     * @return 处理结果对象
-     */
-    public static BufferedImage getLowMemoryThumbnail(String inputFileStr, int targetWidth) {
-        return cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(inputFileStr, targetWidth);
     }
 
     /**

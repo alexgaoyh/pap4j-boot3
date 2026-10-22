@@ -337,14 +337,14 @@ public class ImageUtilTest {
     public void bufferedImageCompareTest1() throws Exception {
         // 预热一下
         for(int i = 0; i < 5; i++) {
-            BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
+            BufferedImage lowMemoryThumbnail = cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         }
         for(int i = 0; i < 5; i++) {
             BufferedImage scaleImage = ImageUtil.scaleImage(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         }
 
         long l = System.currentTimeMillis();
-        BufferedImage lowMemoryThumbnail = ImageUtil.getLowMemoryThumbnail(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
+        BufferedImage lowMemoryThumbnail = cn.net.pap.common.core.util.ImageUtil.getLowMemoryThumbnail(TestResourceUtil.getFile("origin.jpg").getAbsolutePath(), 100);
         long l1 = System.currentTimeMillis();
         log.info("{}", "Total size: " + org.openjdk.jol.info.GraphLayout.parseInstance(lowMemoryThumbnail).totalSize() + " bytes");
         log.info("{}", l1 - l);

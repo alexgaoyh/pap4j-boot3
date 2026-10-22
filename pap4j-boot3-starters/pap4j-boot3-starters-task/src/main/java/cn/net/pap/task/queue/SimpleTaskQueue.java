@@ -1,5 +1,6 @@
 package cn.net.pap.task.queue;
 
+import cn.net.pap.common.core.util.NamedThreadFactory;
 import cn.net.pap.task.dto.SimpleTaskQueueDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,7 +9,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class SimpleTaskQueue {
 
@@ -51,13 +51,7 @@ public class SimpleTaskQueue {
                 1, 1,
                 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<>(1000),
-                new ThreadFactory() {
-                    private final AtomicInteger counter = new AtomicInteger(1);
-                    @Override
-                    public Thread newThread(Runnable r) {
-                        return new Thread(r, "SimpleTaskConsumer-" + counter.getAndIncrement());
-                    }
-                },
+                new NamedThreadFactory("SimpleTaskConsumer-"),
                 new ThreadPoolExecutor.CallerRunsPolicy()
         );
 
