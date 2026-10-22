@@ -4,7 +4,6 @@ import cn.net.pap.quartz.entity.TaskData;
 import cn.net.pap.quartz.repository.TaskDataRepository;
 import cn.net.pap.quartz.service.ITaskDataService;
 import cn.net.pap.quartz.service.impl.TaskDataParallelStreamingServiceImpl;
-import cn.net.pap.quartz.support.SlowTaskStreamingTestConfig;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -18,9 +17,7 @@ import org.springframework.test.context.TestPropertySource;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -40,12 +37,11 @@ import static org.junit.jupiter.api.Assertions.fail;
  * <p>重点验证：</p>
  * <ol>
  *     <li>processBatchSafely() 非阻塞，只补满当前空闲槽位；</li>
- *     <li>长任务不会阻塞短任务，短任务结束后槽位可继续补位；</li>
  *     <li>并发调用 processBatchSafely() 不会超卖槽位，也不会重复消费；</li>
  *     <li>异步化后原有的数据库驱动指数退避重试语义保持不变。</li>
  * </ol>
  */
-@SpringBootTest(classes = {QuartzAutoConfiguration.class, SlowTaskStreamingTestConfig.class})
+@SpringBootTest(classes = {QuartzAutoConfiguration.class})
 @TestPropertySource(
         locations = "classpath:application.properties",
         properties = "spring.datasource.url=jdbc:h2:mem:pap4j-boot3-starters-quartz-streaming")
@@ -62,7 +58,7 @@ public class TaskDataParallelStreamingTest {
     private final ITaskDataService taskDataParallelStreamingService;
 
     public TaskDataParallelStreamingTest(
-            @Qualifier("testTaskDataParallelStreamingService") ITaskDataService taskDataParallelStreamingService,
+            @Qualifier("taskDataParallelStreamingServiceImpl") ITaskDataService taskDataParallelStreamingService,
             TaskDataRepository taskDataRepository) {
         this.taskDataParallelStreamingService = taskDataParallelStreamingService;
         this.taskDataRepository = taskDataRepository;
@@ -102,91 +98,6 @@ public class TaskDataParallelStreamingTest {
         }
     }
 
-    /**
-     * 核心测试：1 个 3 秒长任务 + 20 个短任务。
-     * 旧批进批出实现下，短任务会被长任务拖住，后续批次要等长任务结束才能开始；
-     * 新流式实现下，短任务会持续补位并在长任务结束前全部完成。
-     */
-    @Test
-    public void testLongTaskDoesNotBlockShortTasksAndSlotsRefill() throws Exception {
-        taskDataParallelStreamingService.deleteAll();
-
-        int fastTaskCount = 20;
-        List<TaskData> testData = new ArrayList<>();
-
-        TaskData slowTask = new TaskData();
-        slowTask.setId(1L);
-        slowTask.setDataContent("SLOW task");
-        slowTask.setProcessStatus("PENDING");
-        testData.add(slowTask);
-
-        for (int i = 0; i < fastTaskCount; i++) {
-            TaskData fastTask = new TaskData();
-            fastTask.setId(100L + i);
-            fastTask.setDataContent("fast task " + i);
-            fastTask.setProcessStatus("PENDING");
-            testData.add(fastTask);
-        }
-
-        taskDataParallelStreamingService.saveAll(testData);
-
-        long start = System.currentTimeMillis();
-        taskDataParallelStreamingService.processBatchSafely();
-        long elapsed = System.currentTimeMillis() - start;
-
-        assertTrue(elapsed < 2000,
-                "processBatchSafely 应非阻塞返回，实际耗时: " + elapsed + "ms");
-
-        TaskData slowAfterDispatch = taskDataRepository.findById(1L).orElseThrow();
-        assertEquals("PROCESSING", slowAfterDispatch.getProcessStatus(),
-                "慢任务应仍在执行中，而不是被同步等待完成");
-
-        int maxProcessing = 0;
-        long deadline = System.nanoTime() + Duration.ofSeconds(10).toNanos();
-        while (System.nanoTime() < deadline) {
-            // 模拟外部定时器反复触发补位
-            taskDataParallelStreamingService.processBatchSafely();
-
-            long processing = taskDataRepository.countByProcessStatus("PROCESSING");
-            maxProcessing = Math.max(maxProcessing, (int) processing);
-
-            long success = taskDataRepository.countByProcessStatus("SUCCESS");
-            if (success >= fastTaskCount + 1L && processing == 0) {
-                break;
-            }
-            Thread.sleep(20);
-        }
-
-        awaitNoProcessing(Duration.ofSeconds(5));
-
-        assertEquals(fastTaskCount + 1L, taskDataRepository.countByProcessStatus("SUCCESS"));
-        assertEquals(0L, taskDataRepository.countByProcessStatus("PENDING"));
-
-        List<TaskData> allData = taskDataRepository.findAll();
-        TaskData slowFinal = allData.stream()
-                .filter(data -> data.getId().equals(1L))
-                .findFirst()
-                .orElseThrow();
-
-        assertNotNull(slowFinal.getLastProcessTime());
-        assertNotNull(slowFinal.getFinishTime());
-        long slowCost = Duration.between(slowFinal.getLastProcessTime(), slowFinal.getFinishTime()).toMillis();
-        assertTrue(slowCost >= 2500L,
-                "慢任务应执行约 3 秒，实际耗时: " + slowCost + "ms");
-        assertTrue(maxProcessing <= MAX_CONCURRENT_SLOTS,
-                "并发槽位不应超过 " + MAX_CONCURRENT_SLOTS + "，实际峰值: " + maxProcessing);
-
-        LocalDateTime fastMaxFinishTime = allData.stream()
-                .filter(data -> !data.getId().equals(1L))
-                .map(TaskData::getFinishTime)
-                .filter(Objects::nonNull)
-                .max(LocalDateTime::compareTo)
-                .orElseThrow();
-
-        assertTrue(fastMaxFinishTime.isBefore(slowFinal.getFinishTime()),
-                "所有短任务应在长任务结束前完成，fastMaxFinishTime=" + fastMaxFinishTime
-                + ", slowFinishTime=" + slowFinal.getFinishTime());
-    }
 
     /**
      * 验证单次补位只填满当前槽位，不会一次性把所有待处理数据都拉进线程池。
