@@ -14,9 +14,9 @@ import java.util.List;
 /**
  * 外部进程调用测试.
  */
-public class ProcessPoolUtilTest {
+public class ExeProcessPoolUtilTest {
 
-    private static final Logger log = LoggerFactory.getLogger(ProcessPoolUtilTest.class);
+    private static final Logger log = LoggerFactory.getLogger(ExeProcessPoolUtilTest.class);
 
     /**
      * 测试调用打包生成的 exe 进程并读取输出与退出码.
