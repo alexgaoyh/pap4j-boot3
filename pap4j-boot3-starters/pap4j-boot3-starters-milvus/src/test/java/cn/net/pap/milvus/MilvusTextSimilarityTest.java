@@ -37,15 +37,10 @@ public class MilvusTextSimilarityTest {
 
     @org.junit.jupiter.api.BeforeAll
     public static void checkMilvusAvailable() {
-        boolean isUp = false;
-        try (java.net.Socket s = new java.net.Socket()) {
-            s.connect(new java.net.InetSocketAddress("192.168.1.77", 19530), 1000);
-            isUp = true;
-        } catch (Exception e) {
-            log.error("Milvus 连接检查失败，将跳过测试", e);
-            // connection failed
-        }
-        org.junit.jupiter.api.Assumptions.assumeTrue(isUp, "Milvus is not running on 192.168.1.77:19530. Skipping tests.");
+        org.junit.jupiter.api.Assumptions.assumeTrue(
+                cn.net.pap.common.core.util.NetworkUtil.isPortOpen("192.168.1.77", 19530),
+                "Milvus is not running on 192.168.1.77:19530. Skipping tests."
+        );
     }
 
     private static final String COLLECTION_NAME = "TEXT";

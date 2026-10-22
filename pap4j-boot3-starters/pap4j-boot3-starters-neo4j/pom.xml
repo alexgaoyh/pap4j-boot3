@@ -87,6 +87,12 @@
             <scope>test</scope>
         </dependency>
 
+        <dependency>
+            <groupId>cn.net.pap</groupId>
+            <artifactId>pap4j-common-core</artifactId>
+            <version>${revision}</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
 </project>

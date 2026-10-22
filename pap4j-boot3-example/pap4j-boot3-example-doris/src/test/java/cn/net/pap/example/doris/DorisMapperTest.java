@@ -16,8 +16,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.TestConstructor;
 
-import java.net.InetSocketAddress;
-import java.net.Socket;
+import cn.net.pap.common.core.util.NetworkUtil;
 import java.util.List;
 
 @SpringBootTest
@@ -38,17 +37,9 @@ public class DorisMapperTest {
     }
 
     @BeforeAll
-    public static void checkMysqlAvailable() {
-        boolean isUp = false;
-        try (Socket s = new Socket()) {
-            s.connect(new InetSocketAddress("192.168.1.115", 9030), 1000);
-            s.setSoTimeout(1000);
-            isUp = s.getInputStream().read() != -1;
-        } catch (Exception e) {
-            log.error("Doris 连接检查失败，将跳过测试", e);
-            // connection failed
-        }
-        Assumptions.assumeTrue(isUp, "doris is not running on 192.168.1.115:9030. Skipping tests.");
+    public static void checkDorisAvailable() {
+        Assumptions.assumeTrue(NetworkUtil.isPortOpen("192.168.1.115", 9030),
+                "doris is not running on 192.168.1.115:9030. Skipping tests.");
     }
 
     @Test

@@ -1,13 +1,11 @@
 package cn.net.pap.example.proguard;
 
+import cn.net.pap.common.core.util.NetworkUtil;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.sql.BatchUpdateException;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -20,21 +18,17 @@ public class MysqlBatchTest {
 
     private static final Logger log = LoggerFactory.getLogger(MysqlBatchTest.class);
 
+    private static final String MYSQL_URL = "jdbc:mysql://127.0.0.1:3306/cf?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8";
+
     @BeforeAll
     public static void checkMysqlAvailable() {
-        boolean isUp = false;
-        try (Socket s = new Socket()) {
-            s.connect(new InetSocketAddress("127.0.0.1", 3306), 1000);
-            isUp = true;
-        } catch (Exception e) {
-            // connection failed
-        }
-        Assumptions.assumeTrue(isUp, "mysql is not running on 127.0.0.1:3306. Skipping tests.");
+        Assumptions.assumeTrue(NetworkUtil.isJdbcUrlReachable(MYSQL_URL),
+                "mysql is not running on 127.0.0.1:3306. Skipping tests.");
     }
 
     @Test
     public void batchTest() throws SQLException {
-        String url = "jdbc:mysql://127.0.0.1:3306/cf?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8";
+        String url = MYSQL_URL;
 
         try (Connection connection = DriverManager.getConnection(url, "root", "alexgaoyh")) {
             connection.setAutoCommit(false);
@@ -72,7 +66,7 @@ public class MysqlBatchTest {
 
     @Test
     public void batchTest2() throws SQLException {
-        String url = "jdbc:mysql://127.0.0.1:3306/cf?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8";
+        String url = MYSQL_URL;
 
         try (Connection connection = DriverManager.getConnection(url, "root", "alexgaoyh")) {
             connection.setAutoCommit(false);
@@ -150,7 +144,7 @@ public class MysqlBatchTest {
      */
     @Test
     public void cteTest() throws SQLException {
-        String url = "jdbc:mysql://127.0.0.1:3306/cf?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8";
+        String url = MYSQL_URL;
 
         // 从节点A开头，小于3跳的所有目标节点，这样拿着这些目标节点，去查找关联到的节点，这样关系就出来了。
         String cteSql = """

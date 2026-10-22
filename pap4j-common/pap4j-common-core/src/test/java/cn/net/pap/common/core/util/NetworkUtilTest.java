@@ -37,6 +37,38 @@ class NetworkUtilTest {
     }
 
     @Test
+    @DisplayName("测试 JDBC URL 探活 - 内存数据库与真实端口探测")
+    void testIsJdbcUrlReachable() throws IOException {
+        // 嵌入式内存数据库直接返回 true
+        assertTrue(NetworkUtil.isJdbcUrlReachable("jdbc:h2:mem:testdb"));
+        assertTrue(NetworkUtil.isJdbcUrlReachable("jdbc:sqlite::memory:"));
+
+        // 本地开启临时服务套接字测试动态端口解析
+        int port;
+        try (ServerSocket serverSocket = new ServerSocket(0)) {
+            port = serverSocket.getLocalPort();
+            String mysqlUrl = "jdbc:mysql://127.0.0.1:" + port + "/mydb?useSSL=false";
+            assertTrue(NetworkUtil.isJdbcUrlReachable(mysqlUrl));
+
+            String pgUrl = "jdbc:postgresql://127.0.0.1:" + port + "/mydb";
+            assertTrue(NetworkUtil.isJdbcUrlReachable(pgUrl, 500));
+        }
+
+        // 端口关闭后探测失败
+        assertFalse(NetworkUtil.isJdbcUrlReachable("jdbc:mysql://127.0.0.1:" + port + "/mydb", 200));
+    }
+
+    @Test
+    @DisplayName("测试 JDBC URL 探活 - 非法参数与解析容错")
+    void testIsJdbcUrlReachableInvalidArgs() {
+        assertFalse(NetworkUtil.isJdbcUrlReachable(null));
+        assertFalse(NetworkUtil.isJdbcUrlReachable(""));
+        assertFalse(NetworkUtil.isJdbcUrlReachable("   "));
+        assertFalse(NetworkUtil.isJdbcUrlReachable("http://example.com"));
+        assertFalse(NetworkUtil.isJdbcUrlReachable("jdbc:unknown:"));
+    }
+
+    @Test
     @DisplayName("测试 URL 探测 - 非法或空参数保护")
     void testIsUrlReachableInvalidArgs() {
         assertFalse(NetworkUtil.isUrlReachable(null));
