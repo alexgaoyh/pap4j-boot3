@@ -8,6 +8,7 @@ import com.artifex.mupdf.fitz.Document;
 import com.artifex.mupdf.fitz.Font;
 import com.artifex.mupdf.fitz.Image;
 import com.artifex.mupdf.fitz.Matrix;
+import com.artifex.mupdf.fitz.PDFDocument;
 import com.artifex.mupdf.fitz.PDFPage;
 import com.artifex.mupdf.fitz.Page;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -32,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -164,9 +166,20 @@ public class MuPdfService implements AutoCloseable {
             int pageCount = managed.doc.countPages();
             checkPageNumber(pageNum, pageCount);
 
+            // 解析本页字体资源，把 MuPDF 的乱码字体名（GBK 字节被 JNI 截断）映射回可读名称
+            MuPdfFontExtractor.FontNameResolver fontNameResolver = null;
+            if (managed.doc instanceof PDFDocument pdfDocument) {
+                try {
+                    fontNameResolver = MuPdfFontExtractor.pageFontNameResolver(pdfDocument, pageNum);
+                } catch (Throwable t) {
+                    // 字体资源异常不应影响坐标提取，降级为 MuPDF 原始字体名
+                    log.error("[MuPDF-Coord] 解析第 {} 页字体名失败，回退为 MuPDF 原始字体名", pageNum + 1, t);
+                }
+            }
+
             page = managed.doc.loadPage(pageNum);
             st = page.toStructuredText();
-            PageResult pageResult = buildPageResult(st, pageNum + 1, page);
+            PageResult pageResult = buildPageResult(st, pageNum + 1, page, fontNameResolver);
             return new CoordinatesResult(pdfPath, List.of(pageResult));
 
         } finally {
@@ -240,6 +253,56 @@ public class MuPdfService implements AutoCloseable {
         Files.writeString(outputFile.toPath(), svg, StandardCharsets.UTF_8);
     }
 
+    /**
+     * 根据字体名给出 SVG/HTML 使用的 CSS font-family 字体栈。
+     *
+     * <p>当前约定：中文与嵌入的 Type1/CFF 子集字体（如 {@code DY1+ZGXSfW-1}）统一回退到宋体
+     * {@code SimSun}；坐标 JSON 里的可读字体名放在栈首，本机装了原字体时优先使用。</p>
+     *
+     * @param fontName     坐标 JSON 里的字体名
+     * @param fallbackType 行级字体类型（serif / sans-serif / monospace），可为 null
+     * @return CSS font-family 值
+     */
+    private static String cssFontFamily(String fontName, String fallbackType) {
+        String name = fontName == null ? "" : fontName.trim();
+        if (name.isEmpty() || "unknown".equalsIgnoreCase(name)) {
+            return "SimSun, serif";
+        }
+
+        // 中文与嵌入的 Type1/CFF 子集字体统一回退宋体
+        boolean han = name.codePoints().anyMatch(
+                codePoint -> Character.UnicodeScript.of(codePoint) == Character.UnicodeScript.HAN);
+        if (han || name.matches("^[A-Z0-9]{2,8}\\+.*")) {
+            return withName(name, "SimSun, serif");
+        }
+
+        String lower = name.toLowerCase(Locale.ROOT);
+        if (lower.contains("fangsong") || lower.contains("fang song")) {
+            return withName(name, "FangSong, STFangsong, 'Fangsong SC', serif");
+        }
+        if (lower.contains("kai")) {
+            return withName(name, "KaiTi, STKaiti, 'Kaiti SC', serif");
+        }
+        if (lower.contains("times") || lower.contains("roman") || lower.contains("serif")) {
+            return withName(name, "Times New Roman, serif");
+        }
+        String generic = "monospace".equals(fallbackType) ? "monospace"
+                : ("sans-serif".equals(fallbackType) ? "sans-serif" : "serif");
+        return withName(name, generic);
+    }
+
+    /**
+     * 把字体名放到字体栈首位；若字体栈已包含同名项则不重复添加。
+     */
+    private static String withName(String fontName, String stack) {
+        for (String family : stack.split(",")) {
+            if (family.trim().replace("'", "").equalsIgnoreCase(fontName)) {
+                return stack;
+            }
+        }
+        return fontName + ", " + stack;
+    }
+
     private static void appendBlockToSvg(StringBuilder svg, JsonNode block) {
         JsonNode lines = block.get("lines");
         if (lines == null || !lines.isArray()) {
@@ -250,13 +313,14 @@ public class MuPdfService implements AutoCloseable {
             if (chars == null || !chars.isArray()) {
                 continue;
             }
+            String lineFontType = line.path("font").path("family").asText(null);
             for (JsonNode ch : chars) {
-                appendCharToSvg(svg, ch);
+                appendCharToSvg(svg, ch, lineFontType);
             }
         }
     }
 
-    private static void appendCharToSvg(StringBuilder svg, JsonNode ch) {
+    private static void appendCharToSvg(StringBuilder svg, JsonNode ch, String lineFontType) {
         JsonNode q = ch.get("quad");
         if (q != null) {
             svg.append("  <polygon points=\"")
@@ -278,10 +342,12 @@ public class MuPdfService implements AutoCloseable {
         double visualAngle = rot != null ? rot.path("visual_angle").asDouble() : 0.0;
         double size = ch.path("size").asDouble(12.0);
         String text = ch.path("c").asText("");
+        String fontFamily = cssFontFamily(ch.path("font").asText(""), lineFontType);
 
         svg.append("  <text x=\"").append(ox).append("\" y=\"").append(oy)
                 .append("\" font-size=\"").append(size)
-                .append("\" font-family=\"SimSun, Songti SC, STSong, sans-serif\"")
+                .append("\" font-family=\"").append(escapeXml(fontFamily)).append("\"")
+                .append(" xml:space=\"preserve\"")
                 .append(" transform=\"rotate(").append(visualAngle).append(",").append(ox).append(",").append(oy).append(")\"")
                 .append(" fill=\"#0f172a\">")
                 .append(escapeXml(text))
@@ -796,7 +862,8 @@ public class MuPdfService implements AutoCloseable {
     public record PointInfo(double x, double y) {
     }
 
-    private static PageResult buildPageResult(StructuredText st, int pageNumber, Page page) {
+    private static PageResult buildPageResult(StructuredText st, int pageNumber, Page page,
+                                              MuPdfFontExtractor.FontNameResolver fontNameResolver) {
         Rect bounds = page != null ? page.getBounds() : null;
         boolean hasBounds = bounds != null && bounds.isValid() && !bounds.isInfinite();
         double pageWidth = hasBounds ? round(bounds.x1 - bounds.x0) : 0.0;
@@ -869,7 +936,7 @@ public class MuPdfService implements AutoCloseable {
                 if (lineOrigin == null) {
                     lineOrigin = originInfo;
                 }
-                FontInfo fontInfo = toFontInfo(font, size);
+                FontInfo fontInfo = toFontInfo(font, size, fontNameResolver);
                 if (lineFont == null) {
                     lineFont = fontInfo;
                 }
@@ -1009,14 +1076,31 @@ public class MuPdfService implements AutoCloseable {
         return new Bbox(round(r.x0), round(r.y0), round(Math.max(0, r.x1 - r.x0)), round(Math.max(0, r.y1 - r.y0)), flags);
     }
 
-    private static FontInfo toFontInfo(Font font, float size) {
+    /**
+     * 把 MuPDF 字体句柄转换为字体元数据。
+     *
+     * <p>MuPDF 的 {@link Font#getName()} 对中文 PDF 返回的是 {@code /BaseFont} 的 GBK 字节
+     * 经 JNI 转换后的乱码前缀（如 {@code ·½ÕýÊéËÎ_G}），这里优先使用当前页字体资源里
+     * {@code /BaseFont} 原始字节解码出的可读名称（如 {@code 方正书宋_GBK}），无法匹配时回退为原始名称。</p>
+     *
+     * @param font             MuPDF 字体句柄
+     * @param size             字号
+     * @param fontNameResolver 当前页字体名解析器（非 PDF 或解析失败时为 null）
+     * @return 字体元数据
+     */
+    private static FontInfo toFontInfo(Font font, float size,
+                                       MuPdfFontExtractor.FontNameResolver fontNameResolver) {
         if (font == null) {
             return defaultFont();
+        }
+        String name = fontNameResolver == null ? null : fontNameResolver.resolve(font);
+        if (name == null) {
+            name = font.getName();
         }
         String family = font.isMono() ? "monospace" : (font.isSerif() ? "serif" : "sans-serif");
         String weight = font.isBold() ? "bold" : "normal";
         String style = font.isItalic() ? "italic" : "normal";
-        return new FontInfo(font.getName(), family, weight, style, round(size));
+        return new FontInfo(name, family, weight, style, round(size));
     }
 
     private static FontInfo defaultFont() {
