@@ -31,6 +31,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -105,7 +106,7 @@ public final class MuPdfSvgExporter {
 
             Map<String, WebFont> webFonts = loadWebFonts(fontDir);
             Map<String, java.awt.Font> type1Fonts = loadType1Fonts(fontDir);
-            GlyphWalk glyphWalk = matchGlyphs(pdfPath, pageNum, chars);
+            Map<Integer, GlyphRef> glyphs = matchGlyphs(pdfPath, pageNum, chars);
 
             List<String> embeddedFonts = new ArrayList<>();
             List<String> outlineFonts = new ArrayList<>();
@@ -114,7 +115,7 @@ public final class MuPdfSvgExporter {
             StringBuilder css = new StringBuilder(2048);
 
             for (String fontName : fontNames) {
-                if (!glyphWalk.glyphs().isEmpty() && type1Fonts.containsKey(fontName)) {
+                if (!glyphs.isEmpty() && type1Fonts.containsKey(fontName)) {
                     outlineFonts.add(fontName);
                 } else if (webFonts.containsKey(fontName)) {
                     embeddedFonts.add(fontName);
@@ -128,7 +129,7 @@ public final class MuPdfSvgExporter {
                 }
             }
 
-            String svg = buildSvg(page, chars, glyphWalk, type1Fonts, classByFont, css);
+            String svg = buildSvg(page, chars, glyphs, type1Fonts, classByFont, css);
             Path parent = svgFile.toAbsolutePath().getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
@@ -149,7 +150,7 @@ public final class MuPdfSvgExporter {
     // ------------------------------------------------------------------
 
     private static String buildSvg(MuPdfService.PageResult page, List<MuPdfService.CharResult> chars,
-                                   GlyphWalk glyphWalk, Map<String, java.awt.Font> type1Fonts,
+                                   Map<Integer, GlyphRef> glyphs, Map<String, java.awt.Font> type1Fonts,
                                    Map<String, String> classByFont, StringBuilder css) {
         double width = page.width() > 0 ? page.width() : 595.0;
         double height = page.height() > 0 ? page.height() : 842.0;
@@ -166,7 +167,7 @@ public final class MuPdfSvgExporter {
             if (ch == null || ch.c() == null || ch.c().isEmpty()) {
                 continue;
             }
-            GlyphRef glyph = glyphWalk.glyphs().get(index);
+            GlyphRef glyph = glyphs.get(index);
             java.awt.Font type1Font = ch.font() == null ? null : type1Fonts.get(ch.font());
             if (glyph != null && glyph.gid() >= 0 && type1Font != null) {
                 String key = ch.font() + '|' + glyph.gid();
@@ -177,10 +178,10 @@ public final class MuPdfSvgExporter {
                     defs.append("<path id=\"").append(pathId).append("\" d=\"")
                             .append(toSvgPath(type1Font, glyph.gid())).append("\"/>\n");
                 }
-                appendGlyphUse(body, pathId, glyph, glyphWalk.pageTransform());
+                appendGlyphUse(body, pathId, glyph);
             } else if (glyph != null) {
                 // 非 Type1 但已对齐到 glyph：同样用完整 trm，保证拉伸/旋转/剪切一致
-                appendTextWithMatrix(body, ch, classByFont, glyph, glyphWalk.pageTransform());
+                appendTextWithMatrix(body, ch, classByFont, glyph);
             } else {
                 appendText(body, ch, classByFont);
             }
@@ -197,21 +198,18 @@ public final class MuPdfSvgExporter {
         return svg.toString();
     }
 
-    private static void appendGlyphUse(StringBuilder body, String pathId, GlyphRef glyph, Transform pageTransform) {
-        Transform display = compose(pageTransform, glyph.trm());
+    private static void appendGlyphUse(StringBuilder body, String pathId, GlyphRef glyph) {
         body.append("  <use xlink:href=\"#").append(pathId).append('"')
-                .append(" transform=\"").append(svgTransform(display)).append('"')
+                .append(" transform=\"").append(svgTransform(glyph.trm())).append('"')
                 .append(" fill=\"#000000\"/>\n");
     }
 
     private static void appendTextWithMatrix(StringBuilder body, MuPdfService.CharResult ch,
-                                             Map<String, String> classByFont, GlyphRef glyph,
-                                             Transform pageTransform) {
+                                             Map<String, String> classByFont, GlyphRef glyph) {
         String className = classByFont.getOrDefault(ch.font(), "f0");
-        Transform display = compose(pageTransform, glyph.trm());
         body.append("  <text x=\"0\" y=\"0\" font-size=\"1\" class=\"").append(className).append('"')
                 .append(" xml:space=\"preserve\"")
-                .append(" transform=\"").append(svgTransform(display)).append('"')
+                .append(" transform=\"").append(svgTransform(glyph.trm())).append('"')
                 .append(" fill=\"#000000\">")
                 .append(escapeXml(ch.c()))
                 .append("</text>\n");
@@ -272,52 +270,86 @@ public final class MuPdfSvgExporter {
     /**
      * 采集 MuPDF 渲染时实际使用的 glyph id，并与坐标字符逐一对齐。
      *
-     * <p>两次遍历的顺序一致时（本类会同时校验 Unicode 与字体名），下标即可作为字符索引；
-     * 任一处不一致就整体降级为文本渲染，避免画错字形。</p>
+     * <p>遇到由 StructuredText 合成的空白字符（PDF 流中无对应 glyph）时自动跳过；
+     * 对可见字符校验 Unicode 与字体名，支持小范围滑动窗口同步，避免单字符失配导致整页回退。</p>
      */
-    private static GlyphWalk matchGlyphs(String pdfPath, int pageNum,
-                                          List<MuPdfService.CharResult> chars) {
+    private static Map<Integer, GlyphRef> matchGlyphs(String pdfPath, int pageNum,
+                                         List<MuPdfService.CharResult> chars) {
         if (chars.isEmpty()) {
-            return new GlyphWalk(Map.of(), Transform.IDENTITY);
+            return Map.of();
         }
-        RawWalk walk = collectGlyphs(pdfPath, pageNum);
-        List<GlyphRef> glyphs = walk.glyphs();
-        if (glyphs.size() != chars.size()) {
-            log.warn("[MuPDF-SVG] 字形数与字符数不一致（{} vs {}），回退文本渲染", glyphs.size(), chars.size());
-            return new GlyphWalk(Map.of(), walk.pageTransform());
+        List<GlyphRef> glyphs = collectGlyphs(pdfPath, pageNum);
+        if (glyphs.isEmpty()) {
+            return Map.of();
         }
+
         Map<Integer, GlyphRef> result = new LinkedHashMap<>();
-        for (int index = 0; index < chars.size(); index++) {
-            MuPdfService.CharResult ch = chars.get(index);
-            GlyphRef glyph = glyphs.get(index);
-            int codePoint = ch.c().codePointAt(0);
-            if (normalizeSpace(glyph.unicode()) != normalizeSpace(codePoint)
-                    || !sameText(glyph.fontName(), ch.font())) {
-                log.warn("[MuPDF-SVG] 第 {} 个字符字形对不上（U+{} / {} vs U+{} / {}），回退文本渲染",
-                        index, Integer.toHexString(glyph.unicode()), glyph.fontName(),
-                        Integer.toHexString(codePoint), ch.font());
-                return new GlyphWalk(Map.of(), walk.pageTransform());
+        int glyphIndex = 0;
+
+        for (int charIndex = 0; charIndex < chars.size() && glyphIndex < glyphs.size(); charIndex++) {
+            MuPdfService.CharResult ch = chars.get(charIndex);
+            if (ch == null || ch.c() == null || ch.c().isEmpty()) {
+                continue;
             }
-            result.put(index, glyph);
+
+            int charCodePoint = ch.c().codePointAt(0);
+
+            // 1. 若当前字符为空白，但底层 glyph 不是空白，说明是 StructuredText 合成的词间距空格，直接跳过
+            if (isWhitespace(charCodePoint)) {
+                GlyphRef currentGlyph = glyphs.get(glyphIndex);
+                if (!isWhitespace(currentGlyph.unicode())) {
+                    continue;
+                }
+            }
+
+            GlyphRef glyph = glyphs.get(glyphIndex);
+
+            // 2. 比对实际字符（Unicode 匹配或字体名匹配）
+            if (normalizeSpace(glyph.unicode()) == normalizeSpace(charCodePoint)
+                    || Objects.equals(glyph.fontName(), ch.font())) {
+                result.put(charIndex, glyph);
+                glyphIndex++;
+            } else {
+                // 3. 局部失配自愈：尝试向前探查至多 3 个字形
+                int syncOffset = findSyncOffset(charCodePoint, glyphs, glyphIndex, 3);
+                if (syncOffset > 0) {
+                    glyphIndex += syncOffset;
+                    result.put(charIndex, glyphs.get(glyphIndex));
+                    glyphIndex++;
+                }
+            }
         }
-        return new GlyphWalk(result, walk.pageTransform());
+
+        log.info("[MuPDF-SVG] 第 {} 页字形对齐完成: 匹配 {} / {} 字符 (底层字形 {})",
+                pageNum + 1, result.size(), chars.size(), glyphs.size());
+
+        return result;
     }
 
-    private static RawWalk collectGlyphs(String pdfPath, int pageNum) {
+    private static boolean isWhitespace(int codePoint) {
+        return Character.isWhitespace(codePoint) || codePoint == 0x00A0 || codePoint == 0x3000;
+    }
+
+    private static int findSyncOffset(int charCodePoint, List<GlyphRef> glyphs, int glyphIndex, int maxLookahead) {
+        int target = normalizeSpace(charCodePoint);
+        for (int offset = 1; offset <= maxLookahead && glyphIndex + offset < glyphs.size(); offset++) {
+            if (normalizeSpace(glyphs.get(glyphIndex + offset).unicode()) == target) {
+                return offset;
+            }
+        }
+        return -1;
+    }
+
+    private static List<GlyphRef> collectGlyphs(String pdfPath, int pageNum) {
         List<GlyphRef> glyphs = new ArrayList<>();
-        Transform pageTransform = Transform.IDENTITY;
         Document doc = Document.openDocument(pdfPath);
         try {
             if (!(doc instanceof PDFDocument pdf)) {
-                return new RawWalk(glyphs, pageTransform);
+                return glyphs;
             }
             MuPdfFontExtractor.FontNameResolver resolver = MuPdfFontExtractor.pageFontNameResolver(pdf, pageNum);
             Page page = pdf.loadPage(pageNum);
             try {
-                if (page instanceof PDFPage pdfPage) {
-                    Matrix matrix = pdfPage.getTransform();
-                    pageTransform = new Transform(matrix.a, matrix.b, matrix.c, matrix.d, matrix.e, matrix.f);
-                }
                 page.run(new GlyphCollectorDevice(resolver, glyphs), Matrix.Identity());
             } finally {
                 page.destroy();
@@ -325,7 +357,7 @@ public final class MuPdfSvgExporter {
         } finally {
             doc.destroy();
         }
-        return new RawWalk(glyphs, pageTransform);
+        return glyphs;
     }
 
     /**
@@ -376,8 +408,8 @@ public final class MuPdfSvgExporter {
         public void fillText(Text text, Matrix ctm, ColorSpace cs, float[] color, float alpha, int cp) {
             text.walk((font, trm, glyph, unicode, wmode) -> {
                 String readable = resolver.resolve(font);
-                glyphs.add(new GlyphRef(readable != null ? readable : font.getName(), unicode, glyph,
-                        new Transform(trm.a, trm.b, trm.c, trm.d, trm.e, trm.f)));
+                Transform display = compose(ctm, trm);
+                glyphs.add(new GlyphRef(readable != null ? readable : font.getName(), unicode, glyph, display));
             });
         }
 
@@ -481,27 +513,9 @@ public final class MuPdfSvgExporter {
      * @param fontName 可读字体名
      * @param unicode  字符 Unicode
      * @param gid      MuPDF glyph id
-     * @param trm      MuPDF 文本渲染矩阵（含字形原点、字号、拉伸/旋转）
+     * @param trm      最终页面显示变换矩阵（含原点、字号、拉伸/旋转）
      */
     private record GlyphRef(String fontName, int unicode, int gid, Transform trm) {
-    }
-
-    /**
-     * 字形对齐结果。
-     *
-     * @param glyphs        字符索引 ➔ MuPDF 字形引用
-     * @param pageTransform 页面变换矩阵（PDF 用户空间 ➔ 显示空间）
-     */
-    private record GlyphWalk(Map<Integer, GlyphRef> glyphs, Transform pageTransform) {
-    }
-
-    /**
-     * 按内容顺序采集到的字形列表。
-     *
-     * @param glyphs        MuPDF 字形引用（内容顺序）
-     * @param pageTransform 页面变换矩阵（PDF 用户空间 ➔ 显示空间）
-     */
-    private record RawWalk(List<GlyphRef> glyphs, Transform pageTransform) {
     }
 
     /**
@@ -519,13 +533,13 @@ public final class MuPdfSvgExporter {
     }
 
     /**
-     * 组合出“AWT 字形坐标（em、y 向下） ➔ 页面显示坐标”的矩阵：
-     * {@code page * trm * flipY}。
+     * 组合出“字形设计空间 ➔ 页面显示坐标（Y 向下）”的矩阵：
+     * {@code ctm * trm * flipY}。
      */
-    private static Transform compose(Transform page, Transform trm) {
+    private static Transform compose(Matrix ctm, Matrix trm) {
         java.awt.geom.AffineTransform transform =
-                new java.awt.geom.AffineTransform(page.a(), page.b(), page.c(), page.d(), page.e(), page.f());
-        transform.concatenate(new java.awt.geom.AffineTransform(trm.a(), trm.b(), trm.c(), trm.d(), trm.e(), trm.f()));
+                new java.awt.geom.AffineTransform(ctm.a, ctm.b, ctm.c, ctm.d, ctm.e, ctm.f);
+        transform.concatenate(new java.awt.geom.AffineTransform(trm.a, trm.b, trm.c, trm.d, trm.e, trm.f));
         transform.concatenate(new java.awt.geom.AffineTransform(1, 0, 0, -1, 0, 0));
         return new Transform((float) transform.getScaleX(), (float) transform.getShearY(),
                 (float) transform.getShearX(), (float) transform.getScaleY(),
