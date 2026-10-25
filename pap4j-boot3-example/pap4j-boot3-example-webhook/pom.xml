@@ -23,6 +23,10 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+             <exclusion>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-websocket</artifactId>
+             </exclusion>
         </dependency>
 
         <dependency>
@@ -48,6 +52,6 @@
             <version>2.8.17</version>
         </dependency>
 
-    </dependencies>
+     </dependencies>
 
 </project>
