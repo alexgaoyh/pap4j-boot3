@@ -68,6 +68,40 @@ public class MuPdfSvgExporterTest {
     }
 
     @Test
+    public void testExportMathFormulaVectorPaths() throws Exception {
+        String pdf = pdfPath(MATH_PDF);
+        Path fontDir = Path.of("target", "svg", "fonts-math-" + System.currentTimeMillis());
+        MuPdfFontExtractor.exportFonts(pdf, fontDir);
+
+        Path svg = Path.of("target", "svg", "testmath-page4-formulas.svg");
+        MuPdfSvgExporter.ExportResult result = MuPdfSvgExporter.export(pdf, 3, fontDir, svg);
+        String content = Files.readString(svg, StandardCharsets.UTF_8);
+
+        Assertions.assertTrue(result.pathCount() > 0, "第 4 页数学公式中的分式横线/横梁应被作为矢量 Path 输出");
+        Assertions.assertTrue(content.contains("<path d=\"M"), "应包含实际的几何路径 d");
+        Assertions.assertTrue(content.contains("stroke=\""), "应包含线条描边样式");
+        Assertions.assertTrue(content.contains("stroke-width=\""), "应包含线条线宽");
+
+        // 校验为合法 XML
+        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(svg.toFile());
+    }
+
+    @Test
+    public void testExportTableVectorBorders() throws Exception {
+        String pdf = pdfPath(CJK_PDF);
+        Path svg = Path.of("target", "svg", "ctex-page4-table.svg");
+        MuPdfSvgExporter.ExportResult result = MuPdfSvgExporter.export(pdf, 3, null, svg);
+        String content = Files.readString(svg, StandardCharsets.UTF_8);
+
+        Assertions.assertTrue(result.pathCount() >= 50, "ctex 第 4 页包含表格，应导出至少 50 条边框线条");
+        Assertions.assertTrue(content.contains("<path d=\"M"), "应包含表格边框路径");
+        Assertions.assertTrue(content.contains("stroke=\""), "应包含描边");
+
+        // 校验为合法 XML
+        DocumentBuilderFactory.newInstance().newDocumentBuilder().parse(svg.toFile());
+    }
+
+    @Test
     public void testExportType1AsOutlines() throws Exception {
         Assumptions.assumeTrue(hasResource("jjsjwlyjzs_zfy.pdf"), "缺少 jjsjwlyjzs_zfy.pdf，跳过 Type1 矢量轮廓专项测试");
         String pdf = pdfPath("jjsjwlyjzs_zfy.pdf");

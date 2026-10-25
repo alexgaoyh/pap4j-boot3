@@ -1,5 +1,6 @@
 package cn.net.pap.common.mupdf.service;
 
+import com.artifex.mupdf.fitz.Buffer;
 import com.artifex.mupdf.fitz.ColorSpace;
 import com.artifex.mupdf.fitz.DefaultColorSpaces;
 import com.artifex.mupdf.fitz.Device;
@@ -9,6 +10,7 @@ import com.artifex.mupdf.fitz.Matrix;
 import com.artifex.mupdf.fitz.PDFDocument;
 import com.artifex.mupdf.fitz.PDFPage;
 import com.artifex.mupdf.fitz.Page;
+import com.artifex.mupdf.fitz.Pixmap;
 import com.artifex.mupdf.fitz.Rect;
 import com.artifex.mupdf.fitz.Shade;
 import com.artifex.mupdf.fitz.StrokeState;
@@ -76,9 +78,16 @@ public final class MuPdfSvgExporter {
      * @param embeddedFonts 以 {@code @font-face} 内嵌的 Web 字体名
      * @param outlineFonts  以矢量轮廓（path）还原的 Type1 字体名
      * @param fallbackFonts 回退到宋体的字体名
+     * @param pathCount     导出的矢量路径数量（表格边框、分割线、数学公式标尺等）
+     * @param imageCount    导出的内嵌图片数量
      */
     public record ExportResult(Path svgFile, List<String> embeddedFonts,
-                               List<String> outlineFonts, List<String> fallbackFonts) {
+                               List<String> outlineFonts, List<String> fallbackFonts,
+                               int pathCount, int imageCount) {
+        public ExportResult(Path svgFile, List<String> embeddedFonts,
+                            List<String> outlineFonts, List<String> fallbackFonts) {
+            this(svgFile, embeddedFonts, outlineFonts, fallbackFonts, 0, 0);
+        }
     }
 
     /**
@@ -106,7 +115,8 @@ public final class MuPdfSvgExporter {
 
             Map<String, WebFont> webFonts = loadWebFonts(fontDir);
             Map<String, java.awt.Font> type1Fonts = loadType1Fonts(fontDir);
-            Map<Integer, GlyphRef> glyphs = matchGlyphs(pdfPath, pageNum, chars);
+            PageGraphics graphics = collectPageGraphics(pdfPath, pageNum);
+            Map<Integer, GlyphRef> glyphs = matchGlyphs(graphics.glyphs(), chars, pageNum);
 
             List<String> embeddedFonts = new ArrayList<>();
             List<String> outlineFonts = new ArrayList<>();
@@ -129,17 +139,19 @@ public final class MuPdfSvgExporter {
                 }
             }
 
-            String svg = buildSvg(page, chars, glyphs, type1Fonts, classByFont, css);
+            String svg = buildSvg(page, chars, glyphs, graphics.paths(), graphics.images(),
+                    type1Fonts, classByFont, css);
             Path parent = svgFile.toAbsolutePath().getParent();
             if (parent != null) {
                 Files.createDirectories(parent);
             }
             Files.writeString(svgFile, svg, StandardCharsets.UTF_8);
 
-            log.info("[MuPDF-SVG] 导出完成: {} 第 {} 页 | 轮廓字体 {} 个 | 内嵌字体 {} 个 | 回退宋体 {} 个 | {}",
-                    pdfPath, pageNum + 1, outlineFonts.size(), embeddedFonts.size(),
-                    fallbackFonts.size(), svgFile.toAbsolutePath());
-            return new ExportResult(svgFile, embeddedFonts, outlineFonts, fallbackFonts);
+            log.info("[MuPDF-SVG] 导出完成: {} 第 {} 页 | 矢量路径 {} 条 | 内嵌图片 {} 张 | 轮廓字体 {} 个 | 内嵌字体 {} 个 | 回退宋体 {} 个 | {}",
+                    pdfPath, pageNum + 1, graphics.paths().size(), graphics.images().size(),
+                    outlineFonts.size(), embeddedFonts.size(), fallbackFonts.size(), svgFile.toAbsolutePath());
+            return new ExportResult(svgFile, embeddedFonts, outlineFonts, fallbackFonts,
+                    graphics.paths().size(), graphics.images().size());
         } finally {
             service.close();
         }
@@ -150,7 +162,8 @@ public final class MuPdfSvgExporter {
     // ------------------------------------------------------------------
 
     private static String buildSvg(MuPdfService.PageResult page, List<MuPdfService.CharResult> chars,
-                                   Map<Integer, GlyphRef> glyphs, Map<String, java.awt.Font> type1Fonts,
+                                   Map<Integer, GlyphRef> glyphs, List<SvgPath> paths, List<SvgImage> images,
+                                   Map<String, java.awt.Font> type1Fonts,
                                    Map<String, String> classByFont, StringBuilder css) {
         double width = page.width() > 0 ? page.width() : 595.0;
         double height = page.height() > 0 ? page.height() : 842.0;
@@ -162,6 +175,24 @@ public final class MuPdfSvgExporter {
             defs.append("<style type=\"text/css\"><![CDATA[\n").append(css).append("]]></style>\n");
         }
 
+        // 1. 页面底板
+        body.append("  <rect width=\"100%\" height=\"100%\" fill=\"#ffffff\"/>\n");
+
+        // 2. 图像图层（底图、配图、印章等）
+        if (images != null && !images.isEmpty()) {
+            for (SvgImage img : images) {
+                img.appendSvg(body);
+            }
+        }
+
+        // 3. 矢量图层（表格边框、分割线、数学公式分式横线/横梁等）
+        if (paths != null && !paths.isEmpty()) {
+            for (SvgPath p : paths) {
+                p.appendSvg(body);
+            }
+        }
+
+        // 4. 文字图层（Type1 轮廓 + 文本）
         for (int index = 0; index < chars.size(); index++) {
             MuPdfService.CharResult ch = chars.get(index);
             if (ch == null || ch.c() == null || ch.c().isEmpty()) {
@@ -192,7 +223,6 @@ public final class MuPdfSvgExporter {
                 .append(" viewBox=\"0 0 ").append(width).append(' ').append(height)
                 .append("\" width=\"").append(width).append("\" height=\"").append(height).append("\">\n")
                 .append("  <defs>\n").append(defs).append("  </defs>\n")
-                .append("  <rect width=\"100%\" height=\"100%\" fill=\"#ffffff\"/>\n")
                 .append(body)
                 .append("</svg>\n");
         return svg.toString();
@@ -273,13 +303,10 @@ public final class MuPdfSvgExporter {
      * <p>遇到由 StructuredText 合成的空白字符（PDF 流中无对应 glyph）时自动跳过；
      * 对可见字符校验 Unicode 与字体名，支持小范围滑动窗口同步，避免单字符失配导致整页回退。</p>
      */
-    private static Map<Integer, GlyphRef> matchGlyphs(String pdfPath, int pageNum,
-                                         List<MuPdfService.CharResult> chars) {
-        if (chars.isEmpty()) {
-            return Map.of();
-        }
-        List<GlyphRef> glyphs = collectGlyphs(pdfPath, pageNum);
-        if (glyphs.isEmpty()) {
+    private static Map<Integer, GlyphRef> matchGlyphs(List<GlyphRef> glyphs,
+                                                     List<MuPdfService.CharResult> chars,
+                                                     int pageNum) {
+        if (chars.isEmpty() || glyphs.isEmpty()) {
             return Map.of();
         }
 
@@ -340,24 +367,32 @@ public final class MuPdfSvgExporter {
         return -1;
     }
 
-    private static List<GlyphRef> collectGlyphs(String pdfPath, int pageNum) {
+    private static PageGraphics collectPageGraphics(String pdfPath, int pageNum) {
         List<GlyphRef> glyphs = new ArrayList<>();
+        List<SvgPath> paths = new ArrayList<>();
+        List<SvgImage> images = new ArrayList<>();
+
         Document doc = Document.openDocument(pdfPath);
         try {
             if (!(doc instanceof PDFDocument pdf)) {
-                return glyphs;
+                return new PageGraphics(glyphs, paths, images);
             }
             MuPdfFontExtractor.FontNameResolver resolver = MuPdfFontExtractor.pageFontNameResolver(pdf, pageNum);
             Page page = pdf.loadPage(pageNum);
             try {
-                page.run(new GlyphCollectorDevice(resolver, glyphs), Matrix.Identity());
+                GlyphCollectorDevice device = new GlyphCollectorDevice(resolver, glyphs, paths, images);
+                try {
+                    page.run(device, Matrix.Identity());
+                } finally {
+                    device.destroy();
+                }
             } finally {
                 page.destroy();
             }
         } finally {
             doc.destroy();
         }
-        return glyphs;
+        return new PageGraphics(glyphs, paths, images);
     }
 
     /**
@@ -367,21 +402,22 @@ public final class MuPdfSvgExporter {
         return codePoint == 0x3000 || codePoint == 0x00A0 ? 0x20 : codePoint;
     }
 
-    private static boolean sameText(String left, String right) {
-        return left != null && right != null && left.compareTo(right) == 0;
-    }
-
     /**
-     * 只关心 {@link #fillText} 的设备：按内容顺序收集 glyph id。
+     * 收集单页字形引用、矢量路径与位图的设备。
      */
     private static final class GlyphCollectorDevice extends Device {
 
         private final MuPdfFontExtractor.FontNameResolver resolver;
         private final List<GlyphRef> glyphs;
+        private final List<SvgPath> paths;
+        private final List<SvgImage> images;
 
-        private GlyphCollectorDevice(MuPdfFontExtractor.FontNameResolver resolver, List<GlyphRef> glyphs) {
+        private GlyphCollectorDevice(MuPdfFontExtractor.FontNameResolver resolver,
+                                     List<GlyphRef> glyphs, List<SvgPath> paths, List<SvgImage> images) {
             this.resolver = resolver;
             this.glyphs = glyphs;
+            this.paths = paths;
+            this.images = images;
         }
 
         @Override
@@ -390,10 +426,35 @@ public final class MuPdfSvgExporter {
 
         @Override
         public void fillPath(com.artifex.mupdf.fitz.Path path, boolean evenOdd, Matrix ctm, ColorSpace cs, float[] color, float alpha, int cp) {
+            if (path == null) {
+                return;
+            }
+            String d = toPathData(path, ctm);
+            if (d.isEmpty()) {
+                return;
+            }
+            String fillColor = svgColor(cs, color);
+            paths.add(new SvgPath(d, "none", fillColor, 0.0f, null, null, alpha, evenOdd));
         }
 
         @Override
         public void strokePath(com.artifex.mupdf.fitz.Path path, StrokeState stroke, Matrix ctm, ColorSpace cs, float[] color, float alpha, int cp) {
+            if (path == null) {
+                return;
+            }
+            String d = toPathData(path, ctm);
+            if (d.isEmpty()) {
+                return;
+            }
+            float lineWidth = stroke != null ? stroke.getLineWidth() : 1.0f;
+            float scale = (float) Math.hypot(ctm.a, ctm.b);
+            if (scale > 0 && Math.abs(scale - 1.0f) > 1e-4) {
+                lineWidth *= scale;
+            }
+            String strokeColor = svgColor(cs, color);
+            String cap = stroke != null ? svgLineCap(stroke.getLineCap()) : null;
+            String join = stroke != null ? svgLineJoin(stroke.getLineJoin()) : null;
+            paths.add(new SvgPath(d, strokeColor, "none", lineWidth, cap, join, alpha, false));
         }
 
         @Override
@@ -435,10 +496,42 @@ public final class MuPdfSvgExporter {
 
         @Override
         public void fillImage(Image img, Matrix ctm, float alpha, int cp) {
+            if (img == null) {
+                return;
+            }
+            Pixmap pix = null;
+            Buffer buf = null;
+            try {
+                pix = img.toPixmap();
+                if (pix != null) {
+                    buf = pix.asPNG();
+                    if (buf != null) {
+                        byte[] bytes = buf.asByteArray();
+                        Transform imgTr = composeImageTransform(ctm);
+                        images.add(new SvgImage(imgTr, bytes, img.getWidth(), img.getHeight()));
+                    }
+                }
+            } catch (Throwable t) {
+                log.warn("[MuPDF-SVG] 提取页面内嵌图片失败", t);
+            } finally {
+                if (buf != null) {
+                    try {
+                        buf.destroy();
+                    } catch (Throwable ignored) {
+                    }
+                }
+                if (pix != null) {
+                    try {
+                        pix.destroy();
+                    } catch (Throwable ignored) {
+                    }
+                }
+            }
         }
 
         @Override
         public void fillImageMask(Image img, Matrix ctm, ColorSpace cs, float[] color, float alpha, int cp) {
+            fillImage(img, ctm, alpha, cp);
         }
 
         @Override
@@ -504,6 +597,161 @@ public final class MuPdfSvgExporter {
 
         @Override
         public void endMetatext() {
+        }
+    }
+
+    private static String toPathData(com.artifex.mupdf.fitz.Path path, Matrix ctm) {
+        if (path == null) {
+            return "";
+        }
+        StringBuilder d = new StringBuilder(64);
+        path.walk(new com.artifex.mupdf.fitz.PathWalker() {
+            @Override
+            public void moveTo(float x, float y) {
+                float tx = ctm.a * x + ctm.c * y + ctm.e;
+                float ty = ctm.b * x + ctm.d * y + ctm.f;
+                if (d.length() > 0) {
+                    d.append(' ');
+                }
+                d.append('M').append(num(tx)).append(' ').append(num(ty));
+            }
+
+            @Override
+            public void lineTo(float x, float y) {
+                float tx = ctm.a * x + ctm.c * y + ctm.e;
+                float ty = ctm.b * x + ctm.d * y + ctm.f;
+                if (d.length() > 0) {
+                    d.append(' ');
+                }
+                d.append('L').append(num(tx)).append(' ').append(num(ty));
+            }
+
+            @Override
+            public void curveTo(float cx1, float cy1, float cx2, float cy2, float ex, float ey) {
+                float tx1 = ctm.a * cx1 + ctm.c * cy1 + ctm.e;
+                float ty1 = ctm.b * cx1 + ctm.d * cy1 + ctm.f;
+                float tx2 = ctm.a * cx2 + ctm.c * cy2 + ctm.e;
+                float ty2 = ctm.b * cx2 + ctm.d * cy2 + ctm.f;
+                float tex = ctm.a * ex + ctm.c * ey + ctm.e;
+                float tey = ctm.b * ex + ctm.d * ey + ctm.f;
+                if (d.length() > 0) {
+                    d.append(' ');
+                }
+                d.append('C').append(num(tx1)).append(' ').append(num(ty1))
+                        .append(' ').append(num(tx2)).append(' ').append(num(ty2))
+                        .append(' ').append(num(tex)).append(' ').append(num(tey));
+            }
+
+            @Override
+            public void closePath() {
+                if (d.length() > 0) {
+                    d.append(' ');
+                }
+                d.append('Z');
+            }
+        });
+        return d.toString();
+    }
+
+    private static String svgColor(ColorSpace cs, float[] color) {
+        if (color == null || color.length == 0) {
+            return "#000000";
+        }
+        if (color.length == 1) {
+            int v = clampColor(color[0]);
+            return String.format(Locale.ROOT, "#%02x%02x%02x", v, v, v);
+        }
+        if (color.length == 3) {
+            int r = clampColor(color[0]);
+            int g = clampColor(color[1]);
+            int b = clampColor(color[2]);
+            return String.format(Locale.ROOT, "#%02x%02x%02x", r, g, b);
+        }
+        if (color.length == 4) { // CMYK
+            float c = color[0], m = color[1], y = color[2], k = color[3];
+            int r = clampColor((1.0f - c) * (1.0f - k));
+            int g = clampColor((1.0f - m) * (1.0f - k));
+            int b = clampColor((1.0f - y) * (1.0f - k));
+            return String.format(Locale.ROOT, "#%02x%02x%02x", r, g, b);
+        }
+        return "#000000";
+    }
+
+    private static int clampColor(float val) {
+        int v = Math.round(val * 255.0f);
+        return Math.max(0, Math.min(255, v));
+    }
+
+    private static String svgLineCap(int cap) {
+        return switch (cap) {
+            case StrokeState.LINE_CAP_ROUND -> "round";
+            case StrokeState.LINE_CAP_SQUARE -> "square";
+            default -> null; // 默认 butt
+        };
+    }
+
+    private static String svgLineJoin(int join) {
+        return switch (join) {
+            case StrokeState.LINE_JOIN_ROUND -> "round";
+            case StrokeState.LINE_JOIN_BEVEL -> "bevel";
+            default -> null; // 默认 miter
+        };
+    }
+
+    private static Transform composeImageTransform(Matrix ctm) {
+        java.awt.geom.AffineTransform transform =
+                new java.awt.geom.AffineTransform(ctm.a, ctm.b, ctm.c, ctm.d, ctm.e, ctm.f);
+        transform.concatenate(new java.awt.geom.AffineTransform(1, 0, 0, -1, 0, 1));
+        return new Transform((float) transform.getScaleX(), (float) transform.getShearY(),
+                (float) transform.getShearX(), (float) transform.getScaleY(),
+                (float) transform.getTranslateX(), (float) transform.getTranslateY());
+    }
+
+    private record PageGraphics(List<GlyphRef> glyphs, List<SvgPath> paths, List<SvgImage> images) {
+    }
+
+    private record SvgPath(String d, String stroke, String fill, float strokeWidth,
+                           String lineCap, String lineJoin, float opacity, boolean evenOdd) {
+        void appendSvg(StringBuilder sb) {
+            sb.append("  <path d=\"").append(d).append('"');
+            if (stroke != null && !"none".equals(stroke)) {
+                sb.append(" stroke=\"").append(stroke).append('"');
+                if (strokeWidth > 0) {
+                    sb.append(" stroke-width=\"").append(num(strokeWidth)).append('"');
+                }
+                if (lineCap != null) {
+                    sb.append(" stroke-linecap=\"").append(lineCap).append('"');
+                }
+                if (lineJoin != null) {
+                    sb.append(" stroke-linejoin=\"").append(lineJoin).append('"');
+                }
+            }
+            if (fill != null && !"none".equals(fill)) {
+                sb.append(" fill=\"").append(fill).append('"');
+                if (evenOdd) {
+                    sb.append(" fill-rule=\"evenodd\"");
+                }
+            } else {
+                sb.append(" fill=\"none\"");
+            }
+            if (opacity >= 0 && opacity < 0.999f) {
+                sb.append(" opacity=\"").append(num(opacity)).append('"');
+            }
+            sb.append("/>\n");
+        }
+    }
+
+    private record SvgImage(Transform transform, byte[] pngBytes, int width, int height) {
+        void appendSvg(StringBuilder sb) {
+            if (pngBytes == null || pngBytes.length == 0) {
+                return;
+            }
+            sb.append("  <image x=\"0\" y=\"0\" width=\"1\" height=\"1\"")
+                    .append(" transform=\"").append(svgTransform(transform)).append('"')
+                    .append(" preserveAspectRatio=\"none\"")
+                    .append(" xlink:href=\"data:image/png;base64,")
+                    .append(Base64.getEncoder().encodeToString(pngBytes))
+                    .append("\"/>\n");
         }
     }
 
@@ -727,8 +975,20 @@ public final class MuPdfSvgExporter {
     }
 
     private static String num(double value) {
+        if (value == 0.0 || value == -0.0) {
+            return "0";
+        }
         String text = String.format(Locale.ROOT, "%.3f", value);
-        text = text.replaceAll("0+$", "").replaceAll("\\.$", "");
+        int len = text.length();
+        if (text.indexOf('.') >= 0) {
+            while (len > 0 && text.charAt(len - 1) == '0') {
+                len--;
+            }
+            if (len > 0 && text.charAt(len - 1) == '.') {
+                len--;
+            }
+            text = text.substring(0, len);
+        }
         return text.isEmpty() || "-0".equals(text) ? "0" : text;
     }
 
