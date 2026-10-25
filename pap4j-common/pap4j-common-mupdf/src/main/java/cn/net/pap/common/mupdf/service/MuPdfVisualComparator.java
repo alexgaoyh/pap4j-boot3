@@ -64,6 +64,13 @@ public final class MuPdfVisualComparator {
 
         /**
          * 保持向前兼容的 6 参数构造器。
+         *
+         * @param ssim        结构相似度
+         * @param diffPercent 差异像素占比
+         * @param psnr        峰值信噪比
+         * @param diffPixels  超出容差的差异像素数
+         * @param totalPixels 比对区域总像素数
+         * @param diffImage   可视化差异图
          */
         public CompareResult(double ssim, double diffPercent, double psnr,
                              int diffPixels, int totalPixels, BufferedImage diffImage) {
@@ -72,6 +79,9 @@ public final class MuPdfVisualComparator {
 
         /**
          * 将差异图持久化到文件系统。
+         *
+         * @param outputPath 输出文件路径
+         * @throws IOException 文件写入失败
          */
         public void saveDiffImage(Path outputPath) throws IOException {
             if (outputPath == null || diffImage == null) {
@@ -83,6 +93,10 @@ public final class MuPdfVisualComparator {
 
         /**
          * 创建三联并排对比大图：【1: 原生/基准】 | 【2: 还原 SVG 渲染】 | 【3: 差异热力图】
+         *
+         * @param titleA 基准图标题
+         * @param titleB 待测图标题
+         * @return 三联对比大图；任一图像缺失时返回差异图
          */
         public BufferedImage createSideBySideImage(String titleA, String titleB) {
             if (imageA == null || imageB == null || diffImage == null) {
@@ -211,6 +225,7 @@ public final class MuPdfVisualComparator {
         } catch (IllegalArgumentException argEx) {
             throw argEx;
         } catch (Throwable t) {
+            log.error("[VisualDiff] 导出原生 SVG 失败（第 {} 页）: {}", pageNum + 1, pdfPath, t);
             throw new IllegalStateException("导出原生 SVG 失败（第 " + (pageNum + 1) + " 页）: " + pdfPath
                                             + " -> " + t.getMessage(), t);
         }
@@ -228,6 +243,13 @@ public final class MuPdfVisualComparator {
 
     /**
      * 对比 PDF 目标页原生位图渲染与对应 SVG 文件的渲染效果。
+     *
+     * @param pdfPath PDF 文件路径
+     * @param pageNum 页码 (0-indexed)
+     * @param svgPath 待测 SVG 文件路径
+     * @param dpi     渲染 DPI，小于等于 0 时使用默认值
+     * @return 视觉对比结果
+     * @throws IOException 渲染或文件读取失败
      */
     public static CompareResult comparePdfAndSvg(String pdfPath, int pageNum, Path svgPath, int dpi) throws IOException {
         int effectiveDpi = dpi > 0 ? dpi : DEFAULT_DPI;
@@ -243,6 +265,12 @@ public final class MuPdfVisualComparator {
 
     /**
      * 对比两个 SVG 文件的栅格化视觉效果（如直接生成的原生 SVG vs 通过 JSON 坐标还原的 SVG）。
+     *
+     * @param svgPathA 基准 SVG 文件路径
+     * @param svgPathB 待测 SVG 文件路径
+     * @param dpi      渲染 DPI，小于等于 0 时使用默认值
+     * @return 视觉对比结果
+     * @throws IOException 渲染或文件读取失败
      */
     public static CompareResult compareSvgs(Path svgPathA, Path svgPathB, int dpi) throws IOException {
         int effectiveDpi = dpi > 0 ? dpi : DEFAULT_DPI;
@@ -258,6 +286,11 @@ public final class MuPdfVisualComparator {
 
     /**
      * 核心比对方法：对比两张 BufferedImage，计算 SSIM、PSNR、像素差异率并生成差异热力图。
+     *
+     * @param imgA           基准图
+     * @param imgB           待测图
+     * @param colorTolerance 颜色欧式距离容差（小于 0 时按 0 处理）
+     * @return 视觉对比结果
      */
     public static CompareResult compare(BufferedImage imgA, BufferedImage imgB, int colorTolerance) {
         if (imgA == null || imgB == null) {
@@ -315,6 +348,11 @@ public final class MuPdfVisualComparator {
 
     /**
      * 比较两个 MuPDF 原生 Pixmap。
+     *
+     * @param pixA           基准 Pixmap
+     * @param pixB           待测 Pixmap
+     * @param colorTolerance 颜色欧式距离容差
+     * @return 视觉对比结果
      */
     public static CompareResult comparePixmaps(Pixmap pixA, Pixmap pixB, int colorTolerance) {
         if (pixA == null || pixB == null) {
@@ -327,6 +365,9 @@ public final class MuPdfVisualComparator {
 
     /**
      * 将 MuPDF 原生 Pixmap 高效无损转换为 Java {@link BufferedImage}。
+     *
+     * @param pix 原生 Pixmap
+     * @return 转换后的 BufferedImage；入参为 null 时返回 null
      */
     public static BufferedImage toBufferedImage(Pixmap pix) {
         if (pix == null) {
@@ -372,6 +413,7 @@ public final class MuPdfVisualComparator {
              Pixmap pix = page.toPixmap(new Matrix(scale, scale), ColorSpace.DeviceRGB, false)) {
             return toBufferedImage(pix);
         } catch (Throwable t) {
+            log.error("[VisualDiff] 渲染 PDF 页面失败（第 {} 页, {} DPI）: {}", pageNum + 1, dpi, pdfPath, t);
             throw new IllegalStateException("渲染 PDF 页面失败（第 " + (pageNum + 1) + " 页, " + dpi
                                             + " DPI）: " + pdfPath + " -> " + t.getMessage(), t);
         }
@@ -387,6 +429,7 @@ public final class MuPdfVisualComparator {
              Pixmap pix = page.toPixmap(new Matrix(scale, scale), ColorSpace.DeviceRGB, false)) {
             return toBufferedImage(pix);
         } catch (Throwable t) {
+            log.error("[VisualDiff] 渲染 SVG 文件失败（{} DPI）: {}", dpi, svgPath.toAbsolutePath(), t);
             throw new IllegalStateException("渲染 SVG 文件失败（" + dpi + " DPI）: " + svgPath.toAbsolutePath()
                                             + " -> " + t.getMessage(), t);
         }

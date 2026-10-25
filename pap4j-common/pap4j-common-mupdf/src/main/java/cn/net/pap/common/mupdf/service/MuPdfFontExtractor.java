@@ -216,6 +216,7 @@ public final class MuPdfFontExtractor {
         try {
             doc = Document.openDocument(file.getAbsolutePath());
         } catch (Throwable t) {
+            log.error("[MuPDF-Font] 打开 PDF 失败: {}", file.getAbsolutePath(), t);
             throw new IllegalStateException("打开 PDF 失败（文件损坏、被加密或格式不支持）: "
                                             + file.getAbsolutePath() + " -> " + t.getMessage(), t);
         }
@@ -320,7 +321,7 @@ public final class MuPdfFontExtractor {
         try {
             return dict.get(key);
         } catch (Throwable t) {
-            log.debug("[MuPDF-Font] 读取字典项 {} 失败: {}", key, t.getMessage());
+            log.error("[MuPDF-Font] 读取字典项 {} 失败", key, t);
             return null;
         }
     }
@@ -366,7 +367,7 @@ public final class MuPdfFontExtractor {
                 }
             } catch (Throwable t) {
                 // 畸形 DescendantFonts 按字体字典自身的信息处理
-                log.debug("[MuPDF-Font] 读取 DescendantFonts 失败，按顶层字体字典处理: {}", t.getMessage());
+                log.error("[MuPDF-Font] 读取 DescendantFonts 失败，按顶层字体字典处理", t);
             }
         }
 
@@ -663,7 +664,7 @@ public final class MuPdfFontExtractor {
             try {
                 return resolve(font.getName());
             } catch (Throwable t) {
-                log.debug("[MuPDF-Font] 读取运行期字体名失败: {}", t.getMessage());
+                log.error("[MuPDF-Font] 读取运行期字体名失败", t);
                 return null;
             }
         }
@@ -706,7 +707,7 @@ public final class MuPdfFontExtractor {
                     }
                 }
             } catch (Throwable t) {
-                log.debug("[MuPDF-Font] 字体名匹配失败: {}", t.getMessage());
+                log.error("[MuPDF-Font] 字体名匹配失败", t);
                 return null;
             }
             return best == null ? null : best.readableName();

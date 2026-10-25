@@ -517,6 +517,7 @@ public class MuPdfService implements AutoCloseable {
         try {
             document = Document.openDocument(file.getPath());
         } catch (Throwable t) {
+            log.error("[MuPDF-Coord] 打开 PDF 失败: {}", file.getAbsolutePath(), t);
             throw new IllegalStateException("打开 PDF 失败（文件损坏、被加密或格式不支持）: "
                                             + file.getAbsolutePath() + " -> " + t.getMessage(), t);
         }
@@ -659,6 +660,14 @@ public class MuPdfService implements AutoCloseable {
     ) {
         /**
          * 向下兼容历史构造器
+         *
+         * @param wmode 写入模式 (0=水平, 1=垂直)
+         * @param bbox  行轴对齐外接框
+         * @param font  行首字体信息
+         * @param x     行起始基线 X 坐标
+         * @param y     行起始基线 Y 坐标
+         * @param text  整行合并文本
+         * @param chars 单字坐标列表
          */
         public LineResult(int wmode, Bbox bbox, FontInfo font, double x, double y, String text, List<CharResult> chars) {
             this(wmode, null, null, bbox, null, font, x, y, text, chars);
@@ -688,6 +697,12 @@ public class MuPdfService implements AutoCloseable {
     ) {
         /**
          * 向下兼容历史构造器
+         *
+         * @param c      字符文本
+         * @param origin 字符基线绘制物理坐标
+         * @param bbox   单字轴对齐外接框
+         * @param font   字体名称
+         * @param size   字号大小
          */
         public CharResult(String c, PointInfo origin, Bbox bbox, String font, double size) {
             this(c, origin, bbox, null, null, font, size);
@@ -885,7 +900,7 @@ public class MuPdfService implements AutoCloseable {
             return new MatrixInfo(round(m.a, 3), round(m.b, 3), round(m.c, 3),
                     round(m.d, 3), round(m.e, 3), round(m.f, 3));
         } catch (Throwable t) {
-            log.debug("[MuPDF-Coord] 读取页面变换矩阵失败: {}", t.getMessage());
+            log.error("[MuPDF-Coord] 读取页面变换矩阵失败", t);
             return null;
         }
     }
@@ -1012,13 +1027,13 @@ public class MuPdfService implements AutoCloseable {
         try {
             name = fontNameResolver == null ? null : fontNameResolver.resolve(font);
         } catch (Throwable t) {
-            log.debug("[MuPDF-Coord] 解析可读字体名失败，回退为 MuPDF 原始名: {}", t.getMessage());
+            log.error("[MuPDF-Coord] 解析可读字体名失败，回退为 MuPDF 原始名", t);
         }
         if (name == null) {
             try {
                 name = font.getName();
             } catch (Throwable t) {
-                log.debug("[MuPDF-Coord] 读取 MuPDF 字体名失败: {}", t.getMessage());
+                log.error("[MuPDF-Coord] 读取 MuPDF 字体名失败", t);
             }
         }
         if (name == null || name.trim().isEmpty()) {
@@ -1032,7 +1047,7 @@ public class MuPdfService implements AutoCloseable {
             weight = font.isBold() ? "bold" : "normal";
             style = font.isItalic() ? "italic" : "normal";
         } catch (Throwable t) {
-            log.debug("[MuPDF-Coord] 读取字体样式失败，按默认 sans-serif/normal 处理: {}", t.getMessage());
+            log.error("[MuPDF-Coord] 读取字体样式失败，按默认 sans-serif/normal 处理", t);
         }
         return new FontInfo(name, family, weight, style, round(size));
     }

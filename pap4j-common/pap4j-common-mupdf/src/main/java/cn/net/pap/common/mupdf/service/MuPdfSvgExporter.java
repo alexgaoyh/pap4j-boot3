@@ -637,7 +637,7 @@ public final class MuPdfSvgExporter {
                     try {
                         readable = resolver == null ? null : resolver.resolve(font);
                     } catch (Throwable t) {
-                        log.debug("[MuPDF-SVG] 解析字体名失败，改用 MuPDF 原始名: {}", t.getMessage());
+                        log.error("[MuPDF-SVG] 解析字体名失败，改用 MuPDF 原始名", t);
                     }
                     glyphs.add(new GlyphRef(readable != null ? readable : safeFontName(font),
                             unicode, glyph, compose(ctm, trm)));
@@ -656,6 +656,7 @@ public final class MuPdfSvgExporter {
                 String name = font.getName();
                 return name == null || name.trim().isEmpty() ? "unknown" : name;
             } catch (Throwable t) {
+                log.error("[MuPDF-SVG] 读取 MuPDF 字体名失败，使用占位名", t);
                 return "unknown";
             }
         }
@@ -727,7 +728,7 @@ public final class MuPdfSvgExporter {
                 Transform imgTr = composeImageTransform(ctm);
                 images.add(new SvgImage(imgTr, bytes, img.getWidth(), img.getHeight()));
             } catch (Throwable t) {
-                log.warn("[MuPDF-SVG] 提取页面内嵌图片失败（已跳过该图片）", t);
+                log.error("[MuPDF-SVG] 提取页面内嵌图片失败（已跳过该图片）", t);
             } finally {
                 if (buf != null) {
                     try {
@@ -824,7 +825,7 @@ public final class MuPdfSvgExporter {
             path.walk(pathWalker(d, ctm));
         } catch (Throwable t) {
             // 单条路径的畸形指令不应当中断整页：保留已解析的子路径
-            log.warn("[MuPDF-SVG] 解析矢量路径失败（已保留部分子路径）: {}", t.getMessage());
+            log.error("[MuPDF-SVG] 解析矢量路径失败（已保留部分子路径）", t);
         }
         return d.toString();
     }
@@ -1061,7 +1062,7 @@ public final class MuPdfSvgExporter {
             return d.isEmpty() ? null : d;
         } catch (Throwable t) {
             // 字体文件与 PDF 不匹配 / gid 越界时 AWT 会报错：该字形回退为文本渲染
-            log.warn("[MuPDF-SVG] 提取字形轮廓失败（gid={}），该字符回退为文本渲染: {}", glyphId, t.getMessage());
+            log.error("[MuPDF-SVG] 提取字形轮廓失败（gid={}），该字符回退为文本渲染", glyphId, t);
             return null;
         }
     }

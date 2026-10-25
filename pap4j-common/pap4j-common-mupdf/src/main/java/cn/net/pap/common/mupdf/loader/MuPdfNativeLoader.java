@@ -126,7 +126,7 @@ public class MuPdfNativeLoader {
                     // SecurityManager / 容器安全策略禁止加载本地库：记录后继续尝试其它途径
                     log.debug("[MuPDF-Loader] 系统库路径加载被安全策略拒绝: {} -> {}", name, securityEx.getMessage());
                 } catch (Throwable t) {
-                    log.debug("[MuPDF-Loader] 系统库路径加载异常: {} -> {}", name, t.getMessage());
+                    log.error("[MuPDF-Loader] 系统库路径加载异常: {}", name, t);
                 }
             }
 
