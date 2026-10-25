@@ -23,10 +23,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-             <exclusion>
+            <exclusions>
+            <exclusion>
                 <groupId>org.apache.tomcat.embed</groupId>
                 <artifactId>tomcat-embed-websocket</artifactId>
-             </exclusion>
+            </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
