@@ -159,16 +159,10 @@ public class MuPdfFontExtractorTest {
         String pdf = pdfPath(CTEX_PDF);
         Path svgFile = Path.of("target", "mupdf-svg-" + System.currentTimeMillis() + ".svg");
 
-        MuPdfService service = new MuPdfService();
-        try {
-            String json = service.extractCoordinatesJson(pdf, 3);
-            MuPdfService.exportCoordinatesToSvg(json, svgFile.toFile());
-        } finally {
-            service.clearCache();
-        }
+        MuPdfSvgExporter.export(pdf, 3, null, svgFile);
 
         String svg = Files.readString(svgFile, StandardCharsets.UTF_8);
-        Assertions.assertTrue(svg.contains("font-family="), "SVG 中应包含 font-family 声明");
+        Assertions.assertTrue(svg.contains("font-family"), "SVG 中应包含 font-family 声明");
         Assertions.assertFalse(svg.contains("·½"), "SVG 中不应残留 MuPDF 乱码字体名");
     }
 

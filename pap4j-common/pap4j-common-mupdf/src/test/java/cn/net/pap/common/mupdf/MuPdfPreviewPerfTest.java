@@ -180,12 +180,7 @@ public class MuPdfPreviewPerfTest {
             Assertions.assertNotNull(json, file + " 提取的坐标 JSON 不应为空");
             Assertions.assertFalse(json.trim().isEmpty(), file + " 提取的坐标 JSON 内容不应为空");
 
-            // 纯根据提取出的坐标 JSON 反推还原生成 SVG 可视化文件，输出至 tmpdir
-            String baseName = file.substring(0, file.lastIndexOf('.'));
-            File svgFile = new File(outputDir, baseName + ".svg");
-            MuPdfService.exportCoordinatesToSvg(json, svgFile);
 
-            log.info(">> [{}] 耗时 {} ms | JSON 反推还原 SVG: {}", file, cost, svgFile.getAbsolutePath());
             log.info(">> [{}] 坐标 JSON: {}", file, json);
         }
     }
