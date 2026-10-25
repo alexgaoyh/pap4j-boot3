@@ -122,6 +122,11 @@ public class MuPdfNativeLoader {
                         return true;
                     }
                     lastError = probeEx;
+                } catch (SecurityException securityEx) {
+                    // SecurityManager / 容器安全策略禁止加载本地库：记录后继续尝试其它途径
+                    log.debug("[MuPDF-Loader] 系统库路径加载被安全策略拒绝: {} -> {}", name, securityEx.getMessage());
+                } catch (Throwable t) {
+                    log.debug("[MuPDF-Loader] 系统库路径加载异常: {} -> {}", name, t.getMessage());
                 }
             }
 
@@ -199,6 +204,9 @@ public class MuPdfNativeLoader {
                             }
                             lastError = e;
                             log.error("[MuPDF-Loader] 尝试加载备用文件失败: {}", libFile.getAbsolutePath(), e);
+                        } catch (Throwable t) {
+                            // 权限 / 安全策略 / 平台不支持等异常不应直接中止全部候选尝试
+                            log.error("[MuPDF-Loader] 加载备用文件异常（已跳过）: {}", libFile.getAbsolutePath(), t);
                         }
                     }
                 }
@@ -294,7 +302,10 @@ public class MuPdfNativeLoader {
         if (userHome != null && !userHome.isEmpty()) {
             dirs.add(new File(userHome, ".pap-mupdf" + File.separator + "bin" + File.separator + platform));
         }
-        dirs.add(new File(System.getProperty("java.io.tmpdir"), "pap-mupdf-native" + File.separator + platform));
+        String tmpDir = System.getProperty("java.io.tmpdir");
+        if (tmpDir != null && !tmpDir.isEmpty()) {
+            dirs.add(new File(tmpDir, "pap-mupdf-native" + File.separator + platform));
+        }
         return dirs;
     }
 
@@ -439,8 +450,8 @@ public class MuPdfNativeLoader {
     private static void loadQuietly(File lib) {
         try {
             System.load(lib.getAbsolutePath());
-        } catch (UnsatisfiedLinkError companionEx) {
-            if (!isAlreadyLoadedError(companionEx)) {
+        } catch (Throwable companionEx) {
+            if (!(companionEx instanceof UnsatisfiedLinkError) || !isAlreadyLoadedError((UnsatisfiedLinkError) companionEx)) {
                 log.debug("[MuPDF-Loader] 预加载附属运行库失败（主库加载时会再次尝试）: {}", lib.getName(), companionEx);
             }
         }

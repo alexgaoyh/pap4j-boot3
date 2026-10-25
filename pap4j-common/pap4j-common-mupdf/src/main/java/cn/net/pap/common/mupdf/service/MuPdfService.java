@@ -163,9 +163,6 @@ public class MuPdfService implements AutoCloseable {
         Page page = null;
         StructuredText st = null;
         try {
-            int pageCount = managed.doc.countPages();
-            checkPageNumber(pageNum, pageCount);
-
             // 解析本页字体资源，把 MuPDF 的乱码字体名（GBK 字节被 JNI 截断）映射回可读名称
             MuPdfFontExtractor.FontNameResolver fontNameResolver = null;
             if (managed.doc instanceof PDFDocument pdfDocument) {
@@ -177,9 +174,19 @@ public class MuPdfService implements AutoCloseable {
                 }
             }
 
-            page = managed.doc.loadPage(pageNum);
+            page = loadPageChecked(managed, pageNum);
             st = page.toStructuredText();
-            PageResult pageResult = buildPageResult(st, pageNum + 1, page, fontNameResolver);
+            if (st == null) {
+                throw new IllegalStateException("第 " + (pageNum + 1) + " 页无法生成结构化文本（MuPDF 返回 null）: " + pdfPath);
+            }
+            PageResult pageResult;
+            try {
+                pageResult = buildPageResult(st, pageNum + 1, page, fontNameResolver);
+            } catch (RuntimeException walkEx) {
+                // 遍历中断时补充页码与文件上下文，避免调用方拿到无信息量的底层异常
+                throw new IllegalStateException("解析第 " + (pageNum + 1) + " 页结构化文本失败: " + pdfPath
+                                                + " -> " + walkEx.getMessage(), walkEx);
+            }
             return new CoordinatesResult(pdfPath, List.of(pageResult));
 
         } finally {
@@ -282,8 +289,12 @@ public class MuPdfService implements AutoCloseable {
                                                 + "请降低 DPI 或改用 renderPageToPng / renderPageToWebp");
             }
 
+            byte[] samples = pix.getSamples();
+            if (samples == null) {
+                throw new IllegalStateException("读取裸点阵失败：MuPDF 返回空的样本缓冲区");
+            }
             return new RawPageImage(
-                    pix.getSamples(),
+                    samples,
                     pix.getWidth(),
                     pix.getHeight(),
                     pix.getNumberOfComponents(),
@@ -357,6 +368,9 @@ public class MuPdfService implements AutoCloseable {
         ManagedDoc managed = acquire(pdfPath);
         try {
             return managed.doc.countPages();
+        } catch (RuntimeException countEx) {
+            throw new IllegalStateException("读取 PDF 页数失败（文件可能已损坏或被加密）: " + pdfPath
+                                            + " -> " + countEx.getMessage(), countEx);
         } finally {
             release(managed);
             Reference.reachabilityFence(managed);
@@ -471,7 +485,18 @@ public class MuPdfService implements AutoCloseable {
     private Page loadPageChecked(ManagedDoc managed, int pageNum) {
         int pageCount = managed.doc.countPages();
         checkPageNumber(pageNum, pageCount);
-        return managed.doc.loadPage(pageNum);
+        Page page;
+        try {
+            page = managed.doc.loadPage(pageNum);
+        } catch (RuntimeException loadEx) {
+            throw new IllegalStateException("加载第 " + (pageNum + 1) + " 页失败（共 " + pageCount
+                                            + " 页）: " + managed.cacheKey + " -> " + loadEx.getMessage(), loadEx);
+        }
+        if (page == null) {
+            throw new IllegalStateException("加载第 " + (pageNum + 1) + " 页失败：MuPDF 返回空页面句柄: "
+                                            + managed.cacheKey);
+        }
+        return page;
     }
 
     private static void checkPageNumber(int pageNum, int pageCount) {
@@ -481,13 +506,39 @@ public class MuPdfService implements AutoCloseable {
     }
 
     /**
+     * 打开 PDF 文档并补充失败上下文（加密 / 损坏 / 格式不支持）。
+     *
+     * @param file PDF 文件
+     * @return 原生文档句柄
+     * @throws IllegalStateException 打开失败
+     */
+    private static Document openDocument(File file) {
+        Document document;
+        try {
+            document = Document.openDocument(file.getPath());
+        } catch (Throwable t) {
+            throw new IllegalStateException("打开 PDF 失败（文件损坏、被加密或格式不支持）: "
+                                            + file.getAbsolutePath() + " -> " + t.getMessage(), t);
+        }
+        if (document == null) {
+            throw new IllegalStateException("打开 PDF 失败：MuPDF 返回空文档句柄: " + file.getAbsolutePath());
+        }
+        return document;
+    }
+
+    /**
      * 按 DPI 光栅化单页，并在分配堆外内存之前做像素规模护栏。
      */
     private Pixmap renderPixmap(Page page, int dpi) {
         int effectiveDpi = dpi > 0 ? dpi : DEFAULT_DPI;
         float scale = effectiveDpi / 72.0f;
 
-        Rect bounds = page.getBounds();
+        Rect bounds;
+        try {
+            bounds = page.getBounds();
+        } catch (RuntimeException boundsEx) {
+            throw new IllegalStateException("读取页面边界框失败 -> " + boundsEx.getMessage(), boundsEx);
+        }
         if (bounds == null || !bounds.isValid()) {
             throw new IllegalStateException("无法获取页面有效边界框 (bounds=" + bounds + ")");
         }
@@ -500,7 +551,17 @@ public class MuPdfService implements AutoCloseable {
                                                + " 调整），请降低 DPI");
         }
 
-        return page.toPixmap(new Matrix(scale, scale), ColorSpace.DeviceRGB, false);
+        Pixmap pixmap;
+        try {
+            pixmap = page.toPixmap(new Matrix(scale, scale), ColorSpace.DeviceRGB, false);
+        } catch (RuntimeException renderEx) {
+            throw new IllegalStateException("光栅化页面失败（" + effectiveDpi + " DPI） -> "
+                                            + renderEx.getMessage(), renderEx);
+        }
+        if (pixmap == null) {
+            throw new IllegalStateException("光栅化页面失败：MuPDF 返回空 Pixmap（" + effectiveDpi + " DPI）");
+        }
+        return pixmap;
     }
 
     private static String webpFormat(int quality) {
@@ -903,8 +964,16 @@ public class MuPdfService implements AutoCloseable {
     }
 
     private static double round(double val, int decimals) {
+        // NaN / Infinity 会污染 JSON（Jackson 输出 NaN 导致前端 JSON.parse 失败），统一归零
+        if (!Double.isFinite(val)) {
+            return 0.0;
+        }
         double scale = Math.pow(10, decimals);
-        return Math.round(val * scale) / scale;
+        double scaled = val * scale;
+        if (!Double.isFinite(scaled)) {
+            return val;
+        }
+        return Math.round(scaled) / scale;
     }
 
     private static Bbox toBbox(QuadInfo quad) {
@@ -939,13 +1008,32 @@ public class MuPdfService implements AutoCloseable {
         if (font == null) {
             return defaultFont();
         }
-        String name = fontNameResolver == null ? null : fontNameResolver.resolve(font);
-        if (name == null) {
-            name = font.getName();
+        String name = null;
+        try {
+            name = fontNameResolver == null ? null : fontNameResolver.resolve(font);
+        } catch (Throwable t) {
+            log.debug("[MuPDF-Coord] 解析可读字体名失败，回退为 MuPDF 原始名: {}", t.getMessage());
         }
-        String family = font.isMono() ? "monospace" : (font.isSerif() ? "serif" : "sans-serif");
-        String weight = font.isBold() ? "bold" : "normal";
-        String style = font.isItalic() ? "italic" : "normal";
+        if (name == null) {
+            try {
+                name = font.getName();
+            } catch (Throwable t) {
+                log.debug("[MuPDF-Coord] 读取 MuPDF 字体名失败: {}", t.getMessage());
+            }
+        }
+        if (name == null || name.trim().isEmpty()) {
+            name = "unknown";
+        }
+        String family = "sans-serif";
+        String weight = "normal";
+        String style = "normal";
+        try {
+            family = font.isMono() ? "monospace" : (font.isSerif() ? "serif" : "sans-serif");
+            weight = font.isBold() ? "bold" : "normal";
+            style = font.isItalic() ? "italic" : "normal";
+        } catch (Throwable t) {
+            log.debug("[MuPDF-Coord] 读取字体样式失败，按默认 sans-serif/normal 处理: {}", t.getMessage());
+        }
         return new FontInfo(name, family, weight, style, round(size));
     }
 
@@ -1005,7 +1093,7 @@ public class MuPdfService implements AutoCloseable {
 
         // 缓存关闭时直接走私有文档快路径，绕过重试与表锁
         if (maxCachedDocs <= 0) {
-            ManagedDoc privateDoc = new ManagedDoc(Document.openDocument(file.getPath()), key, lastModified, length);
+            ManagedDoc privateDoc = new ManagedDoc(openDocument(file), key, lastModified, length);
             privateDoc.uncached = true;
             privateDoc.lock.lock();
             return privateDoc;
@@ -1031,7 +1119,7 @@ public class MuPdfService implements AutoCloseable {
 
         // 极端并发风暴下的兜底：使用一份私有文档，用后即焚，绝不进入缓存表
         log.warn("[MuPDF] 文档缓存并发淘汰过于频繁，降级为私有文档模式: {}", key);
-        ManagedDoc privateDoc = new ManagedDoc(Document.openDocument(file.getPath()), key, lastModified, length);
+        ManagedDoc privateDoc = new ManagedDoc(openDocument(file), key, lastModified, length);
         privateDoc.uncached = true;
         privateDoc.lock.lock();
         return privateDoc;
@@ -1039,7 +1127,7 @@ public class MuPdfService implements AutoCloseable {
 
     private ManagedDoc obtain(String key, File file, long lastModified, long length) {
         if (maxCachedDocs <= 0) {
-            ManagedDoc privateDoc = new ManagedDoc(Document.openDocument(file.getPath()), key, lastModified, length);
+            ManagedDoc privateDoc = new ManagedDoc(openDocument(file), key, lastModified, length);
             privateDoc.uncached = true;
             return privateDoc;
         }
@@ -1070,7 +1158,7 @@ public class MuPdfService implements AutoCloseable {
 
             // 慢路径：原生打开（fopen + 解析 xref）放在缓存锁之外。
             // 放到锁内会让一次慢盘 / 网络文件系统的 open 阻塞全部并发请求，属于典型的故障放大点。
-            ManagedDoc fresh = new ManagedDoc(Document.openDocument(file.getPath()), key, lastModified, length);
+            ManagedDoc fresh = new ManagedDoc(openDocument(file), key, lastModified, length);
             try {
                 synchronized (cacheLock) {
                     if (closed) {

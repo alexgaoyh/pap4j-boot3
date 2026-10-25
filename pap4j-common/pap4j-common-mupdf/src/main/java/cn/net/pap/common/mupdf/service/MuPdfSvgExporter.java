@@ -5,6 +5,7 @@ import com.artifex.mupdf.fitz.ColorSpace;
 import com.artifex.mupdf.fitz.DefaultColorSpaces;
 import com.artifex.mupdf.fitz.Device;
 import com.artifex.mupdf.fitz.Document;
+import com.artifex.mupdf.fitz.Font;
 import com.artifex.mupdf.fitz.Image;
 import com.artifex.mupdf.fitz.Matrix;
 import com.artifex.mupdf.fitz.PDFDocument;
@@ -28,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -52,6 +54,19 @@ import java.util.stream.Stream;
  * {@code 方正书宋_GBK.ttf}、{@code DY1+ZGXSfW-1.pfa}。Type1 字体文件可直接使用
  * {@link MuPdfFontExtractor#exportFonts(String, Path)} 导出的结果。</p>
  *
+ * <h3>异常处理与降级策略</h3>
+ * <p>SVG 还原定位为「尽力而为」：<b>单个字形 / 单条路径 / 单张图片 / 单个字体文件</b>
+ * 的失败只降级该元素（跳过或退回文本渲染）并记录带页码与文件路径的日志，
+ * 不会中断整页导出；<b>页面级</b>失败（无法打开文档、页码越界、写出失败）
+ * 则抛出携带上下文的异常。所有资源上限均可用 JVM {@code -D} 参数调整：</p>
+ * <ul>
+ *   <li>{@code pap.mupdf.svg.maxImagePixels}（默认 4000 万）：单张图片光栅化像素上限；</li>
+ *   <li>{@code pap.mupdf.svg.maxImages}（默认 128）：单页内嵌图片数量上限；</li>
+ *   <li>{@code pap.mupdf.svg.maxImageBytes}（默认 48MB）：单页内嵌图片字节上限；</li>
+ *   <li>{@code pap.mupdf.svg.maxPaths}（默认 20 万）：单页矢量路径数量上限；</li>
+ *   <li>{@code pap.mupdf.svg.maxFontBytes}（默认 32MB）：单字体文件字节上限。</li>
+ * </ul>
+ *
  * @author alexgaoyh
  */
 public final class MuPdfSvgExporter {
@@ -67,6 +82,31 @@ public final class MuPdfSvgExporter {
      * 轮廓提取使用的字体渲染上下文。
      */
     private static final FontRenderContext FONT_RENDER_CONTEXT = new FontRenderContext(null, true, true);
+
+    /**
+     * 单张图片光栅化像素上限，避免畸形 PDF 的图像容器把堆/堆外内存抽爆。
+     */
+    private static final long MAX_IMAGE_PIXELS = Long.getLong("pap.mupdf.svg.maxImagePixels", 40_000_000L);
+
+    /**
+     * 单页内嵌图片数量上限。
+     */
+    private static final int MAX_IMAGE_COUNT = Integer.getInteger("pap.mupdf.svg.maxImages", 128);
+
+    /**
+     * 单页内嵌图片原始字节总量上限（超出后剩余图片被跳过，避免 SVG 体积与内存失控）。
+     */
+    private static final long MAX_IMAGE_BYTES = Long.getLong("pap.mupdf.svg.maxImageBytes", 48L * 1024 * 1024);
+
+    /**
+     * 单页矢量路径数量上限（表格线 / 公式线条密集页的保护）。
+     */
+    private static final int MAX_PATH_COUNT = Integer.getInteger("pap.mupdf.svg.maxPaths", 200_000);
+
+    /**
+     * 单个字体文件字节上限。
+     */
+    private static final long MAX_FONT_FILE_BYTES = Long.getLong("pap.mupdf.svg.maxFontBytes", 32L * 1024 * 1024);
 
     private MuPdfSvgExporter() {
     }
@@ -103,18 +143,43 @@ public final class MuPdfSvgExporter {
      * @throws IllegalStateException    坐标提取失败
      */
     public static ExportResult export(String pdfPath, int pageNum, Path fontDir, Path svgFile) throws IOException {
+        if (pdfPath == null || pdfPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("PDF 路径不能为空");
+        }
+        if (pageNum < 0) {
+            throw new IllegalArgumentException("页码必须 >= 0（当前 " + pageNum + "）");
+        }
         if (svgFile == null) {
             throw new IllegalArgumentException("SVG 输出文件不能为空");
         }
 
+        Path effectiveFontDir = fontDir;
+        if (fontDir != null && !Files.isDirectory(fontDir)) {
+            log.warn("[MuPDF-SVG] 字体目录不存在或不是目录，忽略字体并统一回退宋体: {}", fontDir.toAbsolutePath());
+            effectiveFontDir = null;
+        }
+
         MuPdfService service = new MuPdfService();
         try {
-            MuPdfService.PageResult page = service.extractCoordinates(pdfPath, pageNum).pages().get(0);
+            MuPdfService.PageResult page;
+            try {
+                List<MuPdfService.PageResult> pages = service.extractCoordinates(pdfPath, pageNum).pages();
+                if (pages == null || pages.isEmpty()) {
+                    throw new IllegalStateException("坐标提取结果为空");
+                }
+                page = pages.get(0);
+            } catch (RuntimeException coordEx) {
+                throw new IllegalStateException("提取第 " + (pageNum + 1) + " 页坐标失败: " + pdfPath
+                                                + " -> " + coordEx.getMessage(), coordEx);
+            }
             List<MuPdfService.CharResult> chars = flatten(page);
             Set<String> fontNames = collectFontNames(chars);
+            if (chars.isEmpty()) {
+                log.warn("[MuPDF-SVG] 第 {} 页未提取到任何字符，将只输出矢量/图片图层: {}", pageNum + 1, pdfPath);
+            }
 
-            Map<String, WebFont> webFonts = loadWebFonts(fontDir);
-            Map<String, java.awt.Font> type1Fonts = loadType1Fonts(fontDir);
+            Map<String, WebFont> webFonts = loadWebFonts(effectiveFontDir);
+            Map<String, java.awt.Font> type1Fonts = loadType1Fonts(effectiveFontDir);
             PageGraphics graphics = collectPageGraphics(pdfPath, pageNum);
             Map<Integer, GlyphRef> glyphs = matchGlyphs(graphics.glyphs(), chars, pageNum);
 
@@ -141,11 +206,16 @@ public final class MuPdfSvgExporter {
 
             String svg = buildSvg(page, chars, glyphs, graphics.paths(), graphics.images(),
                     type1Fonts, classByFont, css);
-            Path parent = svgFile.toAbsolutePath().getParent();
-            if (parent != null) {
-                Files.createDirectories(parent);
+            try {
+                Path parent = svgFile.toAbsolutePath().getParent();
+                if (parent != null) {
+                    Files.createDirectories(parent);
+                }
+                Files.writeString(svgFile, svg, StandardCharsets.UTF_8);
+            } catch (IOException writeEx) {
+                throw new IOException("写出 SVG 失败: " + svgFile.toAbsolutePath()
+                                      + " -> " + writeEx.getMessage(), writeEx);
             }
-            Files.writeString(svgFile, svg, StandardCharsets.UTF_8);
 
             log.info("[MuPDF-SVG] 导出完成: {} 第 {} 页 | 矢量路径 {} 条 | 内嵌图片 {} 张 | 轮廓字体 {} 个 | 内嵌字体 {} 个 | 回退宋体 {} 个 | {}",
                     pdfPath, pageNum + 1, graphics.paths().size(), graphics.images().size(),
@@ -165,13 +235,20 @@ public final class MuPdfSvgExporter {
                                    Map<Integer, GlyphRef> glyphs, List<SvgPath> paths, List<SvgImage> images,
                                    Map<String, java.awt.Font> type1Fonts,
                                    Map<String, String> classByFont, StringBuilder css) {
-        double width = page.width() > 0 ? page.width() : 595.0;
-        double height = page.height() > 0 ? page.height() : 842.0;
+        if (page == null) {
+            // 上层已校验，这里仅作兜底，避免 NPE 掩盖真实原因
+            throw new IllegalArgumentException("页面坐标结果不能为空");
+        }
+        double width = finiteOrDefault(page.width(), 595.0);
+        double height = finiteOrDefault(page.height(), 842.0);
+        List<MuPdfService.CharResult> safeChars = chars == null ? List.of() : chars;
+        Map<String, String> safeClasses = classByFont == null ? Map.of() : classByFont;
+        Map<String, java.awt.Font> safeType1Fonts = type1Fonts == null ? Map.of() : type1Fonts;
 
         StringBuilder defs = new StringBuilder(8192);
         StringBuilder body = new StringBuilder(16384);
         Map<String, String> outlinedGlyphs = new LinkedHashMap<>();
-        if (!css.isEmpty()) {
+        if (css != null && !css.isEmpty()) {
             defs.append("<style type=\"text/css\"><![CDATA[\n").append(css).append("]]></style>\n");
         }
 
@@ -193,28 +270,40 @@ public final class MuPdfSvgExporter {
         }
 
         // 4. 文字图层（Type1 轮廓 + 文本）
-        for (int index = 0; index < chars.size(); index++) {
-            MuPdfService.CharResult ch = chars.get(index);
+        Map<Integer, GlyphRef> safeGlyphs = glyphs == null ? Map.of() : glyphs;
+        Set<String> unoutlinedGlyphs = new HashSet<>();
+        for (int index = 0; index < safeChars.size(); index++) {
+            MuPdfService.CharResult ch = safeChars.get(index);
             if (ch == null || ch.c() == null || ch.c().isEmpty()) {
                 continue;
             }
-            GlyphRef glyph = glyphs.get(index);
-            java.awt.Font type1Font = ch.font() == null ? null : type1Fonts.get(ch.font());
+            GlyphRef glyph = safeGlyphs.get(index);
+            java.awt.Font type1Font = ch.font() == null ? null : safeType1Fonts.get(ch.font());
             if (glyph != null && glyph.gid() >= 0 && type1Font != null) {
                 String key = ch.font() + '|' + glyph.gid();
                 String pathId = outlinedGlyphs.get(key);
-                if (pathId == null) {
-                    pathId = "g" + outlinedGlyphs.size();
-                    outlinedGlyphs.put(key, pathId);
-                    defs.append("<path id=\"").append(pathId).append("\" d=\"")
-                            .append(toSvgPath(type1Font, glyph.gid())).append("\"/>\n");
+                if (pathId == null && !unoutlinedGlyphs.contains(key)) {
+                    // 轮廓提取失败（字体文件与 PDF 不匹配 / gid 越界）时该字形退回文本渲染，不中断整页导出
+                    String pathData = toSvgPath(type1Font, glyph.gid());
+                    if (pathData == null) {
+                        unoutlinedGlyphs.add(key);
+                    } else {
+                        pathId = "g" + outlinedGlyphs.size();
+                        outlinedGlyphs.put(key, pathId);
+                        defs.append("<path id=\"").append(pathId).append("\" d=\"")
+                                .append(pathData).append("\"/>\n");
+                    }
                 }
-                appendGlyphUse(body, pathId, glyph);
-            } else if (glyph != null) {
+                if (pathId != null) {
+                    appendGlyphUse(body, pathId, glyph);
+                    continue;
+                }
+            }
+            if (glyph != null) {
                 // 非 Type1 但已对齐到 glyph：同样用完整 trm，保证拉伸/旋转/剪切一致
-                appendTextWithMatrix(body, ch, classByFont, glyph);
+                appendTextWithMatrix(body, ch, safeClasses, glyph);
             } else {
-                appendText(body, ch, classByFont);
+                appendText(body, ch, safeClasses);
             }
         }
 
@@ -265,12 +354,15 @@ public final class MuPdfSvgExporter {
 
     private static List<MuPdfService.CharResult> flatten(MuPdfService.PageResult page) {
         List<MuPdfService.CharResult> chars = new ArrayList<>();
+        if (page == null || page.blocks() == null) {
+            return chars;
+        }
         for (MuPdfService.BlockResult block : page.blocks()) {
-            if (block.lines() == null) {
+            if (block == null || block.lines() == null) {
                 continue;
             }
             for (MuPdfService.LineResult line : block.lines()) {
-                if (line.chars() == null) {
+                if (line == null || line.chars() == null) {
                     continue;
                 }
                 for (MuPdfService.CharResult ch : line.chars()) {
@@ -285,8 +377,11 @@ public final class MuPdfSvgExporter {
 
     private static Set<String> collectFontNames(List<MuPdfService.CharResult> chars) {
         Set<String> names = new LinkedHashSet<>();
+        if (chars == null) {
+            return names;
+        }
         for (MuPdfService.CharResult ch : chars) {
-            if (ch.font() != null && !ch.font().isEmpty()) {
+            if (ch != null && ch.font() != null && !ch.font().isEmpty()) {
                 names.add(ch.font());
             }
         }
@@ -306,7 +401,7 @@ public final class MuPdfSvgExporter {
     private static Map<Integer, GlyphRef> matchGlyphs(List<GlyphRef> glyphs,
                                                      List<MuPdfService.CharResult> chars,
                                                      int pageNum) {
-        if (chars.isEmpty() || glyphs.isEmpty()) {
+        if (chars == null || chars.isEmpty() || glyphs == null || glyphs.isEmpty()) {
             return Map.of();
         }
 
@@ -321,15 +416,20 @@ public final class MuPdfSvgExporter {
 
             int charCodePoint = ch.c().codePointAt(0);
 
-            // 1. 若当前字符为空白，但底层 glyph 不是空白，说明是 StructuredText 合成的词间距空格，直接跳过
-            if (isWhitespace(charCodePoint)) {
-                GlyphRef currentGlyph = glyphs.get(glyphIndex);
-                if (!isWhitespace(currentGlyph.unicode())) {
-                    continue;
-                }
+            GlyphRef currentGlyph = glyphs.get(glyphIndex);
+            if (currentGlyph == null) {
+                // 字形槽位为空（异常采集结果）：跳过该槽位并重试当前字符
+                glyphIndex++;
+                charIndex--;
+                continue;
             }
 
-            GlyphRef glyph = glyphs.get(glyphIndex);
+            // 1. 若当前字符为空白，但底层 glyph 不是空白，说明是 StructuredText 合成的词间距空格，直接跳过
+            if (isWhitespace(charCodePoint) && !isWhitespace(currentGlyph.unicode())) {
+                continue;
+            }
+
+            GlyphRef glyph = currentGlyph;
 
             // 2. 比对实际字符（Unicode 匹配或字体名匹配）
             if (normalizeSpace(glyph.unicode()) == normalizeSpace(charCodePoint)
@@ -341,7 +441,10 @@ public final class MuPdfSvgExporter {
                 int syncOffset = findSyncOffset(charCodePoint, glyphs, glyphIndex, 3);
                 if (syncOffset > 0) {
                     glyphIndex += syncOffset;
-                    result.put(charIndex, glyphs.get(glyphIndex));
+                    GlyphRef synced = glyphs.get(glyphIndex);
+                    if (synced != null) {
+                        result.put(charIndex, synced);
+                    }
                     glyphIndex++;
                 }
             }
@@ -360,7 +463,8 @@ public final class MuPdfSvgExporter {
     private static int findSyncOffset(int charCodePoint, List<GlyphRef> glyphs, int glyphIndex, int maxLookahead) {
         int target = normalizeSpace(charCodePoint);
         for (int offset = 1; offset <= maxLookahead && glyphIndex + offset < glyphs.size(); offset++) {
-            if (normalizeSpace(glyphs.get(glyphIndex + offset).unicode()) == target) {
+            GlyphRef candidate = glyphs.get(glyphIndex + offset);
+            if (candidate != null && normalizeSpace(candidate.unicode()) == target) {
                 return offset;
             }
         }
@@ -372,25 +476,62 @@ public final class MuPdfSvgExporter {
         List<SvgPath> paths = new ArrayList<>();
         List<SvgImage> images = new ArrayList<>();
 
-        Document doc = Document.openDocument(pdfPath);
+        Document doc = null;
         try {
+            doc = Document.openDocument(pdfPath);
             if (!(doc instanceof PDFDocument pdf)) {
                 return new PageGraphics(glyphs, paths, images);
             }
-            MuPdfFontExtractor.FontNameResolver resolver = MuPdfFontExtractor.pageFontNameResolver(pdf, pageNum);
-            Page page = pdf.loadPage(pageNum);
+
+            MuPdfFontExtractor.FontNameResolver resolver;
+            try {
+                resolver = MuPdfFontExtractor.pageFontNameResolver(pdf, pageNum);
+            } catch (Throwable t) {
+                log.error("[MuPDF-SVG] 构建第 {} 页字体名解析器失败，改用 MuPDF 原始字体名", pageNum + 1, t);
+                resolver = null;
+            }
+
+            Page page;
+            try {
+                page = pdf.loadPage(pageNum);
+            } catch (Throwable t) {
+                log.error("[MuPDF-SVG] 加载第 {} 页失败，图形图层（矢量/图片/字形对齐）将被跳过: {}",
+                        pageNum + 1, pdfPath, t);
+                return new PageGraphics(glyphs, paths, images);
+            }
+
             try {
                 GlyphCollectorDevice device = new GlyphCollectorDevice(resolver, glyphs, paths, images);
                 try {
                     page.run(device, Matrix.Identity());
+                } catch (Throwable t) {
+                    // 内容流中断时保留已采集部分：文字仍可回退为 <text> 输出
+                    log.error("[MuPDF-SVG] 遍历第 {} 页内容流中断，保留已采集的 {} 个字形 / {} 条路径 / {} 张图片",
+                            pageNum + 1, glyphs.size(), paths.size(), images.size(), t);
                 } finally {
-                    device.destroy();
+                    try {
+                        device.destroy();
+                    } catch (Throwable t) {
+                        log.error("[MuPDF-SVG] 释放采集设备句柄失败", t);
+                    }
                 }
             } finally {
-                page.destroy();
+                try {
+                    page.destroy();
+                } catch (Throwable t) {
+                    log.error("[MuPDF-SVG] 释放页面句柄失败", t);
+                }
             }
+        } catch (Throwable t) {
+            log.error("[MuPDF-SVG] 采集第 {} 页图形失败（导出继续，仅文字图层）: {}", pageNum + 1, pdfPath, t);
         } finally {
-            doc.destroy();
+            if (doc != null) {
+                try {
+                    doc.destroy();
+                } catch (Throwable t) {
+                    log.error("[MuPDF-SVG] 释放文档句柄失败: {}", pdfPath, t);
+                }
+            }
         }
         return new PageGraphics(glyphs, paths, images);
     }
@@ -411,6 +552,9 @@ public final class MuPdfSvgExporter {
         private final List<GlyphRef> glyphs;
         private final List<SvgPath> paths;
         private final List<SvgImage> images;
+        private long imageBytes;
+        private boolean imageLimitWarned;
+        private boolean pathLimitWarned;
 
         private GlyphCollectorDevice(MuPdfFontExtractor.FontNameResolver resolver,
                                      List<GlyphRef> glyphs, List<SvgPath> paths, List<SvgImage> images) {
@@ -426,7 +570,14 @@ public final class MuPdfSvgExporter {
 
         @Override
         public void fillPath(com.artifex.mupdf.fitz.Path path, boolean evenOdd, Matrix ctm, ColorSpace cs, float[] color, float alpha, int cp) {
-            if (path == null) {
+            if (path == null || ctm == null) {
+                return;
+            }
+            if (paths.size() >= MAX_PATH_COUNT) {
+                if (!pathLimitWarned) {
+                    pathLimitWarned = true;
+                    log.warn("[MuPDF-SVG] 矢量路径数达到上限 {}，后续路径将被跳过（可通过 -Dpap.mupdf.svg.maxPaths 调整）", MAX_PATH_COUNT);
+                }
                 return;
             }
             String d = toPathData(path, ctm);
@@ -439,7 +590,14 @@ public final class MuPdfSvgExporter {
 
         @Override
         public void strokePath(com.artifex.mupdf.fitz.Path path, StrokeState stroke, Matrix ctm, ColorSpace cs, float[] color, float alpha, int cp) {
-            if (path == null) {
+            if (path == null || ctm == null) {
+                return;
+            }
+            if (paths.size() >= MAX_PATH_COUNT) {
+                if (!pathLimitWarned) {
+                    pathLimitWarned = true;
+                    log.warn("[MuPDF-SVG] 矢量路径数达到上限 {}，后续路径将被跳过（可通过 -Dpap.mupdf.svg.maxPaths 调整）", MAX_PATH_COUNT);
+                }
                 return;
             }
             String d = toPathData(path, ctm);
@@ -467,11 +625,39 @@ public final class MuPdfSvgExporter {
 
         @Override
         public void fillText(Text text, Matrix ctm, ColorSpace cs, float[] color, float alpha, int cp) {
-            text.walk((font, trm, glyph, unicode, wmode) -> {
-                String readable = resolver.resolve(font);
-                Transform display = compose(ctm, trm);
-                glyphs.add(new GlyphRef(readable != null ? readable : font.getName(), unicode, glyph, display));
-            });
+            if (text == null || ctm == null) {
+                return;
+            }
+            try {
+                text.walk((font, trm, glyph, unicode, wmode) -> {
+                    if (font == null || trm == null) {
+                        return;
+                    }
+                    String readable = null;
+                    try {
+                        readable = resolver == null ? null : resolver.resolve(font);
+                    } catch (Throwable t) {
+                        log.debug("[MuPDF-SVG] 解析字体名失败，改用 MuPDF 原始名: {}", t.getMessage());
+                    }
+                    glyphs.add(new GlyphRef(readable != null ? readable : safeFontName(font),
+                            unicode, glyph, compose(ctm, trm)));
+                });
+            } catch (Throwable t) {
+                // 单个文本对象遍历失败只丢失该对象，不影响整页其他文字
+                log.error("[MuPDF-SVG] 遍历文本对象失败（该文本对象已被跳过）", t);
+            }
+        }
+
+        /**
+         * 安全读取 MuPDF 运行期字体名，失败时返回占位名。
+         */
+        private static String safeFontName(Font font) {
+            try {
+                String name = font.getName();
+                return name == null || name.trim().isEmpty() ? "unknown" : name;
+            } catch (Throwable t) {
+                return "unknown";
+            }
         }
 
         @Override
@@ -496,23 +682,52 @@ public final class MuPdfSvgExporter {
 
         @Override
         public void fillImage(Image img, Matrix ctm, float alpha, int cp) {
-            if (img == null) {
+            if (img == null || ctm == null) {
+                return;
+            }
+            if (images.size() >= MAX_IMAGE_COUNT) {
+                if (!imageLimitWarned) {
+                    imageLimitWarned = true;
+                    log.warn("[MuPDF-SVG] 内嵌图片数达到上限 {}，后续图片将被跳过（可通过 -Dpap.mupdf.svg.maxImages 调整）", MAX_IMAGE_COUNT);
+                }
+                return;
+            }
+            long pixels = (long) img.getWidth() * (long) img.getHeight();
+            if (pixels <= 0 || pixels > MAX_IMAGE_PIXELS) {
+                log.warn("[MuPDF-SVG] 图片尺寸 {}x{} 像素超出安全上限 {}，已跳过该图片",
+                        img.getWidth(), img.getHeight(), MAX_IMAGE_PIXELS);
                 return;
             }
             Pixmap pix = null;
             Buffer buf = null;
             try {
                 pix = img.toPixmap();
-                if (pix != null) {
-                    buf = pix.asPNG();
-                    if (buf != null) {
-                        byte[] bytes = buf.asByteArray();
-                        Transform imgTr = composeImageTransform(ctm);
-                        images.add(new SvgImage(imgTr, bytes, img.getWidth(), img.getHeight()));
-                    }
+                if (pix == null) {
+                    log.warn("[MuPDF-SVG] 图片光栅化返回空 Pixmap，已跳过该图片");
+                    return;
                 }
+                buf = pix.asPNG();
+                if (buf == null) {
+                    log.warn("[MuPDF-SVG] 图片 PNG 编码返回空缓冲区，已跳过该图片");
+                    return;
+                }
+                byte[] bytes = buf.asByteArray();
+                if (bytes == null || bytes.length == 0) {
+                    log.warn("[MuPDF-SVG] 图片 PNG 编码结果为空，已跳过该图片");
+                    return;
+                }
+                if (imageBytes + bytes.length > MAX_IMAGE_BYTES) {
+                    if (!imageLimitWarned) {
+                        imageLimitWarned = true;
+                        log.warn("[MuPDF-SVG] 内嵌图片总字节数达到上限 {}，后续图片将被跳过（可通过 -Dpap.mupdf.svg.maxImageBytes 调整）", MAX_IMAGE_BYTES);
+                    }
+                    return;
+                }
+                imageBytes += bytes.length;
+                Transform imgTr = composeImageTransform(ctm);
+                images.add(new SvgImage(imgTr, bytes, img.getWidth(), img.getHeight()));
             } catch (Throwable t) {
-                log.warn("[MuPDF-SVG] 提取页面内嵌图片失败", t);
+                log.warn("[MuPDF-SVG] 提取页面内嵌图片失败（已跳过该图片）", t);
             } finally {
                 if (buf != null) {
                     try {
@@ -601,11 +816,21 @@ public final class MuPdfSvgExporter {
     }
 
     private static String toPathData(com.artifex.mupdf.fitz.Path path, Matrix ctm) {
-        if (path == null) {
+        if (path == null || ctm == null) {
             return "";
         }
         StringBuilder d = new StringBuilder(64);
-        path.walk(new com.artifex.mupdf.fitz.PathWalker() {
+        try {
+            path.walk(pathWalker(d, ctm));
+        } catch (Throwable t) {
+            // 单条路径的畸形指令不应当中断整页：保留已解析的子路径
+            log.warn("[MuPDF-SVG] 解析矢量路径失败（已保留部分子路径）: {}", t.getMessage());
+        }
+        return d.toString();
+    }
+
+    private static com.artifex.mupdf.fitz.PathWalker pathWalker(StringBuilder d, Matrix ctm) {
+        return new com.artifex.mupdf.fitz.PathWalker() {
             @Override
             public void moveTo(float x, float y) {
                 float tx = ctm.a * x + ctm.c * y + ctm.e;
@@ -649,8 +874,7 @@ public final class MuPdfSvgExporter {
                 }
                 d.append('Z');
             }
-        });
-        return d.toString();
+        };
     }
 
     private static String svgColor(ColorSpace cs, float[] color) {
@@ -678,6 +902,9 @@ public final class MuPdfSvgExporter {
     }
 
     private static int clampColor(float val) {
+        if (!Float.isFinite(val)) {
+            return 0;
+        }
         int v = Math.round(val * 255.0f);
         return Math.max(0, Math.min(255, v));
     }
@@ -699,6 +926,9 @@ public final class MuPdfSvgExporter {
     }
 
     private static Transform composeImageTransform(Matrix ctm) {
+        if (ctm == null) {
+            return Transform.IDENTITY;
+        }
         java.awt.geom.AffineTransform transform =
                 new java.awt.geom.AffineTransform(ctm.a, ctm.b, ctm.c, ctm.d, ctm.e, ctm.f);
         transform.concatenate(new java.awt.geom.AffineTransform(1, 0, 0, -1, 0, 1));
@@ -746,8 +976,9 @@ public final class MuPdfSvgExporter {
             if (pngBytes == null || pngBytes.length == 0) {
                 return;
             }
+            Transform tr = transform == null ? Transform.IDENTITY : transform;
             sb.append("  <image x=\"0\" y=\"0\" width=\"1\" height=\"1\"")
-                    .append(" transform=\"").append(svgTransform(transform)).append('"')
+                    .append(" transform=\"").append(svgTransform(tr)).append('"')
                     .append(" preserveAspectRatio=\"none\"")
                     .append(" xlink:href=\"data:image/png;base64,")
                     .append(Base64.getEncoder().encodeToString(pngBytes))
@@ -785,8 +1016,12 @@ public final class MuPdfSvgExporter {
      * {@code ctm * trm * flipY}。
      */
     private static Transform compose(Matrix ctm, Matrix trm) {
+        if (trm == null) {
+            return Transform.IDENTITY;
+        }
+        Matrix safeCtm = ctm == null ? Matrix.Identity() : ctm;
         java.awt.geom.AffineTransform transform =
-                new java.awt.geom.AffineTransform(ctm.a, ctm.b, ctm.c, ctm.d, ctm.e, ctm.f);
+                new java.awt.geom.AffineTransform(safeCtm.a, safeCtm.b, safeCtm.c, safeCtm.d, safeCtm.e, safeCtm.f);
         transform.concatenate(new java.awt.geom.AffineTransform(trm.a, trm.b, trm.c, trm.d, trm.e, trm.f));
         transform.concatenate(new java.awt.geom.AffineTransform(1, 0, 0, -1, 0, 0));
         return new Transform((float) transform.getScaleX(), (float) transform.getShearY(),
@@ -795,16 +1030,17 @@ public final class MuPdfSvgExporter {
     }
 
     private static String svgTransform(Transform transform) {
+        Transform safeTransform = transform == null ? Transform.IDENTITY : transform;
         double epsilon = 1e-6;
-        if (Math.abs(transform.b()) < epsilon && Math.abs(transform.c()) < epsilon) {
-            if (Math.abs(transform.a() - transform.d()) < epsilon) {
-                return "translate(" + num(transform.e()) + " " + num(transform.f()) + ") scale(" + num(transform.a()) + ")";
+        if (Math.abs(safeTransform.b()) < epsilon && Math.abs(safeTransform.c()) < epsilon) {
+            if (Math.abs(safeTransform.a() - safeTransform.d()) < epsilon) {
+                return "translate(" + num(safeTransform.e()) + " " + num(safeTransform.f()) + ") scale(" + num(safeTransform.a()) + ")";
             }
-            return "translate(" + num(transform.e()) + " " + num(transform.f()) + ") scale("
-                    + num(transform.a()) + " " + num(transform.d()) + ")";
+            return "translate(" + num(safeTransform.e()) + " " + num(safeTransform.f()) + ") scale("
+                    + num(safeTransform.a()) + " " + num(safeTransform.d()) + ")";
         }
-        return "matrix(" + num(transform.a()) + " " + num(transform.b()) + " " + num(transform.c()) + " "
-                + num(transform.d()) + " " + num(transform.e()) + " " + num(transform.f()) + ")";
+        return "matrix(" + num(safeTransform.a()) + " " + num(safeTransform.b()) + " " + num(safeTransform.c()) + " "
+                + num(safeTransform.d()) + " " + num(safeTransform.e()) + " " + num(safeTransform.f()) + ")";
     }
 
     // ------------------------------------------------------------------
@@ -812,9 +1048,22 @@ public final class MuPdfSvgExporter {
     // ------------------------------------------------------------------
 
     private static String toSvgPath(java.awt.Font font, int glyphId) {
-        GlyphVector glyphVector = font.createGlyphVector(FONT_RENDER_CONTEXT, new int[]{glyphId});
-        Shape outline = glyphVector.getGlyphOutline(0);
-        return toPathData(outline);
+        try {
+            GlyphVector glyphVector = font.createGlyphVector(FONT_RENDER_CONTEXT, new int[]{glyphId});
+            if (glyphVector == null || glyphVector.getNumGlyphs() <= 0) {
+                return null;
+            }
+            Shape outline = glyphVector.getGlyphOutline(0);
+            if (outline == null) {
+                return null;
+            }
+            String d = toPathData(outline);
+            return d.isEmpty() ? null : d;
+        } catch (Throwable t) {
+            // 字体文件与 PDF 不匹配 / gid 越界时 AWT 会报错：该字形回退为文本渲染
+            log.warn("[MuPDF-SVG] 提取字形轮廓失败（gid={}），该字符回退为文本渲染: {}", glyphId, t.getMessage());
+            return null;
+        }
     }
 
     private static String toPathData(Shape shape) {
@@ -855,6 +1104,9 @@ public final class MuPdfSvgExporter {
     // ------------------------------------------------------------------
 
     private static void appendFontFace(StringBuilder css, String fontName, WebFont webFont) {
+        if (css == null || webFont == null || webFont.data() == null || webFont.data().length == 0) {
+            return;
+        }
         css.append("@font-face{font-family:").append(cssString(fontName))
                 .append(";src:url(data:").append(webFont.mimeType()).append(";base64,")
                 .append(Base64.getEncoder().encodeToString(webFont.data()))
@@ -873,14 +1125,21 @@ public final class MuPdfSvgExporter {
     /**
      * 扫描字体目录，按“文件名（不含后缀）”索引 Web 字体。
      */
-    private static Map<String, WebFont> loadWebFonts(Path fontDir) throws IOException {
+    private static Map<String, WebFont> loadWebFonts(Path fontDir) {
         Map<String, WebFont> fonts = new LinkedHashMap<>();
         if (fontDir == null || !Files.isDirectory(fontDir)) {
             return fonts;
         }
+        List<Path> candidates;
         try (Stream<Path> files = Files.list(fontDir)) {
-            for (Path file : files.toList()) {
-                String fileName = file.getFileName().toString();
+            candidates = files.toList();
+        } catch (Throwable t) {
+            log.error("[MuPDF-SVG] 扫描字体目录失败，全部字体将回退宋体: {}", fontDir, t);
+            return fonts;
+        }
+        for (Path file : candidates) {
+            try {
+                String fileName = String.valueOf(file.getFileName());
                 int dot = fileName.lastIndexOf('.');
                 if (dot <= 0) {
                     continue;
@@ -891,8 +1150,19 @@ public final class MuPdfSvgExporter {
                 if (mimeType == null || format == null) {
                     continue;
                 }
+                long size = Files.size(file);
+                if (size <= 0) {
+                    continue;
+                }
+                if (size > MAX_FONT_FILE_BYTES) {
+                    log.warn("[MuPDF-SVG] 字体文件 {} 大小 {} 字节超过上限 {}，已跳过", file, size, MAX_FONT_FILE_BYTES);
+                    continue;
+                }
                 fonts.putIfAbsent(fileName.substring(0, dot),
                         new WebFont(Files.readAllBytes(file), mimeType, format));
+            } catch (Throwable t) {
+                // 单个字体文件不可读 / 无权限不影响其余字体
+                log.error("[MuPDF-SVG] 读取 Web 字体失败（已跳过该文件）: {}", file, t);
             }
         }
         return fonts;
@@ -901,14 +1171,21 @@ public final class MuPdfSvgExporter {
     /**
      * 扫描字体目录，按“文件名（不含后缀）”索引 Type1 字体（.pfa/.pfb）。
      */
-    private static Map<String, java.awt.Font> loadType1Fonts(Path fontDir) throws IOException {
+    private static Map<String, java.awt.Font> loadType1Fonts(Path fontDir) {
         Map<String, java.awt.Font> fonts = new LinkedHashMap<>();
         if (fontDir == null || !Files.isDirectory(fontDir)) {
             return fonts;
         }
+        List<Path> candidates;
         try (Stream<Path> files = Files.list(fontDir)) {
-            for (Path file : files.toList()) {
-                String fileName = file.getFileName().toString();
+            candidates = files.toList();
+        } catch (Throwable t) {
+            log.error("[MuPDF-SVG] 扫描字体目录失败，全部字体将回退宋体: {}", fontDir, t);
+            return fonts;
+        }
+        for (Path file : candidates) {
+            try {
+                String fileName = String.valueOf(file.getFileName());
                 int dot = fileName.lastIndexOf('.');
                 if (dot <= 0) {
                     continue;
@@ -917,12 +1194,16 @@ public final class MuPdfSvgExporter {
                 if (!"pfa".equals(extension) && !"pfb".equals(extension)) {
                     continue;
                 }
-                try {
-                    java.awt.Font type1Font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT, file.toFile());
-                    fonts.putIfAbsent(fileName.substring(0, dot), type1Font);
-                } catch (Throwable t) {
-                    log.error("[MuPDF-SVG] 加载 Type1 字体失败: {}", file, t);
+                long size = Files.size(file);
+                if (size <= 0 || size > MAX_FONT_FILE_BYTES) {
+                    log.warn("[MuPDF-SVG] Type1 字体文件 {} 大小 {} 字节不可用（上限 {}），已跳过",
+                            file, size, MAX_FONT_FILE_BYTES);
+                    continue;
                 }
+                java.awt.Font type1Font = java.awt.Font.createFont(java.awt.Font.TYPE1_FONT, file.toFile());
+                fonts.putIfAbsent(fileName.substring(0, dot), type1Font);
+            } catch (Throwable t) {
+                log.error("[MuPDF-SVG] 加载 Type1 字体失败（已跳过该文件）: {}", file, t);
             }
         }
         return fonts;
@@ -963,18 +1244,45 @@ public final class MuPdfSvgExporter {
     // ------------------------------------------------------------------
 
     private static String cssString(String value) {
-        return "'" + value.replace("\\", "\\\\").replace("'", "\\'") + "'";
+        String safeValue = value == null ? "" : value;
+        return "'" + safeValue.replace("\\", "\\\\").replace("'", "\\'") + "'";
     }
 
+    /**
+     * XML 1.0 转义：除常规实体转义外，额外剔除非法控制字符（否则整份 SVG 无法被 XML 解析器打开）。
+     */
     private static String escapeXml(String text) {
-        return text.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
-                .replace("\"", "&quot;")
-                .replace("'", "&apos;");
+        if (text == null) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder(text.length() + 16);
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            switch (c) {
+                case '&' -> sb.append("&amp;");
+                case '<' -> sb.append("&lt;");
+                case '>' -> sb.append("&gt;");
+                case '"' -> sb.append("&quot;");
+                case '\'' -> sb.append("&apos;");
+                default -> {
+                    if (isValidXmlChar(c)) {
+                        sb.append(c);
+                    }
+                }
+            }
+        }
+        return sb.toString();
+    }
+
+    private static boolean isValidXmlChar(char c) {
+        return c == '\t' || c == '\n' || c == '\r' || (c >= 0x20 && c != 0xFFFE && c != 0xFFFF);
     }
 
     private static String num(double value) {
+        // NaN / Infinity 会产出非法 SVG 坐标（如 "NaN"），统一归零
+        if (!Double.isFinite(value)) {
+            return "0";
+        }
         if (value == 0.0 || value == -0.0) {
             return "0";
         }
@@ -990,6 +1298,10 @@ public final class MuPdfSvgExporter {
             text = text.substring(0, len);
         }
         return text.isEmpty() || "-0".equals(text) ? "0" : text;
+    }
+
+    private static double finiteOrDefault(double value, double defaultValue) {
+        return Double.isFinite(value) && value > 0 ? value : defaultValue;
     }
 
     /**

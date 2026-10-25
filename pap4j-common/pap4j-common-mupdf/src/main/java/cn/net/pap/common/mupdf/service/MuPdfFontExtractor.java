@@ -157,10 +157,15 @@ public final class MuPdfFontExtractor {
             if (entry.program() == null) {
                 continue;
             }
-            Path file = outputDir.resolve(uniqueFileName(entry.name(), entry.fileType(), usedNames));
-            Files.write(file, entry.program());
-            files.put(entry.name(), file);
-            count++;
+            try {
+                Path file = outputDir.resolve(uniqueFileName(entry.name(), entry.fileType(), usedNames));
+                Files.write(file, entry.program());
+                files.put(entry.name(), file);
+                count++;
+            } catch (Throwable t) {
+                // 单个字体写出失败（磁盘满 / 文件名非法）不影响其余字体导出
+                log.error("[MuPDF-Font] 导出字体 {} 失败（已跳过）", entry.name(), t);
+            }
         }
         log.info("[MuPDF-Font] 导出完成: {} | 嵌入字体 {} 个 | 目录 {}", pdfPath, count, outputDir.toAbsolutePath());
         return files;
@@ -176,15 +181,23 @@ public final class MuPdfFontExtractor {
      */
     static FontNameResolver pageFontNameResolver(PDFDocument pdf, int pageNum) {
         List<FontName> names = new ArrayList<>();
-        PDFObject page = pdf.findPage(pageNum);
-        PDFObject resources = page == null ? null : page.getInheritable("Resources");
-        walk(resources, 0, new HashSet<>(), fontObject -> {
-            FontEntry entry = parse(fontObject, false);
-            if (entry != null) {
-                names.add(new FontName(entry.rawName(),
-                        new String(entry.rawName(), StandardCharsets.ISO_8859_1), entry.name()));
-            }
-        });
+        if (pdf == null) {
+            return new FontNameResolver(names);
+        }
+        try {
+            PDFObject page = pdf.findPage(pageNum);
+            PDFObject resources = page == null ? null : page.getInheritable("Resources");
+            walk(resources, 0, new HashSet<>(), fontObject -> {
+                FontEntry entry = parse(fontObject, false);
+                if (entry != null) {
+                    names.add(new FontName(entry.rawName(),
+                            new String(entry.rawName(), StandardCharsets.ISO_8859_1), entry.name()));
+                }
+            });
+        } catch (Throwable t) {
+            // 字体名解析属于"锦上添花"：失败时返回已收集部分，调用方回退为 MuPDF 原始字体名
+            log.error("[MuPDF-Font] 解析第 {} 页字体名失败，回退为 MuPDF 原始名称", pageNum + 1, t);
+        }
         return new FontNameResolver(names);
     }
 
@@ -199,7 +212,16 @@ public final class MuPdfFontExtractor {
         MuPdfNativeLoader.ensureLoaded();
         File file = requireReadableFile(pdfPath);
 
-        Document doc = Document.openDocument(file.getAbsolutePath());
+        Document doc;
+        try {
+            doc = Document.openDocument(file.getAbsolutePath());
+        } catch (Throwable t) {
+            throw new IllegalStateException("打开 PDF 失败（文件损坏、被加密或格式不支持）: "
+                                            + file.getAbsolutePath() + " -> " + t.getMessage(), t);
+        }
+        if (doc == null) {
+            throw new IllegalStateException("打开 PDF 失败：MuPDF 返回空文档句柄: " + file.getAbsolutePath());
+        }
         try {
             if (!(doc instanceof PDFDocument pdf)) {
                 throw new IllegalArgumentException("仅支持 PDF 文档（当前格式: "
@@ -209,22 +231,31 @@ public final class MuPdfFontExtractor {
             Map<String, FontEntry> fonts = new LinkedHashMap<>();
             int pageCount = pdf.countPages();
             for (int pageNum = 0; pageNum < pageCount; pageNum++) {
-                PDFObject page = pdf.findPage(pageNum);
-                PDFObject resources = page == null ? null : page.getInheritable("Resources");
-                walk(resources, 0, new HashSet<>(), fontObject -> {
-                    FontEntry entry = parse(fontObject, readPrograms);
-                    if (entry == null) {
-                        return;
-                    }
-                    FontEntry existing = fonts.get(entry.name());
-                    if (existing == null || (!existing.embedded() && entry.embedded())) {
-                        fonts.put(entry.name(), entry);
-                    }
-                });
+                // 单页资源异常（损坏页 / 循环引用 / 权限问题）不应当中断整册字体的扫描
+                try {
+                    PDFObject page = pdf.findPage(pageNum);
+                    PDFObject resources = page == null ? null : page.getInheritable("Resources");
+                    walk(resources, 0, new HashSet<>(), fontObject -> {
+                        FontEntry entry = parse(fontObject, readPrograms);
+                        if (entry == null) {
+                            return;
+                        }
+                        FontEntry existing = fonts.get(entry.name());
+                        if (existing == null || (!existing.embedded() && entry.embedded())) {
+                            fonts.put(entry.name(), entry);
+                        }
+                    });
+                } catch (Throwable t) {
+                    log.error("[MuPDF-Font] 扫描第 {} 页字体失败（已跳过该页）: {}", pageNum + 1, pdfPath, t);
+                }
             }
             return fonts;
         } finally {
-            doc.destroy();
+            try {
+                doc.destroy();
+            } catch (Throwable t) {
+                log.error("[MuPDF-Font] 释放文档句柄失败: {}", pdfPath, t);
+            }
         }
     }
 
@@ -237,26 +268,30 @@ public final class MuPdfFontExtractor {
             return;
         }
 
-        PDFObject fontDict = resources.get("Font");
+        PDFObject fontDict = getObject(resources, "Font");
         if (fontDict != null && !fontDict.isNull()) {
             for (String resourceName : dictKeys(fontDict)) {
-                PDFObject fontObject = fontDict.get(resourceName);
+                PDFObject fontObject = getObject(fontDict, resourceName);
                 if (fontObject != null && !fontObject.isNull()) {
-                    visitor.accept(fontObject);
+                    try {
+                        visitor.accept(fontObject);
+                    } catch (Throwable t) {
+                        log.error("[MuPDF-Font] 处理单个字体对象失败（已跳过）: {}", resourceName, t);
+                    }
                 }
             }
         }
 
-        PDFObject xObjects = resources.get("XObject");
+        PDFObject xObjects = getObject(resources, "XObject");
         if (xObjects == null || xObjects.isNull()) {
             return;
         }
         for (String resourceName : dictKeys(xObjects)) {
-            PDFObject xObject = xObjects.get(resourceName);
+            PDFObject xObject = getObject(xObjects, resourceName);
             if (xObject == null || xObject.isNull()) {
                 continue;
             }
-            if (!"/Form".equals(nameOf(xObject.get("Subtype")))) {
+            if (!"/Form".equals(nameOf(getObject(xObject, "Subtype")))) {
                 continue;
             }
             int xref = -1;
@@ -268,7 +303,7 @@ public final class MuPdfFontExtractor {
             if (xref > 0 && !visitedForms.add(xref)) {
                 continue;
             }
-            PDFObject nested = xObject.get("Resources");
+            PDFObject nested = getObject(xObject, "Resources");
             if (nested != null && !nested.isNull()) {
                 walk(nested, depth + 1, visitedForms, visitor);
             }
@@ -276,31 +311,62 @@ public final class MuPdfFontExtractor {
     }
 
     /**
+     * 安全读取字典项：无论对象是否间接、是否损坏，都不抛异常到调用方。
+     */
+    private static PDFObject getObject(PDFObject dict, String key) {
+        if (dict == null || dict.isNull()) {
+            return null;
+        }
+        try {
+            return dict.get(key);
+        } catch (Throwable t) {
+            log.debug("[MuPDF-Font] 读取字典项 {} 失败: {}", key, t.getMessage());
+            return null;
+        }
+    }
+
+    /**
      * 解析单个字体字典：可读名称、嵌入状态、字体程序类型，按需读取字体程序字节。
      */
+    /**
+     * 解析单个字体字典：异常一律降级为 "跳过该字体"，绝不影响整册扫描。
+     */
     private static FontEntry parse(PDFObject fontObject, boolean readPrograms) {
-        PDFObject baseFontObject = fontObject.get("BaseFont");
-        PDFObject descriptor = fontObject.get("FontDescriptor");
+        if (fontObject == null || fontObject.isNull()) {
+            return null;
+        }
+        try {
+            return parseInternal(fontObject, readPrograms);
+        } catch (Throwable t) {
+            log.error("[MuPDF-Font] 解析字体字典失败（已跳过该字体）", t);
+            return null;
+        }
+    }
+
+    private static FontEntry parseInternal(PDFObject fontObject, boolean readPrograms) {
+        PDFObject baseFontObject = getObject(fontObject, "BaseFont");
+        PDFObject descriptor = getObject(fontObject, "FontDescriptor");
 
         // Type0 的 BaseFont / FontDescriptor 在 DescendantFonts[0] 上
-        PDFObject descendants = fontObject.get("DescendantFonts");
+        PDFObject descendants = getObject(fontObject, "DescendantFonts");
         if (descendants != null && !descendants.isNull()) {
             try {
                 if (descendants.size() > 0) {
                     PDFObject descendant = descendants.get(0);
                     if (descendant != null && !descendant.isNull()) {
-                        PDFObject descendantBaseFont = descendant.get("BaseFont");
+                        PDFObject descendantBaseFont = getObject(descendant, "BaseFont");
                         if (descendantBaseFont != null && !descendantBaseFont.isNull()) {
                             baseFontObject = descendantBaseFont;
                         }
-                        PDFObject descendantDescriptor = descendant.get("FontDescriptor");
+                        PDFObject descendantDescriptor = getObject(descendant, "FontDescriptor");
                         if (descendantDescriptor != null && !descendantDescriptor.isNull()) {
                             descriptor = descendantDescriptor;
                         }
                     }
                 }
-            } catch (Throwable ignored) {
+            } catch (Throwable t) {
                 // 畸形 DescendantFonts 按字体字典自身的信息处理
+                log.debug("[MuPDF-Font] 读取 DescendantFonts 失败，按顶层字体字典处理: {}", t.getMessage());
             }
         }
 
@@ -318,7 +384,7 @@ public final class MuPdfFontExtractor {
                 fileType = "ttf";
             } else if (hasStream(descriptor, "FontFile3")) {
                 embedded = true;
-                fileType = "/OpenType".equals(nameOf(descriptor.get("FontFile3").get("Subtype"))) ? "otf" : "cff";
+                fileType = "/OpenType".equals(nameOf(getObject(getObject(descriptor, "FontFile3"), "Subtype"))) ? "otf" : "cff";
             } else if (hasStream(descriptor, "FontFile")) {
                 embedded = true;
                 fileType = "type1";
@@ -335,30 +401,30 @@ public final class MuPdfFontExtractor {
     private static byte[] readProgram(PDFObject descriptor, String fontName) {
         String[] keys = {"FontFile2", "FontFile3", "FontFile"};
         for (String key : keys) {
-            PDFObject stream = descriptor.get(key);
-            if (stream == null || stream.isNull()) {
-                continue;
-            }
             try {
+                PDFObject stream = getObject(descriptor, key);
+                if (stream == null || stream.isNull()) {
+                    continue;
+                }
                 long declaredLength = declaredLength(stream);
                 if (declaredLength > MAX_FONT_BYTES) {
                     log.warn("[MuPDF-Font] 字体 {} 的 {} 声明长度 {} 超过上限 {}，跳过",
                             fontName, key, declaredLength, MAX_FONT_BYTES);
-                    return null;
+                    continue;
                 }
                 byte[] bytes = stream.readStream();
                 if (bytes == null || bytes.length == 0) {
-                    return null;
+                    continue;
                 }
                 if (bytes.length > MAX_FONT_BYTES) {
                     log.warn("[MuPDF-Font] 字体 {} 的 {} 解压后 {} 字节超过上限 {}，跳过",
                             fontName, key, bytes.length, MAX_FONT_BYTES);
-                    return null;
+                    continue;
                 }
                 return bytes;
             } catch (Throwable t) {
-                log.error("[MuPDF-Font] 读取字体 {} 的 {} 失败", fontName, key, t);
-                return null;
+                // 某个候选流读取失败时继续尝试下一个（FontFile2 → FontFile3 → FontFile）
+                log.error("[MuPDF-Font] 读取字体 {} 的 {} 失败，尝试下一个候选流", fontName, key, t);
             }
         }
         return null;
@@ -475,7 +541,7 @@ public final class MuPdfFontExtractor {
     }
 
     private static boolean hasStream(PDFObject descriptor, String key) {
-        PDFObject stream = descriptor.get(key);
+        PDFObject stream = getObject(descriptor, key);
         return stream != null && !stream.isNull();
     }
 
@@ -483,14 +549,28 @@ public final class MuPdfFontExtractor {
      * 解析字典的 key 列表（MuPDF Java 绑定没有暴露 key 迭代 API）。
      */
     private static List<String> dictKeys(PDFObject object) {
-        PDFObject resolved = object.isIndirect() ? object.resolve() : object;
-        String text = resolved.toString();
-        Matcher matcher = Pattern.compile("/([A-Za-z0-9+._-]+)").matcher(text);
-        Set<String> keys = new LinkedHashSet<>();
-        while (matcher.find()) {
-            keys.add(matcher.group(1));
+        if (object == null || object.isNull()) {
+            return new ArrayList<>();
         }
-        return new ArrayList<>(keys);
+        try {
+            PDFObject resolved = object.isIndirect() ? object.resolve() : object;
+            if (resolved == null || resolved.isNull()) {
+                return new ArrayList<>();
+            }
+            String text = resolved.toString();
+            if (text == null || text.indexOf('/') < 0) {
+                return new ArrayList<>();
+            }
+            Matcher matcher = Pattern.compile("/([A-Za-z0-9+._-]+)").matcher(text);
+            Set<String> keys = new LinkedHashSet<>();
+            while (matcher.find()) {
+                keys.add(matcher.group(1));
+            }
+            return new ArrayList<>(keys);
+        } catch (Throwable t) {
+            log.error("[MuPDF-Font] 解析字典 key 列表失败（已跳过该资源）", t);
+            return new ArrayList<>();
+        }
     }
 
     // ------------------------------------------------------------------
@@ -577,7 +657,15 @@ public final class MuPdfFontExtractor {
          * @return 可读名称；无法匹配时返回 null
          */
         String resolve(Font font) {
-            return font == null ? null : resolve(font.getName());
+            if (font == null) {
+                return null;
+            }
+            try {
+                return resolve(font.getName());
+            } catch (Throwable t) {
+                log.debug("[MuPDF-Font] 读取运行期字体名失败: {}", t.getMessage());
+                return null;
+            }
         }
 
         /**
@@ -600,21 +688,26 @@ public final class MuPdfFontExtractor {
 
         private String match(String muPdfName) {
             FontName best = null;
-            for (FontName font : fonts) {
-                if (startsWithLatin1(font.rawLatin1(), muPdfName)) {
-                    if (best == null || font.rawName().length < best.rawName().length) {
-                        best = font;
-                    }
-                }
-            }
-            if (best == null) {
+            try {
                 for (FontName font : fonts) {
-                    if (matchesMask(muPdfName, font.rawName())) {
+                    if (startsWithLatin1(font.rawLatin1(), muPdfName)) {
                         if (best == null || font.rawName().length < best.rawName().length) {
                             best = font;
                         }
                     }
                 }
+                if (best == null) {
+                    for (FontName font : fonts) {
+                        if (matchesMask(muPdfName, font.rawName())) {
+                            if (best == null || font.rawName().length < best.rawName().length) {
+                                best = font;
+                            }
+                        }
+                    }
+                }
+            } catch (Throwable t) {
+                log.debug("[MuPDF-Font] 字体名匹配失败: {}", t.getMessage());
+                return null;
             }
             return best == null ? null : best.readableName();
         }
