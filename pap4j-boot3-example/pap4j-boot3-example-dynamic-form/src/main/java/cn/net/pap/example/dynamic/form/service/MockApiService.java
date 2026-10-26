@@ -28,6 +28,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MockApiService {
 
+    /** Mock 拦截端点前缀，规则 URL 的存储与匹配均以剥离该前缀后的相对路径为准。 */
+    private static final String MOCK_PREFIX = "/api/mock";
+
     private final MockApiRepository mockApiRepository;
     private final ObjectMapper objectMapper;
 
@@ -46,7 +49,8 @@ public class MockApiService {
 
     /**
      * 保存或更新 Mock 配置。
-     * 若包含 curlCommand 则自动解析并覆盖特征匹配字段。
+     * <p>仅新建记录（id 为空）时才允许用 curlCommand 反解特征字段；编辑已有记录时一律以表单字段为准，
+     * 避免旧 cURL 原文在保存瞬间覆盖用户手工修改的匹配条件。</p>
      * @param dto
      * @return 处理结果对象
      */
@@ -62,19 +66,66 @@ public class MockApiService {
         mockApi.setResponseHeaders(formatResponseHeaders(dto.responseHeaders()));
         mockApi.setDelayMs(dto.delayMs() != null ? dto.delayMs() : 0);
 
-        if (dto.curlCommand() != null && !dto.curlCommand().trim().isEmpty()) {
+        boolean creating = dto.id() == null;
+        if (creating && dto.curlCommand() != null && !dto.curlCommand().trim().isEmpty()) {
             parseAndPopulateFromCurl(dto.curlCommand(), mockApi);
         } else {
-            mockApi.setUrl(dto.url());
-            mockApi.setMethod(dto.method() != null ? dto.method().toUpperCase() : "GET");
-            mockApi.setRequestBody(dto.requestBody());
-            mockApi.setRequestParams(dto.requestParams());
-            mockApi.setCurlCommand(null);
-            mockApi.setRequestHeaders(formatHeaders(dto.requestHeaders()));
+            applyExplicitFields(dto, mockApi);
         }
 
         MockApi saved = mockApiRepository.save(mockApi);
         return toDTO(saved);
+    }
+
+    /**
+     * 以表单显式字段装配匹配条件，cURL 原文仅作为历史记录保存，不参与反解。
+     *
+     * @param dto     前端提交的配置
+     * @param mockApi 待装配的实体
+     */
+    private void applyExplicitFields(MockApiDTO dto, MockApi mockApi) {
+        mockApi.setUrl(normalizeMockPath(dto.url()));
+        mockApi.setMethod(dto.method() != null ? dto.method().toUpperCase() : "GET");
+        mockApi.setRequestBody(dto.requestBody());
+        mockApi.setRequestParams(dto.requestParams());
+        mockApi.setRequestHeaders(formatHeaders(dto.requestHeaders()));
+        mockApi.setCurlCommand(
+                dto.curlCommand() == null || dto.curlCommand().trim().isEmpty() ? null : dto.curlCommand());
+    }
+
+    /**
+     * 归一化规则 URL：剥离 {@code /api/mock} 前缀，保证与 {@code handleMock} 传入的相对路径口径一致。
+     * 否则从本 Mock 终端复制出的 cURL 会带着前缀入库，导致该规则永远无法命中。
+     *
+     * @param url 原始 URL
+     * @return 剥离前缀后的相对路径，至少为 {@code /}
+     */
+    private static String normalizeMockPath(String url) {
+        if (url == null) {
+            return "/";
+        }
+        String path = url.trim();
+        if (path.regionMatches(true, 0, MOCK_PREFIX, 0, MOCK_PREFIX.length())) {
+            path = path.substring(MOCK_PREFIX.length());
+        }
+        if (path.isEmpty()) {
+            return "/";
+        }
+        return path.startsWith("/") ? path : "/" + path;
+    }
+
+    /**
+     * 读取侧兼容：历史数据中可能残留带 {@code /api/mock} 前缀的规则，匹配时一并查询。
+     *
+     * @param url 前端实际请求的相对路径
+     * @return 需要参与匹配的 URL 候选列表
+     */
+    private static List<String> resolveUrlCandidates(String url) {
+        String path = (url == null || url.isEmpty()) ? "/" : url;
+        if (path.regionMatches(true, 0, MOCK_PREFIX, 0, MOCK_PREFIX.length())) {
+            return List.of(path);
+        }
+        return List.of(path, MOCK_PREFIX + path);
     }
 
     /**
@@ -98,7 +149,10 @@ public class MockApiService {
      */
     public Optional<MockApi> matchRequest(String url, String method, Map<String, String> actualHeaders, String actualQueryStr, String actualBody) {
         List<String> methods = List.of(method.toUpperCase(), "ANY", "*");
-        List<MockApi> candidates = mockApiRepository.findByUrlAndMethodIn(url, methods);
+        List<MockApi> candidates = new ArrayList<>();
+        for (String candidateUrl : resolveUrlCandidates(url)) {
+            candidates.addAll(mockApiRepository.findByUrlAndMethodIn(candidateUrl, methods));
+        }
 
         for (MockApi candidate : candidates) {
             // 1. 比对 Header 约束
@@ -130,7 +184,7 @@ public class MockApiService {
     private void parseAndPopulateFromCurl(String curlCommand, MockApi mockApi) {
         try {
             CurlParser.ParsedCurl parsed = CurlParser.parse(curlCommand);
-            mockApi.setUrl(parsed.getUrl());
+            mockApi.setUrl(normalizeMockPath(parsed.getUrl()));
             mockApi.setMethod(parsed.getMethod());
             mockApi.setRequestBody(parsed.getBody());
             mockApi.setRequestParams(parsed.getQueryParamsStr());

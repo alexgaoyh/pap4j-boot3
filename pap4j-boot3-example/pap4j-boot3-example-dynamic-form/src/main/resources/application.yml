@@ -9,3 +9,11 @@ spring:
     show-sql: true
     properties:
       hibernate.format_sql: true
+  web:
+    # 示例工程的静态页面（mock-api.html / schema-editor.html）需要改完刷新即生效，关闭静态资源缓存
+    resources:
+      chain:
+        cache: false
+      cache:
+        cachecontrol:
+          no-store: true

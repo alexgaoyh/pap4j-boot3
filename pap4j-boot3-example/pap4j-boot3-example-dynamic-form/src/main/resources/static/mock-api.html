@@ -467,7 +467,7 @@
                     <span>🔌 在线 API Mock 维护终端</span>
                     <span class="version-badge">极严格特征匹配版</span>
                 </h1>
-                <div class="subtitle">强校验：Path 必须完全相等，参数与请求体严格去空白比对（顺序必须完全一致）</div>
+                <div class="subtitle">强校验：Path 必须完全相等；Query 按参数名/值语义比对（参数顺序无关），JSON Body 按结构比对（Key 顺序与空白无关）</div>
             </div>
             <div class="header-actions">
                 <a href="schema-editor.html" class="nav-link">⬅ 返回元数据表单设计</a>
@@ -554,7 +554,7 @@
                             style="min-height: 70px; border-color: rgba(99,102,241,0.4);"
                         ></textarea>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="font-size: 0.75rem; color: var(--text-secondary);">解析出特征将严格保留原始 Query 与 Body 顺序</span>
+                            <span style="font-size: 0.75rem; color: var(--text-secondary);">解析结果原样保留 Query 与 Body 原文便于核对，匹配时按语义比对</span>
                             <button class="btn btn-primary btn-sm" style="background: var(--accent-primary);" @click="parseInputCurl">⚡ 解析并装填</button>
                         </div>
                     </div>
@@ -599,7 +599,7 @@
                                 id="requestParams" 
                                 type="text" 
                                 v-model="form.requestParams" 
-                                placeholder="按原串顺序比对，匹配时会过滤所有空白符进行全等比对"
+                                placeholder="按原串粘贴，匹配时按参数名/值语义比对，参数顺序与空白均无关"
                             >
                         </div>
                         <div class="form-item full-width">
@@ -616,7 +616,7 @@
                             <textarea 
                                 id="requestBody" 
                                 v-model="form.requestBody" 
-                                placeholder="匹配时会过滤所有空白符进行严格全等比对，包含 JSON 的 Key 顺序"
+                                placeholder="匹配时按 JSON 结构比对，Key 顺序与空白均无关；非 JSON 正文则忽略空白后比对"
                                 style="min-height: 80px;"
                             ></textarea>
                         </div>
@@ -693,7 +693,7 @@
                     </div>
                     <div>
                         <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
-                            拦截前缀为 <code style="color: var(--accent-primary); font-family: monospace;">/api/mock</code>。支持在 URL 后拼接 query 参数进行顺序全等测试。
+                            拦截前缀为 <code style="color: var(--accent-primary); font-family: monospace;">/api/mock</code>。支持在 URL 后拼接 query 参数进行语义比对测试。
                         </div>
                         <div class="tester-input">
                             <select v-model="testConfig.method" style="flex-shrink: 0;">
@@ -918,6 +918,13 @@
                             if (firstSlash >= 0) path = cleanUrl.substring(firstSlash);
                         }
 
+                        // 兼容直接从本 Mock 终端复制出的 cURL：剥离 /api/mock 前缀，
+                        // 保证规则 URL 与后端 matchRequest 收到的相对路径口径一致
+                        const MOCK_PREFIX = '/api/mock';
+                        if (path.toLowerCase().startsWith(MOCK_PREFIX)) {
+                            path = path.substring(MOCK_PREFIX.length) || '/';
+                        }
+
                         // 直接填入表单中
                         form.value.method = method;
                         form.value.url = path;
@@ -1002,7 +1009,8 @@
                 };
 
                 const editItem = (item) => {
-                    form.value = { ...item };
+                    // 不回传 curlCommand：后端只在新建时反解 cURL，编辑必须以表单字段为准
+                    form.value = { ...item, curlCommand: '' };
                     // 格式化 JSON 显示
                     if (item.requestHeaders && item.requestHeaders !== '{}') {
                         form.value.requestHeaders = JSON.stringify(JSON.parse(item.requestHeaders), null, 2);
