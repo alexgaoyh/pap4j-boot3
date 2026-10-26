@@ -8,9 +8,14 @@ import cn.net.pap.common.mupdf.loader.MuPdfNativeLoader;
 import cn.net.pap.common.mupdf.service.MuPdfService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class MuPdfServiceTest {
 
@@ -211,5 +216,111 @@ public class MuPdfServiceTest {
             Assertions.assertTrue(latch.await(15, java.util.concurrent.TimeUnit.SECONDS), "并发测试超时");
             Assertions.assertEquals(0, errors.get(), "并发渲染与淘汰过程中不得出现任何异常");
         }
+    }
+
+    // ------------------------------------------------------------------
+    // check()：PDF 体检（枚举结论 + 友好提示，永不抛异常）
+    // ------------------------------------------------------------------
+
+    /**
+     * 正常 PDF：OK、1 页、未加密、无修复建议。
+     */
+    @Test
+    public void testCheckHealthyPdf() {
+        try (MuPdfService service = new MuPdfService()) {
+            MuPdfService.PdfCheck check = service.check(checkPdf("ok.pdf"));
+            Assertions.assertEquals(MuPdfService.PdfIssue.OK, check.issue());
+            Assertions.assertTrue(check.healthy());
+            Assertions.assertEquals(1, check.pageCount());
+            Assertions.assertFalse(check.encrypted());
+            Assertions.assertNull(check.hint(), "OK 状态不应给修复建议");
+            Assertions.assertTrue(check.summary().contains("[OK]"), check.summary());
+        }
+    }
+
+    /**
+     * 加密但可正常打开：healthy 为 true，同时 encrypted 标记为 true。
+     */
+    @Test
+    public void testCheckEncryptedButReadable() {
+        try (MuPdfService service = new MuPdfService()) {
+            MuPdfService.PdfCheck check = service.check(checkPdf("encrypted-readable.pdf"));
+            Assertions.assertTrue(check.healthy(), check.summary());
+            Assertions.assertTrue(check.encrypted(), "应标记为加密文档");
+            Assertions.assertTrue(check.pageCount() > 0, "加密但可读时页数应大于 0");
+        }
+    }
+
+    /**
+     * 各类畸形文件：结论必须落在对应枚举上，且都必须给出修复建议与可读摘要。
+     */
+    @Test
+    public void testCheckBrokenFilesReportIssue() {
+        Map<String, MuPdfService.PdfIssue> cases = new LinkedHashMap<>();
+        cases.put("not-pdf.pdf", MuPdfService.PdfIssue.NOT_PDF);
+        cases.put("no-pages.pdf", MuPdfService.PdfIssue.NO_PAGES);
+        cases.put("encrypted.pdf", MuPdfService.PdfIssue.ENCRYPTED);
+        cases.put("open-failed.pdf", MuPdfService.PdfIssue.OPEN_FAILED);
+        cases.put("page-tree-broken.pdf", MuPdfService.PdfIssue.PAGE_TREE_BROKEN);
+
+        try (MuPdfService service = new MuPdfService()) {
+            cases.forEach((resource, expected) -> {
+                MuPdfService.PdfCheck check = service.check(checkPdf(resource));
+                Assertions.assertEquals(expected, check.issue(), resource);
+                Assertions.assertFalse(check.healthy(), resource + " 不应判定为可用");
+                Assertions.assertNotNull(check.hint(), resource + " 必须给出修复建议");
+                Assertions.assertFalse(check.hint().trim().isEmpty(), resource + " 修复建议不能为空");
+                Assertions.assertFalse(check.summary().trim().isEmpty(), resource + " 摘要不能为空");
+            });
+        }
+    }
+
+    /**
+     * 路径类问题：不存在、空串、null、目录，都必须返回 FILE_NOT_FOUND 而不是抛异常。
+     *
+     * @param tempDir JUnit 临时目录
+     */
+    @Test
+    public void testCheckInvalidPathsNeverThrow(@TempDir Path tempDir) {
+        try (MuPdfService service = new MuPdfService()) {
+            MuPdfService.PdfCheck missing = service.check(tempDir.resolve("no-such.pdf").toString());
+            Assertions.assertEquals(MuPdfService.PdfIssue.FILE_NOT_FOUND, missing.issue());
+            Assertions.assertFalse(missing.healthy());
+            Assertions.assertEquals(-1, missing.pageCount());
+
+            Assertions.assertEquals(MuPdfService.PdfIssue.FILE_NOT_FOUND, service.check("").issue());
+            Assertions.assertEquals(MuPdfService.PdfIssue.FILE_NOT_FOUND, service.check(null).issue());
+            Assertions.assertEquals(MuPdfService.PdfIssue.FILE_NOT_FOUND, service.check(tempDir.toString()).issue(),
+                    "目录不是普通文件");
+        }
+    }
+
+    /**
+     * 0 字节文件：FILE_EMPTY。
+     *
+     * @param tempDir JUnit 临时目录
+     * @throws Exception 建文件失败
+     */
+    @Test
+    public void testCheckEmptyFile(@TempDir Path tempDir) throws Exception {
+        Path empty = tempDir.resolve("empty.pdf");
+        Files.createFile(empty);
+        try (MuPdfService service = new MuPdfService()) {
+            MuPdfService.PdfCheck check = service.check(empty.toString());
+            Assertions.assertEquals(MuPdfService.PdfIssue.FILE_EMPTY, check.issue());
+            Assertions.assertFalse(check.healthy());
+        }
+    }
+
+    /**
+     * 取 check/ 目录下的测试 PDF 物理路径。
+     *
+     * @param name 文件名
+     * @return 物理路径
+     */
+    private String checkPdf(String name) {
+        URL url = getClass().getResource("/check/" + name);
+        Assertions.assertNotNull(url, "测试资源缺失: check/" + name);
+        return new File(url.getFile()).getAbsolutePath();
     }
 }

@@ -27,6 +27,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.ref.Reference;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -94,6 +95,10 @@ public class MuPdfService implements AutoCloseable {
     public static final String CFG_RAW_MAX_BYTES = "pap.mupdf.raw.maxBytes";
 
     private static final int DEFAULT_DPI = 144;
+    /**
+     * 体检时用于估算渲染像素的参考 DPI。
+     */
+    private static final int CHECK_DPI = 144;
     private static final int DEFAULT_CACHE_MAX_DOCS = 8;
     private static final long DEFAULT_CACHE_TTL_MILLIS = TimeUnit.MINUTES.toMillis(10);
     private static final long DEFAULT_RENDER_MAX_PIXELS = 100_000_000L;
@@ -375,6 +380,259 @@ public class MuPdfService implements AutoCloseable {
             release(managed);
             Reference.reachabilityFence(managed);
         }
+    }
+
+    /**
+     * 体检单个 PDF：<b>永不抛异常</b>，只回答两件事——「这个文件有没有问题」「是哪一类问题」。
+     *
+     * <p>定位是<b>轻量预检</b>：先看文件层（存在性、大小、%PDF- 头），再让 MuPDF 打开一次，
+     * 看是否需要密码、页数是否大于 0、首页能否加载且页面框合法。它不做渲染，因此后续
+     * renderPageToPng / extractCoordinates / MuPdfSvgExporter.export 仍可能因畸形内容失败。</p>
+     *
+     * <p>本方法使用独立文档句柄（不占用常驻缓存、不做 LRU 扰动），可安全并发调用。</p>
+     *
+     * @param pdfPath PDF 路径
+     * @return 体检结果（healthy() 为 false 时看 issue() 与 hint()）
+     */
+    public PdfCheck check(String pdfPath) {
+        File file = pdfPath == null || pdfPath.trim().isEmpty() ? null : new File(pdfPath.trim());
+        if (file == null) {
+            return new PdfCheck(PdfIssue.FILE_NOT_FOUND, "路径为空", -1, false);
+        }
+        if (!file.exists() || !file.isFile()) {
+            return new PdfCheck(PdfIssue.FILE_NOT_FOUND, file.getName(), -1, false);
+        }
+        if (file.length() == 0L) {
+            return new PdfCheck(PdfIssue.FILE_EMPTY, file.getName(), -1, false);
+        }
+        if (!hasPdfHeader(file)) {
+            return new PdfCheck(PdfIssue.NOT_PDF, file.getName(), -1, false);
+        }
+
+        Document document = null;
+        try {
+            document = openDocument(file);
+            boolean encrypted = document.needsPassword();
+            int pages = document.countPages();
+            if (pages <= 0) {
+                // 加密但读不到页（需要密码）与“空壳文档”是两种不同处理方式
+                return new PdfCheck(encrypted ? PdfIssue.ENCRYPTED : PdfIssue.NO_PAGES,
+                        file.getName(), pages, encrypted);
+            }
+            Page page = null;
+            try {
+                page = document.loadPage(0);
+                Rect bounds = page == null ? null : page.getBounds();
+                if (bounds == null || !bounds.isValid() || bounds.isInfinite()
+                        || bounds.x1 - bounds.x0 <= 0 || bounds.y1 - bounds.y0 <= 0) {
+                    return new PdfCheck(PdfIssue.PAGE_BOX_INVALID, String.valueOf(bounds), pages, encrypted);
+                }
+                double width = bounds.x1 - bounds.x0;
+                double height = bounds.y1 - bounds.y0;
+                long pixels = (long) Math.ceil(width * CHECK_DPI / 72.0) * (long) Math.ceil(height * CHECK_DPI / 72.0);
+                if (pixels > maxRenderPixels) {
+                    return new PdfCheck(PdfIssue.PAGE_TOO_LARGE,
+                            pixels + " 像素@" + CHECK_DPI + "dpi", pages, encrypted);
+                }
+            } finally {
+                closeQuietly(page);
+            }
+            return new PdfCheck(PdfIssue.OK, file.getName(), pages, encrypted);
+        } catch (Throwable t) {
+            log.error("[MuPDF] 体检失败，按问题类型返回: {}", pdfPath, t);
+            return new PdfCheck(classify(t), describe(t), -1, false);
+        } finally {
+            closeQuietly(document);
+        }
+    }
+
+    /**
+     * PDF 体检问题类型（枚举自带可读说明与修复建议，UNKNOWN 兜底）。
+     */
+    public enum PdfIssue {
+
+        /** 结构完整。 */
+        OK(false, "结构完整，可正常打开与渲染", null),
+        /** 文件不存在或不是普通文件。 */
+        FILE_NOT_FOUND(true, "文件不存在或不是普通文件", "检查路径、网络盘挂载与读权限"),
+        /** 0 字节。 */
+        FILE_EMPTY(true, "文件为空（0 字节）", "文件未写完或下载中断，请重新获取"),
+        /** 文件头不是 PDF。 */
+        NOT_PDF(true, "不是 PDF（文件头缺少 %PDF- 标记）", "确认真实格式（可能是 XPS/EPUB/HTML 改后缀），必要时先转换"),
+        /** 打不开。 */
+        OPEN_FAILED(true, "无法打开：文件损坏或被截断（交叉引用表/对象缺失、字典语法错误）",
+                "用 qpdf --recover in.pdf out.pdf 或 mutool clean -gggg in.pdf out.pdf 修复后重试"),
+        /** 加密且读不到页。 */
+        ENCRYPTED(true, "已加密，需要打开密码（无密码时读不到页面）",
+                "用 qpdf --password=<密码> --decrypt in.pdf out.pdf 去掉密码后再处理"),
+        /** 没有可读页面。 */
+        NO_PAGES(true, "没有可读页面（空壳文档 / 页树异常）",
+                "用 qpdf --show-npages 确认；若非空壳，用 mutool clean -gggg 重建页树"),
+        /** 页树损坏。 */
+        PAGE_TREE_BROKEN(true, "页树损坏（页面循环引用或加载失败）",
+                "用 qpdf --replace-input 或 mutool clean -gggg 重建页树"),
+        /** 页面尺寸非法。 */
+        PAGE_BOX_INVALID(true, "页面尺寸非法（为 0 或缺失），预览会得到空白图",
+                "用 mutool clean -gggg 修复 MediaBox/CropBox"),
+        /** 页面过大。 */
+        PAGE_TOO_LARGE(false, "页面过大，预览像素可能超限", "降低渲染 DPI，或调整 -D" + CFG_RENDER_MAX_PIXELS),
+        /** 兜底。 */
+        UNKNOWN(true, "未知问题", "用 qpdf --check 查看详细诊断，必要时用 qpdf --recover 修复");
+
+        private final boolean error;
+        private final String title;
+        private final String suggestion;
+
+        PdfIssue(boolean error, String title, String suggestion) {
+            this.error = error;
+            this.title = title;
+            this.suggestion = suggestion;
+        }
+
+        /**
+         * 是否为不可用级别的问题。
+         *
+         * @return true = 不建议继续处理
+         */
+        public boolean isError() {
+            return error;
+        }
+
+        /**
+         * 可读的问题说明。
+         *
+         * @return 说明
+         */
+        public String title() {
+            return title;
+        }
+
+        /**
+         * 可执行的修复建议（可能为 null）。
+         *
+         * @return 建议
+         */
+        public String suggestion() {
+            return suggestion;
+        }
+    }
+
+    /**
+     * PDF 体检结果。
+     *
+     * @param issue     问题类型
+     * @param detail    细节（文件名或异常摘要，可能为 null）
+     * @param pageCount 页数（无法确定时为 -1）
+     * @param encrypted 是否加密（即使能正常打开）
+     */
+    public record PdfCheck(PdfIssue issue, String detail, int pageCount, boolean encrypted) {
+
+        /**
+         * 是否可用（OK 或仅警告）。
+         *
+         * @return true = 可以继续渲染/导出
+         */
+        public boolean healthy() {
+            return issue != null && !issue.isError();
+        }
+
+        /**
+         * 修复建议。
+         *
+         * @return 建议文本；无建议时为 null
+         */
+        public String hint() {
+            return issue == null ? null : issue.suggestion();
+        }
+
+        /**
+         * 友好的一行结论：[ISSUE] 细节 | N 页 | 说明 → 建议。
+         *
+         * @return 单行描述
+         */
+        public String summary() {
+            StringBuilder sb = new StringBuilder();
+            sb.append('[').append(issue).append("] ");
+            sb.append(detail == null || detail.isEmpty() ? "-" : detail);
+            sb.append(" | ").append(pageCount >= 0 ? pageCount + " 页" : "页数未知");
+            if (encrypted) {
+                sb.append(" | 已加密");
+            }
+            sb.append(" | ").append(issue == null ? "" : issue.title());
+            String tip = hint();
+            if (tip != null && !tip.isEmpty()) {
+                sb.append(" → 建议：").append(tip);
+            }
+            return sb.toString();
+        }
+    }
+
+    /**
+     * 文件头是否包含 %PDF- 标记（规范允许前面有不超过 1024 字节的垃圾）。
+     *
+     * @param file 文件
+     * @return true = 看起来是 PDF；读取失败时返回 true，交由后续打开步骤报错
+     */
+    private static boolean hasPdfHeader(File file) {
+        byte[] magic = {'%', 'P', 'D', 'F', '-'};
+        try (InputStream in = Files.newInputStream(file.toPath())) {
+            byte[] head = new byte[1024];
+            int read = in.read(head);
+            if (read < magic.length) {
+                return false;
+            }
+            outer:
+            for (int i = 0; i <= read - magic.length; i++) {
+                for (int j = 0; j < magic.length; j++) {
+                    if (head[i + j] != magic[j]) {
+                        continue outer;
+                    }
+                }
+                return true;
+            }
+            return false;
+        } catch (Throwable t) {
+            log.error("[MuPDF] 读取文件头失败，交由打开阶段判断: {}", file, t);
+            return true;
+        }
+    }
+
+    /**
+     * 把底层异常归类成问题类型。
+     *
+     * @param t 异常
+     * @return 问题类型
+     */
+    private static PdfIssue classify(Throwable t) {
+        String message = t.getMessage() == null ? "" : t.getMessage().toLowerCase(Locale.ROOT);
+        if (message.contains("cycle in page tree") || message.contains("page tree")) {
+            return PdfIssue.PAGE_TREE_BROKEN;
+        }
+        if (message.contains("password") || message.contains("encrypt") || message.contains("decrypt")) {
+            return PdfIssue.ENCRYPTED;
+        }
+        if (message.contains("no objects found") || message.contains("xref") || message.contains("trailer")
+                || message.contains("syntax error") || message.contains("invalid key in dict")
+                || message.contains("cannot recognize")) {
+            return PdfIssue.OPEN_FAILED;
+        }
+        return PdfIssue.UNKNOWN;
+    }
+
+    /**
+     * 异常摘要（类型 + 消息首行，截断到 160 字符）。
+     *
+     * @param t 异常
+     * @return 摘要
+     */
+    private static String describe(Throwable t) {
+        String message = t.getMessage() == null ? "" : t.getMessage();
+        int line = message.indexOf('\n');
+        if (line > 0) {
+            message = message.substring(0, line);
+        }
+        String text = t.getClass().getSimpleName() + ": " + message;
+        return text.length() > 160 ? text.substring(0, 160) : text;
     }
 
     /**
