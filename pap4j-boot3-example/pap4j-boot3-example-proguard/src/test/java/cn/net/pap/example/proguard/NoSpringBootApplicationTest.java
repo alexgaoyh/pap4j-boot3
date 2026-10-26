@@ -32,7 +32,7 @@ public class NoSpringBootApplicationTest {
 
         @Bean
         public org.springframework.boot.web.servlet.server.ServletWebServerFactory servletWebServerFactory() {
-            return new org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory();
+            return new org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory(0);
         }
 
     }
@@ -46,7 +46,7 @@ public class NoSpringBootApplicationTest {
     }
 
     @Test
-    public void test1() throws Exception {
+    public void test1(@LocalServerPort int port) throws Exception {
         log.info("{}", port);
     }
 
