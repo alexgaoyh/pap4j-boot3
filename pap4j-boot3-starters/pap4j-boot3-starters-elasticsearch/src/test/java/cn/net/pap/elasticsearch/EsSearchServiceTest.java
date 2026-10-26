@@ -1362,6 +1362,14 @@ public class EsSearchServiceTest {
             assertThat(client.getNodes()).hasSize(1);
         }
 
+        ElasticsearchProperties withCustomPool = new ElasticsearchProperties();
+        withCustomPool.setUris(List.of("http://localhost:9200"));
+        withCustomPool.setMaxConnTotal(100);
+        withCustomPool.setMaxConnPerRoute(30);
+        try (RestClient client = autoConfiguration.restClient(withCustomPool)) {
+            assertThat(client.getNodes()).hasSize(1);
+        }
+
         assertThat(autoConfiguration.elasticsearchObjectMapper()
                 .isEnabled(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)).isFalse();
 
@@ -2279,6 +2287,36 @@ public class EsSearchServiceTest {
         assertThat(dslString).doesNotContain("view_count.keyword");
         assertThat(dslString).contains("is_deleted=");
         assertThat(dslString).doesNotContain("is_deleted.keyword");
+    }
+
+    @Test
+    void test110_customPageSizeProperties() throws Exception {
+        ElasticsearchProperties props = defaultProperties();
+        props.setDefaultPageSize(25);
+        props.setMaxPageSize(500);
+
+        String mockHitsJson = "{\"hits\":{\"total\":{\"value\":0},\"hits\":[]}}";
+        RestClient stub = mock(RestClient.class);
+        Response stubResponse = mock(Response.class);
+        when(stub.performRequest(any(Request.class))).thenReturn(stubResponse);
+        when(stubResponse.getEntity()).thenReturn(new StringEntity(mockHitsJson, ContentType.APPLICATION_JSON));
+
+        EsSearchService service = new EsSearchService(stub, new ObjectMapper(), props);
+
+        // 1. 当未传 pageSize 时，使用配置的 defaultPageSize (25)
+        EsSearchRequest req1 = EsSearchRequest.search().indexName("test");
+        EsSearchResult res1 = service.search(req1);
+        assertThat(res1.getPageSize()).isEqualTo(25);
+
+        // 2. 当请求 300 条（在配置的 maxPageSize 500 以内）时，保留为 300
+        EsSearchRequest req2 = EsSearchRequest.search().indexName("test").pageSize(300);
+        EsSearchResult res2 = service.search(req2);
+        assertThat(res2.getPageSize()).isEqualTo(300);
+
+        // 3. 当请求超过 maxPageSize (500) 时，截断为 500
+        EsSearchRequest req3 = EsSearchRequest.search().indexName("test").pageSize(800);
+        EsSearchResult res3 = service.search(req3);
+        assertThat(res3.getPageSize()).isEqualTo(500);
     }
 
     private EsSearchService mockedService(String json) throws IOException {

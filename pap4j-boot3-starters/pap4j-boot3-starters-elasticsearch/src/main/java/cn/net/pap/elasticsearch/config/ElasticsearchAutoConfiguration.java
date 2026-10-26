@@ -53,15 +53,22 @@ public class ElasticsearchAutoConfiguration {
 
         RestClientBuilder builder = RestClient.builder(httpHosts);
 
-        // 配置认证凭据
-        if (StringUtils.hasText(properties.getUsername())) {
-            CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
-            credentialsProvider.setCredentials(AuthScope.ANY,
-                    new UsernamePasswordCredentials(properties.getUsername(), properties.getPassword()));
-
-            builder.setHttpClientConfigCallback(httpClientBuilder ->
-                    httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider));
-        }
+        // 配置 HTTP 客户端（连接池与认证凭据）
+        builder.setHttpClientConfigCallback(httpClientBuilder -> {
+            if (properties.getMaxConnTotal() > 0) {
+                httpClientBuilder.setMaxConnTotal(properties.getMaxConnTotal());
+            }
+            if (properties.getMaxConnPerRoute() > 0) {
+                httpClientBuilder.setMaxConnPerRoute(properties.getMaxConnPerRoute());
+            }
+            if (StringUtils.hasText(properties.getUsername())) {
+                CredentialsProvider credentialsProvider = new BasicCredentialsProvider();
+                credentialsProvider.setCredentials(AuthScope.ANY,
+                        new UsernamePasswordCredentials(properties.getUsername(), properties.getPassword()));
+                httpClientBuilder.setDefaultCredentialsProvider(credentialsProvider);
+            }
+            return httpClientBuilder;
+        });
 
         // 配置超时参数
         builder.setRequestConfigCallback(requestConfigBuilder ->

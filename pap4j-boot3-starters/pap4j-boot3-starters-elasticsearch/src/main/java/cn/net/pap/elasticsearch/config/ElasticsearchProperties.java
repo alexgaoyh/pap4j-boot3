@@ -51,6 +51,26 @@ public class ElasticsearchProperties {
     private int socketTimeout = 30000;
 
     /**
+     * HTTP 连接池最大连接数（默认 30）
+     */
+    private int maxConnTotal = 30;
+
+    /**
+     * 每个路由最大并发连接数（默认 10）
+     */
+    private int maxConnPerRoute = 10;
+
+    /**
+     * 默认每页条数（默认 10）
+     */
+    private int defaultPageSize = 10;
+
+    /**
+     * 每页最大条数限制（默认 100）
+     */
+    private int maxPageSize = 100;
+
+    /**
      * 深分页保护阈值（对应 ES max_result_window）：from + size 超过该值时直接拒绝，
      * 避免在千万级索引上触发跨分片全量排序的高代价查询。默认 10000，与 ES 默认值一致。
      */

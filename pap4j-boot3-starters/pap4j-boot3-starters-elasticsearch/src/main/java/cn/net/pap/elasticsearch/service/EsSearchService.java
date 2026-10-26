@@ -34,14 +34,14 @@ public class EsSearchService {
     private static final Logger log = LoggerFactory.getLogger(EsSearchService.class);
 
     /**
-     * 每页最大条数（与参照实现保持一致）
+     * 缺省兜底每页最大条数限制
      */
-    private static final int MAX_PAGE_SIZE = 100;
+    private static final int FALLBACK_MAX_PAGE_SIZE = 100;
 
     /**
-     * 默认每页条数（与参照实现保持一致）
+     * 缺省兜底默认每页条数
      */
-    private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final int FALLBACK_DEFAULT_PAGE_SIZE = 10;
 
     /**
      * ES 响应反序列化类型，静态复用，避免每次请求创建匿名 TypeReference 实例
@@ -454,10 +454,15 @@ public class EsSearchService {
     }
 
     private int normalizePageSize(Integer pageSize) {
+        int defaultPageSize = (properties != null && properties.getDefaultPageSize() > 0)
+                ? properties.getDefaultPageSize() : FALLBACK_DEFAULT_PAGE_SIZE;
+        int maxPageSize = (properties != null && properties.getMaxPageSize() > 0)
+                ? properties.getMaxPageSize() : FALLBACK_MAX_PAGE_SIZE;
+
         if (pageSize == null || pageSize < 1) {
-            return DEFAULT_PAGE_SIZE;
+            return defaultPageSize;
         }
-        return Math.min(pageSize, MAX_PAGE_SIZE);
+        return Math.min(pageSize, maxPageSize);
     }
 
     private String resolveIndexName(String indexName) {
