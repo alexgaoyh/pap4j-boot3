@@ -1084,6 +1084,34 @@ public class EsSearchServiceTest {
         Map<String, Object> rangeOnlyLte = firstMustLeaf(
                 EsSearchRequest.search().condition(Condition.of("view_count", "range", null).lte("5")));
         assertThat(asMap(asMap(rangeOnlyLte.get("range")).get("view_count"))).containsOnlyKeys("lte");
+
+        // raw() 与 autoKeyword(false) 避免自动拼装 .keyword
+        Map<String, Object> rawTerm = firstMustLeaf(
+                EsSearchRequest.search().condition(Condition.of("age", "term", "18").raw()));
+        assertThat(asMap(rawTerm.get("term"))).containsEntry("age", "18");
+
+        Map<String, Object> rawTerms = firstMustLeaf(
+                EsSearchRequest.search().condition(Condition.raw("rid", "terms", null).values(List.of("doc-1", "doc-2"))));
+        assertThat(stringList(asMap(rawTerms.get("terms")).get("rid"))).containsExactly("doc-1", "doc-2");
+
+        Map<String, Object> rawWildcard = firstMustLeaf(
+                EsSearchRequest.search().condition(Condition.of("sku_code", "wildcard", "SKU*").raw()));
+        assertThat(asMap(rawWildcard.get("wildcard"))).containsEntry("sku_code", "SKU*");
+
+        Map<String, Object> rawPrefix = firstMustLeaf(
+                EsSearchRequest.search().condition(Condition.of("path", "prefix", "/api/").autoKeyword(false)));
+        assertThat(asMap(rawPrefix.get("prefix"))).containsEntry("path", "/api/");
+
+        EsSearchRequest navRawReq = EsSearchRequest.search()
+                .condition(Condition.of("-status", "term", "active").raw());
+        Map<String, Object> navRawDsl = EsQueryBuilder.buildSearchDsl(navRawReq);
+        List<?> filters = (List<?>) asMap(asMap(navRawDsl.get("query")).get("bool")).get("filter");
+        assertThat(asMap(asMap(filters.get(0)).get("term"))).containsEntry("status", "active");
+
+        EsSearchRequest hlRawReq = EsSearchRequest.search()
+                .condition(Condition.of("rid", "term", "doc-001").raw());
+        Map<String, Object> hlDsl = EsQueryBuilder.buildSearchDsl(hlRawReq);
+        assertThat(asMap(asMap(hlDsl.get("highlight")).get("fields"))).containsKey("rid");
     }
 
     @Test
@@ -2161,6 +2189,95 @@ public class EsSearchServiceTest {
         assertThat(maskUriMethod.invoke(autoConfig, "http://user:pass@localhost:9200"))
                 .isEqualTo("http://***:***@localhost:9200");
         assertThat(maskUriMethod.invoke(autoConfig, ":::invalid-uri")).isEqualTo("***");
+    }
+
+    @Test
+    void test105_queryBuilderDefaultAppendsKeyword() {
+        EsSearchRequest request = EsSearchRequest.search()
+                .condition(Condition.of("status", "term", "published"))
+                .condition(Condition.of("category", "terms", null).values(List.of("tech", "news")))
+                .condition(Condition.of("title", "wildcard", "test*"))
+                .condition(Condition.of("prefix_field", "prefix", "pre_"));
+
+        Map<String, Object> dsl = EsQueryBuilder.buildSearchDsl(request);
+        String dslString = dsl.toString();
+
+        assertThat(dslString).contains("status.keyword");
+        assertThat(dslString).contains("category.keyword");
+        assertThat(dslString).contains("title.keyword");
+        assertThat(dslString).contains("prefix_field.keyword");
+    }
+
+    @Test
+    void test106_queryBuilderRawDisablesKeywordAppend() {
+        // 1. term 查询原生数值或原生 keyword 字段
+        EsSearchRequest reqTerm = EsSearchRequest.search()
+                .condition(Condition.of("age", "term", "18").raw());
+        Map<String, Object> dslTerm = EsQueryBuilder.buildSearchDsl(reqTerm);
+        assertThat(dslTerm.toString()).contains("age=").doesNotContain("age.keyword");
+
+        // 2. 静态工厂 Condition.raw()
+        EsSearchRequest reqTerms = EsSearchRequest.search()
+                .condition(Condition.raw("rid", "terms", null).values(List.of("doc-1", "doc-2")));
+        Map<String, Object> dslTerms = EsQueryBuilder.buildSearchDsl(reqTerms);
+        assertThat(dslTerms.toString()).contains("rid=").doesNotContain("rid.keyword");
+
+        // 3. wildcard / prefix 查询禁用 .keyword
+        EsSearchRequest reqWildcard = EsSearchRequest.search()
+                .condition(Condition.of("sku_code", "wildcard", "SKU*").raw())
+                .condition(Condition.of("api_path", "prefix", "/v1/").autoKeyword(false));
+        Map<String, Object> dslWildcard = EsQueryBuilder.buildSearchDsl(reqWildcard);
+        assertThat(dslWildcard.toString()).contains("sku_code=").doesNotContain("sku_code.keyword");
+        assertThat(dslWildcard.toString()).contains("api_path=").doesNotContain("api_path.keyword");
+    }
+
+    @Test
+    void test107_queryBuilderNavigationConditionWithRaw() {
+        // 默认情况：带 '-' 前缀且无 .keyword 时自动追加
+        EsSearchRequest reqDefault = EsSearchRequest.search()
+                .condition(Condition.of("-status", "term", "active"));
+        Map<String, Object> dslDefault = EsQueryBuilder.buildSearchDsl(reqDefault);
+        assertThat(dslDefault.toString()).contains("status.keyword");
+
+        // raw() 标记：去除 '-' 前缀后保持原名
+        EsSearchRequest reqRaw = EsSearchRequest.search()
+                .condition(Condition.of("-status", "term", "active").raw());
+        Map<String, Object> dslRaw = EsQueryBuilder.buildSearchDsl(reqRaw);
+        assertThat(dslRaw.toString()).contains("status=").doesNotContain("status.keyword");
+    }
+
+    @Test
+    void test108_queryBuilderAutoHighlightWithRaw() {
+        // 默认情况高亮字段会被转为 .keyword
+        EsSearchRequest reqDefault = EsSearchRequest.search()
+                .condition(Condition.of("title", "term", "test"));
+        Map<String, Object> dslDefault = EsQueryBuilder.buildSearchDsl(reqDefault);
+        Map<String, Object> hlDefault = asMap(dslDefault.get("highlight"));
+        assertThat(asMap(hlDefault.get("fields"))).containsKey("title.keyword");
+
+        // raw() 情况下高亮字段名保持原样
+        EsSearchRequest reqRaw = EsSearchRequest.search()
+                .condition(Condition.of("rid", "term", "doc-1").raw());
+        Map<String, Object> dslRaw = EsQueryBuilder.buildSearchDsl(reqRaw);
+        Map<String, Object> hlRaw = asMap(dslRaw.get("highlight"));
+        assertThat(asMap(hlRaw.get("fields"))).containsKey("rid").doesNotContainKey("rid.keyword");
+    }
+
+    @Test
+    void test109_queryBuilderMixedNormalAndRawConditions() {
+        EsSearchRequest request = EsSearchRequest.search()
+                .condition(Condition.of("category", "term", "tech")) // 文本多字段 -> category.keyword
+                .condition(Condition.of("view_count", "term", "100").raw()) // 数值 -> view_count
+                .condition(Condition.raw("is_deleted", "term", "false")); // 布尔 -> is_deleted
+
+        Map<String, Object> dsl = EsQueryBuilder.buildSearchDsl(request);
+        String dslString = dsl.toString();
+
+        assertThat(dslString).contains("category.keyword");
+        assertThat(dslString).contains("view_count=");
+        assertThat(dslString).doesNotContain("view_count.keyword");
+        assertThat(dslString).contains("is_deleted=");
+        assertThat(dslString).doesNotContain("is_deleted.keyword");
     }
 
     private EsSearchService mockedService(String json) throws IOException {

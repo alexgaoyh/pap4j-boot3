@@ -462,6 +462,12 @@ public class EsSearchRequest {
         private String nestedPath;
 
         /**
+         * 是否在精确匹配（term / terms / wildcard / prefix 等）时自动追加 .keyword 后缀（默认 true）。
+         * 若设为 false，则直接使用原样字段名进行检索。适用于数值、日期、布尔或本身就是 keyword 类型的字段。
+         */
+        private Boolean autoKeyword = Boolean.TRUE;
+
+        /**
          * 静态工厂方法构造检索条件
          *
          * @param field   字段名
@@ -474,6 +480,20 @@ public class EsSearchRequest {
             condition.setField(field);
             condition.setMatch(match);
             condition.setKeyword(keyword);
+            return condition;
+        }
+
+        /**
+         * 静态工厂方法构造使用原生原样字段（不自动追加 .keyword 后缀）的检索条件
+         *
+         * @param field   字段名
+         * @param match   匹配类型
+         * @param keyword 关键词
+         * @return Condition 实例（autoKeyword = false）
+         */
+        public static Condition raw(String field, String match, String keyword) {
+            Condition condition = of(field, match, keyword);
+            condition.setAutoKeyword(Boolean.FALSE);
             return condition;
         }
 
@@ -529,6 +549,28 @@ public class EsSearchRequest {
          */
         public Condition lte(String lte) {
             this.lte = lte;
+            return this;
+        }
+
+        /**
+         * 设置是否自动追加 .keyword 后缀
+         *
+         * @param autoKeyword 是否自动追加
+         * @return 当前 Condition 对象
+         */
+        public Condition autoKeyword(Boolean autoKeyword) {
+            this.autoKeyword = autoKeyword;
+            return this;
+        }
+
+        /**
+         * 标记当前条件使用原生原样字段名，严禁自动追加 .keyword 后缀。
+         * 适用于：数值、日期、布尔或本身就是 keyword 类型的字段。
+         *
+         * @return 当前 Condition 对象
+         */
+        public Condition raw() {
+            this.autoKeyword = Boolean.FALSE;
             return this;
         }
     }

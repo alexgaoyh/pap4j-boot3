@@ -427,13 +427,16 @@ public class EsQueryBuilder {
         }
         match = match.trim().toLowerCase(Locale.ROOT);
 
+        boolean shouldAppendKeyword = !Boolean.FALSE.equals(condition.getAutoKeyword());
+
         String field;
         if (rawField.startsWith("-")) {
             String base = rawField.substring(1);
-            field = base.endsWith(".keyword") ? base : base + ".keyword";
+            field = (shouldAppendKeyword && !base.endsWith(".keyword")) ? base + ".keyword" : base;
         } else if ("term".equals(match) || "terms".equals(match)
                 || "wildcard".equals(match) || "prefix".equals(match)) {
-            field = (rawField.endsWith(".keyword") || isNestedField(rawField)) ? rawField : rawField + ".keyword";
+            field = (shouldAppendKeyword && !rawField.endsWith(".keyword") && !isNestedField(rawField))
+                    ? rawField + ".keyword" : rawField;
         } else {
             field = rawField;
         }
@@ -834,9 +837,13 @@ public class EsQueryBuilder {
         if (!navigationField && "range".equals(match)) {
             return null;
         }
+        boolean shouldAppendKeyword = !Boolean.FALSE.equals(condition.getAutoKeyword());
         if (navigationField || "term".equals(match) || "terms".equals(match)
             || "wildcard".equals(match) || "prefix".equals(match)) {
-            return normalizedField.endsWith(".keyword") ? normalizedField : normalizedField + ".keyword";
+            if (shouldAppendKeyword && !normalizedField.endsWith(".keyword")) {
+                return normalizedField + ".keyword";
+            }
+            return normalizedField;
         }
         return normalizedField;
     }
