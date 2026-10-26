@@ -12,6 +12,7 @@ import org.elasticsearch.client.RestClient;
 import org.elasticsearch.client.RestClientBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -94,13 +95,13 @@ public class ElasticsearchAutoConfiguration {
     }
 
     /**
-     * 构建默认 ObjectMapper 实例
+     * 构建专用于 Elasticsearch 内部反序列化的 ObjectMapper 实例（避免污染全局 Web/MVC ObjectMapper）
      *
      * @return ObjectMapper 实例
      */
-    @Bean
-    @ConditionalOnMissingBean
-    public ObjectMapper objectMapper() {
+    @Bean("elasticsearchObjectMapper")
+    @ConditionalOnMissingBean(name = "elasticsearchObjectMapper")
+    public ObjectMapper elasticsearchObjectMapper() {
         ObjectMapper om = new ObjectMapper();
         om.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
         return om;
@@ -110,14 +111,14 @@ public class ElasticsearchAutoConfiguration {
      * 构建通用 Elasticsearch 检索服务实例
      *
      * @param restClient   ES 底层客户端
-     * @param objectMapper JSON 序列化工具
+     * @param objectMapper JSON 序列化工具（限定名注入）
      * @param properties   ES 配置属性
      * @return EsSearchService 检索服务实例
      */
     @Bean
     @ConditionalOnMissingBean
     public EsSearchService esSearchService(RestClient restClient,
-                                           ObjectMapper objectMapper,
+                                           @Qualifier("elasticsearchObjectMapper") ObjectMapper objectMapper,
                                            ElasticsearchProperties properties) {
         return new EsSearchService(restClient, objectMapper, properties);
     }

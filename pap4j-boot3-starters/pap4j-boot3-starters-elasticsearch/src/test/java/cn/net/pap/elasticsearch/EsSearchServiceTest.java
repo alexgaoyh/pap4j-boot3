@@ -1286,7 +1286,8 @@ public class EsSearchServiceTest {
         assertThat(SortOrder.fromString(null)).isEqualTo(SortOrder.DESC);
         assertThat(SortOrder.fromString("asc")).isEqualTo(SortOrder.ASC);
         assertThat(SortOrder.fromString("xyz")).isEqualTo(SortOrder.DESC);
-        assertThat(SortOrder.ASC.getValue()).isEqualTo("Asc");
+        assertThat(SortOrder.ASC.getValue()).isEqualTo("asc");
+        assertThat(SortOrder.DESC.getValue()).isEqualTo("desc");
 
         EsSearchRequest request = EsSearchRequest.record("r1").rid("r2");
         request.conditions(List.of(Condition.of("a", "term", "b")));
@@ -1361,7 +1362,7 @@ public class EsSearchServiceTest {
             assertThat(client.getNodes()).hasSize(1);
         }
 
-        assertThat(autoConfiguration.objectMapper()
+        assertThat(autoConfiguration.elasticsearchObjectMapper()
                 .isEnabled(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)).isFalse();
 
         try (RestClient client = autoConfiguration.restClient(noAuth)) {
@@ -1503,8 +1504,8 @@ public class EsSearchServiceTest {
 
         List<?> sort = (List<?>) dsl.get("sort");
         assertThat(sort).hasSize(2);
-        assertThat(asMap(asMap(sort.get(0)).get("view_count"))).containsEntry("order", "Desc");
-        assertThat(asMap(asMap(sort.get(1)).get("publish_date"))).containsEntry("order", "Asc");
+        assertThat(asMap(asMap(sort.get(0)).get("view_count"))).containsEntry("order", "desc");
+        assertThat(asMap(asMap(sort.get(1)).get("publish_date"))).containsEntry("order", "asc");
     }
 
     /**
@@ -1612,7 +1613,7 @@ public class EsSearchServiceTest {
                 .sort(Sort.desc("status.keyword"));
         List<?> sort = (List<?>) EsQueryBuilder.buildSearchDsl(sorted).get("sort");
         assertThat(sort).hasSize(3);
-        assertThat(asMap(asMap(sort.get(1)).get("publish_date"))).containsEntry("order", "Asc");
+        assertThat(asMap(asMap(sort.get(1)).get("publish_date"))).containsEntry("order", "asc");
     }
 
     /**
