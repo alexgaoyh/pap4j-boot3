@@ -160,7 +160,7 @@ public class PoolingHttpClientConnectionManagerTest {
     }
 
     private static HttpServer mockServer;
-    private static final int PORT = 8080;
+    private static final int PORT = 48080;
 
     @BeforeAll
     static void setUpServer() throws IOException {
