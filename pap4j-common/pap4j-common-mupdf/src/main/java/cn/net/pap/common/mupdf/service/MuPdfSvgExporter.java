@@ -29,7 +29,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -37,6 +39,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
 /**
@@ -64,8 +67,17 @@ import java.util.stream.Stream;
  *   <li>{@code pap.mupdf.svg.maxImages}（默认 128）：单页内嵌图片数量上限；</li>
  *   <li>{@code pap.mupdf.svg.maxImageBytes}（默认 48MB）：单页内嵌图片字节上限；</li>
  *   <li>{@code pap.mupdf.svg.maxPaths}（默认 20 万）：单页矢量路径数量上限；</li>
- *   <li>{@code pap.mupdf.svg.maxFontBytes}（默认 32MB）：单字体文件字节上限。</li>
+ *   <li>{@code pap.mupdf.svg.maxFontBytes}（默认 32MB）：单字体文件字节上限；</li>
+ *   <li>{@code pap.mupdf.svg.fontCacheDirs}（默认 8）：字体目录缓存条目上限，目录内容变化时按指纹自动失效；</li>
+ *   <li>{@code pap.mupdf.svg.outlineCacheSize}（默认 200000）：跨页复用的字形轮廓缓存条目上限。</li>
  * </ul>
+ *
+ * <h3>批量导出</h3>
+ * <p>逐页调用 {@link #export(String, int, Path, Path)} 时，每页都会重新打开文档（坐标提取 + 图形采集各一次）、
+ * 重新扫描并读取字体目录、重新做 {@code @font-face} 的 base64 编码。批量场景请改用
+ * {@link #openBatch(String, Path)} + {@link Batch#exportPage(int, Path)}：整个批次只打开 2 个文档句柄、
+ * 只读取一次字体目录，字体 base64 与字形轮廓 path 跨页复用，<b>导出的每页 SVG 与逐页调用完全一致</b>。
+ * 字体目录与字形轮廓缓存均按“目录指纹（文件名 + 大小 + 修改时间）”自动失效，不改变任何导出语义。</p>
  *
  * @author alexgaoyh
  */
@@ -107,6 +119,27 @@ public final class MuPdfSvgExporter {
      * 单个字体文件字节上限。
      */
     private static final long MAX_FONT_FILE_BYTES = Long.getLong("pap.mupdf.svg.maxFontBytes", 32L * 1024 * 1024);
+
+    /**
+     * 字体目录缓存条目上限（按字体目录绝对路径索引，内容变化时按指纹失效）。
+     */
+    private static final int FONT_TABLE_CACHE_MAX = Integer.getInteger("pap.mupdf.svg.fontCacheDirs", 8);
+
+    /**
+     * 跨页复用的字形轮廓缓存条目上限；超出后仅不再新增缓存，不影响导出结果。
+     */
+    private static final int MAX_OUTLINE_CACHE = Integer.getInteger("pap.mupdf.svg.outlineCacheSize", 200_000);
+
+    /**
+     * 单个字体目录允许常驻缓存的字体总字节数上限；超出则该目录不做缓存（仍可导出，只是退化为每次重新读取），
+     * 避免把超大字体目录的字节长期留在堆里。
+     */
+    private static final long MAX_CACHED_FONT_BYTES = Long.getLong("pap.mupdf.svg.fontCacheMaxBytes", 128L * 1024 * 1024);
+
+    /**
+     * 字体目录缓存（访问序 LRU，读多写少，统一用 {@code synchronized} 保护），避免批量导出每页重复读盘与 base64 编码。
+     */
+    private static final LinkedHashMap<String, FontTables> FONT_TABLE_CACHE = new LinkedHashMap<>(8, 0.75f, true);
 
     private MuPdfSvgExporter() {
     }
@@ -152,15 +185,113 @@ public final class MuPdfSvgExporter {
         if (svgFile == null) {
             throw new IllegalArgumentException("SVG 输出文件不能为空");
         }
+        try (Batch batch = openBatch(pdfPath, fontDir)) {
+            return batch.exportPage(pageNum, svgFile);
+        }
+    }
 
-        Path effectiveFontDir = fontDir;
-        if (fontDir != null && !Files.isDirectory(fontDir)) {
-            log.warn("[MuPDF-SVG] 字体目录不存在或不是目录，忽略字体并统一回退宋体: {}", fontDir.toAbsolutePath());
-            effectiveFontDir = null;
+    /**
+     * 打开批量导出上下文：<b>整个批次只打开文档句柄（坐标提取 1 个 + 图形采集 1 个）、
+     * 只扫描并读取一次字体目录</b>，后续逐页调用 {@link Batch#exportPage(int, Path)} 即可复用。
+     *
+     * <p>相比逐页调用 {@link #export(String, int, Path, Path)}，本方法省去每页重复的
+     * 文档打开与解析、字体目录扫描、字体文件读取与 {@code @font-face} base64 编码，
+     * 字形轮廓也会跨页复用；导出的单页 SVG 内容与 {@code export(...)} 完全一致。</p>
+     *
+     * <p><b>使用约定：</b>同一个 {@code Batch} 必须<b>单线程</b>使用（MuPDF 要求同一文档句柄
+     * 同一时刻只能被一个线程访问）；用完后务必 {@link Batch#close()} 释放原生句柄，
+     * 推荐用 try-with-resources。不同线程可各自打开独立的 {@code Batch}。</p>
+     *
+     * @param pdfPath PDF 文件物理路径
+     * @param fontDir 字体目录（可传 null）；文件名需与坐标中的字体名一致
+     * @return 批量导出上下文
+     * @throws IllegalArgumentException PDF 路径为空
+     */
+    public static Batch openBatch(String pdfPath, Path fontDir) throws IOException {
+        if (pdfPath == null || pdfPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("PDF 路径不能为空");
+        }
+        Path effectiveFontDir = resolveFontDir(fontDir);
+        MuPdfService service = new MuPdfService();
+        boolean success = false;
+        try {
+            Batch batch = new Batch(pdfPath, service, fontTables(effectiveFontDir));
+            success = true;
+            return batch;
+        } finally {
+            if (!success) {
+                service.close();
+            }
+        }
+    }
+
+    /**
+     * 批量导出上下文：复用同一个文档句柄、同一份字体表与字形轮廓缓存。
+     *
+     * <p><b>非线程安全</b>，请单线程使用；实例用完后必须 {@link #close()}。</p>
+     */
+    public static final class Batch implements AutoCloseable {
+
+        private final String pdfPath;
+        private final MuPdfService service;
+        private final FontTables fontTables;
+        private Document graphicsDocument;
+        private int pageCount = -1;
+        private boolean closed;
+
+        private Batch(String pdfPath, MuPdfService service, FontTables fontTables) {
+            this.pdfPath = pdfPath;
+            this.service = service;
+            this.fontTables = fontTables;
         }
 
-        MuPdfService service = new MuPdfService();
-        try {
+        /**
+         * 当前 PDF 的总页数（首次调用时读取并缓存）。
+         *
+         * @return 总页数
+         * @throws IllegalStateException 批次已关闭，或文档损坏/加密无法读取页数
+         */
+        public int pageCount() {
+            if (pageCount < 0) {
+                pageCount = service.getPageCount(pdfPath);
+            }
+            return pageCount;
+        }
+
+        /**
+         * 懒加载图形采集用的文档句柄：整个批次只打开一次；打开失败时返回 null，
+         * 调用方自动降级为“仅文字图层”（与逐页导出的降级行为一致）。
+         *
+         * @return 文档句柄，或 null
+         */
+        private Document graphicsDocument() {
+            if (graphicsDocument == null) {
+                graphicsDocument = Document.openDocument(pdfPath);
+            }
+            return graphicsDocument;
+        }
+
+        /**
+         * 导出批次内指定页的 SVG，复用批次的文档句柄与字体/字形缓存。
+         *
+         * @param pageNum 页码（0-indexed）
+         * @param svgFile 输出 SVG 文件
+         * @return 导出结果（内嵌字体、轮廓字体、回退字体）
+         * @throws IOException              文件读写失败
+         * @throws IllegalArgumentException 页码为负或输出文件为空
+         * @throws IllegalStateException    批次已关闭，或坐标提取失败
+         */
+        public ExportResult exportPage(int pageNum, Path svgFile) throws IOException {
+            if (closed) {
+                throw new IllegalStateException("批次已关闭，无法继续导出: " + pdfPath);
+            }
+            if (pageNum < 0) {
+                throw new IllegalArgumentException("页码必须 >= 0（当前 " + pageNum + "）");
+            }
+            if (svgFile == null) {
+                throw new IllegalArgumentException("SVG 输出文件不能为空");
+            }
+
             MuPdfService.PageResult page;
             try {
                 List<MuPdfService.PageResult> pages = service.extractCoordinates(pdfPath, pageNum).pages();
@@ -178,9 +309,20 @@ public final class MuPdfSvgExporter {
                 log.warn("[MuPDF-SVG] 第 {} 页未提取到任何字符，将只输出矢量/图片图层: {}", pageNum + 1, pdfPath);
             }
 
-            Map<String, WebFont> webFonts = loadWebFonts(effectiveFontDir);
-            Map<String, java.awt.Font> type1Fonts = loadType1Fonts(effectiveFontDir);
-            PageGraphics graphics = collectPageGraphics(pdfPath, pageNum);
+            Map<String, WebFont> webFonts = fontTables.webFonts();
+            Map<String, java.awt.Font> type1Fonts = fontTables.type1Fonts();
+            // 图形采集：整个批次只打开一个独立句柄（坐标提取用的是 MuPdfService 的缓存句柄），
+            // 打开失败时降级为仅文字图层
+            PageGraphics graphics;
+            Document doc = null;
+            try {
+                doc = graphicsDocument();
+            } catch (Throwable t) {
+                log.error("[MuPDF-SVG] 采集第 {} 页图形失败（导出继续，仅文字图层）: {}", pageNum + 1, pdfPath, t);
+            }
+            graphics = doc == null
+                    ? new PageGraphics(new ArrayList<>(), new ArrayList<>(), new ArrayList<>())
+                    : collectPageGraphics(doc, pdfPath, pageNum);
             Map<Integer, GlyphRef> glyphs = matchGlyphs(graphics.glyphs(), chars, pageNum);
 
             List<String> embeddedFonts = new ArrayList<>();
@@ -194,7 +336,11 @@ public final class MuPdfSvgExporter {
                     outlineFonts.add(fontName);
                 } else if (webFonts.containsKey(fontName)) {
                     embeddedFonts.add(fontName);
-                    appendFontFace(css, fontName, webFonts.get(fontName));
+                    // base64 结果按字体名缓存并跨页复用，避免每页重新编码整份字体
+                    String fontFaceCss = fontTables.fontFaceCss(fontName);
+                    if (fontFaceCss != null) {
+                        css.append(fontFaceCss);
+                    }
                     classByFont.put(fontName, "f" + classByFont.size());
                     appendTextClass(css, classByFont.get(fontName), fontName, null);
                 } else {
@@ -205,7 +351,7 @@ public final class MuPdfSvgExporter {
             }
 
             String svg = buildSvg(page, chars, glyphs, graphics.paths(), graphics.images(),
-                    type1Fonts, classByFont, css);
+                    type1Fonts, classByFont, css, fontTables);
             try {
                 Path parent = svgFile.toAbsolutePath().getParent();
                 if (parent != null) {
@@ -222,9 +368,40 @@ public final class MuPdfSvgExporter {
                     outlineFonts.size(), embeddedFonts.size(), fallbackFonts.size(), svgFile.toAbsolutePath());
             return new ExportResult(svgFile, embeddedFonts, outlineFonts, fallbackFonts,
                     graphics.paths().size(), graphics.images().size());
-        } finally {
-            service.close();
         }
+
+        @Override
+        public void close() {
+            if (closed) {
+                return;
+            }
+            closed = true;
+            Document doc = graphicsDocument;
+            graphicsDocument = null;
+            try {
+                if (doc != null) {
+                    doc.destroy();
+                }
+            } catch (Throwable t) {
+                log.error("[MuPDF-SVG] 释放图形采集文档句柄失败: {}", pdfPath, t);
+            } finally {
+                service.close();
+            }
+        }
+    }
+
+    /**
+     * 校验并归一化字体目录：不存在时告警并降级为“不使用字体文件”。
+     *
+     * @param fontDir 原始字体目录
+     * @return 可用的字体目录，或 null
+     */
+    private static Path resolveFontDir(Path fontDir) {
+        if (fontDir != null && !Files.isDirectory(fontDir)) {
+            log.warn("[MuPDF-SVG] 字体目录不存在或不是目录，忽略字体并统一回退宋体: {}", fontDir.toAbsolutePath());
+            return null;
+        }
+        return fontDir;
     }
 
     // ------------------------------------------------------------------
@@ -234,7 +411,7 @@ public final class MuPdfSvgExporter {
     private static String buildSvg(MuPdfService.PageResult page, List<MuPdfService.CharResult> chars,
                                    Map<Integer, GlyphRef> glyphs, List<SvgPath> paths, List<SvgImage> images,
                                    Map<String, java.awt.Font> type1Fonts,
-                                   Map<String, String> classByFont, StringBuilder css) {
+                                   Map<String, String> classByFont, StringBuilder css, FontTables fontTables) {
         if (page == null) {
             // 上层已校验，这里仅作兜底，避免 NPE 掩盖真实原因
             throw new IllegalArgumentException("页面坐标结果不能为空");
@@ -284,7 +461,9 @@ public final class MuPdfSvgExporter {
                 String pathId = outlinedGlyphs.get(key);
                 if (pathId == null && !unoutlinedGlyphs.contains(key)) {
                     // 轮廓提取失败（字体文件与 PDF 不匹配 / gid 越界）时该字形退回文本渲染，不中断整页导出
-                    String pathData = toSvgPath(type1Font, glyph.gid());
+                    String pathData = fontTables == null
+                            ? toSvgPath(type1Font, glyph.gid())
+                            : fontTables.outline(ch.font(), glyph.gid(), type1Font);
                     if (pathData == null) {
                         unoutlinedGlyphs.add(key);
                     } else {
@@ -471,14 +650,12 @@ public final class MuPdfSvgExporter {
         return -1;
     }
 
-    private static PageGraphics collectPageGraphics(String pdfPath, int pageNum) {
+    private static PageGraphics collectPageGraphics(Document doc, String pdfPath, int pageNum) {
         List<GlyphRef> glyphs = new ArrayList<>();
         List<SvgPath> paths = new ArrayList<>();
         List<SvgImage> images = new ArrayList<>();
 
-        Document doc = null;
         try {
-            doc = Document.openDocument(pdfPath);
             if (!(doc instanceof PDFDocument pdf)) {
                 return new PageGraphics(glyphs, paths, images);
             }
@@ -524,14 +701,6 @@ public final class MuPdfSvgExporter {
             }
         } catch (Throwable t) {
             log.error("[MuPDF-SVG] 采集第 {} 页图形失败（导出继续，仅文字图层）: {}", pageNum + 1, pdfPath, t);
-        } finally {
-            if (doc != null) {
-                try {
-                    doc.destroy();
-                } catch (Throwable t) {
-                    log.error("[MuPDF-SVG] 释放文档句柄失败: {}", pdfPath, t);
-                }
-            }
         }
         return new PageGraphics(glyphs, paths, images);
     }
@@ -1104,15 +1273,18 @@ public final class MuPdfSvgExporter {
     // 字体加载
     // ------------------------------------------------------------------
 
-    private static void appendFontFace(StringBuilder css, String fontName, WebFont webFont) {
-        if (css == null || webFont == null || webFont.data() == null || webFont.data().length == 0) {
-            return;
-        }
-        css.append("@font-face{font-family:").append(cssString(fontName))
-                .append(";src:url(data:").append(webFont.mimeType()).append(";base64,")
-                .append(Base64.getEncoder().encodeToString(webFont.data()))
-                .append(") format('").append(webFont.format()).append("');}")
-                .append('\n');
+    /**
+     * 构建 {@code @font-face} 规则文本（含 base64 数据），结果按字体名缓存后跨页复用。
+     *
+     * @param fontName 字体名（与字体文件名一致）
+     * @param webFont  字体数据
+     * @return 可直接追加进 CSS 的规则文本（含结尾换行）
+     */
+    private static String buildFontFaceCss(String fontName, WebFont webFont) {
+        return "@font-face{font-family:" + cssString(fontName)
+                + ";src:url(data:" + webFont.mimeType() + ";base64,"
+                + Base64.getEncoder().encodeToString(webFont.data())
+                + ") format('" + webFont.format() + "');}\n";
     }
 
     private static void appendTextClass(StringBuilder css, String className, String fontName, String fallback) {
@@ -1208,6 +1380,161 @@ public final class MuPdfSvgExporter {
             }
         }
         return fonts;
+    }
+
+    /**
+     * 字体目录缓存条目：目录指纹 + 字体表 + {@code @font-face} 与字形轮廓缓存。
+     *
+     * <p>同一字体目录在进程内只读取一次；字体字节对应的 base64 文本、字形轮廓 path 数据
+     * 均按字体名缓存，跨页 / 跨批次复用，避免批量导出时重复编码同一份字体。</p>
+     */
+    private static final class FontTables {
+
+        private final String fingerprint;
+        private final Map<String, WebFont> webFonts;
+        private final Map<String, java.awt.Font> type1Fonts;
+        private final ConcurrentHashMap<String, String> fontFaceCssCache = new ConcurrentHashMap<>();
+        private final ConcurrentHashMap<String, String> outlineCache = new ConcurrentHashMap<>();
+
+        private FontTables(String fingerprint, Map<String, WebFont> webFonts,
+                           Map<String, java.awt.Font> type1Fonts) {
+            this.fingerprint = fingerprint;
+            this.webFonts = webFonts;
+            this.type1Fonts = type1Fonts;
+        }
+
+        /**
+         * 字体字节总量，用于判断该目录是否适合常驻缓存。
+         *
+         * @return 总字节数
+         */
+        private long totalFontBytes() {
+            long total = 0L;
+            for (WebFont font : webFonts.values()) {
+                if (font.data() != null) {
+                    total += font.data().length;
+                }
+            }
+            return total;
+        }
+
+        private Map<String, WebFont> webFonts() {
+            return webFonts;
+        }
+
+        private Map<String, java.awt.Font> type1Fonts() {
+            return type1Fonts;
+        }
+
+        /**
+         * 取字体名对应的 {@code @font-face} 规则（含 base64），首次调用时编码并缓存。
+         *
+         * @param fontName 字体名
+         * @return 规则文本；该字体名不是 Web 字体时返回 null
+         */
+        private String fontFaceCss(String fontName) {
+            String cached = fontFaceCssCache.get(fontName);
+            if (cached != null) {
+                return cached;
+            }
+            WebFont webFont = webFonts.get(fontName);
+            if (webFont == null || webFont.data() == null || webFont.data().length == 0) {
+                return null;
+            }
+            String built = buildFontFaceCss(fontName, webFont);
+            fontFaceCssCache.put(fontName, built);
+            return built;
+        }
+
+        /**
+         * 取字形轮廓 path 数据（跨页复用）；提取失败不缓存，保持与逐页导出相同的降级行为。
+         *
+         * @param fontName 字体名
+         * @param glyphId  MuPDF glyph id
+         * @param font     Type1 字体句柄
+         * @return SVG path 的 d 属性；无法提取时返回 null
+         */
+        private String outline(String fontName, int glyphId, java.awt.Font font) {
+            String key = fontName + '|' + glyphId;
+            String cached = outlineCache.get(key);
+            if (cached != null) {
+                return cached;
+            }
+            String pathData = toSvgPath(font, glyphId);
+            if (pathData != null && outlineCache.size() < MAX_OUTLINE_CACHE) {
+                outlineCache.put(key, pathData);
+            }
+            return pathData;
+        }
+    }
+
+    /**
+     * 取（或构建）字体目录缓存条目；目录内容变化（文件名 / 大小 / 修改时间）时自动重建。
+     *
+     * @param fontDir 字体目录（可为 null）
+     * @return 字体表（永不为 null）
+     */
+    private static FontTables fontTables(Path fontDir) {
+        String key = fontDir == null ? "<none>" : fontDir.toAbsolutePath().normalize().toString();
+        String fingerprint = fingerprint(fontDir);
+        if (fingerprint == null) {
+            // 目录不可用：不复用缓存，避免把一次临时故障固化下来
+            return new FontTables("unavailable", new LinkedHashMap<>(), new LinkedHashMap<>());
+        }
+        synchronized (FONT_TABLE_CACHE) {
+            FontTables cached = FONT_TABLE_CACHE.get(key);
+            if (cached != null && cached.fingerprint.equals(fingerprint)) {
+                return cached;
+            }
+        }
+        FontTables built = new FontTables(fingerprint, loadWebFonts(fontDir), loadType1Fonts(fontDir));
+        long totalFontBytes = built.totalFontBytes();
+        if (totalFontBytes > MAX_CACHED_FONT_BYTES) {
+            log.warn("[MuPDF-SVG] 字体目录字体总量 {} 字节超过缓存上限 {}，该目录不做常驻缓存（仍可导出，仅退化为每次重新读取）: {}",
+                    totalFontBytes, MAX_CACHED_FONT_BYTES, key);
+            return built;
+        }
+        synchronized (FONT_TABLE_CACHE) {
+            FONT_TABLE_CACHE.put(key, built);
+            while (FONT_TABLE_CACHE.size() > FONT_TABLE_CACHE_MAX) {
+                Iterator<String> eldest = FONT_TABLE_CACHE.keySet().iterator();
+                if (!eldest.hasNext()) {
+                    break;
+                }
+                eldest.next();
+                eldest.remove();
+            }
+        }
+        log.info("[MuPDF-SVG] 字体目录已加载并缓存: {} | Web 字体 {} 个 | Type1 字体 {} 个",
+                key, built.webFonts.size(), built.type1Fonts.size());
+        return built;
+    }
+
+    /**
+     * 计算字体目录指纹（文件名 + 大小 + 修改时间），用于判断缓存是否仍然有效。
+     *
+     * @param fontDir 字体目录（可为 null）
+     * @return 指纹字符串；目录不存在或扫描失败时返回 null
+     */
+    private static String fingerprint(Path fontDir) {
+        if (fontDir == null) {
+            return "-";
+        }
+        if (!Files.isDirectory(fontDir)) {
+            return null;
+        }
+        List<String> entries = new ArrayList<>();
+        try (Stream<Path> files = Files.list(fontDir)) {
+            for (Path file : files.toList()) {
+                entries.add(file.getFileName() + "/" + Files.size(file) + "/"
+                            + Files.getLastModifiedTime(file).toMillis());
+            }
+        } catch (Throwable t) {
+            log.error("[MuPDF-SVG] 扫描字体目录失败，全部字体将回退宋体: {}", fontDir, t);
+            return null;
+        }
+        Collections.sort(entries);
+        return String.join("|", entries);
     }
 
     private static String mimeType(String extension) {

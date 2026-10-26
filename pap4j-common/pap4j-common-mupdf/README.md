@@ -76,6 +76,10 @@ public MuPdfService muPdfService() {
 | `pap.mupdf.cache.ttlMillis` | `600000` | 常驻文档空闲过期时间（10 分钟） |
 | `pap.mupdf.render.maxPixels` | `100000000` | 单页光栅化像素上限，超出直接报错 |
 | `pap.mupdf.raw.maxBytes` | `100663296` | `renderPageToRawSamples` 拷贝进 JVM 堆的字节上限 |
+| `pap.mupdf.svg.maxFontBytes` | `33554432` | 单个字体文件字节上限 |
+| `pap.mupdf.svg.fontCacheDirs` | `8` | SVG 导出：字体目录缓存条目上限（按目录指纹自动失效） |
+| `pap.mupdf.svg.fontCacheMaxBytes` | `134217728` | SVG 导出：单个字体目录允许常驻缓存的字节上限，超出则该目录不缓存 |
+| `pap.mupdf.svg.outlineCacheSize` | `200000` | SVG 导出：跨页复用的字形轮廓缓存条目上限 |
 
 另可用 `pap.mupdf.dir`（或环境变量 `PAP_MUPDF_DIR`）指定外部原生库目录。
 
