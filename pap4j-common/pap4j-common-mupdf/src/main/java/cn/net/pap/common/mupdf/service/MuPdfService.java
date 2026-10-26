@@ -94,11 +94,11 @@ public class MuPdfService implements AutoCloseable {
      */
     public static final String CFG_RAW_MAX_BYTES = "pap.mupdf.raw.maxBytes";
 
-    private static final int DEFAULT_DPI = 144;
+    private static final int DEFAULT_DPI = 96;
     /**
      * 体检时用于估算渲染像素的参考 DPI。
      */
-    private static final int CHECK_DPI = 144;
+    private static final int CHECK_DPI = 96;
     private static final int DEFAULT_CACHE_MAX_DOCS = 8;
     private static final long DEFAULT_CACHE_TTL_MILLIS = TimeUnit.MINUTES.toMillis(10);
     private static final long DEFAULT_RENDER_MAX_PIXELS = 100_000_000L;
