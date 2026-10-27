@@ -1,5 +1,6 @@
 package cn.net.pap.common.file.util;
 
+import cn.net.pap.common.core.util.RetryUtil;
 import cn.net.pap.common.file.dto.FileDTO;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -200,6 +201,38 @@ public final class FileUploadUtil {
             } else {
                 log.debug("目录 fsync 失败: {}", dir, unsupported);
             }
+        }
+    }
+
+    /**
+     * 基于存储定位符打开文件输入流（借助 {@link RetryUtil} 规避跨服务器负缓存时差，由调用方负责关闭）。
+     *
+     * @param filePath 存储定位符，形如 {@code fs1:8e/fc/8efc1f3c...}
+     * @param maxRetries  最大重试次数
+     * @param delayMillis 每次重试前的延迟（毫秒）
+     * @return 文件的物理输入流
+     * @throws IOException 读取失败或重试耗尽后文件仍不存在
+     */
+    public static InputStream openStream(String filePath, int maxRetries, long delayMillis) throws IOException {
+        int colon = filePath != null ? filePath.indexOf(':') : -1;
+        if (colon <= 0 || colon == filePath.length() - 1) {
+            throw new IllegalArgumentException("非法的 filePath 格式: " + filePath);
+        }
+        String instanceId = filePath.substring(0, colon);
+        String rel = filePath.substring(colon + 1);
+        if (rel.contains("..")) {
+            throw new SecurityException("检测到非法相对路径穿越: " + rel);
+        }
+        Path target = switch (instanceId) {
+            default -> LOCAL_ROOT.resolve(rel);
+        };
+        try {
+            // 直接尝试打开输入流（触发底层 open 系统调用），杜绝 exists() 负缓存投毒
+            return RetryUtil.retryT(maxRetries, delayMillis, () -> Files.newInputStream(target), null);
+        } catch (IOException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IOException("读取文件失败: " + filePath, e);
         }
     }
 
