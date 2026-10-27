@@ -1,5 +1,8 @@
 package cn.net.pap.common.core.util;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +14,8 @@ import java.security.NoSuchAlgorithmException;
  * <p>基于纯 JDK {@link MessageDigest} 实现 MD5 与 SHA-256 散列计算，提供字符串、字节数组及流式接口。</p>
  */
 public final class DigestUtil {
+
+    private static final Logger log = LoggerFactory.getLogger(DigestUtil.class);
 
     private static final int BUFFER_SIZE = 8192;
     private static final String MD5_ALGORITHM = "MD5";
@@ -134,6 +139,7 @@ public final class DigestUtil {
         try {
             return MessageDigest.getInstance(algorithm);
         } catch (NoSuchAlgorithmException e) {
+            log.error("Unsupported digest algorithm: {}", algorithm, e);
             throw new IllegalStateException("Unsupported digest algorithm: " + algorithm, e);
         }
     }

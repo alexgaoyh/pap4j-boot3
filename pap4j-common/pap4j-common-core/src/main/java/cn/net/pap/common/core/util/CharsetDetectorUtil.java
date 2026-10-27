@@ -85,8 +85,8 @@ public final class CharsetDetectorUtil {
                 offset += Character.charCount(codePoint);
             }
             return score;
-        } catch (CharacterCodingException e) {
-            log.debug("Charset {} decode failed for data: ", charset.name(), e);
+        } catch (CharacterCodingException ignored) {
+            log.debug("Charset {} decode failed for data: ", charset.name(), ignored);
             return -1;
         }
     }

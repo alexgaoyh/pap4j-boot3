@@ -54,7 +54,7 @@ public final class ThreadPoolUtil {
             }
             return pool.isTerminated();
         } catch (InterruptedException e) {
-            log.warn("等待线程池终止期间被中断，正在执行强制关闭: {}", pool, e);
+            log.error("等待线程池终止期间被中断，正在执行强制关闭: {}", pool, e);
             pool.shutdownNow();
             Thread.currentThread().interrupt();
             return false;

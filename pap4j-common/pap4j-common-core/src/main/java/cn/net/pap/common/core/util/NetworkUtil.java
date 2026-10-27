@@ -55,8 +55,8 @@ public final class NetworkUtil {
         try (Socket socket = new Socket()) {
             socket.connect(new InetSocketAddress(host, port), Math.max(timeoutMs, 1));
             return true;
-        } catch (Exception e) {
-            log.debug("TCP 端口探活失败: {}:{} ({})", host, port, e.getMessage());
+        } catch (Exception ignored) {
+            log.debug("TCP 端口探活失败: {}:{} ({})", host, port, ignored.getMessage());
             return false;
         }
     }
@@ -97,7 +97,7 @@ public final class NetworkUtil {
             if (portStr != null) {
                 try {
                     port = Integer.parseInt(portStr);
-                } catch (NumberFormatException e) {
+                } catch (NumberFormatException ignored) {
                     return false;
                 }
             } else {
@@ -145,8 +145,8 @@ public final class NetworkUtil {
             conn.setInstanceFollowRedirects(true);
             int responseCode = conn.getResponseCode();
             return (responseCode >= 200 && responseCode < 400);
-        } catch (Exception e) {
-            log.debug("HTTP URL 探测失败: {} ({})", urlStr, e.getMessage());
+        } catch (Exception ignored) {
+            log.debug("HTTP URL 探测失败: {} ({})", urlStr, ignored.getMessage());
             return false;
         }
     }

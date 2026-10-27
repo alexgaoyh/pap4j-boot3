@@ -48,23 +48,20 @@ public final class TestResourceUtil {
         String cleanPath = classpath.startsWith("/") ? classpath.substring(1) : classpath;
         String slashPath = "/" + cleanPath;
 
-        try {
-            InputStream is = resolveInputStream(clazz, slashPath, cleanPath);
+        try (InputStream is = resolveInputStream(clazz, slashPath, cleanPath)) {
             if (is == null) {
                 throw new RuntimeException("Resource not found: " + classpath);
             }
 
-            try (InputStream autoClosedIs = is) {
-                String suffix = "";
-                int dotIdx = classpath.lastIndexOf('.');
-                if (dotIdx > 0) {
-                    suffix = classpath.substring(dotIdx);
-                }
-                File tempFile = File.createTempFile("test_res_", suffix);
-                tempFile.deleteOnExit();
-                Files.copy(autoClosedIs, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                return tempFile;
+            String suffix = "";
+            int dotIdx = classpath.lastIndexOf('.');
+            if (dotIdx > 0) {
+                suffix = classpath.substring(dotIdx);
             }
+            File tempFile = File.createTempFile("test_res_", suffix);
+            tempFile.deleteOnExit();
+            Files.copy(is, tempFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            return tempFile;
         } catch (Exception e) {
             log.error("加载测试资源失败: {}", classpath, e);
             throw new RuntimeException("加载测试资源失败: " + classpath, e);
@@ -72,7 +69,7 @@ public final class TestResourceUtil {
     }
 
     private static InputStream resolveInputStream(Class<?> clazz, String slashPath, String cleanPath) {
-        InputStream is = null;
+        java.io.InputStream is = null;
         if (clazz != null) {
             is = clazz.getResourceAsStream(slashPath);
             if (is == null) {
