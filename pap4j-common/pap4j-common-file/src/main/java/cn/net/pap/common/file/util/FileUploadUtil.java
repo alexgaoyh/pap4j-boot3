@@ -205,9 +205,11 @@ public final class FileUploadUtil {
     }
 
     /**
-     * 基于存储定位符打开文件输入流（借助 {@link RetryUtil} 规避跨服务器负缓存时差，由调用方负责关闭）。
+     * 基于存储定位符打开文件物理输入流（由调用方负责关闭）。
      *
-     * @param filePath 存储定位符，形如 {@code fs1:8e/fc/8efc1f3c...}
+     * <p>直接尝试打开输入流配合重试而非预先调用 {@code exists()}，旨在规避网络/共享存储（如 NFS）的缓存。</p>
+     *
+     * @param filePath    存储定位符，形如 {@code fs1:8e/fc/8efc1f3c...}
      * @param maxRetries  最大重试次数
      * @param delayMillis 每次重试前的延迟（毫秒）
      * @return 文件的物理输入流
@@ -227,11 +229,13 @@ public final class FileUploadUtil {
             default -> LOCAL_ROOT.resolve(rel);
         };
         try {
-            // 直接尝试打开输入流（触发底层 open 系统调用），杜绝 exists() 负缓存投毒
+            // 直接尝试打开输入流，规避 exists() 缓存
             return RetryUtil.retryT(maxRetries, delayMillis, () -> Files.newInputStream(target), null);
         } catch (IOException e) {
+            log.error("打开文件输入流失败，重试耗尽: {}", filePath, e);
             throw e;
         } catch (Exception e) {
+            log.error("打开文件输入流发生未预期异常: {}", filePath, e);
             throw new IOException("读取文件失败: " + filePath, e);
         }
     }
