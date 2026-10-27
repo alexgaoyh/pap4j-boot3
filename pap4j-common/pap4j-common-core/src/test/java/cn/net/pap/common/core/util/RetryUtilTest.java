@@ -1,6 +1,5 @@
-package cn.net.pap.task;
+package cn.net.pap.common.core.util;
 
-import cn.net.pap.task.retry.RetryUtil;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -123,7 +122,7 @@ public class RetryUtilTest {
 
             Thread.sleep(100);
             future.cancel(true); // This will interrupt the thread
-            
+
             // 等待任务结束
             try {
                 future.get(1, TimeUnit.SECONDS);
@@ -189,10 +188,10 @@ public class RetryUtilTest {
         // Verify OOM Defense: check that intermediate exceptions are capped at 10 (1 final thrown, 9 suppressed)
         Throwable[] suppressed = exception.getSuppressed();
         assertEquals(9, suppressed.length); // 10 total exceptions retained (1 main + 9 suppressed)
-        
+
         // The first suppressed exception must be "fail 1" (our first root cause)
         assertEquals("fail 1", suppressed[0].getMessage());
-        
+
         // The remaining 8 suppressed exceptions must be the latest failures: fail 42, fail 43, ..., fail 49
         assertEquals("fail 42", suppressed[1].getMessage());
         assertEquals("fail 49", suppressed[8].getMessage());

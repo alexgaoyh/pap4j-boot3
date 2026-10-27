@@ -1,4 +1,4 @@
-package cn.net.pap.task.retry.exception.enums;
+package cn.net.pap.common.core.retry.exception.enums;
 
 /**
  * 重试滑动窗口断路器 枚举类

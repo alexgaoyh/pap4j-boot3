@@ -1,15 +1,13 @@
-package cn.net.pap.task;
+package cn.net.pap.common.core.retry;
 
-import cn.net.pap.task.retry.RetryCircuitBreaker;
-
-import cn.net.pap.task.retry.exception.RetryCircuitBreakerException;
-import cn.net.pap.task.retry.exception.enums.PapRetryErrorEnum;
+import cn.net.pap.common.core.retry.exception.RetryCircuitBreakerException;
+import cn.net.pap.common.core.retry.exception.enums.PapRetryErrorEnum;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * 重试滑动窗口断路器
+ * 重试滑动窗口断路器测试
  */
 public class RetryCircuitBreakerTest {
 
@@ -18,11 +16,10 @@ public class RetryCircuitBreakerTest {
     /**
      * 外部定义 重试滑动窗口断路器
      */
-    private static final RetryCircuitBreaker retryCircuitBreaker = new RetryCircuitBreaker(3,1000, 5, 60000, 10000);
+    private static final RetryCircuitBreaker retryCircuitBreaker = new RetryCircuitBreaker(3, 1000, 5, 60000, 10000);
 
     @Test
     public void test() {
-
         try {
             String result = retryCircuitBreaker.executeWithRetry(() -> {
                 boolean success = someExternalService();

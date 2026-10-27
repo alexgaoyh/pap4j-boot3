@@ -1,7 +1,7 @@
-package cn.net.pap.task.retry;
+package cn.net.pap.common.core.retry;
 
-import cn.net.pap.task.retry.exception.RetryCircuitBreakerException;
-import cn.net.pap.task.retry.exception.enums.PapRetryErrorEnum;
+import cn.net.pap.common.core.retry.exception.RetryCircuitBreakerException;
+import cn.net.pap.common.core.retry.exception.enums.PapRetryErrorEnum;
 
 import java.util.LinkedList;
 import java.util.Queue;
@@ -162,4 +162,3 @@ public class RetryCircuitBreaker {
                 '}';
     }
 }
-

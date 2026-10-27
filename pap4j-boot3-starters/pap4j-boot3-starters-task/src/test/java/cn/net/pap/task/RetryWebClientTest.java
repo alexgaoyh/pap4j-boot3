@@ -1,9 +1,9 @@
 package cn.net.pap.task;
 
+import cn.net.pap.common.core.retry.RetryCircuitBreaker;
+import cn.net.pap.common.core.retry.exception.RetryCircuitBreakerException;
+import cn.net.pap.common.core.retry.exception.enums.PapRetryErrorEnum;
 import cn.net.pap.task.dto.RetryWebClientResponseDTO;
-import cn.net.pap.task.retry.RetryCircuitBreaker;
-import cn.net.pap.task.retry.exception.RetryCircuitBreakerException;
-import cn.net.pap.task.retry.exception.enums.PapRetryErrorEnum;
 import cn.net.pap.task.webclient.WebClientUtil;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;

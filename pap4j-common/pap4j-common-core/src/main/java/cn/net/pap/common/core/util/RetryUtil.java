@@ -1,4 +1,4 @@
-package cn.net.pap.task.retry;
+package cn.net.pap.common.core.util;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,7 +9,7 @@ import java.util.concurrent.Callable;
 import java.util.function.Predicate;
 
 /**
- * 重试 工具类
+ * 重试工具类。
  */
 public class RetryUtil {
 
