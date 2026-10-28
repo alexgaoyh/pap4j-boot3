@@ -1,4 +1,4 @@
-package cn.net.pap.common.datastructure.stackTrace;
+package cn.net.pap.common.core.stackTrace;
 
 import java.util.ArrayList;
 import java.util.Arrays;
