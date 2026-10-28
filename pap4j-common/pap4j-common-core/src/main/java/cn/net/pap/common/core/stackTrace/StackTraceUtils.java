@@ -168,7 +168,7 @@ public class StackTraceUtils {
      * @param maxCauseDepth cause 链最多展开的层数
      * @return 文本摘要
      */
-    private static String getFullStackTrace(Throwable t, int maxFrames, int maxCauseDepth) {
+    public static String getFullStackTrace(Throwable t, int maxFrames, int maxCauseDepth) {
         StringBuilder sb = new StringBuilder(256);
         Throwable current = t;
         int depth = 0;
