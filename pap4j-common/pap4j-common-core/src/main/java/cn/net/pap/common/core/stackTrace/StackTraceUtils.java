@@ -160,6 +160,42 @@ public class StackTraceUtils {
         return sb.toString();
     }
 
+    /**
+     * 渲染异常摘要：类型 + 消息 + 栈顶帧，并展开有限层级的 cause 链。
+     *
+     * @param t 原始异常
+     * @param maxFrames 单层堆栈最多保留的帧数
+     * @param maxCauseDepth cause 链最多展开的层数
+     * @return 文本摘要
+     */
+    private static String getFullStackTrace(Throwable t, int maxFrames, int maxCauseDepth) {
+        StringBuilder sb = new StringBuilder(256);
+        Throwable current = t;
+        int depth = 0;
+        while (current != null && depth < maxCauseDepth) {
+            if (depth > 0) {
+                sb.append("Caused by: ");
+            }
+            sb.append(current.getClass().getName());
+            if (current.getMessage() != null) {
+                sb.append(": ").append(current.getMessage());
+            }
+            sb.append('\n');
+
+            StackTraceElement[] frames = current.getStackTrace();
+            int kept = Math.min(frames.length, maxFrames);
+            for (int i = 0; i < kept; i++) {
+                sb.append("\tat ").append(frames[i]).append('\n');
+            }
+            if (frames.length > kept) {
+                sb.append("\t... ").append(frames.length - kept).append(" more\n");
+            }
+            current = current.getCause();
+            depth++;
+        }
+        return sb.toString();
+    }
+
     private static boolean isIncluded(StackTraceElement element, List<String> includePrefixes) {
         if (includePrefixes == null || includePrefixes.isEmpty()) return true;
         return includePrefixes.stream().anyMatch(prefix -> element.getClassName().startsWith(prefix));
