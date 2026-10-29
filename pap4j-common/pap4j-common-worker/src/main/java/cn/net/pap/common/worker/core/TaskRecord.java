@@ -1,91 +1,71 @@
 package cn.net.pap.common.worker.core;
 
 /**
- * 订单板事实不可变记录类。
- * 作为任务状态的唯一真相，通过版本号（version）与原子方法生成新快照，彻底杜绝状态篡改。
+ * 订单板事实记录（不可变快照）。
+ *
+ * <p>作为任务状态的唯一事实源：所有状态流转都通过生成新记录完成，杜绝就地修改。
+ * 记录不持有 {@link Throwable} 与结果句柄：异常以 {@link TaskError} 快照化。</p>
  *
  * @param id          任务全局唯一标识
  * @param state       当前任务状态
- * @param attempt     当前尝试执行的序号（从 1 开始）
- * @param nextRetryAt 下次重试时间戳（毫秒），非等待重试状态下为 0
- * @param version     版本号，每次状态变更严格自增
- * @param leaseOwner  持有租约的厨师线程名称
- * @param leaseUntil  租约有效期截止时间戳（毫秒）
- * @param result      业务执行成功返回的结果数据（若有）
- * @param error       最近一次执行失败的异常对象（若有）
+ * @param result      执行成功时的业务返回值（其余状态为 null）
+ * @param error       失败时的异常快照（其余状态为 null）
+ * @param completedAt 进入终态的时间戳（毫秒），非终态为 0
  */
 public record TaskRecord(
         String id,
         TaskState state,
-        int attempt,
-        long nextRetryAt,
-        long version,
-        String leaseOwner,
-        long leaseUntil,
         Object result,
-        Throwable error
+        TaskError error,
+        long completedAt
 ) {
 
     /**
-     * 创建预占位（RESERVED）初始记录。
+     * 创建初始记录（{@link TaskState#QUEUED}）。
      *
      * @param id 任务 ID
-     * @return 预占位记录
+     * @return 等待执行的记录
      */
-    public static TaskRecord reserved(String id) {
-        return new TaskRecord(id, TaskState.RESERVED, 1, 0L, 1L, null, 0L, null, null);
+    public static TaskRecord queued(String id) {
+        return new TaskRecord(id, TaskState.QUEUED, null, null, 0L);
     }
 
     /**
-     * 转换至入队状态（QUEUED）。
+     * 是否已处于终态（{@link TaskState#SUCCEEDED} / {@link TaskState#FAILED}）。
+     *
+     * @return true 表示已终结
+     */
+    public boolean terminal() {
+        return state == TaskState.SUCCEEDED || state == TaskState.FAILED;
+    }
+
+    /**
+     * 认领执行，转为 {@link TaskState#RUNNING}。
      *
      * @return 新记录快照
      */
-    public TaskRecord toQueued() {
-        return new TaskRecord(id, TaskState.QUEUED, attempt, 0L, version + 1, null, 0L, null, null);
+    public TaskRecord toRunning() {
+        return new TaskRecord(id, TaskState.RUNNING, null, null, 0L);
     }
 
     /**
-     * 厨师盖章认领租约，进入执行状态（RUNNING）。
+     * 执行成功，转为 {@link TaskState#SUCCEEDED} 并记录返回值。
      *
-     * @param workerName 认领该任务的厨师线程名
-     * @param until      租约到期时间戳
+     * @param value 业务返回值
      * @return 新记录快照
      */
-    public TaskRecord withLease(String workerName, long until) {
-        return new TaskRecord(id, TaskState.RUNNING, attempt, 0L, version + 1, workerName, until, null, null);
+    public TaskRecord toSucceeded(Object value) {
+        return new TaskRecord(id, TaskState.SUCCEEDED, value, null, System.currentTimeMillis());
     }
 
     /**
-     * 转换至等待重试状态（WAITING_RETRY）。
+     * 执行失败（或被放弃），转为 {@link TaskState#FAILED}。
      *
-     * @param nextAttempt 下一次尝试序号
-     * @param retryAt     计划重新入队执行的时间戳
-     * @param t           本次失败的异常对象
-     * @return 新记录快照
-     */
-    public TaskRecord toWaitingRetry(int nextAttempt, long retryAt, Throwable t) {
-        return new TaskRecord(id, TaskState.WAITING_RETRY, nextAttempt, retryAt, version + 1, null, 0L, null, t);
-    }
-
-    /**
-     * 转换至执行成功终态（SUCCEEDED），并记录返回结果。
-     *
-     * @param result 业务执行返回值
-     * @return 新记录快照
-     */
-    public TaskRecord toSucceeded(Object result) {
-        return new TaskRecord(id, TaskState.SUCCEEDED, attempt, 0L, version + 1, leaseOwner, 0L, result, null);
-    }
-
-    /**
-     * 转换至彻底失败终态（FAILED）。
-     *
-     * @param t 失败异常
+     * @param t 失败原因（内部转为轻量快照存储）
      * @return 新记录快照
      */
     public TaskRecord toFailed(Throwable t) {
-        return new TaskRecord(id, TaskState.FAILED, attempt, 0L, version + 1, leaseOwner, 0L, null, t);
+        return new TaskRecord(id, TaskState.FAILED, null, TaskError.of(t), System.currentTimeMillis());
     }
 
 }

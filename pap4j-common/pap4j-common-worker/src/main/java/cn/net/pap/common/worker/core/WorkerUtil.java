@@ -1,7 +1,6 @@
 package cn.net.pap.common.worker.core;
 
 import cn.net.pap.common.core.util.NamedThreadFactory;
-import cn.net.pap.common.core.util.ThreadPoolUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -10,381 +9,473 @@ import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.DelayQueue;
-import java.util.concurrent.Delayed;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.UnaryOperator;
 
 /**
- * 进程内异步工作车间核心调度工具类。
- * 遵循“店长不炒菜，厨师不管排队，订单板是唯一真相”的核心规范。
- * 全面支持任务泛型返回值与异步结果获取。
+ * 进程内异步任务车间（最小实现）：店长不炒菜，厨师不管排队，订单板是唯一真相。
+ *
+ * <p><b>职责</b>：收单 → 并发执行 → 状态记账 → 优雅关闭。不做重试、不做延迟调度、不含任何时间概念。</p>
+ *
+ * <p><b>提交三态</b>：收单（ACCEPTED）、在途重复（DUPLICATE）、拒收（REJECTED：
+ * 车间已打烊 / 排队区已满 / 订单板已满）。</p>
+ *
+ * <p><b>容量</b>：排队区有界，满则拒收；订单板有界，满时先删除<b>已终结</b>
+ * （{@link TaskState#SUCCEEDED} / {@link TaskState#FAILED}）记录腾位置，无已终结记录可删则拒收。
+ * <b>未终结记录永不被删除</b>，因此 {@link #getRecord(String)} 只保证“当前仍保留”。</p>
+ *
+ * <p><b>关闭</b>：拒新单 → 队尾投递哨兵 → 等待存量单据执行完毕；超时则放弃排队单据、强制中断在途任务。
+ * 返回后订单板上不存在未终结记录。</p>
+ *
+ * <p><b>为什么需要一把锁</b>：“提交”与“打烊”必须互斥：{@code submit} 的登记+入队与关闭流程的
+ * “关闭线程池”互斥后，才能保证一旦线程池 shutDown 就不会再产生新记录，关闭收口因此可以断定
+ * “扫描到的就是全部”。锁内只有纯内存操作，不阻塞、不做 I/O。</p>
+ *
+ * <p><b>限制</b>：进程内实现，重启即丢；不支持取消与执行超时；订单板是定容缓存而非审计表。</p>
  */
 public class WorkerUtil implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(WorkerUtil.class);
 
     /**
-     * 默认租约时长：60 秒。
+     * 默认订单板容量。
      */
-    private static final long LEASE_DURATION_MS = 60_000L;
+    private static final int DEFAULT_MAX_RECORDS = 10_000;
 
     /**
-     * 订单板（状态唯一真相）：通过 ConcurrentHashMap 与 TaskRecord 不可变快照做原子状态流转。
+     * 关闭哨兵：投递到队尾通知厨师下班（FIFO 保证它排在所有真实任务之后）。
+     */
+    private static final TaskSpec<?> STOP = new TaskSpec<>("__worker_stop__", () -> null);
+
+    /**
+     * 订单板（唯一事实源）：任务 ID -> 不可变状态快照。
      */
     private final ConcurrentHashMap<String, TaskRecord> registry = new ConcurrentHashMap<>();
 
     /**
-     * 结果通知句柄映射表。
+     * 在途任务的结果句柄：进入终态时移除。
      */
     private final ConcurrentHashMap<String, CompletableFuture<?>> futures = new ConcurrentHashMap<>();
 
     /**
-     * 主任务排队区：有界阻塞队列。
+     * 排队区：有界 FIFO，满则提交快速失败。
      */
     private final ArrayBlockingQueue<TaskSpec<?>> queue;
 
     /**
-     * 闹钟架：存放处于 WAITING_RETRY 状态的延迟任务。
-     */
-    private final DelayQueue<DelayedTask> alarmRack = new DelayQueue<>();
-
-    /**
-     * 厨师工作线程池。
+     * 厨师线程池：常驻线程循环“取单 - 执行 - 结单”。
      */
     private final ThreadPoolExecutor workers;
 
     /**
-     * 闹钟独立调度线程池（单线程运行闹钟循环）。
+     * 订单板容量。
      */
-    private final ThreadPoolExecutor alarmExecutor;
+    private final int maxRecords;
 
     /**
-     * 打烊标志位。
+     * 提交与打烊的互斥锁：锁内只有纯内存操作，保证“打烊之后不会再产生新记录”。
+     * <p>打烊标志不单独用字段保存：{@code workers.isShutdown()} 就是它（打烊本来就必须 shutdown）。</p>
      */
-    private final AtomicBoolean closing = new AtomicBoolean(false);
+    private final ReentrantLock dispatch = new ReentrantLock();
 
     /**
-     * 默认构造方法，按机器 CPU 核心数自适应装配。
+     * 指定厨师数与排队区容量，订单板使用默认容量。
+     *
+     * @param workerCount   常驻厨师线程数
+     * @param queueCapacity 排队区容量
      */
-    public WorkerUtil() {
-        this(Math.max(2, Runtime.getRuntime().availableProcessors()),
-                Math.max(10, Runtime.getRuntime().availableProcessors() * 100));
+    public WorkerUtil(int workerCount, int queueCapacity) {
+        this(workerCount, queueCapacity, DEFAULT_MAX_RECORDS);
     }
 
     /**
-     * 显式指定厨师数与排队区容量的构造方法。
+     * 全参构造方法。
      *
      * @param workerCount   常驻厨师线程数
-     * @param queueCapacity 主排队区有界容量
+     * @param queueCapacity 排队区容量
+     * @param maxRecords    订单板容量
      */
-    public WorkerUtil(int workerCount, int queueCapacity) {
-        if (workerCount <= 0 || queueCapacity <= 0) {
-            throw new IllegalArgumentException("workerCount and queueCapacity must be greater than 0");
+    public WorkerUtil(int workerCount, int queueCapacity, int maxRecords) {
+        if (workerCount <= 0 || queueCapacity <= 0 || maxRecords <= 0) {
+            throw new IllegalArgumentException("workerCount, queueCapacity and maxRecords must be greater than 0");
         }
-
+        this.maxRecords = maxRecords;
         this.queue = new ArrayBlockingQueue<>(queueCapacity);
 
-        // 初始化常驻厨师池
-        this.workers = new ThreadPoolExecutor(
-                workerCount,
-                workerCount,
-                0L,
-                TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(1),
+        // 常驻厨师：池内队列只承载启动阶段的初始任务，满了直接抛错而不静默丢弃
+        this.workers = new ThreadPoolExecutor(workerCount, workerCount, 0L, TimeUnit.MILLISECONDS,
+                new LinkedBlockingQueue<>(workerCount),
                 new NamedThreadFactory("worker-chef-", 1),
-                new ThreadPoolExecutor.AbortPolicy()
-        );
-
-        // 初始化独立闹钟调度单线程池（避免使用禁用的 Executors.newSingleThreadExecutor）
-        this.alarmExecutor = new ThreadPoolExecutor(
-                1,
-                1,
-                0L,
-                TimeUnit.MILLISECONDS,
-                new LinkedBlockingQueue<>(1),
-                new NamedThreadFactory("worker-alarm-", 1),
-                new ThreadPoolExecutor.DiscardPolicy()
-        );
-
-        // 启动常驻厨师循环
+                new ThreadPoolExecutor.AbortPolicy());
         for (int i = 0; i < workerCount; i++) {
             this.workers.execute(this::workerLoop);
         }
-
-        // 启动独立闹钟循环
-        this.alarmExecutor.execute(this::alarmLoop);
     }
 
     /**
-     * 提交泛型任务规格至车间执行（三态提交与原子占座）。
+     * 提交任务（三态返回）。
+     *
+     * <p>同一 id 在途时重复提交会返回既有句柄且不重复执行；该 id 已终结或记录已被清理时视为新任务。</p>
      *
      * @param <T>  任务返回值类型
-     * @param spec 待执行的任务规格描述
-     * @return 提交结果响应（ACCEPTED / DUPLICATE / REJECTED）
+     * @param spec 任务规格
+     * @return 提交响应
+     * @throws IllegalArgumentException 任务规格为 null，或 id 为空白
      */
-    @SuppressWarnings("unchecked")
     public <T> TaskSubmission<T> submit(TaskSpec<T> spec) {
+        requireValid(spec);
+
+        // 与关闭互斥：锁外不会出现“已打烊却仍登记新记录”的情况
+        dispatch.lock();
+        try {
+            if (workers.isShutdown()) { // 打烊标志 = 线程池已关闭
+                return reject("车间已打烊", new RejectedExecutionException("车间已打烊，拒绝接收新任务"));
+            }
+            if (!hasRoomFor(spec.id())) {
+                return reject("订单板已满", new RejectedExecutionException(
+                        "订单板已满（上限 " + maxRecords + "），拒绝接收新任务"));
+            }
+
+            Reservation<T> seat = reserve(spec.id());
+            if (!seat.created()) {
+                return TaskSubmission.duplicate(seat.future()); // 在途重复：复用既有句柄
+            }
+            if (!queue.offer(spec)) {
+                fail(spec.id(), new RejectedExecutionException("排队区已满"));
+                return TaskSubmission.rejected("排队区已满", seat.future());
+            }
+            return TaskSubmission.accepted(seat.future());
+        } finally {
+            dispatch.unlock();
+        }
+    }
+
+    /**
+     * 参数校验（编程错误，不是业务拒收）。
+     *
+     * @param spec 任务规格
+     */
+    private static void requireValid(TaskSpec<?> spec) {
         if (spec == null) {
             throw new IllegalArgumentException("TaskSpec must not be null");
         }
-        if (closing.get()) {
-            CompletableFuture<T> rejectedFuture = new CompletableFuture<>();
-            rejectedFuture.completeExceptionally(new RejectedExecutionException("车间已打烊，拒绝接收新任务"));
-            return TaskSubmission.rejected("车间已打烊", rejectedFuture);
-        }
-
-        CompletableFuture<T> future = new CompletableFuture<>();
-        final boolean[] isNew = {false};
-
-        // 订单板原子占座（RESERVED）
-        registry.compute(spec.id(), (id, existing) -> {
-            if (existing == null || existing.state() == TaskState.SUCCEEDED || existing.state() == TaskState.FAILED) {
-                isNew[0] = true;
-                return TaskRecord.reserved(id);
-            }
-            return existing; // 正在排队、执行中或重试等待中的任务，保持不变
-        });
-
-        if (!isNew[0]) {
-            // 重复提交，幂等返回既有 handle
-            CompletableFuture<T> existingFuture = (CompletableFuture<T>) futures.get(spec.id());
-            return TaskSubmission.duplicate(existingFuture);
-        }
-
-        futures.put(spec.id(), future);
-
-        // 尝试推入排队区
-        if (queue.offer(spec)) {
-            registry.computeIfPresent(spec.id(), (id, r) -> r.toQueued());
-            return TaskSubmission.accepted(future);
-        } else {
-            // 排队区满：原子回滚状态为 FAILED，杜绝脏单死锁在 WAITING 状态
-            RejectedExecutionException ex = new RejectedExecutionException("排队区已满");
-            registry.computeIfPresent(spec.id(), (id, r) -> r.toFailed(ex));
-            future.completeExceptionally(ex);
-            return TaskSubmission.rejected("排队区已满", future);
+        if (spec.id() == null || spec.id().isBlank()) {
+            throw new IllegalArgumentException("TaskSpec.id must not be blank");
         }
     }
 
     /**
-     * 根据任务 ID 查询订单板事实记录。
+     * 订单板是否还能容纳该 id 的新记录：在途 id 不新增记录直接放行；板满则先回收已终结记录再判断。
      *
      * @param id 任务 ID
-     * @return 订单板记录快照，若不存在则返回 null
+     * @return true 表示可以接纳本次提交
+     */
+    private boolean hasRoomFor(String id) {
+        TaskRecord current = registry.get(id);
+        if (current != null && !current.terminal()) {
+            return true;
+        }
+        if (registry.size() < maxRecords) {
+            return true;
+        }
+        recycleRecords();
+        return registry.size() < maxRecords;
+    }
+
+    /**
+     * 占座：该 id 在途则返回其既有句柄；否则创建并登记新句柄（只有真新建时才分配句柄）。
+     *
+     * @param <T> 任务返回值类型
+     * @param id  任务 ID
+     * @return 占座结果（句柄 + 是否本次新建）
+     */
+    @SuppressWarnings("unchecked") // 句柄表存的是 CompletableFuture<?>，交付给调用方时只能强转为 T（泛型已擦除）
+    private <T> Reservation<T> reserve(String id) {
+        CompletableFuture<?>[] seat = new CompletableFuture<?>[1];
+        boolean[] created = new boolean[1];
+        // 占座与句柄登记必须同块完成，否则并发提交可能看到记录却取不到句柄
+        registry.compute(id, (key, existing) -> {
+            if (existing != null && !existing.terminal()) {
+                seat[0] = futures.get(key);
+                return existing;
+            }
+            CompletableFuture<T> future = new CompletableFuture<>();
+            created[0] = true;
+            seat[0] = future;
+            futures.put(key, future);
+            return TaskRecord.queued(id);
+        });
+        return new Reservation<>((CompletableFuture<T>) seat[0], created[0]);
+    }
+
+    /**
+     * 查询任务在订单板上的事实记录。
+     *
+     * @param id 任务 ID
+     * @return 记录快照；不存在或已因容量清理被删除时返回 null
      */
     public TaskRecord getRecord(String id) {
         return registry.get(id);
     }
 
     /**
-     * 获取当前主排队区积压任务数。
+     * 当前排队区积压任务数（含关闭阶段的哨兵）。
      *
-     * @return 队列中的任务数
+     * @return 排队区任务数
      */
     public int getQueueSize() {
         return queue.size();
     }
 
     /**
-     * 获取当前闹钟架（等待重试）中的任务数。
+     * 订单板当前记录数（含已终结但尚未被清理的记录）。
      *
-     * @return 闹钟架等待任务数
+     * @return 订单板记录数
      */
-    public int getAlarmRackSize() {
-        return alarmRack.size();
+    public int getRegistrySize() {
+        return registry.size();
     }
 
     /**
-     * 优雅打烊：挂打烊牌拒新单，限时排空主队列与闹钟架，超时未处理则回滚失败，两阶段终止线程池。
+     * 当前在途任务数。
+     *
+     * @return 尚未终结的结果句柄数
+     */
+    public int getPendingFutureCount() {
+        return futures.size();
+    }
+
+    /**
+     * 优雅打烊：拒新单，等待存量单据执行完毕，超时则放弃未完成单据。可重复调用。
      *
      * @param timeout 超时时长数值
      * @param unit    时间单位
-     * @return 超时未被执行的任务规格列表
+     * @return 被放弃（标记为 FAILED）的任务规格；无超时或重复调用时返回空列表
      */
     public List<TaskSpec<?>> drainAndShutdown(long timeout, TimeUnit unit) {
-        closing.set(true);
+        // 与提交互斥：拿到锁后关闭线程池（= 挂打烊牌），此后不可能再产生新记录
+        dispatch.lock();
+        try {
+            if (workers.isShutdown()) {
+                return List.of();
+            }
+            workers.shutdown();
+        } finally {
+            dispatch.unlock();
+        }
 
-        long deadline = System.nanoTime() + unit.toNanos(timeout);
-        // 等待主队列和闹钟架排空
-        while ((!queue.isEmpty() || !alarmRack.isEmpty()) && System.nanoTime() < deadline) {
-            try {
-                Thread.sleep(20);
-            } catch (InterruptedException e) {
-                log.error("打烊排空等待被中断", e);
-                Thread.currentThread().interrupt();
-                break;
+        // 1. 队尾投递哨兵：厨师先执行完所有真实任务，再依次取到哨兵下班
+        for (int i = 0; i < workers.getMaximumPoolSize(); i++) {
+            if (!queue.offer(STOP)) {
+                break; // 排队区已满：由超时分支兜底
             }
         }
 
-        // 收集主队列未处理单据
+        // 2. 等待存量单据执行完毕
+        boolean terminated = awaitTermination(timeout, unit);
+
+        // 3. 超时：放弃排队中的单据，强制中断在途任务
+        RejectedExecutionException abort = new RejectedExecutionException("打烊超时未执行");
         List<TaskSpec<?>> unexecuted = new ArrayList<>();
-        queue.drainTo(unexecuted);
-
-        // 收集闹钟架未处理单据
-        List<DelayedTask> delayedList = new ArrayList<>();
-        alarmRack.drainTo(delayedList);
-        for (DelayedTask dt : delayedList) {
-            unexecuted.add(dt.spec());
+        if (!terminated) {
+            List<TaskSpec<?>> leftover = new ArrayList<>();
+            queue.drainTo(leftover);
+            for (TaskSpec<?> spec : leftover) {
+                if (spec != STOP && abandon(spec, abort)) {
+                    unexecuted.add(spec);
+                }
+            }
+            workers.shutdownNow();
+            awaitTermination(1, TimeUnit.SECONDS);
         }
 
-        // 未执行单据状态置为失败，避免状态挂起
-        RejectedExecutionException abortEx = new RejectedExecutionException("打烊排空超时未执行");
-        for (TaskSpec<?> spec : unexecuted) {
-            registry.computeIfPresent(spec.id(), (id, r) -> r.toFailed(abortEx));
-            CompletableFuture<?> f = futures.get(spec.id());
-            if (f != null && !f.isDone()) {
-                f.completeExceptionally(abortEx);
+        // 4. 收口：关闭返回后不允许订单板残留未终结记录
+        List<String> forced = new ArrayList<>();
+        for (TaskRecord record : registry.values()) {
+            if (!record.terminal()) {
+                fail(record.id(), abort);
+                forced.add(record.id());
             }
         }
-
-        // 两阶段优雅关闭闹钟线程池与工作线程池（复用 ThreadPoolUtil）
-        ThreadPoolUtil.shutdownAndAwaitTermination(alarmExecutor, 2, TimeUnit.SECONDS);
-        ThreadPoolUtil.shutdownAndAwaitTermination(workers, 3, TimeUnit.SECONDS);
-
+        if (!forced.isEmpty()) {
+            log.warn("打烊收口：{} 张未终结单据已被标记为 FAILED，样例: {}", forced.size(),
+                    forced.subList(0, Math.min(10, forced.size())));
+        }
         return unexecuted;
     }
 
     @Override
     public void close() {
-        drainAndShutdown(5, TimeUnit.SECONDS);
+        List<TaskSpec<?>> unexecuted = drainAndShutdown(5, TimeUnit.SECONDS);
+        if (!unexecuted.isEmpty()) {
+            log.warn("打烊完成：{} 张单据未执行已被标记为 FAILED", unexecuted.size());
+        }
     }
 
     /**
-     * 厨师工作主循环：取单 -> 盖章(租约) -> 炒菜 -> 结单（记录返回值并通知 Future）。
+     * 厨师主循环：阻塞取单（无轮询），取到哨兵即下班。
      */
-    @SuppressWarnings("unchecked")
     private void workerLoop() {
         String workerName = Thread.currentThread().getName();
         while (!Thread.currentThread().isInterrupted()) {
+            TaskSpec<?> spec;
             try {
-                TaskSpec<?> spec = queue.poll(200, TimeUnit.MILLISECONDS);
-                if (spec == null) {
-                    if (closing.get() && queue.isEmpty() && alarmRack.isEmpty()) {
-                        break; // 打烊且车间全空，安全离场
-                    }
-                    continue;
-                }
-
-                // 1. 盖章认领租约（防双跑）
-                long leaseUntil = System.currentTimeMillis() + LEASE_DURATION_MS;
-                TaskRecord running = registry.computeIfPresent(spec.id(), (id, r) -> r.withLease(workerName, leaseUntil));
-                if (running == null) {
-                    continue; // 任务已被取消或清理
-                }
-
-                CompletableFuture<Object> future = (CompletableFuture<Object>) futures.get(spec.id());
-
-                // 2. 真正执行业务逻辑（支持泛型返回值，捕获一切异常保护厨师线程）
-                try {
-                    Object result = spec.action().call();
-                    registry.computeIfPresent(spec.id(), (id, r) -> r.toSucceeded(result));
-                    if (future != null) {
-                        future.complete(result);
-                    }
-                } catch (Throwable t) {
-                    log.error("任务 [{}] 执行发生异常: {}", spec.id(), t.getMessage(), t);
-                    handleFailure(spec, running, t);
-                }
-
+                spec = queue.take();
             } catch (InterruptedException e) {
-                log.error("厨师工作线程被中断退出: {}", workerName, e);
                 Thread.currentThread().interrupt();
-                break;
+                log.error("厨师线程 [{}] 被中断退出", workerName, e);
+                return;
             }
-        }
-    }
-
-    /**
-     * 处理任务失败重试与超限终态逻辑。
-     *
-     * @param spec    任务规格
-     * @param running 运行前事实快照
-     * @param t       失败异常
-     */
-    private void handleFailure(TaskSpec<?> spec, TaskRecord running, Throwable t) {
-        if (running.attempt() < spec.maxRetries()) {
-            // 退避延迟计算：initialDelay * 2^(attempt - 1)
-            long delayMillis = (long) (spec.initialDelayMs() * Math.pow(2, running.attempt() - 1));
-            long nextRetryAt = System.currentTimeMillis() + delayMillis;
-
-            // 跃迁至 WAITING_RETRY 状态
-            registry.computeIfPresent(spec.id(), (id, r) -> r.toWaitingRetry(running.attempt() + 1, nextRetryAt, t));
-
-            // 推入闹钟架，厨师当场释放
-            alarmRack.offer(new DelayedTask(spec, System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(delayMillis)));
-            log.info("任务 [{}] 第 {} 次执行失败，已进入 WAITING_RETRY 状态，将在 {}ms 后重新排队",
-                    spec.id(), running.attempt(), delayMillis);
-        } else {
-            // 重试耗尽，彻底终态 FAILED
-            registry.computeIfPresent(spec.id(), (id, r) -> r.toFailed(t));
-            CompletableFuture<?> future = futures.get(spec.id());
-            if (future != null) {
-                future.completeExceptionally(t);
+            if (spec == STOP) {
+                return;
             }
-            log.error("任务 [{}] 已达最大重试上限 {} 次，标记为彻底失败", spec.id(), spec.maxRetries());
-        }
-    }
-
-    /**
-     * 独立闹钟循环：负责在延迟到期后将单子从闹钟架取出，重新送回主队列。
-     */
-    private void alarmLoop() {
-        while (!closing.get() && !Thread.currentThread().isInterrupted()) {
             try {
-                // 到期方可弹出，无 CPU 轮询损耗
-                DelayedTask delayed = alarmRack.poll(200, TimeUnit.MILLISECONDS);
-                if (delayed != null) {
-                    // 状态重新切换回 QUEUED
-                    registry.computeIfPresent(delayed.spec().id(), (id, r) -> r.toQueued());
-
-                    // 重新推入主排队区
-                    if (!queue.offer(delayed.spec())) {
-                        RejectedExecutionException ex = new RejectedExecutionException("重试回投排队区已满");
-                        registry.computeIfPresent(delayed.spec().id(), (id, r) -> r.toFailed(ex));
-                        CompletableFuture<?> future = futures.get(delayed.spec().id());
-                        if (future != null) {
-                            future.completeExceptionally(ex);
-                        }
-                        log.error("任务 [{}] 重试回投主排队区失败（队列已满）", delayed.spec().id());
-                    } else {
-                        log.info("任务 [{}] 重试延迟已到，已重新进入排队区 QUEUED", delayed.spec().id());
-                    }
-                }
-            } catch (InterruptedException e) {
-                log.error("闹钟循环被中断退出", e);
-                Thread.currentThread().interrupt();
-                break;
+                execute(spec);
+            } catch (Throwable t) {
+                // 任何意外都不能让厨师倒下，否则该单据的句柄将永远无法完成
+                log.error("厨师 [{}] 处理任务 [{}] 时发生未预期异常", workerName, spec.id(), t);
             }
         }
     }
 
     /**
-     * 延迟队列元素内部记录类。
+     * 执行单张单据：认领（RUNNING）→ 调用业务逻辑 → 落终态并完成句柄。
      *
-     * @param spec             任务规格描述
-     * @param triggerTimeNanos 触发时刻（纳秒绝对时间）
+     * @param spec 任务规格
      */
-    private record DelayedTask(TaskSpec<?> spec, long triggerTimeNanos) implements Delayed {
-
-        @Override
-        public long getDelay(TimeUnit unit) {
-            return unit.convert(triggerTimeNanos - System.nanoTime(), TimeUnit.NANOSECONDS);
+    private void execute(TaskSpec<?> spec) {
+        // 只允许从 QUEUED 认领：终态（已被放弃/清理）与 RUNNING（已被其他厨师认领）都不可执行
+        TaskRecord running = transition(spec.id(),
+                record -> record.state() == TaskState.QUEUED ? record.toRunning() : record);
+        if (running == null || running.state() != TaskState.RUNNING) {
+            return;
         }
 
-        @Override
-        public int compareTo(Delayed o) {
-            if (this == o) {
-                return 0;
+        CompletableFuture<?> future = futures.get(spec.id());
+        try {
+            Object result = spec.action().call();
+            transition(spec.id(), record -> record.toSucceeded(result));
+            complete(future, result);
+        } catch (Throwable t) {
+            log.error("任务 [{}] 执行失败: {}", spec.id(), t.getMessage(), t);
+            transition(spec.id(), record -> record.toFailed(t));
+            completeExceptionally(future, t);
+        }
+    }
+
+    /**
+     * 放弃一张仍在排队的单据（已在执行或已终结的不动）。
+     *
+     * @param spec  任务规格
+     * @param cause 放弃原因
+     * @return true 表示本次调用真的把它置为 FAILED
+     */
+    private boolean abandon(TaskSpec<?> spec, Throwable cause) {
+        CompletableFuture<?> future = futures.get(spec.id());
+        AtomicBoolean applied = new AtomicBoolean(false);
+        transition(spec.id(), record -> {
+            if (record.state() != TaskState.QUEUED) {
+                return record;
             }
-            if (o instanceof DelayedTask other) {
-                return Long.compare(this.triggerTimeNanos, other.triggerTimeNanos);
+            applied.set(true);
+            return record.toFailed(cause);
+        });
+        if (!applied.get()) {
+            return false;
+        }
+        completeExceptionally(future, cause);
+        return true;
+    }
+
+    /**
+     * 把指定单据置为 FAILED 并让句柄异常完成。
+     *
+     * @param id    任务 ID
+     * @param cause 失败原因
+     */
+    private void fail(String id, Throwable cause) {
+        CompletableFuture<?> future = futures.get(id);
+        transition(id, record -> record.toFailed(cause));
+        completeExceptionally(future, cause);
+    }
+
+    /**
+     * 订单板满时删除已终结记录，删到低于上限即止（顺序不作保证）。
+     */
+    private void recycleRecords() {
+        for (TaskRecord record : registry.values()) {
+            if (registry.size() < maxRecords) {
+                return;
             }
-            long diff = this.getDelay(TimeUnit.NANOSECONDS) - o.getDelay(TimeUnit.NANOSECONDS);
-            return (diff == 0) ? 0 : ((diff < 0) ? -1 : 1);
+            if (record.terminal()) {
+                registry.remove(record.id(), record);
+            }
+        }
+    }
+
+    /**
+     * 等待厨师线程池终止。
+     *
+     * @param timeout 超时时长数值
+     * @param unit    时间单位
+     * @return true 表示已终止
+     */
+    private boolean awaitTermination(long timeout, TimeUnit unit) {
+        try {
+            return workers.awaitTermination(timeout, unit);
+        } catch (InterruptedException e) {
+            log.error("等待厨师线程池终止被中断", e);
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    /**
+     * 订单板原子状态迁移：迁移到终态时同步移除结果句柄。
+     *
+     * @param id       任务 ID
+     * @param operator 状态迁移函数
+     * @return 迁移后的记录快照；记录不存在时返回 null
+     */
+    private TaskRecord transition(String id, UnaryOperator<TaskRecord> operator) {
+        return registry.computeIfPresent(id, (key, current) -> {
+            TaskRecord next = operator.apply(current);
+            if (next != null && next.terminal()) {
+                futures.remove(key);
+            }
+            return next;
+        });
+    }
+
+    /**
+     * 构造拒收响应（句柄已异常完成）。
+     *
+     * @param <T>    任务返回值类型
+     * @param reason 拒收原因
+     * @param cause  异常原因
+     * @return 拒收响应
+     */
+    private static <T> TaskSubmission<T> reject(String reason, Throwable cause) {
+        return TaskSubmission.rejected(reason, CompletableFuture.failedFuture(cause));
+    }
+
+    private static void complete(CompletableFuture<?> future, Object result) {
+        if (future == null) {
+            return;
+        }
+        @SuppressWarnings("unchecked")
+        CompletableFuture<Object> typed = (CompletableFuture<Object>) future;
+        typed.complete(result);
+    }
+
+    private static void completeExceptionally(CompletableFuture<?> future, Throwable cause) {
+        if (future != null) {
+            future.completeExceptionally(cause);
         }
     }
 

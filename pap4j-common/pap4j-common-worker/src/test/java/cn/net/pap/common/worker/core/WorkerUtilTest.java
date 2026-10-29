@@ -1,7 +1,5 @@
 package cn.net.pap.common.worker.core;
 
-import cn.net.pap.common.core.util.NamedThreadFactory;
-import cn.net.pap.common.core.util.ThreadPoolUtil;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
@@ -12,274 +10,432 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+/**
+ * {@link WorkerUtil} 单元测试：提交三态、在途去重、双层容量、状态机、异常快照、句柄释放、优雅关闭。
+ */
 class WorkerUtilTest {
 
     private static final Logger log = LoggerFactory.getLogger(WorkerUtilTest.class);
 
     @Test
-    @DisplayName("测试基础任务提交、执行与返回值直接获取")
-    void testNormalSubmitAndExecute() throws Exception {
+    @DisplayName("提交并执行成功：返回值、终态记录均可观察")
+    void testSubmitAndExecuteSuccess() throws Exception {
         try (WorkerUtil worker = new WorkerUtil(2, 10)) {
-            // 提交一个具有明确返回值的业务任务
-            TaskSpec<String> spec = new TaskSpec<>("T-NORMAL-1", () -> "处理结果: Hello Worker!");
+            TaskSubmission<String> submission = worker.submit(TaskSpec.of("T-OK-1", () -> "处理结果"));
 
-            TaskSubmission<String> submission = worker.submit(spec);
             assertTrue(submission.accepted());
             assertFalse(submission.duplicate());
+            assertEquals("ACCEPTED", submission.reason());
+            assertEquals("处理结果", submission.future().get(2, TimeUnit.SECONDS));
 
-            // 【直观取值】：直接从 Future 句柄获取任务执行的真实返回值
-            String result = submission.future().get(2, TimeUnit.SECONDS);
-            assertEquals("处理结果: Hello Worker!", result);
-
-            // 同时验证订单板上也同步记录了该结果与终态
-            TaskRecord record = worker.getRecord("T-NORMAL-1");
+            TaskRecord record = worker.getRecord("T-OK-1");
             assertNotNull(record);
-            assertEquals("处理结果: Hello Worker!", record.result());
             assertEquals(TaskState.SUCCEEDED, record.state());
-            assertEquals(1, record.attempt());
+            assertEquals("处理结果", record.result());
+            assertNull(record.error());
+            assertTrue(record.completedAt() > 0L);
+            assertEquals(0, worker.getPendingFutureCount(), "终态后句柄必须立即释放");
         }
     }
 
     @Test
-    @DisplayName("测试并发幂等去重（红线2：不会两个厨师同时做一单）")
+    @DisplayName("失败即终态：异常被快照化，句柄以异常完成")
+    void testFailureIsTerminalImmediately() throws Exception {
+        try (WorkerUtil worker = new WorkerUtil(2, 10)) {
+            AtomicInteger executions = new AtomicInteger(0);
+            TaskSubmission<String> submission = worker.submit(TaskSpec.<String>of("T-FAIL-1", () -> {
+                executions.incrementAndGet();
+                throw new IllegalStateException("boom-detail", new RuntimeException("root-cause"));
+            }));
+
+            ExecutionException ex = assertThrows(ExecutionException.class,
+                    () -> submission.future().get(3, TimeUnit.SECONDS));
+            assertTrue(ex.getCause() instanceof IllegalStateException);
+
+            TaskRecord record = worker.getRecord("T-FAIL-1");
+            assertEquals(TaskState.FAILED, record.state());
+            assertNull(record.result());
+            assertNotNull(record.error());
+            assertEquals(IllegalStateException.class.getName(), record.error().type());
+            assertEquals("boom-detail", record.error().message());
+            assertTrue(record.error().stackTrace().contains("Caused by: java.lang.RuntimeException: root-cause"),
+                    "cause 链应保留在快照中: " + record.error().stackTrace());
+
+            Thread.sleep(100L);
+            assertEquals(1, executions.get(), "业务逻辑只执行一次");
+            assertEquals(0, worker.getPendingFutureCount());
+        }
+    }
+
+    @Test
+    @DisplayName("在途去重：同一 id 并发提交只执行一次，其余拿到同一个句柄")
     void testIdempotentDeduplication() throws Exception {
         int threads = 20;
         try (WorkerUtil worker = new WorkerUtil(4, 50)) {
-            AtomicInteger executionCount = new AtomicInteger(0);
-            CountDownLatch latch = new CountDownLatch(threads);
+            AtomicInteger executions = new AtomicInteger(0);
+            CountDownLatch start = new CountDownLatch(1);
+            CountDownLatch done = new CountDownLatch(threads);
             List<TaskSubmission<String>> submissions = Collections.synchronizedList(new ArrayList<>());
 
-            ThreadPoolExecutor submitPool = new ThreadPoolExecutor(
-                    threads,
-                    threads,
-                    0L,
-                    TimeUnit.MILLISECONDS,
-                    new LinkedBlockingQueue<>(),
-                    new NamedThreadFactory("test-submit-", 1)
-            );
-            try {
-                for (int i = 0; i < threads; i++) {
-                    submitPool.execute(() -> {
-                        try {
-                            TaskSpec<String> spec = new TaskSpec<>("DUP-ORDER-1", () -> {
-                                executionCount.incrementAndGet();
-                                try {
-                                    Thread.sleep(100);
-                                } catch (InterruptedException e) {
-                                    log.error("模拟业务中断", e);
-                                    Thread.currentThread().interrupt();
-                                }
-                                return "ORDER-SUCCESS";
-                            });
-                            submissions.add(worker.submit(spec));
-                        } finally {
-                            latch.countDown();
-                        }
-                    });
-                }
-                assertTrue(latch.await(5, TimeUnit.SECONDS));
-            } finally {
-                ThreadPoolUtil.shutdownAndAwaitTermination(submitPool);
+            for (int i = 0; i < threads; i++) {
+                Thread thread = new Thread(() -> {
+                    try {
+                        start.await();
+                        submissions.add(worker.submit(TaskSpec.of("DUP-1", () -> {
+                            executions.incrementAndGet();
+                            Thread.sleep(100L);
+                            return "ORDER-SUCCESS";
+                        })));
+                    } catch (InterruptedException e) {
+                        log.error("并发提交被中断", e);
+                        Thread.currentThread().interrupt();
+                    } finally {
+                        done.countDown();
+                    }
+                });
+                thread.start();
             }
 
-            long acceptedCount = submissions.stream().filter(TaskSubmission::accepted).count();
-            long duplicateCount = submissions.stream().filter(TaskSubmission::duplicate).count();
+            start.countDown();
+            assertTrue(done.await(5, TimeUnit.SECONDS));
+            assertEquals(threads, submissions.size());
 
-            assertEquals(1, acceptedCount, "只能有一个提交被判定为 ACCEPTED");
-            assertEquals(threads - 1, duplicateCount, "其余提交必须被判定为 DUPLICATE");
-
-            // 所有重复提交拿到的都是同一个 Future，均可顺利取到返回值
-            for (TaskSubmission<String> sub : submissions) {
-                String val = sub.future().get(3, TimeUnit.SECONDS);
-                assertEquals("ORDER-SUCCESS", val);
+            assertEquals(1, submissions.stream().filter(TaskSubmission::accepted).count(),
+                    "同一 id 只能有一个提交被判定为 ACCEPTED");
+            assertEquals(threads - 1, submissions.stream().filter(TaskSubmission::duplicate).count());
+            for (TaskSubmission<String> submission : submissions) {
+                assertEquals("ORDER-SUCCESS", submission.future().get(3, TimeUnit.SECONDS));
             }
-
-            assertEquals(1, executionCount.get(), "底层 Action 保证绝对只执行 1 次");
-            TaskRecord record = worker.getRecord("DUP-ORDER-1");
-            assertEquals("ORDER-SUCCESS", record.result());
-            assertEquals(TaskState.SUCCEEDED, record.state());
+            assertEquals(1, executions.get(), "底层业务逻辑必须只执行一次");
         }
     }
 
     @Test
-    @DisplayName("测试队列满时快速失败与原子回滚（红线3：无永久死锁单）")
-    void testQueueSaturationAndRollback() throws Exception {
-        // 1 个 Worker，队列容量仅 1
+    @DisplayName("排队区已满：提交快速失败，记录回滚为 FAILED，不留脏单")
+    void testQueueSaturationRollsBack() throws Exception {
         try (WorkerUtil worker = new WorkerUtil(1, 1)) {
-            CountDownLatch blockWorkerLatch = new CountDownLatch(1);
-            CountDownLatch workerStartedLatch = new CountDownLatch(1);
+            CountDownLatch running = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
 
-            // 任务 1：占用唯一的 Worker 线程
-            TaskSpec<Void> task1 = TaskSpec.of("T-BLOCK", () -> {
-                workerStartedLatch.countDown();
-                try {
-                    blockWorkerLatch.await(5, TimeUnit.SECONDS);
-                } catch (InterruptedException e) {
-                    log.error("阻塞中断", e);
-                    Thread.currentThread().interrupt();
-                }
-            });
-            worker.submit(task1);
-            assertTrue(workerStartedLatch.await(2, TimeUnit.SECONDS));
+            // 唯一厨师被占住
+            assertTrue(worker.submit(TaskSpec.of("T-BLOCK", () -> {
+                running.countDown();
+                release.await(5, TimeUnit.SECONDS);
+                return null;
+            })).accepted());
+            assertTrue(running.await(2, TimeUnit.SECONDS));
 
-            // 任务 2：填满队列容量 1
-            TaskSpec<Void> task2 = TaskSpec.of("T-QUEUED", () -> {});
-            TaskSubmission<Void> sub2 = worker.submit(task2);
-            assertTrue(sub2.accepted());
+            // 填满排队区（容量 1）
+            assertTrue(worker.submit(TaskSpec.of("T-QUEUED", () -> "Q")).accepted());
 
-            // 任务 3：队列已满，必须快速拒绝并回滚
-            TaskSpec<Void> task3 = TaskSpec.of("T-REJECT", () -> {});
-            TaskSubmission<Void> sub3 = worker.submit(task3);
-            assertFalse(sub3.accepted());
-            assertFalse(sub3.duplicate());
-            assertEquals("排队区已满", sub3.reason());
+            // 再提交必然溢出
+            TaskSubmission<String> rejected = worker.submit(TaskSpec.of("T-OVER", () -> "O"));
+            assertFalse(rejected.accepted());
+            assertFalse(rejected.duplicate());
+            assertEquals("排队区已满", rejected.reason());
 
-            // 验证 TaskRecord 状态为 FAILED，且 Future 异常完成，不留脏单
-            TaskRecord record3 = worker.getRecord("T-REJECT");
-            assertNotNull(record3);
-            assertEquals(TaskState.FAILED, record3.state());
+            TaskRecord record = worker.getRecord("T-OVER");
+            assertNotNull(record, "拒收必须在订单板上留下明确终态，避免脏单");
+            assertEquals(TaskState.FAILED, record.state());
 
-            ExecutionException ex = assertThrows(ExecutionException.class, () -> sub3.future().get(1, TimeUnit.SECONDS));
+            ExecutionException ex = assertThrows(ExecutionException.class,
+                    () -> rejected.future().get(1, TimeUnit.SECONDS));
             assertTrue(ex.getCause() instanceof RejectedExecutionException);
 
-            // 释放任务 1
-            blockWorkerLatch.countDown();
+            release.countDown();
         }
     }
 
     @Test
-    @DisplayName("测试失败重试全生命周期（进入 WAITING_RETRY -> 闹钟到点回投 -> 成功 SUCCEEDED 并取值）")
-    void testRetryLifecycle() throws Exception {
-        try (WorkerUtil worker = new WorkerUtil(2, 20)) {
-            AtomicInteger attempts = new AtomicInteger(0);
-
-            // 失败 2 次，第 3 次成功；初始延迟 50ms
-            TaskSpec<String> spec = new TaskSpec<>("RETRY-TASK-1", () -> {
-                int count = attempts.incrementAndGet();
-                if (count < 3) {
-                    throw new RuntimeException("模拟下游网络抖动 (第" + count + "次)");
-                }
-                return "RETRY-SUCCESS-VALUE";
-            }, 3, 50L);
-
-            TaskSubmission<String> submission = worker.submit(spec);
-            assertTrue(submission.accepted());
-
-            // 轮询验证是否曾经进入过 WAITING_RETRY 状态
-            boolean enteredWaitingRetry = false;
-            long waitDeadline = System.currentTimeMillis() + 1000L;
-            while (System.currentTimeMillis() < waitDeadline) {
-                TaskRecord r = worker.getRecord("RETRY-TASK-1");
-                if (r != null && r.state() == TaskState.WAITING_RETRY) {
-                    enteredWaitingRetry = true;
-                    assertTrue(r.nextRetryAt() > 0, "等待重试状态必须包含下次重试时间戳");
-                    break;
-                }
-                Thread.sleep(10);
-            }
-            assertTrue(enteredWaitingRetry, "失败后必须明确跃迁至 WAITING_RETRY 状态并进入闹钟架");
-
-            // 等待最终成功取值
-            String result = submission.future().get(3, TimeUnit.SECONDS);
-            assertEquals("RETRY-SUCCESS-VALUE", result);
-            assertEquals(3, attempts.get());
-
-            TaskRecord finalRecord = worker.getRecord("RETRY-TASK-1");
-            assertEquals("RETRY-SUCCESS-VALUE", finalRecord.result());
-            assertEquals(TaskState.SUCCEEDED, finalRecord.state());
-            assertEquals(3, finalRecord.attempt());
-        }
-    }
-
-    @Test
-    @DisplayName("测试超过最大重试次数转入彻底失败 FAILED")
-    void testMaxRetryExceeded() {
-        try (WorkerUtil worker = new WorkerUtil(2, 20)) {
-            AtomicInteger attempts = new AtomicInteger(0);
-
-            // 最多重试 2 次，必定失败；退避 30ms
-            TaskSpec<String> spec = new TaskSpec<>("RETRY-FAIL-1", () -> {
-                attempts.incrementAndGet();
-                throw new IllegalStateException("始终失败异常");
-            }, 2, 30L);
-
-            TaskSubmission<String> submission = worker.submit(spec);
-            assertTrue(submission.accepted());
-
-            ExecutionException ex = assertThrows(ExecutionException.class, () -> submission.future().get(3, TimeUnit.SECONDS));
-            assertTrue(ex.getCause() instanceof IllegalStateException);
-            assertEquals(2, attempts.get());
-
-            TaskRecord record = worker.getRecord("RETRY-FAIL-1");
-            assertEquals(TaskState.FAILED, record.state());
-            assertEquals(2, record.attempt());
-        }
-    }
-
-    @Test
-    @DisplayName("测试厨师异常免疫（红线10：异常不能让厨师倒下）")
-    void testWorkerResilienceOnCrash() throws Exception {
+    @DisplayName("厨师异常免疫：毒任务失败不影响后续任务")
+    void testWorkerResilienceOnPoisonTask() throws Exception {
         try (WorkerUtil worker = new WorkerUtil(1, 10)) {
-            // 提交一个抛出严重未检查异常的任务（只执行 1 次，不重试，便于断言快速失败）
-            TaskSpec<Void> poisonTask = new TaskSpec<>("POISON-1", () -> {
+            TaskSubmission<String> poison = worker.submit(TaskSpec.<String>of("T-POISON", () -> {
                 throw new RuntimeException("致命毒任务");
-            }, 1, 10L);
-            TaskSubmission<Void> poisonSub = worker.submit(poisonTask);
+            }));
+            assertThrows(ExecutionException.class, () -> poison.future().get(2, TimeUnit.SECONDS));
+            assertEquals(TaskState.FAILED, worker.getRecord("T-POISON").state());
 
-            assertThrows(ExecutionException.class, () -> poisonSub.future().get(2, TimeUnit.SECONDS));
-            assertEquals(TaskState.FAILED, worker.getRecord("POISON-1").state());
-
-            // 再次提交正常任务，验证厨师线程依然健康可用并能正确返回值
-            TaskSpec<String> healthyTask = new TaskSpec<>("HEALTHY-1", () -> "HEALTHY-RESULT");
-            TaskSubmission<String> healthySub = worker.submit(healthyTask);
-
-            String res = healthySub.future().get(2, TimeUnit.SECONDS);
-            assertEquals("HEALTHY-RESULT", res, "厨师线程未受毒任务影响，后续任务正常处理并正确返回值");
+            TaskSubmission<String> healthy = worker.submit(TaskSpec.of("T-HEALTHY", () -> "HEALTHY"));
+            assertEquals("HEALTHY", healthy.future().get(2, TimeUnit.SECONDS));
         }
     }
 
     @Test
-    @DisplayName("测试优雅打烊排空（红线7：打烊后排空已接单，拒绝新单）")
+    @DisplayName("并发占座：重复提交绝不返回 null 句柄")
+    void testDuplicateNeverReturnsNullFuture() throws Exception {
+        int iterations = 50;
+        int threads = 8;
+        try (WorkerUtil worker = new WorkerUtil(2, 50)) {
+            for (int iter = 0; iter < iterations; iter++) {
+                String taskId = "RACE-" + iter;
+                CountDownLatch start = new CountDownLatch(1);
+                CountDownLatch done = new CountDownLatch(threads);
+                CountDownLatch hold = new CountDownLatch(1);
+                List<TaskSubmission<String>> submissions = Collections.synchronizedList(new ArrayList<>());
+
+                for (int i = 0; i < threads; i++) {
+                    Thread thread = new Thread(() -> {
+                        try {
+                            start.await();
+                            submissions.add(worker.submit(TaskSpec.of(taskId, () -> {
+                                hold.await(3, TimeUnit.SECONDS);
+                                return "RACE-RESULT";
+                            })));
+                        } catch (InterruptedException e) {
+                            log.error("并发提交被中断", e);
+                            Thread.currentThread().interrupt();
+                        } finally {
+                            done.countDown();
+                        }
+                    });
+                    thread.start();
+                }
+
+                start.countDown();
+                assertTrue(done.await(5, TimeUnit.SECONDS));
+                assertEquals(threads, submissions.size());
+
+                for (TaskSubmission<String> submission : submissions) {
+                    assertNotNull(submission.future(), "DUPLICATE 分支绝不能返回 null 句柄");
+                }
+                assertEquals(1, submissions.stream().filter(TaskSubmission::accepted).count());
+                assertEquals(threads - 1, submissions.stream().filter(TaskSubmission::duplicate).count());
+
+                hold.countDown();
+                for (TaskSubmission<String> submission : submissions) {
+                    assertEquals("RACE-RESULT", submission.future().get(3, TimeUnit.SECONDS));
+                }
+            }
+        }
+    }
+
+    @Test
+    @DisplayName("终态后再提交同一 id：视为新任务，返回新句柄并重新执行")
+    void testResubmitAfterTerminalStartsNewRound() throws Exception {
+        try (WorkerUtil worker = new WorkerUtil(2, 10)) {
+            AtomicInteger executions = new AtomicInteger(0);
+            TaskSubmission<String> first = worker.submit(TaskSpec.of("T-RESUBMIT", () -> {
+                if (executions.incrementAndGet() == 1) {
+                    throw new IllegalStateException("第一次失败");
+                }
+                return "SECOND-ROUND";
+            }));
+
+            assertThrows(ExecutionException.class, () -> first.future().get(3, TimeUnit.SECONDS));
+            assertEquals(TaskState.FAILED, worker.getRecord("T-RESUBMIT").state());
+
+            // 上一轮已终态 → 新一轮：新句柄、真的再执行
+            TaskSubmission<String> second = worker.submit(TaskSpec.of("T-RESUBMIT", () -> {
+                executions.incrementAndGet();
+                return "SECOND-ROUND";
+            }));
+            assertTrue(second.accepted(), "上一轮已终态，重复提交应视为新任务");
+            assertNotSame(first.future(), second.future(), "新一轮必须返回新的句柄");
+            assertEquals("SECOND-ROUND", second.future().get(3, TimeUnit.SECONDS));
+            assertEquals(TaskState.SUCCEEDED, worker.getRecord("T-RESUBMIT").state());
+            assertEquals(2, executions.get());
+        }
+    }
+
+    @Test
+    @DisplayName("订单板满时删除已终结记录腾位置，未终结记录绝不删除")
+    void testRegistryRecyclesFinishedRecordsWhenFull() throws Exception {
+        // 订单板容量 3：1 张在岗 + 2 张已终结刚好占满
+        try (WorkerUtil worker = new WorkerUtil(2, 10, 3)) {
+            CountDownLatch started = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+
+            TaskSubmission<Void> hold = worker.submit(TaskSpec.of("T-HOLD", () -> {
+                started.countDown();
+                release.await(5, TimeUnit.SECONDS);
+                return null;
+            }));
+            assertTrue(hold.accepted());
+            assertTrue(started.await(3, TimeUnit.SECONDS));
+
+            assertEquals("A", worker.submit(TaskSpec.of("T-FILL-1", () -> "A")).future().get(3, TimeUnit.SECONDS));
+            assertEquals("B", worker.submit(TaskSpec.of("T-FILL-2", () -> "B")).future().get(3, TimeUnit.SECONDS));
+            assertEquals(3, worker.getRegistrySize(), "应刚好占满订单板");
+
+            // 再提交：先删已终结记录腾位置（删哪条不作保证），新单正常收单
+            TaskSubmission<String> accepted = worker.submit(TaskSpec.of("T-OVER", () -> "C"));
+            assertTrue(accepted.accepted(), "删掉已终结记录后应能收单");
+            assertEquals("C", accepted.future().get(3, TimeUnit.SECONDS));
+
+            boolean purgedOne = (worker.getRecord("T-FILL-1") == null) ^ (worker.getRecord("T-FILL-2") == null);
+            assertTrue(purgedOne, "应恰好删除一条已终结记录");
+            assertNotNull(worker.getRecord("T-HOLD"), "未终结记录绝不能被删除");
+            assertEquals(3, worker.getRegistrySize());
+
+            // 在途单据的重复提交不新增记录，即使订单板已满也必须放行
+            TaskSubmission<Void> duplicate = worker.submit(TaskSpec.of("T-HOLD", () -> {
+            }));
+            assertTrue(duplicate.duplicate());
+            assertNotNull(duplicate.future());
+
+            release.countDown();
+            assertNull(hold.future().get(3, TimeUnit.SECONDS), "无返回值任务的成功结果为 null");
+            assertEquals(TaskState.SUCCEEDED, worker.getRecord("T-HOLD").state());
+        }
+    }
+
+    @Test
+    @DisplayName("订单板满且全部单据在途时才拒收新单")
+    void testRejectsOnlyWhenAllRecordsInFlight() throws Exception {
+        // 1 个厨师 + 订单板容量 2：在岗 1 张 + 排队 1 张即占满，且无已终结记录可删
+        try (WorkerUtil worker = new WorkerUtil(1, 10, 2)) {
+            CountDownLatch started = new CountDownLatch(1);
+            CountDownLatch release = new CountDownLatch(1);
+
+            TaskSubmission<Void> hold = worker.submit(TaskSpec.of("T-HOLD", () -> {
+                started.countDown();
+                release.await(5, TimeUnit.SECONDS);
+                return null;
+            }));
+            assertTrue(hold.accepted());
+            assertTrue(started.await(3, TimeUnit.SECONDS));
+
+            TaskSubmission<String> queued = worker.submit(TaskSpec.of("T-WAIT", () -> "W"));
+            assertTrue(queued.accepted());
+            assertEquals(2, worker.getRegistrySize(), "在岗 + 排队已占满订单板");
+
+            TaskSubmission<String> rejected = worker.submit(TaskSpec.of("T-OVER", () -> "C"));
+            assertFalse(rejected.accepted());
+            assertEquals("订单板已满", rejected.reason());
+            assertNull(worker.getRecord("T-OVER"), "被拒收的单据不得在订单板上留下记录");
+            ExecutionException ex = assertThrows(ExecutionException.class,
+                    () -> rejected.future().get(1, TimeUnit.SECONDS));
+            assertTrue(ex.getCause() instanceof RejectedExecutionException);
+
+            // 全部结单后（已有已终结记录可删），新单重新可接纳
+            release.countDown();
+            assertNull(hold.future().get(3, TimeUnit.SECONDS));
+            assertEquals("W", queued.future().get(3, TimeUnit.SECONDS));
+            assertTrue(worker.submit(TaskSpec.of("T-AFTER", () -> "D")).accepted(),
+                    "有已终结记录可删除时应重新收单");
+        }
+    }
+
+    @Test
+    @DisplayName("优雅打烊：已收单据全部执行完毕，之后提交被拒")
     void testDrainAndShutdown() throws Exception {
         WorkerUtil worker = new WorkerUtil(2, 20);
         int totalTasks = 10;
         AtomicInteger processed = new AtomicInteger(0);
 
         for (int i = 0; i < totalTasks; i++) {
-            TaskSpec<Integer> spec = new TaskSpec<>("DRAIN-" + i, () -> {
-                try {
-                    Thread.sleep(50);
-                } catch (InterruptedException e) {
-                    log.error("排空模拟中断", e);
-                    Thread.currentThread().interrupt();
-                }
+            worker.submit(TaskSpec.of("T-DRAIN-" + i, () -> {
+                Thread.sleep(50L);
                 return processed.incrementAndGet();
-            });
-            worker.submit(spec);
+            }));
         }
 
-        // 打烊并排空
         List<TaskSpec<?>> unexecuted = worker.drainAndShutdown(5, TimeUnit.SECONDS);
-        assertEquals(0, unexecuted.size(), "规定时间内所有排队中的任务都应排空执行完成");
-        assertEquals(totalTasks, processed.get(), "已收单据全部完成处理");
+        assertEquals(0, unexecuted.size(), "规定时间内所有已收单据都应执行完成");
+        assertEquals(totalTasks, processed.get());
+        assertEquals(0, worker.getPendingFutureCount(), "关闭后不得残留未终结句柄");
 
-        // 打烊后再提交，直接拒绝
-        TaskSpec<Void> afterClose = TaskSpec.of("AFTER-CLOSE", () -> {});
-        TaskSubmission<Void> rejectedSub = worker.submit(afterClose);
-        assertFalse(rejectedSub.accepted());
-        assertEquals("车间已打烊", rejectedSub.reason());
+        TaskSubmission<Void> rejected = worker.submit(TaskSpec.of("T-AFTER-CLOSE", () -> {
+        }));
+        assertFalse(rejected.accepted());
+        assertEquals("车间已打烊", rejected.reason());
+    }
+
+    @Test
+    @DisplayName("打烊可重复调用：后续调用直接返回空列表")
+    void testDrainIsIdempotent() {
+        WorkerUtil worker = new WorkerUtil(2, 10);
+        assertTrue(worker.drainAndShutdown(1, TimeUnit.SECONDS).isEmpty());
+        assertTrue(worker.drainAndShutdown(1, TimeUnit.SECONDS).isEmpty());
+    }
+
+    @Test
+    @DisplayName("打烊超时：排队单据被放弃、在途单据被强制终结，不残留未终结记录")
+    void testDrainTimeoutAbandonsUnfinished() throws Exception {
+        WorkerUtil worker = new WorkerUtil(1, 4);
+        CountDownLatch started = new CountDownLatch(1);
+
+        TaskSubmission<String> running = worker.submit(TaskSpec.of("T-RUN", () -> {
+            started.countDown();
+            Thread.sleep(800L);
+            return "RUN-DONE";
+        }));
+        assertTrue(running.accepted());
+        assertTrue(started.await(3, TimeUnit.SECONDS));
+
+        TaskSubmission<String> queued = worker.submit(TaskSpec.of("T-QUEUED", () -> "WAIT-DONE"));
+        assertTrue(queued.accepted());
+
+        List<TaskSpec<?>> unexecuted = worker.drainAndShutdown(100, TimeUnit.MILLISECONDS);
+        assertEquals(1, unexecuted.size(), "只应放弃排队中的单据，实际: " + unexecuted);
+        assertEquals("T-QUEUED", unexecuted.get(0).id());
+
+        assertEquals(TaskState.FAILED, worker.getRecord("T-QUEUED").state());
+        ExecutionException queuedEx = assertThrows(ExecutionException.class,
+                () -> queued.future().get(1, TimeUnit.SECONDS));
+        assertTrue(queuedEx.getCause() instanceof RejectedExecutionException);
+
+        assertEquals(TaskState.FAILED, worker.getRecord("T-RUN").state(), "超时后在途单据应被强制终结");
+        assertThrows(ExecutionException.class, () -> running.future().get(1, TimeUnit.SECONDS));
+        assertEquals(0, worker.getPendingFutureCount(), "关闭返回后不得残留未终结句柄");
+    }
+
+    @Test
+    @DisplayName("打烊与提交互斥：关闭返回后不留未终结记录，所有句柄都已完结")
+    void testNoUnsettledRecordAfterShutdown() throws Exception {
+        for (int round = 0; round < 20; round++) {
+            WorkerUtil worker = new WorkerUtil(2, 50);
+            List<TaskSubmission<String>> submissions = Collections.synchronizedList(new ArrayList<>());
+            List<Thread> submitters = new ArrayList<>();
+            CountDownLatch start = new CountDownLatch(1);
+            AtomicInteger seq = new AtomicInteger();
+
+            for (int i = 0; i < 4; i++) {
+                Thread thread = new Thread(() -> {
+                    try {
+                        start.await();
+                        for (int k = 0; k < 20; k++) {
+                            submissions.add(worker.submit(TaskSpec.of("S-" + seq.incrementAndGet(), () -> {
+                                Thread.sleep(1L);
+                                return "ok";
+                            })));
+                        }
+                    } catch (InterruptedException e) {
+                        log.error("提交线程被中断", e);
+                        Thread.currentThread().interrupt();
+                    }
+                });
+                submitters.add(thread);
+                thread.start();
+            }
+
+            start.countDown();
+            Thread.sleep(5L); // 让提交先跑起来，制造“关闭期间仍在提交”的场景
+            worker.drainAndShutdown(2, TimeUnit.SECONDS);
+            for (Thread thread : submitters) {
+                thread.join(5_000L);
+            }
+
+            assertEquals(0, worker.getPendingFutureCount(),
+                    "关闭返回后不得残留未终结句柄（第 " + round + " 轮）");
+            for (TaskSubmission<String> submission : submissions) {
+                assertTrue(submission.future().isDone(),
+                        "关闭返回后每个句柄都必须已完结（第 " + round + " 轮）");
+            }
+        }
     }
 
 }
