@@ -303,8 +303,7 @@ public class WorkerUtil implements AutoCloseable {
             }
         }
         if (!forced.isEmpty()) {
-            log.warn("打烊收口：{} 张未终结单据已被标记为 FAILED，样例: {}", forced.size(),
-                    forced.subList(0, Math.min(10, forced.size())));
+            log.warn("打烊收口：{} 张未终结单据已被标记为 FAILED，全部: {}", forced.size(), forced);
         }
         return unexecuted;
     }
@@ -313,7 +312,7 @@ public class WorkerUtil implements AutoCloseable {
     public void close() {
         List<TaskSpec<?>> unexecuted = drainAndShutdown(5, TimeUnit.SECONDS);
         if (!unexecuted.isEmpty()) {
-            log.warn("打烊完成：{} 张单据未执行已被标记为 FAILED", unexecuted.size());
+            log.warn("打烊完成：{} 张未终结单据已被标记为 FAILED，全部: {}", unexecuted.size(), unexecuted);
         }
     }
 
