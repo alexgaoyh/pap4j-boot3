@@ -174,6 +174,26 @@ class WorkerUtilTest {
     }
 
     @Test
+    @DisplayName("异常快照化失败时句柄仍然完成：非取消的 future 绝不能悬挂")
+    void testFutureNeverStrandedWhenSnapshotFails() {
+        try (WorkerUtil worker = new WorkerUtil(1, 10)) {
+            TaskSubmission<String> submission = worker.submit(TaskSpec.<String>of("T-BROKEN-ERROR", () -> {
+                // 消息不可读 → 落终态时的快照渲染必然失败（TaskError.of 内部会取 message）
+                throw new RuntimeException("主消息") {
+                    @Override
+                    public String getMessage() {
+                        throw new IllegalStateException("异常消息本身不可读，快照化必然失败");
+                    }
+                };
+            }));
+
+            // 若终态路径抛错后直接逃逸，句柄将永远不完成，这里只能等到 TimeoutException
+            assertThrows(ExecutionException.class, () -> submission.future().get(2, TimeUnit.SECONDS));
+            assertTrue(submission.future().isDone());
+        }
+    }
+
+    @Test
     @DisplayName("并发占座：重复提交绝不返回 null 句柄")
     void testDuplicateNeverReturnsNullFuture() throws Exception {
         int iterations = 50;

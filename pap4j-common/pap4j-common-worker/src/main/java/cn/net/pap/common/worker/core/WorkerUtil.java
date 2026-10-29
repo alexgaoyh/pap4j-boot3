@@ -363,8 +363,18 @@ public class WorkerUtil implements AutoCloseable {
             complete(future, result);
         } catch (Throwable t) {
             log.error("任务 [{}] 执行失败: {}", spec.id(), t.getMessage(), t);
-            transition(spec.id(), record -> record.toFailed(t));
+            try {
+                transition(spec.id(), record -> record.toFailed(t));
+            } catch (Throwable snapshotError) {
+                // 异常快照化本身失败（如栈渲染抛错）时不能连累句柄：记账可降级，句柄不能丢
+                log.error("任务 [{}] 的失败落账再次失败", spec.id(), snapshotError);
+            }
             completeExceptionally(future, t);
+        } finally {
+            // CompletableFuture 契约兜底：非取消的句柄必须完成，否则调用方永久挂死
+            if (future != null && !future.isDone()) {
+                completeExceptionally(future, new IllegalStateException("任务 [" + spec.id() + "] 未能落定终态"));
+            }
         }
     }
 
