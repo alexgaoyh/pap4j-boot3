@@ -31,12 +31,13 @@ public record TaskRecord(
     }
 
     /**
-     * 是否已处于终态（{@link TaskState#SUCCEEDED} / {@link TaskState#FAILED}）。
+     * 是否已处于终态（{@link TaskState#SUCCEEDED} / {@link TaskState#FAILED} / {@link TaskState#UNKNOWN}）。
+     * <p>终态 = 不在途中：新增终态时无需改这里，只有新增<b>在途</b>状态才需要。</p>
      *
      * @return true 表示已终结
      */
     public boolean terminal() {
-        return state == TaskState.SUCCEEDED || state == TaskState.FAILED;
+        return state != TaskState.QUEUED && state != TaskState.RUNNING;
     }
 
     /**
@@ -66,6 +67,16 @@ public record TaskRecord(
      */
     public TaskRecord toFailed(Throwable t) {
         return new TaskRecord(id, TaskState.FAILED, null, TaskError.of(t), System.currentTimeMillis());
+    }
+
+    /**
+     * 中止执行，转为 {@link TaskState#UNKNOWN}：没拿到业务结论，无法确认是否已生效。
+     *
+     * @param t 中止原因（内部转为轻量快照存储）
+     * @return 新记录快照
+     */
+    public TaskRecord toUnknown(Throwable t) {
+        return new TaskRecord(id, TaskState.UNKNOWN, null, TaskError.of(t), System.currentTimeMillis());
     }
 
 }

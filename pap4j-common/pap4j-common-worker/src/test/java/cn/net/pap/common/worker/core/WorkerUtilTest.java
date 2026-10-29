@@ -10,7 +10,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -152,7 +151,9 @@ class WorkerUtilTest {
 
             ExecutionException ex = assertThrows(ExecutionException.class,
                     () -> rejected.future().get(1, TimeUnit.SECONDS));
-            assertTrue(ex.getCause() instanceof RejectedExecutionException);
+            assertTrue(ex.getCause() instanceof TaskNotStartedException, "排队区满 = 从未执行，必须带“可安全重投”标记");
+            assertEquals(TaskNotStartedException.class.getName(), record.error().type(),
+                    "对账靠这一列判定能否无条件重投");
 
             release.countDown();
         }
@@ -338,7 +339,7 @@ class WorkerUtilTest {
             assertNull(worker.getRecord("T-OVER"), "被拒收的单据不得在订单板上留下记录");
             ExecutionException ex = assertThrows(ExecutionException.class,
                     () -> rejected.future().get(1, TimeUnit.SECONDS));
-            assertTrue(ex.getCause() instanceof RejectedExecutionException);
+            assertTrue(ex.getCause() instanceof TaskNotStartedException, "拒收一律是“从未执行”，与排队区满统一标记");
 
             // 全部结单后（已有已终结记录可删），新单重新可接纳
             release.countDown();
@@ -403,14 +404,53 @@ class WorkerUtilTest {
         assertEquals(1, unexecuted.size(), "只应放弃排队中的单据，实际: " + unexecuted);
         assertEquals("T-QUEUED", unexecuted.get(0).id());
 
-        assertEquals(TaskState.FAILED, worker.getRecord("T-QUEUED").state());
+        assertEquals(TaskState.FAILED, worker.getRecord("T-QUEUED").state(), "排队中被放弃 → 结论已知：没做过");
+        assertEquals(TaskNotStartedException.class.getName(), worker.getRecord("T-QUEUED").error().type(),
+                "打烊放弃 = 从未执行，与“业务失败”靠 cause 类型区分");
         ExecutionException queuedEx = assertThrows(ExecutionException.class,
                 () -> queued.future().get(1, TimeUnit.SECONDS));
-        assertTrue(queuedEx.getCause() instanceof RejectedExecutionException);
+        assertTrue(queuedEx.getCause() instanceof TaskNotStartedException);
 
-        assertEquals(TaskState.FAILED, worker.getRecord("T-RUN").state(), "超时后在途单据应被强制终结");
+        // 老板跑在 Thread.sleep 上，中断以 InterruptedException 的形式抛了出来 → 拿到了“它抛了”这个结论，是 FAILED
+        assertEquals(TaskState.FAILED, worker.getRecord("T-RUN").state(),
+                "中断让业务抛了异常 → 结论已知（失败），应是 FAILED");
         assertThrows(ExecutionException.class, () -> running.future().get(1, TimeUnit.SECONDS));
         assertEquals(0, worker.getPendingFutureCount(), "关闭返回后不得残留未终结句柄");
+    }
+
+    @Test
+    @DisplayName("在途被打断且拿不到业务结论 → UNKNOWN（重投必须幂等）")
+    void testInterruptedInFlightBecomesUnknown() throws Exception {
+        WorkerUtil worker = new WorkerUtil(1, 4);
+        CountDownLatch started = new CountDownLatch(1);
+        CountDownLatch release = new CountDownLatch(1);
+
+        TaskSubmission<String> running = worker.submit(TaskSpec.of("T-IGNORE-INT", () -> {
+            started.countDown();
+            // 故意吞掉中断：业务既没返回也没抛，打烊时根本不知道它到底会成还是会败
+            while (true) {
+                try {
+                    release.await();
+                    break;
+                } catch (InterruptedException ignored) {
+                    // 不恢复中断标志，继续等
+                }
+            }
+            return "LATE-RESULT";
+        }));
+        assertTrue(running.accepted());
+        assertTrue(started.await(3, TimeUnit.SECONDS));
+
+        worker.drainAndShutdown(100, TimeUnit.MILLISECONDS);
+
+        assertEquals(TaskState.UNKNOWN, worker.getRecord("T-IGNORE-INT").state(),
+                "action 还没返回就被中止 → 不知道成没成，必须记 UNKNOWN 而不是 FAILED");
+        assertThrows(ExecutionException.class, () -> running.future().get(1, TimeUnit.SECONDS));
+
+        release.countDown(); // 放行：让它跑完，尝试“事后翻案”
+        Thread.sleep(200L);
+        assertEquals(TaskState.UNKNOWN, worker.getRecord("T-IGNORE-INT").state(),
+                "已被收口判死的记录不得被事后改写，否则记录说成功、调用方却拿到失败");
     }
 
     @Test

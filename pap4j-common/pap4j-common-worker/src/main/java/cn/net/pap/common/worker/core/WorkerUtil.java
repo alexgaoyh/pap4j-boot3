@@ -134,10 +134,10 @@ public class WorkerUtil implements AutoCloseable {
         dispatch.lock();
         try {
             if (workers.isShutdown()) { // 打烊标志 = 线程池已关闭
-                return reject("车间已打烊", new RejectedExecutionException("车间已打烊，拒绝接收新任务"));
+                return reject("车间已打烊", new TaskNotStartedException("车间已打烊，拒绝接收新任务"));
             }
             if (!hasRoomFor(spec.id())) {
-                return reject("订单板已满", new RejectedExecutionException(
+                return reject("订单板已满", new TaskNotStartedException(
                         "订单板已满（上限 " + maxRecords + "），拒绝接收新任务"));
             }
 
@@ -146,7 +146,7 @@ public class WorkerUtil implements AutoCloseable {
                 return TaskSubmission.duplicate(seat.future()); // 在途重复：复用既有句柄
             }
             if (!queue.offer(spec)) {
-                fail(spec.id(), new RejectedExecutionException("排队区已满"));
+                fail(spec.id(), new TaskNotStartedException("排队区已满"));
                 return TaskSubmission.rejected("排队区已满", seat.future());
             }
             return TaskSubmission.accepted(seat.future());
@@ -279,14 +279,15 @@ public class WorkerUtil implements AutoCloseable {
         // 2. 等待存量单据执行完毕
         boolean terminated = awaitTermination(timeout, unit);
 
-        // 3. 超时：放弃排队中的单据，强制中断在途任务
-        RejectedExecutionException abort = new RejectedExecutionException("打烊超时未执行");
+        // 3. 超时：放弃排队中的单据（确定没跑），强制中断在途任务（结果未知）
+        TaskNotStartedException notStarted = new TaskNotStartedException("打烊超时未执行");
+        RejectedExecutionException unknown = new RejectedExecutionException("打烊超时未完成（结果未知）");
         List<TaskSpec<?>> unexecuted = new ArrayList<>();
         if (!terminated) {
             List<TaskSpec<?>> leftover = new ArrayList<>();
             queue.drainTo(leftover);
             for (TaskSpec<?> spec : leftover) {
-                if (spec != STOP && abandon(spec, abort)) {
+                if (spec != STOP && abandon(spec, notStarted)) {
                     unexecuted.add(spec);
                 }
             }
@@ -298,12 +299,12 @@ public class WorkerUtil implements AutoCloseable {
         List<String> forced = new ArrayList<>();
         for (TaskRecord record : registry.values()) {
             if (!record.terminal()) {
-                fail(record.id(), abort);
+                markUnknown(record.id(), unknown);
                 forced.add(record.id());
             }
         }
         if (!forced.isEmpty()) {
-            log.warn("打烊收口：{} 张未终结单据已被标记为 FAILED，全部: {}", forced.size(), forced);
+            log.warn("打烊收口：{} 张未终结单据已被标记为 UNKNOWN（结果未知），全部: {}", forced.size(), forced);
         }
         return unexecuted;
     }
@@ -358,21 +359,26 @@ public class WorkerUtil implements AutoCloseable {
         CompletableFuture<?> future = futures.get(spec.id());
         try {
             Object result = spec.action().call();
-            transition(spec.id(), record -> record.toSucceeded(result));
+            settle(spec.id(), record -> record.toSucceeded(result));
             complete(future, result);
         } catch (Throwable t) {
             log.error("任务 [{}] 执行失败: {}", spec.id(), t.getMessage(), t);
             try {
-                transition(spec.id(), record -> record.toFailed(t));
+                settle(spec.id(), record -> record.toFailed(t));
             } catch (Throwable snapshotError) {
-                // 异常快照化本身失败（如栈渲染抛错）时不能连累句柄：记账可降级，句柄不能丢
-                log.error("任务 [{}] 的失败落账再次失败", spec.id(), snapshotError);
+                // 连“记下失败原因”这一步都失败了（异常本身读不出来）。
+                // 单子不能就这么一直挂在“执行中”，退一步：直接判它失败，只是不带异常信息。
+                log.error("任务 [{}] 的失败原因记不下来，直接判 FAILED（不带异常信息）", spec.id(), snapshotError);
+                settle(spec.id(), record -> record.toFailed(null));
             }
             completeExceptionally(future, t);
         } finally {
             // CompletableFuture 契约兜底：非取消的句柄必须完成，否则调用方永久挂死
             if (future != null && !future.isDone()) {
-                completeExceptionally(future, new IllegalStateException("任务 [" + spec.id() + "] 未能落定终态"));
+                IllegalStateException unsettled = new IllegalStateException("任务 [" + spec.id() + "] 未能落定终态");
+                // 连业务结论都没拿到，记录不能留在“执行中”：落 UNKNOWN（结果未知）
+                settle(spec.id(), record -> record.toUnknown(unsettled));
+                completeExceptionally(future, unsettled);
             }
         }
     }
@@ -414,6 +420,19 @@ public class WorkerUtil implements AutoCloseable {
     }
 
     /**
+     * 把任意非终态单据置为 {@link TaskState#UNKNOWN} 并让句柄异常完成：
+     * “不知道它到底成没成”（在途被打断、没拿到业务结论）。
+     *
+     * @param id    任务 ID
+     * @param cause 中止原因
+     */
+    private void markUnknown(String id, Throwable cause) {
+        CompletableFuture<?> future = futures.get(id);
+        transition(id, record -> record.toUnknown(cause));
+        completeExceptionally(future, cause);
+    }
+
+    /**
      * 订单板满时删除已终结记录，删到低于上限即止（顺序不作保证）。
      */
     private void recycleRecords() {
@@ -442,6 +461,21 @@ public class WorkerUtil implements AutoCloseable {
             Thread.currentThread().interrupt();
             return false;
         }
+    }
+
+    /**
+     * 结账：只有仍处于 {@link TaskState#RUNNING} 的单据才允许落终态。
+     *
+     * <p>已被打烊收口判死（{@code UNKNOWN}）或提前判失败的记录一律原样保留；
+     * 否则跑飞的任务会把“关闭时已对调用方宣告失败”的单据事后翻成成功，
+     * 出现“记录说成功、句柄说失败”的不一致。</p>
+     *
+     * @param id         任务 ID
+     * @param toTerminal 终态迁移（仅在当前为 RUNNING 时生效）
+     * @return 迁移后的记录；未生效时为原记录
+     */
+    private TaskRecord settle(String id, UnaryOperator<TaskRecord> toTerminal) {
+        return transition(id, record -> record.state() == TaskState.RUNNING ? toTerminal.apply(record) : record);
     }
 
     /**
