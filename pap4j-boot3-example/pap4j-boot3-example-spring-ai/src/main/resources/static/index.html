@@ -40,6 +40,18 @@
         #sendBtn:disabled { background-color: #e2e8f0; color: #94a3b8; }
         .cursor { display: inline-block; width: 2px; height: 1.2em; background-color: #4f46e5; animation: blink 1s step-end infinite; vertical-align: middle; }
         @keyframes blink { 50% { opacity: 0; } }
+
+        /* 思考过程样式 (DeepSeek Think 增量增强) */
+        .think-container { margin: 8px 0; background: #f8fafc; border: 1px solid #e2e8f0; border-left: 3px solid #6366f1; border-radius: 6px; overflow: hidden; font-size: 0.88rem; }
+        .think-container summary { list-style: none; }
+        .think-container summary::-webkit-details-marker { display: none; }
+        .think-header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #f1f5f9; color: #475569; font-weight: 500; cursor: pointer; user-select: none; }
+        .think-header:hover { background: #e2e8f0; }
+        .think-body { padding: 8px 12px; color: #64748b; line-height: 1.6; border-top: 1px dashed #e2e8f0; max-height: 300px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, monospace; background: #fafafa; }
+        .think-body p { margin: 2px 0 !important; }
+        .think-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #cbd5e1; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .think-placeholder { display: flex; align-items: center; gap: 6px; color: #64748b; font-size: 0.88rem; }
     </style>
 <body>
 
@@ -171,6 +183,126 @@
         return contentDiv;
     }
 
+    // 后端实际输出的是 <thinking>...</thinking>（也兼容 <think>），且一次回答里可能出现多个思考块，
+    // 这里统一按“answer / thinking”片段解析，避免标签被当成未知 HTML 元素直接平铺显示。
+    const THINK_TAG_RE = /<think(?:ing)?\s*>([\s\S]*?)(<\/think(?:ing)?\s*>|$)/gi;
+    const THINK_OPEN_TAGS = ['<think>', '<thinking>'];
+    const THINK_CLOSE_TAGS = ['</think>', '</thinking>'];
+
+    /**
+     * 流式过程中末尾可能是半个标签（例如 "<thinki"），先隐藏掉，避免界面上闪现原始标签
+     */
+    function stripPartialThinkTag(text) {
+        const idx = text.lastIndexOf('<');
+        if (idx === -1) return text;
+        const tail = text.slice(idx).toLowerCase();
+        if (tail.includes('>')) return text;
+        const candidates = THINK_OPEN_TAGS.concat(THINK_CLOSE_TAGS);
+        return candidates.some(tag => tag.startsWith(tail)) ? text.slice(0, idx) : text;
+    }
+
+    /**
+     * 把文本切成 answer / thinking 片段，支持多个思考块与未闭合的思考块
+     */
+    function splitThinkSegments(text) {
+        const segments = [];
+        let lastIndex = 0;
+        let match;
+        THINK_TAG_RE.lastIndex = 0;
+        while ((match = THINK_TAG_RE.exec(text)) !== null) {
+            if (match.index > lastIndex) {
+                segments.push({ type: 'answer', text: text.slice(lastIndex, match.index) });
+            }
+            segments.push({ type: 'thinking', text: match[1], closed: !!match[2] });
+            lastIndex = THINK_TAG_RE.lastIndex;
+            if (match[0].length === 0) {
+                THINK_TAG_RE.lastIndex++;
+            }
+        }
+        if (lastIndex < text.length) {
+            segments.push({ type: 'answer', text: text.slice(lastIndex) });
+        }
+        return segments;
+    }
+
+    // 记录每个思考块被用户手动折叠的状态，避免流式重绘时被强行展开
+    function collectThinkStates(container) {
+        return Array.from(container.querySelectorAll('details.think-container'))
+            .map(details => details.open);
+    }
+
+    /**
+     * 解析并渲染包含 DeepSeek <thinking>...</thinking> 思考过程的内容
+     */
+    function renderContentWithThink(text, isStreaming, startTime, thinkStates) {
+        const cursor = isStreaming ? '<span class="cursor"></span>' : '';
+        if (!text) {
+            return isStreaming ? '<span class="cursor"></span>' : '';
+        }
+
+        const visibleText = stripPartialThinkTag(text);
+        const segments = splitThinkSegments(visibleText);
+        if (!segments.some(segment => segment.type === 'thinking')) {
+            return marked.parse(preprocessMarkdown(visibleText)) + cursor;
+        }
+
+        const elapsedSec = startTime ? Math.max(1, Math.round((Date.now() - startTime) / 1000)) : 0;
+        let html = '';
+        let thinkIndex = 0;
+
+        for (const segment of segments) {
+            if (segment.type === 'answer') {
+                const answerText = segment.text.trim();
+                if (answerText) {
+                    html += marked.parse(preprocessMarkdown(answerText));
+                }
+                continue;
+            }
+
+            const thinkBody = marked.parse(preprocessMarkdown(segment.text));
+
+            if (!segment.closed) {
+                // 正在深度思考中（标签未闭合）
+                html += `
+                <div class="think-container in-progress">
+                    <div class="think-header">
+                        <span class="think-spinner"></span>
+                        <span>正在思考... (${elapsedSec}s)</span>
+                    </div>
+                    <div class="think-body markdown-body">
+                        ${thinkBody}
+                        ${isStreaming ? '<span class="cursor"></span>' : ''}
+                    </div>
+                </div>`;
+                continue;
+            }
+
+            // 思考过程已闭合：渲染为可折叠面板，同时保留用户上次的展开/折叠选择
+            const isOpen = !thinkStates || thinkStates[thinkIndex] !== false;
+            html += `
+                <details class="think-container completed"${isOpen ? ' open' : ''}>
+                    <summary class="think-header">
+                        <span>💭</span>
+                        <span>已完成思考 (用时 ${elapsedSec} 秒)</span>
+                        <span style="margin-left: auto; font-size: 0.75rem; color: #94a3b8;">点击展开/折叠</span>
+                    </summary>
+                    <div class="think-body markdown-body">
+                        ${thinkBody}
+                    </div>
+                </details>`;
+            thinkIndex++;
+        }
+        return html + cursor;
+    }
+
+    /**
+     * 渲染到消息容器，并保留用户对已完成思考面板的展开/折叠状态
+     */
+    function renderIntoMessage(container, text, isStreaming, startTime) {
+        const thinkStates = collectThinkStates(container);
+        container.innerHTML = renderContentWithThink(text, isStreaming, startTime, thinkStates);
+    }
+
     const chatId = 'chat-' + Math.random().toString(36).substr(2, 9);
 
     async function sendPrompt() {
@@ -186,15 +318,17 @@
         botMsgDiv.className = 'message bot';
         const botContentDiv = document.createElement('div');
         botContentDiv.className = 'message-content markdown-body';
-        botContentDiv.innerHTML = '<span class="cursor"></span>';
+        botContentDiv.innerHTML = '<div class="think-placeholder"><span class="think-spinner"></span> 正在思考...</div>';
         botMsgDiv.appendChild(botContentDiv);
         chatMessages.appendChild(botMsgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
 
+        const startTime = Date.now();
         let fullResponse = '';
+        let errorMessage = '';
 
         try {
-            const response = await fetch('/api/ai/stream', {
+            const response = await fetch('/api/ai/agent/stream', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ prompt, chatId })
@@ -245,7 +379,7 @@
 
                 // 实时打字机渲染（包含当前正在拼接缓冲的数据，提供流畅的打字效果）
                 const tempResponse = fullResponse + (hasData ? eventLines.join('\n') : '');
-                botContentDiv.innerHTML = marked.parse(preprocessMarkdown(tempResponse)) + '<span class="cursor"></span>';
+                renderIntoMessage(botContentDiv, tempResponse, true, startTime);
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
 
@@ -273,9 +407,14 @@
             }
 
         } catch (error) {
-            botContentDiv.innerHTML = "错误: " + error.message;
+            errorMessage = error && error.message ? error.message : String(error);
         } finally {
-            botContentDiv.innerHTML = marked.parse(preprocessMarkdown(fullResponse));
+            if (errorMessage) {
+                botContentDiv.innerHTML = '<div class="think-placeholder">⚠️ 请求失败：' + escapeHtml(errorMessage) + '</div>'
+                    + (fullResponse ? renderContentWithThink(fullResponse, false, startTime, []) : '');
+            } else {
+                renderIntoMessage(botContentDiv, fullResponse, false, startTime);
+            }
             sendBtn.disabled = false;
             promptInput.disabled = false;
             promptInput.focus();

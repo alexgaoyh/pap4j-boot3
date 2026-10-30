@@ -364,6 +364,9 @@ public class AiAssistantConfig {
                     .defaultOptions(org.springframework.ai.openai.OpenAiChatOptions.builder()
                             .model(modelName)
                             .temperature(temperature)
+                            // 仅 deepseek 系模型注入 thinking 私有字段，其它 OpenAI 兼容服务（通义 / vLLM / one-api）保持请求体干净
+                            .extraBody(modelName != null && modelName.toLowerCase(java.util.Locale.ROOT).contains("deepseek")
+                                    ? Map.of("thinking", Map.of("type", "enabled")) : Map.of())
                             .build())
                     .retryTemplate(createNoRetryTemplate()) // 禁用自动重试
                     .build();

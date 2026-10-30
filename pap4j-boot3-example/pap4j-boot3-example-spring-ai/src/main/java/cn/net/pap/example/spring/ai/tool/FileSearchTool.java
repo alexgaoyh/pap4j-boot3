@@ -64,7 +64,7 @@ public class FileSearchTool implements AgentTool {
      * @param pattern 文件通配符模式，如 {@code *.md}、{@code *syntax*}
      * @return 匹配的文件相对路径列表字符串
      */
-    @Tool(description = "根据通配符模式在本地知识库中查找匹配的文件相对路径列表（例如查找 *.md 或包含特定名称的文档）")
+    @Tool(name = "FileSearchTool-findFiles", description = "根据通配符模式在本地知识库中查找匹配的文件相对路径列表（例如查找 *.md 或包含特定名称的文档）")
     public String findFiles(
             @ToolParam(description = "文件名匹配通配符，如 *.md、*operator* 等") String pattern) {
         if (pattern == null || pattern.isBlank()) {
@@ -95,7 +95,7 @@ public class FileSearchTool implements AgentTool {
      * @param keyword 待检索的关键词或代码符号
      * @return 包含文件相对路径、行号及命中内容的代码文本片段
      */
-    @Tool(description = "在知识库文件中按关键词或专有名词精确搜索内容，返回命中的文件、行号以及对应代码片段")
+    @Tool(name = "FileSearchTool-grepContent", description = "在知识库文件中按关键词或专有名词精确搜索内容，返回命中的文件、行号以及对应代码片段")
     public String grepContent(
             @ToolParam(description = "要搜索的专有名词、函数名或关键词，例如：TREE_FLATTEN、ISBLANK") String keyword) {
         if (keyword == null || keyword.isBlank()) {

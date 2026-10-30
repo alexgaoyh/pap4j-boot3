@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -169,12 +170,56 @@ public class AiController {
             SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemTemplateText);
             String renderedSystemPrompt = systemPromptTemplate.render(Map.of("persona", defaultPersona));
 
+            // 用于记录当前是否处于 <thinking> 标签内部
+            AtomicBoolean isThinking = new AtomicBoolean(false);
+
             return agentChatClient.prompt()
                     .system(renderedSystemPrompt)
                     .user(request.prompt())
                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
                     .stream()
-                    .content()
+                    .chatResponse() // 关键修改：使用 chatResponse() 而不是 content()
+                    .map(chatResponse -> {
+                        if (chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
+                            return "";
+                        }
+                        var output = chatResponse.getResult().getOutput();
+
+                        // 1. 提取思考内容 (Spring AI OpenAI 存储在 metadata 的 reasoningContent 中)
+                        Object reasoningObj = output.getMetadata().get("reasoningContent");
+                        String reasoning = reasoningObj != null ? reasoningObj.toString() : "";
+
+                        // 2. 提取正文内容
+                        String content = output.getText() != null ? output.getText() : "";
+
+                        StringBuilder chunkBuilder = new StringBuilder();
+
+                        // 如果有思考内容输出
+                        if (!reasoning.isEmpty()) {
+                            if (isThinking.compareAndSet(false, true)) {
+                                chunkBuilder.append("<thinking>\n"); // 首次进入思考，拼接开始标签
+                            }
+                            chunkBuilder.append(reasoning);
+                        }
+
+                        // 如果开始输出正文内容
+                        if (!content.isEmpty()) {
+                            if (isThinking.compareAndSet(true, false)) {
+                                chunkBuilder.append("\n</thinking>\n\n"); // 思考结束，拼接闭合标签
+                            }
+                            chunkBuilder.append(content);
+                        }
+
+                        return chunkBuilder.toString();
+                    })
+                    .filter(chunk -> !chunk.isEmpty()) // 过滤掉空帧
+                    .concatWith(Mono.defer(() -> {
+                        // 兜底处理：防止流意外结束时标签未闭合
+                        if (isThinking.compareAndSet(true, false)) {
+                            return Mono.just("\n</thinking>");
+                        }
+                        return Mono.empty();
+                    }))
                     .map(chunk -> {
                         try {
                             return this.objectMapper.writeValueAsString(Map.of("v", chunk));
