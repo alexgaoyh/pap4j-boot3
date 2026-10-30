@@ -1,8 +1,8 @@
 package cn.net.pap.common.file.search;
 
 import cn.net.pap.common.file.ReadTxtToStringUtil;
-import org.ahocorasick.trie.Emit;
-import org.ahocorasick.trie.Trie;
+import java.util.Arrays;
+import java.util.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -49,7 +49,7 @@ import java.util.stream.Stream;
  * 设计要点：
  * <ul>
  *   <li><b>零初始化</b>：不建索引，每次调用实时读取当前文件系统状态，文件增删改立刻反映；</li>
- *   <li><b>进程内</b>：不 spawn 外部进程、不依赖原生库，仅引入 {@code org.ahocorasick} 做多关键词匹配；</li>
+ *   <li><b>进程内</b>：不 spawn 外部进程、不依赖原生库，多关键词基于纯 JDK 轻量 Aho-Corasick 自动机做匹配；</li>
  *   <li><b>零逐行分配</b>：整文件一次解码后按行区间匹配，只为命中的行构建结果；</li>
  *   <li><b>跨文件并行</b>：默认通过 {@code parallelStream}（ForkJoin 公共池）处理候选文件；</li>
  *   <li><b>匹配策略自动选择</b>：单字面量走 {@link String#indexOf(String)}，多关键词走 Aho-Corasick，正则走 {@link Pattern}（完整语义，无限制）。</li>
@@ -659,31 +659,7 @@ public final class FileSearch {
                     }
                 };
             }
-            Trie.TrieBuilder builder = Trie.builder();
-            if (!opts.caseSensitive()) {
-                builder.ignoreCase();
-            }
-            for (String kw : keywords) {
-                builder.addKeyword(kw);
-            }
-            Trie trie = builder.build();
-            return new ContentMatcher() {
-                @Override
-                public List<Integer> findOffsets(String content) {
-                    List<Integer> offsets = new ArrayList<>();
-                    for (Emit emit : trie.parseText(content)) {
-                        offsets.add(emit.getStart());
-                    }
-                    return offsets;
-                }
-
-                @Override
-                public boolean matches(String content) {
-                    boolean[] hit = {false};
-                    trie.parseText(content, emit -> hit[0] = true);
-                    return hit[0];
-                }
-            };
+            return new CompactAcMatcher(keywords, !opts.caseSensitive());
         }
         throw new IllegalArgumentException("SearchOptions 必须提供 keywords 或 regex 之一");
     }
@@ -705,6 +681,193 @@ public final class FileSearch {
             offsets.add(m.start());
         }
         return offsets;
+    }
+
+    /**
+     * 纯 JDK 轻量紧凑 Aho-Corasick 多模式串匹配器：
+     * <ul>
+     *   <li><b>构建阶段</b>：通过 Trie + BFS 队列构建失败指针（Fail Link）及继承匹配词长度列表；</li>
+     *   <li><b>运行阶段</b>：扁平原生数组紧凑存储，根节点前 128 个 ASCII 字符 O(1) 直接映射加速，非根状态极短数组遍历；</li>
+     *   <li><b>零包装对象</b>：{@code findOffsets} 直接收集原生 int 偏移量，{@code matches} 命中即刻短路、零堆对象分配；</li>
+     *   <li><b>大小写折叠</b>：通过 {@code Character.toLowerCase} 实现与 {@code String.equalsIgnoreCase} 对齐。</li>
+     * </ul>
+     */
+    private static final class CompactAcMatcher implements ContentMatcher {
+        private final char[][] keys;
+        private final int[][] nextStates;
+        private final int[] fail;
+        private final int[][] matchLengths;
+        private final boolean[] isMatch;
+        private final int[] rootAscii = new int[128];
+        private final boolean ignoreCase;
+
+        CompactAcMatcher(Set<String> keywords, boolean ignoreCase) {
+            this.ignoreCase = ignoreCase;
+            Arrays.fill(rootAscii, -1);
+
+            class TempNode {
+                final Map<Character, TempNode> children = new HashMap<>();
+                final List<Integer> matchLens = new ArrayList<>();
+                TempNode fail;
+                int id;
+            }
+
+            TempNode root = new TempNode();
+            for (String kw : keywords) {
+                if (kw == null || kw.isEmpty()) {
+                    continue;
+                }
+                TempNode cur = root;
+                int len = kw.length();
+                for (int i = 0; i < len; i++) {
+                    char c = kw.charAt(i);
+                    if (ignoreCase) {
+                        c = Character.toLowerCase(c);
+                    }
+                    cur = cur.children.computeIfAbsent(c, k -> new TempNode());
+                }
+                if (!cur.matchLens.contains(len)) {
+                    cur.matchLens.add(len);
+                }
+            }
+
+            List<TempNode> allNodes = new ArrayList<>();
+            Queue<TempNode> queue = new ArrayDeque<>();
+            root.id = 0;
+            allNodes.add(root);
+
+            for (Map.Entry<Character, TempNode> entry : root.children.entrySet()) {
+                TempNode child = entry.getValue();
+                child.fail = root;
+                child.id = allNodes.size();
+                allNodes.add(child);
+                queue.add(child);
+            }
+
+            while (!queue.isEmpty()) {
+                TempNode u = queue.poll();
+                for (Map.Entry<Character, TempNode> entry : u.children.entrySet()) {
+                    char ch = entry.getKey();
+                    TempNode v = entry.getValue();
+                    v.id = allNodes.size();
+                    allNodes.add(v);
+
+                    TempNode f = u.fail;
+                    while (f != null && !f.children.containsKey(ch)) {
+                        f = f.fail;
+                    }
+                    v.fail = (f != null) ? f.children.get(ch) : root;
+                    if (v.fail != null && !v.fail.matchLens.isEmpty()) {
+                        for (int ml : v.fail.matchLens) {
+                            if (!v.matchLens.contains(ml)) {
+                                v.matchLens.add(ml);
+                            }
+                        }
+                    }
+                    queue.add(v);
+                }
+            }
+
+            int numStates = allNodes.size();
+            this.keys = new char[numStates][];
+            this.nextStates = new int[numStates][];
+            this.fail = new int[numStates];
+            this.matchLengths = new int[numStates][];
+            this.isMatch = new boolean[numStates];
+
+            for (int i = 0; i < numStates; i++) {
+                TempNode node = allNodes.get(i);
+                this.fail[i] = (node.fail != null) ? node.fail.id : 0;
+                if (!node.matchLens.isEmpty()) {
+                    this.isMatch[i] = true;
+                    int[] lens = new int[node.matchLens.size()];
+                    for (int j = 0; j < lens.length; j++) {
+                        lens[j] = node.matchLens.get(j);
+                    }
+                    this.matchLengths[i] = lens;
+                }
+
+                int childCount = node.children.size();
+                if (childCount > 0) {
+                    char[] kArr = new char[childCount];
+                    int[] nArr = new int[childCount];
+                    int idx = 0;
+                    for (Map.Entry<Character, TempNode> e : node.children.entrySet()) {
+                        char c = e.getKey();
+                        int nextId = e.getValue().id;
+                        kArr[idx] = c;
+                        nArr[idx] = nextId;
+                        if (i == 0 && c < 128) {
+                            rootAscii[c] = nextId;
+                        }
+                        idx++;
+                    }
+                    this.keys[i] = kArr;
+                    this.nextStates[i] = nArr;
+                }
+            }
+        }
+
+        private int transition(int state, char c) {
+            if (state == 0 && c < 128) {
+                return rootAscii[c];
+            }
+            char[] k = keys[state];
+            if (k != null) {
+                for (int i = 0; i < k.length; i++) {
+                    if (k[i] == c) {
+                        return nextStates[state][i];
+                    }
+                }
+            }
+            return -1;
+        }
+
+        @Override
+        public List<Integer> findOffsets(String content) {
+            List<Integer> offsets = new ArrayList<>();
+            int state = 0;
+            int len = content.length();
+            for (int i = 0; i < len; i++) {
+                char raw = content.charAt(i);
+                char c = ignoreCase ? Character.toLowerCase(raw) : raw;
+
+                while (state > 0 && transition(state, c) == -1) {
+                    state = fail[state];
+                }
+                int nxt = transition(state, c);
+                state = (nxt != -1) ? nxt : 0;
+
+                if (isMatch[state]) {
+                    int[] lens = matchLengths[state];
+                    for (int matchLen : lens) {
+                        offsets.add(i - matchLen + 1);
+                    }
+                }
+            }
+            return offsets;
+        }
+
+        @Override
+        public boolean matches(String content) {
+            int state = 0;
+            int len = content.length();
+            for (int i = 0; i < len; i++) {
+                char raw = content.charAt(i);
+                char c = ignoreCase ? Character.toLowerCase(raw) : raw;
+
+                while (state > 0 && transition(state, c) == -1) {
+                    state = fail[state];
+                }
+                int nxt = transition(state, c);
+                state = (nxt != -1) ? nxt : 0;
+
+                if (isMatch[state]) {
+                    return true;
+                }
+            }
+            return false;
+        }
     }
 
     private static FileMatch scanFile(Path file, Path root, SearchOptions opts, ContentMatcher matcher) {

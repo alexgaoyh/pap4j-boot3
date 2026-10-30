@@ -3,6 +3,8 @@ package cn.net.pap.common.file.search;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -367,5 +369,112 @@ public class FileSearchTest {
         // 与全量扫描（并行）的截断结果一致：顺序早停不改变输出
         List<FileSearch.FileMatch> baseline = FileSearch.grep(dir, opts.withParallel(true));
         assertEquals(baseline, res);
+    }
+
+    private static final Logger log = LoggerFactory.getLogger(FileSearchTest.class);
+
+    @Test
+    void grep_multiKeyword_overlappingAndNested(@TempDir Path dir) throws IOException {
+        Path f = dir.resolve("nested.txt");
+        Files.writeString(f, "line 1: she cat scatter\nline 2: none\nline 3: he catch\n", StandardCharsets.UTF_8);
+
+        List<FileSearch.FileMatch> matches = FileSearch.grep(dir,
+                FileSearch.SearchOptions.ofKeywords("he", "she", "cat", "scatter"));
+        assertEquals(1, matches.size());
+        FileSearch.FileMatch match = matches.get(0);
+        assertEquals(2, match.lines().size());
+        assertEquals(1L, match.lines().get(0).lineNumber());
+        assertEquals("line 1: she cat scatter", match.lines().get(0).text());
+        assertEquals(3L, match.lines().get(1).lineNumber());
+        assertEquals("line 3: he catch", match.lines().get(1).text());
+    }
+
+    @Test
+    void grep_multiKeyword_caseInsensitiveMixed(@TempDir Path dir) throws IOException {
+        Path f = dir.resolve("mixed.txt");
+        Files.writeString(f, "Line with HELLO and world\nSecond line with LOGIN\n", StandardCharsets.UTF_8);
+
+        List<FileSearch.FileMatch> matches = FileSearch.grep(dir,
+                FileSearch.SearchOptions.ofKeywords("hello", "login").withCaseSensitive(false));
+        assertEquals(1, matches.size());
+        assertEquals(2, matches.get(0).lines().size());
+    }
+
+    @Test
+    void grep_multiKeyword_chineseAndUnicode(@TempDir Path dir) throws IOException {
+        Path f = dir.resolve("chinese.txt");
+        Files.writeString(f, "这是第一行：文件检索工具\n这是第二行：轻量状态机实现\n这是第三行：性能提升验证\n", StandardCharsets.UTF_8);
+
+        List<FileSearch.FileMatch> matches = FileSearch.grep(dir,
+                FileSearch.SearchOptions.ofKeywords("文件检索", "状态机"));
+        assertEquals(1, matches.size());
+        assertEquals(2, matches.get(0).lines().size());
+        assertEquals("这是第一行：文件检索工具", matches.get(0).lines().get(0).text());
+        assertEquals("这是第二行：轻量状态机实现", matches.get(0).lines().get(1).text());
+    }
+
+    @Test
+    void benchmark_compactAcVsOrgAhoCorasickPerformance(@TempDir Path dir) throws IOException {
+        StringBuilder sb = new StringBuilder();
+        for (int i = 0; i < 10000; i++) {
+            if (i % 100 == 0) {
+                sb.append("This is an error line with critical warning in log ").append(i).append('\n');
+            } else if (i % 50 == 0) {
+                sb.append("This is a failure notice with exception debug info ").append(i).append('\n');
+            } else {
+                sb.append("Regular normal log line info payload timestamp processing item ").append(i).append('\n');
+            }
+        }
+        String text = sb.toString();
+        Path bigFile = dir.resolve("bench.log");
+        Files.writeString(bigFile, text, StandardCharsets.UTF_8);
+
+        Set<String> keywords = Set.of("error", "warning", "failure", "exception", "critical");
+
+        // 1. 原第三方 org.ahocorasick.trie.Trie
+        org.ahocorasick.trie.Trie.TrieBuilder builder = org.ahocorasick.trie.Trie.builder();
+        for (String kw : keywords) {
+            builder.addKeyword(kw);
+        }
+        org.ahocorasick.trie.Trie legacyTrie = builder.build();
+
+        // 预热
+        for (int w = 0; w < 30; w++) {
+            for (org.ahocorasick.trie.Emit emit : legacyTrie.parseText(text)) {
+                int start = emit.getStart();
+            }
+            FileSearch.grep(dir, FileSearch.SearchOptions.ofKeywords("error", "warning", "failure", "exception", "critical"));
+        }
+
+        int iterations = 100;
+        com.sun.management.ThreadMXBean mxBean = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
+        long memStartLegacy = mxBean.getThreadAllocatedBytes(Thread.currentThread().getId());
+        long startLegacy = System.nanoTime();
+        int countLegacy = 0;
+        for (int i = 0; i < iterations; i++) {
+            for (org.ahocorasick.trie.Emit emit : legacyTrie.parseText(text)) {
+                countLegacy += emit.getStart();
+            }
+        }
+        long timeLegacy = (System.nanoTime() - startLegacy) / 1_000_000;
+        long memLegacy = (mxBean.getThreadAllocatedBytes(Thread.currentThread().getId()) - memStartLegacy) / 1024;
+
+        FileSearch.SearchOptions opts = FileSearch.SearchOptions.ofKeywords("error", "warning", "failure", "exception", "critical");
+        long memStartNew = mxBean.getThreadAllocatedBytes(Thread.currentThread().getId());
+        long startNew = System.nanoTime();
+        int countNew = 0;
+        for (int i = 0; i < iterations; i++) {
+            List<FileSearch.FileMatch> matches = FileSearch.grep(dir, opts);
+            countNew += matches.get(0).lines().size();
+        }
+        long timeNew = (System.nanoTime() - startNew) / 1_000_000;
+        long memNew = (mxBean.getThreadAllocatedBytes(Thread.currentThread().getId()) - memStartNew) / 1024;
+
+        log.info("================== 性能与内存对比（{} 次全量 1MB 文本扫描） ==================", iterations);
+        log.info("【第三方 org.ahocorasick】单层遍历耗时: {} ms, 堆内存分配: {} KB", timeLegacy, memLegacy);
+        log.info("【纯 JDK FileSearch 端到端】含磁盘IO/解码/行切分总耗时: {} ms, 堆内存分配: {} KB", timeNew, memNew);
+        log.info("=========================================================================");
+
+        assertTrue(countNew > 0);
     }
 }
