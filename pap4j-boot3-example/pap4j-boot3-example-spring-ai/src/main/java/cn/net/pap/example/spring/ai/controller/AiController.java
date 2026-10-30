@@ -55,6 +55,7 @@ public class AiController {
     private static final Pattern SAFE_MD_FILE_PATTERN = Pattern.compile("^[A-Za-z0-9_.\\-/]+\\.md$");
 
     private final ChatClient chatClient;
+    private final ChatClient agentChatClient;
     private final ChatClient queryRewriteChatClient;
     private final ChatMemory chatMemory;
     private final VectorStore knowledgeVectorStore;
@@ -74,6 +75,7 @@ public class AiController {
      * @param defaultPersona 默认人设
      */
     public AiController(@Qualifier("customChatClient") ChatClient customChatClient,
+                        @Qualifier("agentChatClient") ChatClient agentChatClient,
                         @Qualifier("queryRewriteChatClient") ChatClient queryRewriteChatClient,
                         ChatMemory chatMemory,
                         @Qualifier("knowledgeVectorStore") VectorStore knowledgeVectorStore,
@@ -81,6 +83,7 @@ public class AiController {
                         ObjectMapper objectMapper,
                         @Value("${ai.assistant.persona:Java 开发架构师}") String defaultPersona) {
         this.chatClient = customChatClient;
+        this.agentChatClient = agentChatClient;
         this.queryRewriteChatClient = queryRewriteChatClient;
         this.chatMemory = chatMemory;
         this.knowledgeVectorStore = knowledgeVectorStore;
@@ -136,6 +139,42 @@ public class AiController {
                     // （例如："### " 后的空格被吞噬导致前端 marked 无法正确解析为 h3 标题标签），
                     // 采用配置精简字段的 JSON 包装传输方案。将每一个文本块打包为 {"v": "..."}，
                     // 通过 JSON 的自动转义机制确保传输的空白字符在前端能被 100% 还原。
+                    .map(chunk -> {
+                        try {
+                            return this.objectMapper.writeValueAsString(Map.of("v", chunk));
+                        } catch (Exception e) {
+                            log.error("JSON serialization failed for stream chunk", e);
+                            return "{\"v\":\"\"}";
+                        }
+                    });
+        }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * Agent 模式响应式流式对话接口 (自主规划与 Tool 检索)
+     *
+     * @param request 对话请求对象
+     * @return 处理结果流
+     */
+    @Operation(summary = "Agent 模式响应式流式对话接口 (自主规划与 Tool 检索)")
+    @PostMapping(value = "/agent/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<String> agentChatStream(@RequestBody ChatRequest request) {
+        return Flux.defer(() -> {
+            String chatId = request.chatId() != null ? request.chatId() : "default-agent-chat-id";
+
+            String systemTemplateText = """
+                    你是一个资深的{persona}。你具备本地知识库检索工具。
+                    当遇到特定函数语法、规则引擎用法或专有名词时，请优先使用提供的检索工具查找准确信息后回答。
+                    """;
+            SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemTemplateText);
+            String renderedSystemPrompt = systemPromptTemplate.render(Map.of("persona", defaultPersona));
+
+            return agentChatClient.prompt()
+                    .system(renderedSystemPrompt)
+                    .user(request.prompt())
+                    .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
+                    .stream()
+                    .content()
                     .map(chunk -> {
                         try {
                             return this.objectMapper.writeValueAsString(Map.of("v", chunk));

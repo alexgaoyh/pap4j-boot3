@@ -186,6 +186,28 @@ public class AiAssistantConfig {
     }
 
     /**
+     * 3b. 声明具备自主规划与 Tool 工具调用能力的 Agent 智能体 ChatClient
+     *
+     * @param chatMemory 聊天记忆组件
+     * @param agentTools 容器内自动收集的 AgentTool 工具集合（通过 Optional 实现防御性装配）
+     * @return 智能体对话客户端
+     */
+    @Bean(name = "agentChatClient")
+    public ChatClient agentChatClient(ChatMemory chatMemory,
+                                      java.util.Optional<List<cn.net.pap.example.spring.ai.tool.AgentTool>> agentTools) {
+        org.springframework.ai.chat.model.ChatModel chatModel = createChatModel(aiProperties.mainLlm(), "Agent 智能体模型", 0.7);
+        MessageChatMemoryAdvisor memoryAdvisor = MessageChatMemoryAdvisor.builder(chatMemory).build();
+
+        ChatClient.Builder builder = ChatClient.builder(chatModel)
+                .defaultAdvisors(memoryAdvisor);
+
+        agentTools.filter(tools -> !tools.isEmpty())
+                .ifPresent(tools -> builder.defaultTools(tools.toArray()));
+
+        return builder.build();
+    }
+
+    /**
      * 4. 预置专用于 Query 改写与提炼的极速 ChatClient
      * @return 处理结果对象
      */
