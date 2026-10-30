@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -36,6 +37,9 @@ public class FileSearchTool implements AgentTool {
 
     /** 命中行前后上下文行数 */
     private static final int CONTEXT_LINES = 1;
+
+    /** 单次整文档读取最大字符数，防止把一篇长文塞爆上下文 */
+    private static final int MAX_READ_CHARS = 12_000;
 
     private final Path sandboxRoot;
 
@@ -125,6 +129,41 @@ public class FileSearchTool implements AgentTool {
         } catch (IOException e) {
             log.error("[FileSearchTool] 内容检索失败, keyword: {}", keyword, e);
             return "检索异常: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 工具 3：读取单篇文档的完整内容。
+     * <p>为什么需要它：findFiles 只返回路径，grepContent 必须带关键词且只回命中行，
+     * 两者都无法把一篇文档完整喂给模型，会导致模型说“我没有读取文件的工具”。
+     *
+     * @param path 相对于知识库根目录的文档路径，例如 {@code _index.md}
+     * @return 文档正文；越界、不存在或过大时返回可预期的错误文本
+     */
+    @Tool(name = "FileSearchTool-readDoc", description = "读取知识库中指定文档的完整正文，path 使用 findFiles 返回的相对路径（例如 _index.md）")
+    public String readDoc(
+            @ToolParam(description = "文档相对路径，如 _index.md、function_isblank.md") String path) {
+        if (path == null || path.isBlank()) {
+            return "错误：文档路径不能为空";
+        }
+        try {
+            Path target = sandboxRoot.resolve(path).normalize();
+            // 防止 ../../ 目录穿越读取沙箱外的文件
+            if (!target.startsWith(sandboxRoot)) {
+                return "错误：路径越界，仅允许访问知识库目录内的文档";
+            }
+            if (!Files.isRegularFile(target)) {
+                return "未找到文档: " + path + "，请先调用 FileSearchTool-findFiles 确认路径";
+            }
+
+            String text = Files.readString(target, StandardCharsets.UTF_8);
+            if (text.length() > MAX_READ_CHARS) {
+                text = text.substring(0, MAX_READ_CHARS) + "\n...(文档过长已截断，剩余内容请用 FileSearchTool-grepContent 按关键词检索)";
+            }
+            return "### 文件: " + sandboxRoot.relativize(target).toString().replace('\\', '/') + "\n" + text;
+        } catch (IOException e) {
+            log.error("[FileSearchTool] 文档读取失败, path: {}", path, e);
+            return "读取异常: " + e.getMessage();
         }
     }
 
