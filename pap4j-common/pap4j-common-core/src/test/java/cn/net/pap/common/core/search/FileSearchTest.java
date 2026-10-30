@@ -1,4 +1,4 @@
-package cn.net.pap.common.file.search;
+package cn.net.pap.common.core.search;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

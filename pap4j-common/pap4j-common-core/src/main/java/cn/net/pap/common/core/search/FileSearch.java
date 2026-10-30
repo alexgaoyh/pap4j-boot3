@@ -1,6 +1,5 @@
-package cn.net.pap.common.file.search;
+package cn.net.pap.common.core.search;
 
-import cn.net.pap.common.file.ReadTxtToStringUtil;
 import java.util.Arrays;
 import java.util.Queue;
 import org.slf4j.Logger;
@@ -1181,7 +1180,7 @@ public final class FileSearch {
 
     private static String decode(byte[] bytes, Path file, boolean detectCharset) throws IOException {
         if (detectCharset) {
-            String s = ReadTxtToStringUtil.readFileContent(file.toFile());
+            String s = Files.readString(file);
             return s != null ? s : new String(bytes, StandardCharsets.UTF_8);
         }
         // 按文件头 BOM 选择编码（UTF-8 / UTF-16LE / UTF-16BE），无 BOM 一律按 UTF-8
