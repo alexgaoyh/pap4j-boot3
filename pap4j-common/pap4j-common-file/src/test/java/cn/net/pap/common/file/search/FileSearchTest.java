@@ -124,7 +124,7 @@ public class FileSearchTest {
     }
 
     @Test
-    void grep_multiKeyword_usesAhoCorasick() throws IOException {
+    void grep_multiKeyword_matchesMultipleKeywords() throws IOException {
         List<FileSearch.FileMatch> matches = FileSearch.grep(root, FileSearch.SearchOptions.ofKeywords("hello", "login"));
         assertEquals(Set.of("src/main/Hello.java", "docs/guide.md", "docs/context.txt",
                         "src/test/LoginTest.java", "gen/output.txt", "app.log"),
@@ -414,7 +414,7 @@ public class FileSearchTest {
     }
 
     @Test
-    void benchmark_compactAcVsOrgAhoCorasickPerformance(@TempDir Path dir) throws IOException {
+    void benchmark_compactAcPerformance(@TempDir Path dir) throws IOException {
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 10000; i++) {
             if (i % 100 == 0) {
@@ -429,52 +429,29 @@ public class FileSearchTest {
         Path bigFile = dir.resolve("bench.log");
         Files.writeString(bigFile, text, StandardCharsets.UTF_8);
 
-        Set<String> keywords = Set.of("error", "warning", "failure", "exception", "critical");
-
-        // 1. 原第三方 org.ahocorasick.trie.Trie
-        org.ahocorasick.trie.Trie.TrieBuilder builder = org.ahocorasick.trie.Trie.builder();
-        for (String kw : keywords) {
-            builder.addKeyword(kw);
-        }
-        org.ahocorasick.trie.Trie legacyTrie = builder.build();
+        FileSearch.SearchOptions opts = FileSearch.SearchOptions.ofKeywords("error", "warning", "failure", "exception", "critical");
 
         // 预热
         for (int w = 0; w < 30; w++) {
-            for (org.ahocorasick.trie.Emit emit : legacyTrie.parseText(text)) {
-                int start = emit.getStart();
-            }
-            FileSearch.grep(dir, FileSearch.SearchOptions.ofKeywords("error", "warning", "failure", "exception", "critical"));
+            FileSearch.grep(dir, opts);
         }
 
         int iterations = 100;
         com.sun.management.ThreadMXBean mxBean = (com.sun.management.ThreadMXBean) java.lang.management.ManagementFactory.getThreadMXBean();
-        long memStartLegacy = mxBean.getThreadAllocatedBytes(Thread.currentThread().getId());
-        long startLegacy = System.nanoTime();
-        int countLegacy = 0;
-        for (int i = 0; i < iterations; i++) {
-            for (org.ahocorasick.trie.Emit emit : legacyTrie.parseText(text)) {
-                countLegacy += emit.getStart();
-            }
-        }
-        long timeLegacy = (System.nanoTime() - startLegacy) / 1_000_000;
-        long memLegacy = (mxBean.getThreadAllocatedBytes(Thread.currentThread().getId()) - memStartLegacy) / 1024;
-
-        FileSearch.SearchOptions opts = FileSearch.SearchOptions.ofKeywords("error", "warning", "failure", "exception", "critical");
-        long memStartNew = mxBean.getThreadAllocatedBytes(Thread.currentThread().getId());
-        long startNew = System.nanoTime();
-        int countNew = 0;
+        long memStart = mxBean.getThreadAllocatedBytes(Thread.currentThread().getId());
+        long start = System.nanoTime();
+        int count = 0;
         for (int i = 0; i < iterations; i++) {
             List<FileSearch.FileMatch> matches = FileSearch.grep(dir, opts);
-            countNew += matches.get(0).lines().size();
+            count += matches.get(0).lines().size();
         }
-        long timeNew = (System.nanoTime() - startNew) / 1_000_000;
-        long memNew = (mxBean.getThreadAllocatedBytes(Thread.currentThread().getId()) - memStartNew) / 1024;
+        long timeNew = (System.nanoTime() - start) / 1_000_000;
+        long memNew = (mxBean.getThreadAllocatedBytes(Thread.currentThread().getId()) - memStart) / 1024;
 
-        log.info("================== 性能与内存对比（{} 次全量 1MB 文本扫描） ==================", iterations);
-        log.info("【第三方 org.ahocorasick】单层遍历耗时: {} ms, 堆内存分配: {} KB", timeLegacy, memLegacy);
+        log.info("================== 性能与内存压测（{} 次全量 1MB 文本扫描） ==================", iterations);
         log.info("【纯 JDK FileSearch 端到端】含磁盘IO/解码/行切分总耗时: {} ms, 堆内存分配: {} KB", timeNew, memNew);
         log.info("=========================================================================");
 
-        assertTrue(countNew > 0);
+        assertTrue(count > 0);
     }
 }
