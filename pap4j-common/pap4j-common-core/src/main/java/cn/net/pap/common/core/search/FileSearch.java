@@ -1,15 +1,15 @@
 package cn.net.pap.common.core.search;
 
-import java.util.Arrays;
-import java.util.Queue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.DirectoryStream;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
 import java.nio.file.FileVisitOption;
@@ -21,6 +21,7 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -30,6 +31,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Queue;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -116,10 +118,14 @@ public final class FileSearch {
             long maxLines,
             boolean parallel) {
 
-        /** 文件超过该字节数时，grep 改用流式行匹配以控制堆占用；0 表示始终整读（不流式）。 */
+        /**
+         * 文件超过该字节数时，grep 改用流式行匹配以控制堆占用；0 表示始终整读（不流式）。
+         */
         public static final long DEFAULT_INLINE_READ_LIMIT = 16L * 1024 * 1024;
 
-        /** grep 返回的总行数上限（避免命中过多塞爆下游上下文）；0 表示不限。 */
+        /**
+         * grep 返回的总行数上限（避免命中过多塞爆下游上下文）；0 表示不限。
+         */
         public static final long DEFAULT_MAX_LINES = 1000;
 
         /**
@@ -313,6 +319,7 @@ public final class FileSearch {
 
     /**
      * 单行命中：1-based 行号 + 该行文本（不含行尾换行符）。
+     *
      * @param lineNumber
      * @param text
      */
@@ -321,12 +328,60 @@ public final class FileSearch {
 
     /**
      * 单文件命中：文件路径、相对路径、字节大小、命中的行（含上下文行）。
+     *
      * @param file
      * @param relativePath
      * @param size
      * @param lines
      */
     public record FileMatch(Path file, String relativePath, long size, List<LineMatch> lines) {
+    }
+
+    /**
+     * 行区间切片读取结果。
+     *
+     * @param startLine        实际起始行号（1-based）
+     * @param endLine          实际结束行号（包含）
+     * @param totalLines       文件总行数
+     * @param lines            读取到的每行文本列表（不含行尾换行符）
+     * @param truncatedByChars 是否因为超过字符上限而提前截断
+     */
+    public record LineSlice(
+            int startLine,
+            int endLine,
+            int totalLines,
+            List<String> lines,
+            boolean truncatedByChars) {
+    }
+
+    /**
+     * 目录树探索条目（对标 fdir 扁平树节点结构）。
+     *
+     * @param path         条目绝对路径
+     * @param relativePath 相对根目录路径（统一以 '/' 分隔）
+     * @param name         文件或目录名称
+     * @param isDirectory  是否为目录
+     * @param depth        相对根目录的深度（1-based）
+     */
+    public record DirEntry(
+            Path path,
+            String relativePath,
+            String name,
+            boolean isDirectory,
+            int depth) {
+    }
+
+    /**
+     * Markdown 大纲标题条目（对标 LSP documentSymbol）。
+     *
+     * @param lineNumber 标题所在的行号（1-based）
+     * @param level      标题层级（1 为 H1，2 为 H2，最高至 6）
+     * @param title      去除 '#' 前缀和首尾空白后的标题文本
+     */
+    public record MarkdownHeading(
+            int lineNumber,
+            int level,
+            String title) {
     }
 
     /**
@@ -394,6 +449,306 @@ public final class FileSearch {
     }
 
     /**
+     * 高性能行区间切片读取（对标 ripgrep 字节流扫描）。
+     * <p>
+     * 核心优化：
+     * <ul>
+     *   <li><b>零全量解码</b>：流式扫描换行符（0x0A），非目标区间仅做纯字节级换行计数，完全不产生 String 对象；</li>
+     *   <li><b>按需切片</b>：仅对 {@code [startLine, endLine]} 目标区间内的字节执行字符集解码；</li>
+     *   <li><b>双重预算防护</b>：支持行数截断与最大字符数 {@code maxChars} 熔断截断。</li>
+     * </ul>
+     *
+     * @param file      目标文件路径
+     * @param startLine 起始行号（从 1 开始，<=0 自动纠正为 1）
+     * @param endLine   结束行号（包含）
+     * @param maxChars  最大返回字符数（0 表示不限制）
+     * @param charset   字符集（为 null 时默认 UTF-8）
+     * @return 行区间切片结果
+     * @throws IOException 文件读取异常
+     */
+    public static LineSlice readLines(Path file, int startLine, int endLine, long maxChars, Charset charset) throws IOException {
+        Objects.requireNonNull(file, "file");
+        if (!Files.isRegularFile(file)) {
+            throw new IllegalArgumentException("指定路径不是常规文件: " + file);
+        }
+        Charset cs = (charset != null) ? charset : StandardCharsets.UTF_8;
+        int reqStart = Math.max(1, startLine);
+        int reqEnd = Math.max(reqStart, endLine);
+
+        if (Files.size(file) == 0) {
+            return new LineSlice(reqStart, reqStart - 1, 0, Collections.emptyList(), false);
+        }
+
+        List<String> resultLines = new ArrayList<>();
+        int currentLine = 1;
+        int totalLines;
+        int actualStart = reqStart;
+        int actualEnd = reqStart - 1;
+        boolean truncatedByChars = false;
+        long totalChars = 0;
+
+        try (InputStream in = Files.newInputStream(file)) {
+            byte[] buf = new byte[32768];
+            int n;
+            ByteArrayOutputStream lineBuf = new ByteArrayOutputStream(256);
+
+            while ((n = in.read(buf)) != -1) {
+                for (int i = 0; i < n; i++) {
+                    byte b = buf[i];
+                    if (b == '\n') {
+                        if (currentLine >= reqStart && currentLine <= reqEnd && !truncatedByChars) {
+                            byte[] lineBytes = lineBuf.toByteArray();
+                            int len = lineBytes.length;
+                            if (len > 0 && lineBytes[len - 1] == '\r') {
+                                len--;
+                            }
+                            String lineStr = new String(lineBytes, 0, len, cs);
+                            if (maxChars > 0 && totalChars + lineStr.length() > maxChars) {
+                                truncatedByChars = true;
+                            } else {
+                                resultLines.add(lineStr);
+                                totalChars += lineStr.length();
+                                actualEnd = currentLine;
+                            }
+                        }
+                        lineBuf.reset();
+                        currentLine++;
+                    } else {
+                        if (currentLine >= reqStart && currentLine <= reqEnd && !truncatedByChars) {
+                            lineBuf.write(b);
+                        }
+                    }
+                }
+            }
+
+            if (lineBuf.size() > 0) {
+                totalLines = currentLine;
+                if (currentLine >= reqStart && currentLine <= reqEnd && !truncatedByChars) {
+                    byte[] lineBytes = lineBuf.toByteArray();
+                    int len = lineBytes.length;
+                    if (len > 0 && lineBytes[len - 1] == '\r') {
+                        len--;
+                    }
+                    String lineStr = new String(lineBytes, 0, len, cs);
+                    if (maxChars > 0 && totalChars + lineStr.length() > maxChars) {
+                        truncatedByChars = true;
+                    } else {
+                        resultLines.add(lineStr);
+                        totalChars += lineStr.length();
+                        actualEnd = currentLine;
+                    }
+                }
+            } else {
+                totalLines = currentLine - 1;
+            }
+        }
+
+        if (resultLines.isEmpty() && reqStart > totalLines) {
+            actualStart = reqStart;
+            actualEnd = reqStart - 1;
+        }
+
+        return new LineSlice(actualStart, actualEnd, totalLines, Collections.unmodifiableList(resultLines), truncatedByChars);
+    }
+
+    /**
+     * 高性能行区间切片读取（默认 UTF-8 编码）。
+     *
+     * @param file      目标文件路径
+     * @param startLine 起始行号（从 1 开始，<=0 自动纠正为 1）
+     * @param endLine   结束行号（包含）
+     * @param maxChars  最大返回字符数（0 表示不限制）
+     * @return 行区间切片结果
+     * @throws IOException 文件读取异常
+     */
+    public static LineSlice readLines(Path file, int startLine, int endLine, long maxChars) throws IOException {
+        return readLines(file, startLine, endLine, maxChars, StandardCharsets.UTF_8);
+    }
+
+    /**
+     * 默认在目录树探索时剪枝排除的高频无用大型目录。
+     */
+    public static final Set<String> DEFAULT_TREE_EXCLUDED_DIRS = Set.of(
+            ".git", ".idea", ".vscode", "target", "build", "node_modules", ".gradle", ".svn"
+    );
+
+    /**
+     * 高性能目录树遍历（对标 fdir 剪枝队列遍历）。
+     * <p>
+     * 核心优化：
+     * <ul>
+     *   <li><b>父级即时剪枝</b>：进入子目录前在父级立即比对排除项（.git, node_modules 等），完全不进入无用子树；</li>
+     *   <li><b>非递归显式栈</b>：消除 JVM 方法栈调用与 Stream 管道开销；</li>
+     *   <li><b>直接 OS 句柄</b>：基于 {@link DirectoryStream} 逐项处理，无 {@link Files#walk} 缓存风暴；</li>
+     *   <li><b>条目预算提前熔断</b>：达到 {@code maxEntries} 立即终止遍历返回。</li>
+     * </ul>
+     *
+     * @param root             检索根目录
+     * @param maxDepth         最大探索深度（1 表示仅直属子级，<=0 表示不限深度）
+     * @param maxEntries       最大收集条目数（<=0 表示不限）
+     * @param excludedDirNames 需剪枝排除的目录名称集合（为 null 时使用默认排除集合）
+     * @return 探索到的目录与文件条目列表（先目录后文件，按前序层级自然排列）
+     * @throws IOException 目录读取异常
+     */
+    public static List<DirEntry> listDirTree(Path root, int maxDepth, int maxEntries, Set<String> excludedDirNames) throws IOException {
+        Objects.requireNonNull(root, "root");
+        if (!Files.exists(root) || !Files.isDirectory(root)) {
+            throw new IllegalArgumentException("指定路径不存在或不是目录: " + root);
+        }
+
+        int depthLimit = (maxDepth <= 0) ? Integer.MAX_VALUE : maxDepth;
+        int budget = (maxEntries <= 0) ? Integer.MAX_VALUE : maxEntries;
+        Set<String> exclusions = (excludedDirNames != null) ? excludedDirNames : DEFAULT_TREE_EXCLUDED_DIRS;
+
+        List<DirEntry> result = new ArrayList<>();
+        record ScanTask(Path dir, int depth) {
+        }
+        ArrayDeque<ScanTask> stack = new ArrayDeque<>();
+        stack.push(new ScanTask(root, 1));
+
+        while (!stack.isEmpty() && result.size() < budget) {
+            ScanTask task = stack.pop();
+            Path currentDir = task.dir();
+            int currentDepth = task.depth();
+
+            List<Path> children = new ArrayList<>();
+            try (DirectoryStream<Path> ds = Files.newDirectoryStream(currentDir)) {
+                for (Path p : ds) {
+                    String name = p.getFileName().toString();
+                    if (name.startsWith(".")) {
+                        continue;
+                    }
+                    if (Files.isDirectory(p) && exclusions.contains(name)) {
+                        continue;
+                    }
+                    children.add(p);
+                }
+            } catch (IOException e) {
+                log.error("读取目录失败，跳过: {}", currentDir, e);
+                continue;
+            }
+
+            children.sort(Comparator.comparing((Path p) -> !Files.isDirectory(p))
+                    .thenComparing(p -> p.getFileName().toString().toLowerCase(Locale.ROOT)));
+
+            List<Path> subDirs = new ArrayList<>();
+            for (Path child : children) {
+                if (result.size() >= budget) {
+                    break;
+                }
+                boolean isDir = Files.isDirectory(child);
+                String name = child.getFileName().toString();
+                String rel = root.relativize(child).toString().replace('\\', '/');
+                result.add(new DirEntry(child, rel, name, isDir, currentDepth));
+
+                if (isDir && currentDepth < depthLimit) {
+                    subDirs.add(child);
+                }
+            }
+
+            for (int i = subDirs.size() - 1; i >= 0; i--) {
+                stack.push(new ScanTask(subDirs.get(i), currentDepth + 1));
+            }
+        }
+
+        return Collections.unmodifiableList(result);
+    }
+
+    /**
+     * 高性能目录树遍历（使用默认排除项）。
+     *
+     * @param root       检索根目录
+     * @param maxDepth   最大探索深度（1 表示仅直属子级，<=0 表示不限深度）
+     * @param maxEntries 最大收集条目数（<=0 表示不限）
+     * @return 探索到的目录与文件条目列表（先目录后文件，按前序层级自然排列）
+     * @throws IOException 目录读取异常
+     */
+    public static List<DirEntry> listDirTree(Path root, int maxDepth, int maxEntries) throws IOException {
+        return listDirTree(root, maxDepth, maxEntries, DEFAULT_TREE_EXCLUDED_DIRS);
+    }
+
+    /**
+     * 高性能 Markdown 大纲提取（对标 LSP documentSymbol 状态机扫描）。
+     * <p>
+     * 核心优化：
+     * <ul>
+     *   <li><b>零 AST 树分配</b>：不引入 Flexmark / CommonMark 等重量级 AST 库，不构建庞大的节点树与词法流；</li>
+     *   <li><b>双状态有限状态机（DFA）</b>：精确跟踪围栏代码块状态（``` 与 ~~~），严防代码/注释中的 '#' 误判为标题；</li>
+     *   <li><b>行首字节秒级短路</b>：对 95%+ 的普通段落行，仅判定首字符是否为 '#' 即瞬间跳过；</li>
+     *   <li><b>CommonMark ATX 规范</b>：严格检验 1~6 级 '#' 后紧跟空白符，规避 '#hashtag' 误报。</li>
+     * </ul>
+     *
+     * @param file        Markdown 文件路径
+     * @param maxHeadings 最大提取标题数量（<=0 表示不限制）
+     * @param charset     字符集（为 null 时默认 UTF-8）
+     * @return 提取到的 Markdown 标题列表
+     * @throws IOException 文件读取异常
+     */
+    public static List<MarkdownHeading> extractMarkdownOutline(Path file, int maxHeadings, Charset charset) throws IOException {
+        Objects.requireNonNull(file, "file");
+        if (!Files.isRegularFile(file)) {
+            throw new IllegalArgumentException("指定路径不是常规文件: " + file);
+        }
+        Charset cs = (charset != null) ? charset : StandardCharsets.UTF_8;
+        int budget = (maxHeadings <= 0) ? Integer.MAX_VALUE : maxHeadings;
+
+        List<MarkdownHeading> headings = new ArrayList<>();
+        boolean inCodeFence = false;
+        int lineNum = 0;
+
+        try (BufferedReader reader = Files.newBufferedReader(file, cs)) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lineNum++;
+                String trimmed = line.stripLeading();
+                if (trimmed.isEmpty()) {
+                    continue;
+                }
+
+                if (trimmed.startsWith("```") || trimmed.startsWith("~~~")) {
+                    inCodeFence = !inCodeFence;
+                    continue;
+                }
+                if (inCodeFence) {
+                    continue;
+                }
+
+                if (trimmed.charAt(0) != '#') {
+                    continue;
+                }
+
+                int level = 0;
+                int len = trimmed.length();
+                while (level < len && trimmed.charAt(level) == '#') {
+                    level++;
+                }
+
+                if (level >= 1 && level <= 6 && level < len && Character.isWhitespace(trimmed.charAt(level))) {
+                    String title = trimmed.substring(level).trim();
+                    headings.add(new MarkdownHeading(lineNum, level, title));
+                    if (headings.size() >= budget) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return Collections.unmodifiableList(headings);
+    }
+
+    /**
+     * 高性能 Markdown 大纲提取（默认 UTF-8 编码）。
+     *
+     * @param file        Markdown 文件路径
+     * @param maxHeadings 最大提取标题数量（<=0 表示不限制）
+     * @return 提取到的 Markdown 标题列表
+     * @throws IOException 文件读取异常
+     */
+    public static List<MarkdownHeading> extractMarkdownOutline(Path file, int maxHeadings) throws IOException {
+        return extractMarkdownOutline(file, maxHeadings, StandardCharsets.UTF_8);
+    }
+
+    /**
      * 在自有的有界线程池上并行处理候选文件（不占用公共 ForkJoin 池）。
      * <p>
      * 并发模型：
@@ -435,7 +790,9 @@ public final class FileSearch {
         return results;
     }
 
-    /** 文件处理回调：{@link #apply(Path)} 返回 null 表示该文件被跳过（过滤语义）。 */
+    /**
+     * 文件处理回调：{@link #apply(Path)} 返回 null 表示该文件被跳过（过滤语义）。
+     */
     @FunctionalInterface
     private interface FileProcessor<T> {
         T apply(Path path) throws IOException;
@@ -494,7 +851,9 @@ public final class FileSearch {
 
     private static volatile ThreadPoolExecutor searchExecutorInstance;
 
-    /** 懒加载有界线程池：core=max=SEARCH_PARALLELISM、有界队列、CallerRuns 回压、daemon 线程。 */
+    /**
+     * 懒加载有界线程池：core=max=SEARCH_PARALLELISM、有界队列、CallerRuns 回压、daemon 线程。
+     */
     private static ThreadPoolExecutor searchExecutor() {
         ThreadPoolExecutor executor = searchExecutorInstance;
         if (executor == null) {
@@ -578,7 +937,9 @@ public final class FileSearch {
         }
     }
 
-    /** 可抛出 {@link IOException} 的文件消费回调。 */
+    /**
+     * 可抛出 {@link IOException} 的文件消费回调。
+     */
     @FunctionalInterface
     public interface FileConsumer {
         /**
@@ -593,7 +954,9 @@ public final class FileSearch {
     private interface ContentMatcher {
         List<Integer> findOffsets(String content);
 
-        /** 仅判断是否存在命中（流式匹配逐行使用，避免逐行构建 offset 列表）。 */
+        /**
+         * 仅判断是否存在命中（流式匹配逐行使用，避免逐行构建 offset 列表）。
+         */
         default boolean matches(String content) {
             return !findOffsets(content).isEmpty();
         }
@@ -1206,10 +1569,12 @@ public final class FileSearch {
         return false;
     }
 
-    /** 文件头是否为 UTF-8（EF BB BF）或 UTF-16（FF FE / FE FF）BOM。 */
+    /**
+     * 文件头是否为 UTF-8（EF BB BF）或 UTF-16（FF FE / FE FF）BOM。
+     */
     private static boolean hasTextBom(byte[] bytes) {
         if (bytes.length >= 3
-                && (bytes[0] & 0xFF) == 0xEF && (bytes[1] & 0xFF) == 0xBB && (bytes[2] & 0xFF) == 0xBF) {
+            && (bytes[0] & 0xFF) == 0xEF && (bytes[1] & 0xFF) == 0xBB && (bytes[2] & 0xFF) == 0xBF) {
             return true;
         }
         if (bytes.length >= 2) {
@@ -1223,7 +1588,9 @@ public final class FileSearch {
         return false;
     }
 
-    /** 依据文件头 BOM 判定编码：UTF-8 / UTF-16LE / UTF-16BE；无 BOM 回退 UTF-8。 */
+    /**
+     * 依据文件头 BOM 判定编码：UTF-8 / UTF-16LE / UTF-16BE；无 BOM 回退 UTF-8。
+     */
     private static Charset sniffCharset(byte[] head) {
         if (hasTextBom(head)) {
             if (head.length >= 3 && (head[0] & 0xFF) == 0xEF) {
@@ -1234,7 +1601,9 @@ public final class FileSearch {
         return StandardCharsets.UTF_8;
     }
 
-    /** 打开按 BOM 探测到编码的逐行 reader（供大文件流式路径使用，避免 UTF-16 文件被当二进制跳过）。 */
+    /**
+     * 打开按 BOM 探测到编码的逐行 reader（供大文件流式路径使用，避免 UTF-16 文件被当二进制跳过）。
+     */
     private static BufferedReader openReader(Path file) throws IOException {
         Charset cs;
         try (InputStream in = Files.newInputStream(file)) {
@@ -1315,7 +1684,9 @@ public final class FileSearch {
         return dot < 0 ? "" : name.substring(dot + 1).toLowerCase(Locale.ROOT);
     }
 
-    /** 专用于行号收集的原生 int[] 动态数组，规避 List<Integer> 的装箱与对象开销。 */
+    /**
+     * 专用于行号收集的原生 int[] 动态数组，规避 List<Integer> 的装箱与对象开销。
+     */
     private static final class IntArrayList {
         private int[] data;
         private int size;

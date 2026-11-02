@@ -454,4 +454,119 @@ public class FileSearchTest {
 
         assertTrue(count > 0);
     }
+
+    @Test
+    void testReadLines_sliceAndEdgeCases(@TempDir Path dir) throws IOException {
+        Path f = dir.resolve("sample.txt");
+        Files.writeString(f, "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\n", StandardCharsets.UTF_8);
+
+        // 基础切片
+        FileSearch.LineSlice slice = FileSearch.readLines(f, 2, 4, 1000);
+        assertEquals(2, slice.startLine());
+        assertEquals(4, slice.endLine());
+        assertEquals(5, slice.totalLines());
+        assertEquals(List.of("Line 2", "Line 3", "Line 4"), slice.lines());
+        assertFalse(slice.truncatedByChars());
+
+        // 行号越界
+        FileSearch.LineSlice oob = FileSearch.readLines(f, 10, 20, 1000);
+        assertEquals(10, oob.startLine());
+        assertEquals(9, oob.endLine());
+        assertEquals(5, oob.totalLines());
+        assertTrue(oob.lines().isEmpty());
+
+        // 字符上限截断
+        FileSearch.LineSlice trunc = FileSearch.readLines(f, 1, 5, 15);
+        assertTrue(trunc.truncatedByChars());
+        assertTrue(trunc.lines().size() < 5);
+
+        // 空文件
+        Path empty = dir.resolve("empty.txt");
+        Files.createFile(empty);
+        FileSearch.LineSlice emptySlice = FileSearch.readLines(empty, 1, 10, 1000);
+        assertEquals(0, emptySlice.totalLines());
+        assertTrue(emptySlice.lines().isEmpty());
+
+        // 无结尾换行符单行文件
+        Path single = dir.resolve("single.txt");
+        Files.writeString(single, "hello no newline", StandardCharsets.UTF_8);
+        FileSearch.LineSlice singleSlice = FileSearch.readLines(single, 1, 1, 1000);
+        assertEquals(1, singleSlice.totalLines());
+        assertEquals(List.of("hello no newline"), singleSlice.lines());
+    }
+
+    @Test
+    void testListDirTree_pruningAndDepth(@TempDir Path dir) throws IOException {
+        Path docs = dir.resolve("docs");
+        Path git = dir.resolve(".git");
+        Path target = dir.resolve("target");
+        Files.createDirectories(docs.resolve("sub"));
+        Files.createDirectories(git);
+        Files.createDirectories(target);
+
+        Files.writeString(docs.resolve("a.md"), "content");
+        Files.writeString(docs.resolve("sub/b.md"), "content");
+        Files.writeString(git.resolve("config"), "secret");
+        Files.writeString(target.resolve("app.jar"), "binary");
+        Files.writeString(dir.resolve("root.txt"), "content");
+
+        // 默认剪枝排除 .git 与 target
+        List<FileSearch.DirEntry> entries = FileSearch.listDirTree(dir, 3, 100);
+        Set<String> relPaths = entries.stream().map(FileSearch.DirEntry::relativePath).collect(Collectors.toSet());
+
+        assertTrue(relPaths.contains("docs"));
+        assertTrue(relPaths.contains("docs/a.md"));
+        assertTrue(relPaths.contains("docs/sub"));
+        assertTrue(relPaths.contains("docs/sub/b.md"));
+        assertTrue(relPaths.contains("root.txt"));
+        // 剪枝验证：不应包含 .git 和 target
+        assertFalse(relPaths.contains(".git"));
+        assertFalse(relPaths.contains("target"));
+        assertFalse(relPaths.contains("target/app.jar"));
+
+        // 深度限制验证（深度为 1 仅列出直接子项）
+        List<FileSearch.DirEntry> depth1 = FileSearch.listDirTree(dir, 1, 100);
+        Set<String> depth1Paths = depth1.stream().map(FileSearch.DirEntry::relativePath).collect(Collectors.toSet());
+        assertTrue(depth1Paths.contains("docs"));
+        assertTrue(depth1Paths.contains("root.txt"));
+        assertFalse(depth1Paths.contains("docs/a.md"));
+        assertFalse(depth1Paths.contains("docs/sub"));
+    }
+
+    @Test
+    void testExtractMarkdownOutline_fsmAndSpec(@TempDir Path dir) throws IOException {
+        Path md = dir.resolve("test.md");
+        String content = """
+                # Title 1
+                Intro paragraph.
+                ## Subtitle 1.1
+                Some details.
+                ```java
+                # This is a comment in code, not a heading
+                System.out.println("# not heading");
+                ```
+                ~~~python
+                # Also code comment
+                ~~~
+                #hashtag is not heading
+                ### 1.1.1 Valid Heading
+                Regular text.
+                """;
+        Files.writeString(md, content, StandardCharsets.UTF_8);
+
+        List<FileSearch.MarkdownHeading> headings = FileSearch.extractMarkdownOutline(md, 10);
+        assertEquals(3, headings.size());
+
+        assertEquals(1, headings.get(0).lineNumber());
+        assertEquals(1, headings.get(0).level());
+        assertEquals("Title 1", headings.get(0).title());
+
+        assertEquals(3, headings.get(1).lineNumber());
+        assertEquals(2, headings.get(1).level());
+        assertEquals("Subtitle 1.1", headings.get(1).title());
+
+        assertEquals(13, headings.get(2).lineNumber());
+        assertEquals(3, headings.get(2).level());
+        assertEquals("1.1.1 Valid Heading", headings.get(2).title());
+    }
 }
