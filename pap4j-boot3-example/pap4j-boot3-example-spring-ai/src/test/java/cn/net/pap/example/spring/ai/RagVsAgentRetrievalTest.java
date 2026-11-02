@@ -55,7 +55,8 @@ public class RagVsAgentRetrievalTest {
      * @param question     用户提问
      * @param expectedFile 期望召回的目标文档文件名
      * @param desc         用例业务说明
-     * @param agentKeyword 智能体提炼的核心实体/专有名词关键词
+     * @param agentKeyword 智能体提炼的核心实体/专有名词关键词（模拟两阶段检索中，前置通过改写提炼模型 queryRewriteChatClient
+     *                     或向量语义分析将用户白话提纯扩充后的专业检索词，而非直接使用用户原始口语长句）
      */
     private record TestCase(String question, String expectedFile, String desc, String agentKeyword) {
     }
@@ -133,6 +134,9 @@ public class RagVsAgentRetrievalTest {
             }
 
             // 2. 智能体工具检索 (按核心专有名词精确 Grep)
+            // 【两阶段检索设计说明】：此处不能直接将用户的口语长句（tc.question）直接丢入 grepContent 进行精确匹配，因为技术文档记录的是严谨的语法签名与规范，不可能包含一模一样的口语整句。
+            // 这里的 tc.agentKeyword() 模拟了“前置语义提炼与提示词扩充”后的理想输出：生产环境下通常由轻量改写模型（如 queryRewriteChatClient 提炼 bm25Keywords）、
+            // 或 Agent 思考阶段（Thinking SOP）自主提纯、或由向量库粗筛圈定大致范围后提取得到，随后交由 FileSearchTool 执行精准的行级匹配与按需视窗读取。
             long aStart = System.currentTimeMillis();
             String grepOutput = fileSearchTool.grepContent(tc.agentKeyword());
             long aCost = System.currentTimeMillis() - aStart;
