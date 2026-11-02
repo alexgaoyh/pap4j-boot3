@@ -68,6 +68,7 @@ public class AiController {
      * 构造 AI 控制器，注入对话客户端、聊天记忆与向量库等依赖。
      *
      * @param customChatClient 自定义对话客户端
+     * @param agentChatClient 智能体对话客户端
      * @param queryRewriteChatClient 查询改写对话客户端
      * @param chatMemory 聊天记忆
      * @param knowledgeVectorStore 知识库向量存储
@@ -164,8 +165,15 @@ public class AiController {
             String chatId = request.chatId() != null ? request.chatId() : "default-agent-chat-id";
 
             String systemTemplateText = """
-                    你是一个资深的{persona}。你具备本地知识库检索工具。
-                    当遇到特定函数语法、规则引擎用法或专有名词时，请优先使用提供的检索工具查找准确信息后回答。
+                    你是一个资深的{persona}。你具备本地私有知识库的检索与阅读工具。
+                    在回答用户问题时，请严格根据知识库检索出的真实内容回答，绝不可脱离文档凭空臆造。
+
+                    【工具调度策略与 SOP】：
+                    1. 宏观/分类探索：面对概括性、分类或模块疑问（如“有哪些函数/规则”），优先调用 FileSearchTool-listDir 查看目录树或 FileSearchTool-findFiles 匹配文件列表；
+                    2. 结构导航：面对长文档或定位章节，优先调用 FileSearchTool-getOutline 提取标题大纲与行号，锁定关键小节；
+                    3. 精确定位：面对具体函数名、专有名词、配置项或报错，优先调用 FileSearchTool-grepContent 快速查找匹配行及行号；
+                    4. 按需视窗读取：定位到行号后，优先调用 FileSearchTool-readLines 精准读取上下文关键行区间（如前后 30~50 行），避免盲目全篇读取；极短文档可调用 FileSearchTool-readDoc；
+                    5. 综合提炼：基于检索到的完备上下文，给出准确、详尽且有结构的技术回答。
                     """;
             SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemTemplateText);
             String renderedSystemPrompt = systemPromptTemplate.render(Map.of("persona", defaultPersona));
