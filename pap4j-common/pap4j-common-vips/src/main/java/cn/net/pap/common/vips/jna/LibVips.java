@@ -200,6 +200,31 @@ public interface LibVips extends Library {
     int vips_resize(Pointer in, PointerByReference out, double scale, Object... varargs);
 
     /**
+     * 使用 libvips 原生高效缩略图管线从本地文件生成等比缩放图像（支持 shrink-on-load 硬件级加速）。
+     *
+     * @param filename 本地源文件路径
+     * @param out 接收缩放后图像指针的引用
+     * @param width 目标最大宽度（盒模型宽）
+     * @param varargs 可变参数列表（如 "height", int, "size", int，以 null 结尾）
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://www.libvips.org/API/current/ctor.Image.thumbnail.html">vips_thumbnail API</a>
+     */
+    int vips_thumbnail(String filename, PointerByReference out, int width, Object... varargs);
+
+    /**
+     * 使用 libvips 原生高效缩略图管线从内存缓冲区生成等比缩放图像（纯内存无盘 IO，支持 shrink-on-load 硬件级加速）。
+     *
+     * @param buf 内存缓冲区指针
+     * @param len 缓冲区字节数
+     * @param out 接收缩放后图像指针的引用
+     * @param width 目标最大宽度（盒模型宽）
+     * @param varargs 可变参数列表（如 "height", int, "size", int，以 null 结尾）
+     * @return 成功返回 0，失败返回非 0
+     * @see <a href="https://www.libvips.org/API/current/ctor.Image.thumbnail_buffer.html">vips_thumbnail_buffer API</a>
+     */
+     int vips_thumbnail_buffer(Pointer buf, long len, PointerByReference out, int width, Object... varargs);
+
+    /**
      * 对图像进行翻转操作。
      *
      * @param in 输入图像指针

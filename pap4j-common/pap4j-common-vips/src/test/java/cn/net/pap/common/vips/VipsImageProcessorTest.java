@@ -947,4 +947,91 @@ public class VipsImageProcessorTest {
         log.info("====== 原生 Java 极速推导 JPEG Quality 测试全部通过 ======");
     }
 
+
+    /**
+     * 测试 libvips 原生单指令 resizeToBoundingBox 等比盒模型缩放（方案 A：纯内存核心与文件落盘核心）。
+     * 验证纯内存、盒模型约束、保持纵横比不变、小图不反向拉伸防畸变、真实大图 shrink-on-load 高速解码以及异常入参校验。
+     */
+    @Test
+    public void testResizeToBoundingBox() throws Exception {
+        log.info("====== 开始测试 libvips 原生单指令 resizeToBoundingBox 等比缩放 ======");
+
+        // 1. 纯内存最长边等比缩放测试：源图 800x600，要求约束在 400x400 内
+        byte[] thumbBytes400 = VipsImageProcessor.resizeToBoundingBox(sourceBytes, 400, 400, "jpeg");
+        assertNotNull(thumbBytes400);
+        assertTrue(thumbBytes400.length > 0);
+
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(thumbBytes400)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(400, bi.getWidth(), "最长边（宽）应缩放到 400");
+            assertEquals(300, bi.getHeight(), "高度应等比缩小到 300");
+            log.info("内存等比最长边缩放验证通过: 800x600 -> {}x{}", bi.getWidth(), bi.getHeight());
+        }
+
+        // 2. 纯内存矩形盒模型约束（maxWidth x maxHeight）：要求限制在 200x200 内
+        byte[] thumbBytesBox = VipsImageProcessor.resizeToBoundingBox(sourceBytes, 200, 200, "png");
+        assertNotNull(thumbBytesBox);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(thumbBytesBox)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(200, bi.getWidth(), "宽度应受限于 200");
+            assertEquals(150, bi.getHeight(), "高度应等比缩减为 150，完全容纳在 200x200 内");
+            log.info("盒模型约束缩放验证通过: 800x600 -> {}x{}", bi.getWidth(), bi.getHeight());
+        }
+
+        // 3. 小图防拉伸放大测试（VIPS_SIZE_DOWN 机制）：原图 800x600，请求盒 1200x1200
+        byte[] noUpscaleBytes = VipsImageProcessor.resizeToBoundingBox(sourceBytes, 1200, 1200, "jpeg");
+        assertNotNull(noUpscaleBytes);
+        try (java.io.ByteArrayInputStream bais = new java.io.ByteArrayInputStream(noUpscaleBytes)) {
+            BufferedImage bi = ImageIO.read(bais);
+            assertNotNull(bi);
+            assertEquals(800, bi.getWidth(), "小图应保持原始宽度 800，不得放大");
+            assertEquals(600, bi.getHeight(), "小图应保持原始高度 600，不得放大");
+            log.info("防拉伸防失真验证通过: 800x600 未被放大");
+        }
+
+        // 4. 文件到文件直接落盘测试（享受 shrink-on-load 高速解码与 0 堆内内存占用）
+        File outputFile = new File(tempDir, "thumb_output_500.jpg");
+        VipsImageProcessor.resizeToBoundingBox(inputFile.getAbsolutePath(), outputFile.getAbsolutePath(), 500, 500);
+        assertTrue(outputFile.exists(), "落盘输出文件应存在");
+        assertTrue(outputFile.length() > 0, "落盘输出文件应有内容");
+
+        BufferedImage diskImg = ImageIO.read(outputFile);
+        assertNotNull(diskImg);
+        assertEquals(500, diskImg.getWidth());
+        assertEquals(375, diskImg.getHeight());
+        log.info("文件到文件落盘缩放验证通过: {}x{}, 文件大小: {} 字节", diskImg.getWidth(), diskImg.getHeight(), outputFile.length());
+
+        // 5. 报纸扫描大图真实性能测试（单测 resources 中的真实大图）
+        File realNewsJpg = new File("src/test/resources/news-00001-19690417-BL(BL)-0002-0002-100.jpg");
+        if (realNewsJpg.exists()) {
+            File outputNewsFile = new File(tempDir, "thumb_news_800.jpg");
+            long start = System.currentTimeMillis();
+            VipsImageProcessor.resizeToBoundingBox(realNewsJpg.getAbsolutePath(), outputNewsFile.getAbsolutePath(), 800, 800);
+            long cost = System.currentTimeMillis() - start;
+            assertTrue(outputNewsFile.exists());
+            BufferedImage bi = ImageIO.read(outputNewsFile);
+            assertNotNull(bi);
+            assertTrue(bi.getWidth() <= 800 && bi.getHeight() <= 800);
+            log.info("真实 2144x3109 报纸大图原生 thumbnail 等比缩放落盘耗时: {} ms, 输出尺寸: {}x{}, 体积: {} KB (原图: {} KB)",
+                    cost, bi.getWidth(), bi.getHeight(), outputNewsFile.length() / 1024, realNewsJpg.length() / 1024);
+        }
+
+        // 6. 防御性入参异常校验
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox((byte[]) null, 500, 500, "jpg"));
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox(new byte[0], 500, 500, "jpg"));
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox(sourceBytes, 0, 500, "jpg"));
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox(sourceBytes, 500, -100, "jpg"));
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox(sourceBytes, 500, 500, null));
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox(sourceBytes, 500, 500, "  "));
+
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox((String) null, "out.jpg", 500, 500));
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox("   ", "out.jpg", 500, 500));
+        assertThrows(IllegalArgumentException.class, () -> VipsImageProcessor.resizeToBoundingBox(inputFile.getAbsolutePath(), null, 500, 500));
+        assertThrows(IOException.class, () -> VipsImageProcessor.resizeToBoundingBox("non_existent_file.jpg", "out.jpg", 500, 500));
+
+        log.info("====== libvips 原生单指令 resizeToBoundingBox 测试全部通过 ======");
+    }
+
 }

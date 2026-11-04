@@ -725,6 +725,140 @@ public class VipsImageProcessor {
         int setenv(String name, String value, int overwrite);
     }
 
+
+    // ==================== 原生单指令等比缩放 (Bounding Box / Thumbnail) ====================
+
+    /**
+     * libvips VipsSize 枚举常量：
+     * VIPS_SIZE_DOWN (2) 表示仅下采样缩小（若原图尺寸已在目标限制内，则不放大拉伸）。
+     */
+    private static final int VIPS_SIZE_DOWN = 2;
+
+    /**
+     * 基于 libvips 原生单指令 {@code vips_thumbnail_buffer} 对内存图片字节在目标宽高边界内进行等比缩放（纯内存零磁盘 I/O）。
+     * <p>享受底层 libjpeg 等解码器的 <b>shrink-on-load（加载时预缩减）</b> 硬件级加速，
+     * 自动保持原图纵横比，最长边不超过约束；若原图尺寸已小于限制则保持原尺寸不失真放大。</p>
+     *
+     * @param inputBytes   源图片二进制字节数组
+     * @param maxWidth     目标最大宽度上限（必须大于 0）
+     * @param maxHeight    目标最大高度上限（必须大于 0）
+     * @param outputFormat 目标输出格式后缀（例如 "jpg", "jpg[Q=75,strip=true]", "webp", "png"）
+     * @return 缩放并转码后的图片字节数组
+     * @throws IOException 如果加载、缩放或转码失败
+     */
+    public static byte[] resizeToBoundingBox(byte[] inputBytes, int maxWidth, int maxHeight, String outputFormat) throws IOException {
+        ensureInitialized();
+        if (inputBytes == null || inputBytes.length == 0) {
+            throw new IllegalArgumentException("输入图片字节数组不能为空");
+        }
+        if (maxWidth <= 0 || maxHeight <= 0) {
+            throw new IllegalArgumentException("目标尺寸约束 maxWidth 和 maxHeight 必须大于 0，当前为: " + maxWidth + "x" + maxHeight);
+        }
+        if (outputFormat == null || outputFormat.trim().isEmpty()) {
+            throw new IllegalArgumentException("目标图片格式不能为空");
+        }
+
+        LibVips.INSTANCE.vips_error_clear();
+        com.sun.jna.Memory memInput = new com.sun.jna.Memory(inputBytes.length);
+        memInput.write(0, inputBytes, 0, inputBytes.length);
+
+        Pointer thumbImage = null;
+        PointerByReference outRef = new PointerByReference();
+        try {
+            int result = LibVips.INSTANCE.vips_thumbnail_buffer(
+                    memInput,
+                    inputBytes.length,
+                    outRef,
+                    maxWidth,
+                    "height", maxHeight,
+                    "size", VIPS_SIZE_DOWN,
+                    (Object) null
+            );
+            if (result != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("原生内存等比缩放失败，错误: " + errorMsg);
+            }
+            thumbImage = outRef.getValue();
+            if (thumbImage == null) {
+                throw new IOException("原生内存等比缩放返回了空图像指针");
+            }
+
+            return writeImageToBuffer(thumbImage, outputFormat);
+        } finally {
+            if (thumbImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(thumbImage);
+            }
+            LibVips.INSTANCE.vips_thread_shutdown();
+            java.lang.ref.Reference.reachabilityFence(memInput);
+            memInput.close();
+        }
+    }
+
+    /**
+     * 基于 libvips 原生单指令 {@code vips_thumbnail} 对本地文件在目标宽高边界内等比缩放并直接持久化输出到目标文件。
+     *
+     * @param inputPath  本地源图片文件物理路径
+     * @param outputPath 目标输出文件物理路径（根据后缀识别格式，支持 options 例如 .jpg[Q=80]）
+     * @param maxWidth   目标最大宽度上限（必须大于 0）
+     * @param maxHeight  目标最大高度上限（必须大于 0）
+     * @throws IOException 如果加载、缩放或写出失败
+     */
+    public static void resizeToBoundingBox(String inputPath, String outputPath, int maxWidth, int maxHeight) throws IOException {
+        ensureInitialized();
+        if (inputPath == null || inputPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("输入图片文件路径不能为空");
+        }
+        File inputFile = new File(inputPath);
+        if (!inputFile.exists() || !inputFile.isFile()) {
+            throw new IOException("找不到输入文件: " + inputPath);
+        }
+        if (outputPath == null || outputPath.trim().isEmpty()) {
+            throw new IllegalArgumentException("输出图片文件路径不能为空");
+        }
+        if (maxWidth <= 0 || maxHeight <= 0) {
+            throw new IllegalArgumentException("目标尺寸约束 maxWidth 和 maxHeight 必须大于 0，当前为: " + maxWidth + "x" + maxHeight);
+        }
+
+        File outputFile = new File(outputPath);
+        File parentDir = outputFile.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+
+        LibVips.INSTANCE.vips_error_clear();
+        Pointer thumbImage = null;
+        PointerByReference outRef = new PointerByReference();
+        try {
+            int result = LibVips.INSTANCE.vips_thumbnail(
+                    inputPath,
+                    outRef,
+                    maxWidth,
+                    "height", maxHeight,
+                    "size", VIPS_SIZE_DOWN,
+                    (Object) null
+            );
+            if (result != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("原生文件等比缩放失败，错误: " + errorMsg);
+            }
+            thumbImage = outRef.getValue();
+            if (thumbImage == null) {
+                throw new IOException("原生文件等比缩放返回了空图像指针");
+            }
+
+            int writeResult = LibVips.INSTANCE.vips_image_write_to_file(thumbImage, outputPath, (Object) null);
+            if (writeResult != 0) {
+                String errorMsg = LibVips.INSTANCE.vips_error_buffer();
+                throw new IOException("无法将缩放后的图片写入目标文件: " + outputPath + "，错误: " + errorMsg);
+            }
+        } finally {
+            if (thumbImage != null) {
+                LibVips.GLib.INSTANCE.g_object_unref(thumbImage);
+            }
+            LibVips.INSTANCE.vips_thread_shutdown();
+        }
+    }
+
     // ==================== JPEG 2000 (JP2) 格式转换专有增量方法 ====================
 
     /**
