@@ -25,8 +25,7 @@ public class ZlibraryUtil {
     public static List<String> readFile(String file) {
         List<String> list = new ArrayList<>();
         String str;
-        try {
-            LineNumberReader reader = new LineNumberReader(new FileReader(file));
+        try (LineNumberReader reader = new LineNumberReader(new FileReader(file, java.nio.charset.StandardCharsets.UTF_8))) {
             while ((str = reader.readLine()) != null) {
                 if (!str.isEmpty()) {
                     list.add(str);

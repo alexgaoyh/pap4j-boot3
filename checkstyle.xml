@@ -94,14 +94,17 @@
                     and not(ancestor::RESOURCE)
                     and (
                         ./TYPE/IDENT[
-                            @text='InputStream' or @text='OutputStream' or
-                            @text='FileInputStream' or @text='FileOutputStream' or
-                            @text='BufferedInputStream' or @text='BufferedOutputStream' or
-                            @text='Reader' or @text='Writer' or
-                            @text='BufferedReader' or @text='BufferedWriter' or
-                            @text='FileReader' or @text='FileWriter' or
-                            @text='PreparedStatement' or @text='ResultSet' or
-                            @text='Socket' or @text='ServerSocket'
+                            @text = (
+                                'InputStream', 'OutputStream', 'FileInputStream', 'FileOutputStream',
+                                'BufferedInputStream', 'BufferedOutputStream', 'Reader', 'Writer',
+                                'BufferedReader', 'BufferedWriter', 'FileReader', 'FileWriter',
+                                'PreparedStatement', 'CallableStatement', 'ResultSet',
+                                'Socket', 'ServerSocket',
+                                'ZipFile', 'ZipInputStream', 'ZipOutputStream', 'GZIPInputStream', 'GZIPOutputStream',
+                                'DirectoryStream', 'FileChannel', 'SeekableByteChannel',
+                                'Workbook', 'HSSFWorkbook', 'XSSFWorkbook', 'SXSSFWorkbook',
+                                'CloseableHttpClient', 'CloseableHttpResponse', 'Jedis'
+                            )
                         ]
                         or (
                             ./TYPE/IDENT[@text='Connection']
@@ -111,10 +114,32 @@
                             ./TYPE/IDENT[@text='Statement']
                             and not(ancestor::COMPILATION_UNIT/IMPORT/DOT[./IDENT[@text='Statement'] and (.//IDENT[@text='jsqlparser'] or .//IDENT[@text='jena'])])
                         )
+                        or .//LITERAL_NEW/IDENT[
+                            @text = (
+                                'FileInputStream', 'FileOutputStream', 'BufferedInputStream', 'BufferedOutputStream',
+                                'BufferedReader', 'BufferedWriter', 'FileReader', 'FileWriter',
+                                'Socket', 'ServerSocket',
+                                'ZipFile', 'ZipInputStream', 'ZipOutputStream', 'GZIPInputStream', 'GZIPOutputStream',
+                                'HSSFWorkbook', 'XSSFWorkbook', 'SXSSFWorkbook', 'Jedis'
+                            )
+                        ]
                     )
                 ]
             "/>
-            <message key="matchxpath.match" value="资源对象变量必须使用 try-with-resources 语法声明以确保安全自动关闭（例如：try (InputStream in = ... )）。禁止单独定义后手动关闭。"/>
+            <message key="matchxpath.match" value="资源对象变量必须使用 try-with-resources 语法声明以确保安全自动关闭（支持显式类型与 var 推断声明，例如：try (var in = ... )）。禁止单独定义后手动关闭。"/>
+        </module>
+
+        <!-- 强制防范：Files.lines/walk/list/find 返回的 Stream 必须使用 try-with-resources 关闭底层句柄 -->
+        <module name="MatchXpath">
+            <property name="id" value="Files-Stream-Must-Be-Closed"/>
+            <property name="query" value="
+                //METHOD_CALL[
+                    .//IDENT[@text='Files']
+                    and ./DOT/IDENT[@text = ('lines', 'walk', 'list', 'find')]
+                    and not(ancestor::RESOURCE)
+                ]
+            "/>
+            <message key="matchxpath.match" value="Files.lines/walk/list/find 返回底层操作系统的文件句柄流，必须置于 try-with-resources 声明中（例如：try (Stream&lt;Path&gt; s = Files.walk(...))），禁止裸流链式调用以防句柄泄露。"/>
         </module>
 
         <!-- catch 块必须以 error 级记录异常对象本身（slf4j）：catch 块体内必须存在一条 log.error(...) 调用，其参数列表以"裸 IDENT"传入异常对象（如 log.error("...", e)），

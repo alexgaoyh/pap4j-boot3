@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.stream.Stream;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.Set;
@@ -94,15 +95,17 @@ public class IntegrityVerifierUtil {
             return;
         }
 
-        Files.walk(root).filter(p -> p.toString().endsWith(".class")).forEach(p -> {
-            try (InputStream is = Files.newInputStream(p)) {
-                String hash = DigestUtils.calculateMD5(is);
-                log.info("[CLASS] {} -> {}", p, hash);
-            } catch (Exception e) {
-                log.error("Integrity check failed for {}", p, e);
-                throw new RuntimeException("校验失败: " + p, e);
-            }
-        });
+        try (Stream<Path> stream = Files.walk(root)) {
+            stream.filter(p -> p.toString().endsWith(".class")).forEach(p -> {
+                try (InputStream is = Files.newInputStream(p)) {
+                    String hash = DigestUtils.calculateMD5(is);
+                    log.info("[CLASS] {} -> {}", p, hash);
+                } catch (Exception e) {
+                    log.error("Integrity check failed for {}", p, e);
+                    throw new RuntimeException("校验失败: " + p, e);
+                }
+            });
+        }
     }
 
     /**

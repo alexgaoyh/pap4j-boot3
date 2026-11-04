@@ -5,6 +5,7 @@ import java.io.InputStream;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.nio.file.*;
+import java.util.stream.Stream;
 import java.nio.file.attribute.PosixFilePermission;
 import java.util.HashSet;
 import java.util.Set;
@@ -37,7 +38,9 @@ public class ResourceUtil {
             // 本地运行（IDE 下）
             try {
                 Path sourcePath = Paths.get(resourceUrl.toURI()); // 修复 /D:/ 问题
-                Files.walk(sourcePath).forEach(src -> copyOne(src, sourcePath, outputPath));
+                try (Stream<Path> stream = Files.walk(sourcePath)) {
+                    stream.forEach(src -> copyOne(src, sourcePath, outputPath));
+                }
             } catch (URISyntaxException e) {
                 log.error("转换资源 URL 为路径失败", e);
                 throw new IOException(e);
@@ -48,7 +51,9 @@ public class ResourceUtil {
                 java.net.URI uri = resourceUrl.toURI();
                 try (FileSystem fs = FileSystems.newFileSystem(uri, java.util.Collections.emptyMap())) {
                     Path sourcePath = fs.getPath("/" + resourceBase);
-                    Files.walk(sourcePath).forEach(src -> copyOne(src, sourcePath, outputPath));
+                    try (Stream<Path> stream = Files.walk(sourcePath)) {
+                        stream.forEach(src -> copyOne(src, sourcePath, outputPath));
+                    }
                 }
             } catch (Exception e) {
                 log.error("解析资源 URL 失败，尝试备用方案", e);
@@ -71,7 +76,9 @@ public class ResourceUtil {
                     }
                     try (FileSystem fs = FileSystems.newFileSystem(Paths.get(jarPathStr), (ClassLoader) null)) {
                         Path sourcePath = fs.getPath("/" + resourceBase);
-                        Files.walk(sourcePath).forEach(src -> copyOne(src, sourcePath, outputPath));
+                        try (Stream<Path> stream = Files.walk(sourcePath)) {
+                            stream.forEach(src -> copyOne(src, sourcePath, outputPath));
+                        }
                     }
                 } else {
                     throw new IOException("无法解析该资源的 URL 协议: " + resourceUrl.getProtocol() + ", URL: " + resourceUrl, e);

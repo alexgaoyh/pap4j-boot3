@@ -140,36 +140,45 @@ public class ExcelCRUDUtil {
      */
     public static List<PageData> vttInit(String path, String sheets) {
         List<PageData> rs = new ArrayList<>();
-        XSSFWorkbook workbook = getExcelByPath(path);
-        XSSFSheet sheet = workbook.getSheet(sheets);
-        // 得到Excel表格
-        XSSFRow row = sheet.getRow(0);
-        // 得到Excel工作表指定行的单元格
-        XSSFCell cell = row.getCell(0);
-        int cell_end = row.getLastCellNum();// 这个就是列数(标题)
-        int row_end = getExcelRealRow(sheet);// 这是行数
-        for (int i = 0; i <= row_end; i++) {
-            row = sheet.getRow(i);
-            PageData exd = new PageData();
-            for (int j = 0; j <= cell_end + 1; j++) {
-                if (row != null && i == 0 && j == cell_end) {
-                    exd.put(j, "");
-                    continue;
-                } else if (row != null && i == 0 && j == cell_end + 1) {
-                    exd.put(j, "");
-                    continue;
-                } else if (row != null && j < cell_end)
-                    cell = row.getCell(j);
-                else if (i != 0 && j == cell_end)
-                    continue;
-                if (cell != null)
-                    exd.put(j, formatCell(cell));
-                else {
-                    exd.put(j, "");
-                }
+        try (XSSFWorkbook workbook = getExcelByPath(path)) {
+            if (workbook == null) {
+                return rs;
             }
-            exd.put("xh", i + "");
-            rs.add(exd);
+            XSSFSheet sheet = workbook.getSheet(sheets);
+            if (sheet == null) {
+                return rs;
+            }
+            // 得到Excel表格
+            XSSFRow row = sheet.getRow(0);
+            // 得到Excel工作表指定行的单元格
+            XSSFCell cell = row.getCell(0);
+            int cell_end = row.getLastCellNum();// 这个就是列数(标题)
+            int row_end = getExcelRealRow(sheet);// 这是行数
+            for (int i = 0; i <= row_end; i++) {
+                row = sheet.getRow(i);
+                PageData exd = new PageData();
+                for (int j = 0; j <= cell_end + 1; j++) {
+                    if (row != null && i == 0 && j == cell_end) {
+                        exd.put(j, "");
+                        continue;
+                    } else if (row != null && i == 0 && j == cell_end + 1) {
+                        exd.put(j, "");
+                        continue;
+                    } else if (row != null && j < cell_end)
+                        cell = row.getCell(j);
+                    else if (i != 0 && j == cell_end)
+                        continue;
+                    if (cell != null)
+                        exd.put(j, formatCell(cell));
+                    else {
+                        exd.put(j, "");
+                    }
+                }
+                exd.put("xh", i + "");
+                rs.add(exd);
+            }
+        } catch (IOException e) {
+            log.error("vttInit", e);
         }
         return rs;
     }
@@ -239,8 +248,8 @@ public class ExcelCRUDUtil {
                 ret = cell.getStringCellValue();
                 break;
             case FORMULA:
-                Workbook wb = cell.getSheet().getWorkbook();
-                CreationHelper crateHelper = wb.getCreationHelper();
+                CreationHelper crateHelper = cell.getSheet().getWorkbook().getCreationHelper();
+
                 FormulaEvaluator evaluator = crateHelper.createFormulaEvaluator();
                 ret = formatCell(evaluator.evaluateInCell(cell));
                 break;
