@@ -9,10 +9,14 @@ import com.artifex.mupdf.fitz.Rect;
 import cn.net.pap.common.mupdf.loader.MuPdfNativeLoader;
 import cn.net.pap.common.mupdf.service.MuPdfService;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import javax.imageio.ImageIO;
+import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +30,16 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
 
 public class MuPdfServiceTest {
+
+    /**
+     * 调试开关：打开 TempDirUtils 的保留临时文件模式，防止内嵌图片落盘后立即被删除。
+     * <p>该开关必须在 TempDirUtils 类初始化（首次执行 extractCoordinates）前设置，
+     * 否则 {@code KEEP_TEMP_FILES} 仍为 false，imagePath 返回时文件已被清理。</p>
+     */
+    @BeforeAll
+    public static void keepTempFilesForImageInspection() {
+        System.setProperty("temp.dir.utils.dev", "true");
+    }
 
     @Test
     public void testPlatformDetection() {
@@ -80,6 +94,7 @@ public class MuPdfServiceTest {
         Assertions.assertFalse(coords.pages().get(0).blocks().isEmpty());
         MuPdfService.BlockResult firstBlock = coords.pages().get(0).blocks().get(0);
         Assertions.assertEquals("text", firstBlock.type());
+        Assertions.assertNull(firstBlock.imagePath(), "文本块的 imagePath 必须为 null");
         Assertions.assertFalse(firstBlock.lines().isEmpty());
         MuPdfService.LineResult firstLine = firstBlock.lines().get(0);
         Assertions.assertEquals("全嵌入字体测试", firstLine.text());
@@ -499,6 +514,68 @@ public class MuPdfServiceTest {
         }
         Files.delete(multiPagePdf);
         Assertions.assertFalse(Files.exists(multiPagePdf));
+    }
+
+    /**
+     * 验证含内嵌图片的 PDF（qpdf 示例 invert-images-in.pdf）在坐标提取时：
+     * <ul>
+     *   <li>1. 能识别出 type=image 的块，且图片块不带文本行；</li>
+     *   <li>2. 返回的 imagePath 指向真实存在、非空、可被正常解码的 PNG 文件；</li>
+     *   <li>3. JSON 序列化结果中包含 imagePath。</li>
+     * </ul>
+     * 只要 imagePath 指向的文件已被清理或内容不可解码，本用例即失败。
+     */
+    @Test
+    public void testExtractCoordinatesSavesEmbeddedImage() throws Exception {
+        URL url = getClass().getResource("/qpdf-examples-invert-images-in.pdf");
+        Assertions.assertNotNull(url, "测试资源缺失: /qpdf-examples-invert-images-in.pdf");
+        String pdfPath = new File(url.getFile()).getAbsolutePath();
+
+        try (MuPdfService service = new MuPdfService()) {
+            Assertions.assertTrue(service.getPageCount(pdfPath) > 0, "样例 PDF 至少应有一页");
+
+            MuPdfService.CoordinatesResult coords = service.extractCoordinates(pdfPath, 0);
+            Assertions.assertNotNull(coords);
+            Assertions.assertEquals(1, coords.pages().size());
+
+            List<MuPdfService.BlockResult> blocks = coords.pages().get(0).blocks();
+
+            List<MuPdfService.BlockResult> imageBlocks = blocks.stream()
+                    .filter(b -> "image".equals(b.type()))
+                    .toList();
+            Assertions.assertFalse(imageBlocks.isEmpty(),
+                    "该 PDF 第一页应至少包含一个图片块，实际解析出 " + blocks.size()
+                            + " 个块；若为 0，说明 toStructuredText 未开启图片保留选项");
+            System.out.println("[Test] 图片块数量: " + imageBlocks.size()
+                    + ", 全部块类型: " + blocks.stream().map(MuPdfService.BlockResult::type).toList());
+
+            for (MuPdfService.BlockResult imageBlock : imageBlocks) {
+                Assertions.assertTrue(imageBlock.lines() == null || imageBlock.lines().isEmpty(),
+                        "图片块不应携带文本行");
+                Assertions.assertNotNull(imageBlock.bbox(), "图片块必须包含 bbox");
+
+                String imagePath = imageBlock.imagePath();
+                Assertions.assertNotNull(imagePath, "图片块的 imagePath 不应为 null");
+                Path pngFile = Path.of(imagePath);
+                System.out.println("[Test] 图片块落盘路径: " + pngFile);
+
+                Assertions.assertTrue(Files.exists(pngFile), "imagePath 必须指向真实存在的文件，实际文件已被清理: " + pngFile);
+                Assertions.assertTrue(Files.size(pngFile) > 0, "落盘的图片文件不能为空: " + pngFile);
+
+                byte[] header = new byte[8];
+                try (InputStream in = Files.newInputStream(pngFile)) {
+                    Assertions.assertEquals(8, in.read(header), "PNG 文件至少应包含 8 字节文件头");
+                }
+                Assertions.assertArrayEquals(
+                        new byte[]{(byte) 0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A},
+                        header, "落盘文件必须是合法 PNG（文件头校验）");
+
+                BufferedImage decoded = ImageIO.read(pngFile.toFile());
+                Assertions.assertNotNull(decoded, "落盘的 PNG 必须能被正常解码: " + pngFile);
+                Assertions.assertTrue(decoded.getWidth() > 0 && decoded.getHeight() > 0, "PNG 宽高必须大于 0");
+                System.out.println("[Test] 图片解码成功: " + decoded.getWidth() + "x" + decoded.getHeight());
+            }
+        }
     }
 
     private void runConcurrentWorkerRounds(MuPdfService service, String pdfPathStr, Path tempDir,

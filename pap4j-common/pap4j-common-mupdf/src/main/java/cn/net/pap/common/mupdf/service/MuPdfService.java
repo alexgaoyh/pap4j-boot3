@@ -1,5 +1,6 @@
 package cn.net.pap.common.mupdf.service;
 
+import cn.net.pap.common.core.util.TempDirUtils;
 import cn.net.pap.common.mupdf.loader.MuPdfNativeLoader;
 import com.artifex.mupdf.fitz.Buffer;
 import com.artifex.mupdf.fitz.ColorSpace;
@@ -107,6 +108,10 @@ public class MuPdfService implements AutoCloseable {
      * 批量拆分期间收缩底层全局 Store 的默认页数步长。
      */
     private static final int DEFAULT_SPLIT_SHRINK_INTERVAL = 32;
+    /**
+     * 图片块落盘文件名前缀的最大长度，避免源 PDF 文件名过长导致临时文件创建失败。
+     */
+    private static final int MAX_IMAGE_PREFIX_LENGTH = 48;
 
     private static final int DEFAULT_DPI = 96;
     /**
@@ -194,13 +199,13 @@ public class MuPdfService implements AutoCloseable {
             }
 
             page = loadPageChecked(managed, pageNum);
-            st = page.toStructuredText();
+            st = page.toStructuredText("preserve-images");
             if (st == null) {
                 throw new IllegalStateException("第 " + (pageNum + 1) + " 页无法生成结构化文本（MuPDF 返回 null）: " + pdfPath);
             }
             PageResult pageResult;
             try {
-                pageResult = buildPageResult(st, pageNum + 1, page, fontNameResolver);
+                pageResult = buildPageResult(st, pageNum + 1, page, fontNameResolver, imageFilePrefix(pdfPath));
             } catch (RuntimeException walkEx) {
                 // 遍历中断时补充页码与文件上下文，避免调用方拿到无信息量的底层异常
                 throw new IllegalStateException("解析第 " + (pageNum + 1) + " 页结构化文本失败: " + pdfPath
@@ -908,6 +913,19 @@ public class MuPdfService implements AutoCloseable {
         return trimmed.isEmpty() ? "document" : trimmed;
     }
 
+    /**
+     * 基于源 PDF 文件名生成图片块落盘前缀，便于从临时目录直接看出图片来自哪个文档。
+     *
+     * @param pdfPath PDF 物理路径
+     * @return 去掉扩展名后的文件名，过长时截断
+     */
+    static String imageFilePrefix(String pdfPath) {
+        String baseName = extractBaseName(new File(pdfPath).getName());
+        return baseName.length() > MAX_IMAGE_PREFIX_LENGTH
+                ? baseName.substring(0, MAX_IMAGE_PREFIX_LENGTH)
+                : baseName;
+    }
+
     static String formatSplitFileName(String baseName, int pageNumber, int digits) {
         String pattern = "%s_page_%0" + digits + "d.pdf";
         return String.format(Locale.ROOT, pattern, baseName, pageNumber);
@@ -1103,9 +1121,10 @@ public class MuPdfService implements AutoCloseable {
      * @param type  块类型 ("text" 或 "image")
      * @param bbox  块外接边界框
      * @param lines 文本行列表（图片块时为 null，不序列化）
+     * @param imagePath 图片块落盘后的临时文件绝对路径（仅本次解析期间有效；未落盘时为 null，不序列化）
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
-    public record BlockResult(String type, Bbox bbox, List<LineResult> lines) {
+    public record BlockResult(String type, Bbox bbox, List<LineResult> lines, String imagePath) {
     }
 
     /**
@@ -1262,7 +1281,8 @@ public class MuPdfService implements AutoCloseable {
     }
 
     private static PageResult buildPageResult(StructuredText st, int pageNumber, Page page,
-                                              MuPdfFontExtractor.FontNameResolver fontNameResolver) {
+                                              MuPdfFontExtractor.FontNameResolver fontNameResolver,
+                                              String imageFilePrefix) {
         Rect bounds = page != null ? page.getBounds() : null;
         boolean hasBounds = bounds != null && bounds.isValid() && !bounds.isInfinite();
         double pageWidth = hasBounds ? round(bounds.x1 - bounds.x0) : 0.0;
@@ -1287,7 +1307,28 @@ public class MuPdfService implements AutoCloseable {
 
             @Override
             public void onImageBlock(Rect bbox, Matrix transform, Image image) {
-                blocks.add(new BlockResult("image", toBbox(bbox, null), null));
+                String imagePath = null;
+                if (image != null) {
+                    try {
+                        // 前缀带上源 PDF 文件名，便于从临时目录直接看出图片归属；withTempFile 结束后会自动清理临时文件
+                        imagePath = TempDirUtils.withTempFile(imageFilePrefix + "_p" + pageNumber + "_img_", ".png", tmpFile -> {
+                            Pixmap tmpPix = null;
+                            try {
+                                tmpPix = image.toPixmap();
+                                if (tmpPix == null) {
+                                    return null;
+                                }
+                                tmpPix.saveAsPNG(tmpFile.toAbsolutePath().toString());
+                                return tmpFile.toAbsolutePath().toString();
+                            } finally {
+                                closeQuietly(tmpPix);
+                            }
+                        });
+                    } catch (Exception e) {
+                        log.warn("[MuPDF] 保存内嵌图片到临时目录失败: {}", e.getMessage());
+                    }
+                }
+                blocks.add(new BlockResult("image", toBbox(bbox, null), null, imagePath));
             }
 
             @Override
@@ -1298,7 +1339,7 @@ public class MuPdfService implements AutoCloseable {
 
             @Override
             public void endTextBlock() {
-                blocks.add(new BlockResult("text", toBbox(blockBbox, null), lines));
+                blocks.add(new BlockResult("text", toBbox(blockBbox, null), lines, null));
             }
 
             @Override

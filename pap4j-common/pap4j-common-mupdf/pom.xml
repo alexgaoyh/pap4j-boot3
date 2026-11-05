@@ -59,6 +59,12 @@
 
         <dependency>
             <groupId>cn.net.pap</groupId>
+            <artifactId>pap4j-common-core</artifactId>
+            <version>${revision}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>cn.net.pap</groupId>
             <artifactId>pap4j-common-vips</artifactId>
             <version>${revision}</version>
             <optional>true</optional>
