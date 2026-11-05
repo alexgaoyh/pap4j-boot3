@@ -70,6 +70,28 @@ public final class TempDirUtils {
         }
     }
 
+    /**
+     * 在默认临时目录创建临时文件，使用后自动清理并返回结果
+     * @param prefix   文件名前缀
+     * @param suffix   文件名后缀
+     * @param function 使用临时文件的回调
+     * @return 回调函数的返回值
+     * @param <T> 泛型参数
+     * @throws Exception
+     */
+    public static <T> T withTempFile(String prefix, String suffix, Function<Path, T> function) throws Exception {
+        Path tempFile = Files.createTempFile(prefix, suffix);
+        try {
+            return function.apply(tempFile);
+        } finally {
+            if (!KEEP_TEMP_FILES) {
+                Files.deleteIfExists(tempFile);
+            } else {
+                log.info("调试模式保留临时文件: {}", tempFile.toAbsolutePath());
+            }
+        }
+    }
+
     // ========== 指定目录下的临时文件 ==========
 
     /**
