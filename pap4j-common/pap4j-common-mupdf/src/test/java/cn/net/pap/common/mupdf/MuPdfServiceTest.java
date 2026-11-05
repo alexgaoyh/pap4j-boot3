@@ -1,6 +1,8 @@
 package cn.net.pap.common.mupdf;
 
+import com.artifex.mupdf.fitz.Document;
 import com.artifex.mupdf.fitz.Matrix;
+import com.artifex.mupdf.fitz.PDFDocument;
 import com.artifex.mupdf.fitz.Point;
 import com.artifex.mupdf.fitz.Quad;
 import com.artifex.mupdf.fitz.Rect;
@@ -15,6 +17,12 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
 
 public class MuPdfServiceTest {
@@ -309,6 +317,241 @@ public class MuPdfServiceTest {
             MuPdfService.PdfCheck check = service.check(empty.toString());
             Assertions.assertEquals(MuPdfService.PdfIssue.FILE_EMPTY, check.issue());
             Assertions.assertFalse(check.healthy());
+        }
+    }
+
+    /**
+     * 多页 PDF 拆分为多个单页 PDF：验证命名格式、结构健康度、文本坐标与渲染尺寸完全一致。
+     *
+     * @param tempDir JUnit 临时目录
+     * @throws Exception 拆分或验证异常
+     */
+    @Test
+    public void testSplitMultiPagePdfAndVerifyIntegrity(@TempDir Path tempDir) throws Exception {
+        Path multiPagePdf = createSampleMultiPagePdf(tempDir.resolve("source_doc.pdf"), 4);
+
+        try (MuPdfService service = new MuPdfService()) {
+            Path splitOutDir = tempDir.resolve("split_out");
+            MuPdfService.SplitOptions opts = new MuPdfService.SplitOptions(true, MuPdfService.DEFAULT_SPLIT_SAVE_OPTIONS, 2);
+            List<Path> singlePages = service.splitPdf(multiPagePdf.toString(), splitOutDir, opts);
+
+            Assertions.assertEquals(4, singlePages.size(), "4 页 PDF 应拆分为 4 个单页文件");
+            for (int i = 0; i < singlePages.size(); i++) {
+                Path singlePage = singlePages.get(i);
+                String expectedName = String.format("source_doc_page_%05d.pdf", i + 1);
+                Assertions.assertEquals(expectedName, singlePage.getFileName().toString(), "文件名必须符合 <原文件名>_page_00001.pdf 规范");
+                Assertions.assertTrue(Files.isRegularFile(singlePage) && Files.size(singlePage) > 0, "拆出的单页文件应存在且非空");
+
+                // 体检单页 PDF 结构完整性
+                MuPdfService.PdfCheck check = service.check(singlePage.toString());
+                Assertions.assertEquals(MuPdfService.PdfIssue.OK, check.issue(), check.summary());
+                Assertions.assertEquals(1, check.pageCount(), "每个拆分文件必须只有 1 页");
+
+                // 核验单页坐标与源文档对应页完全一致
+                MuPdfService.CoordinatesResult srcCoords = service.extractCoordinates(multiPagePdf.toString(), i);
+                MuPdfService.CoordinatesResult splitCoords = service.extractCoordinates(singlePage.toString(), 0);
+                Assertions.assertEquals(
+                        srcCoords.pages().get(0).blocks().size(),
+                        splitCoords.pages().get(0).blocks().size(),
+                        "第 " + (i + 1) + " 页文本块数量应与源文档一致"
+                );
+                String srcFirstLine = srcCoords.pages().get(0).blocks().get(0).lines().get(0).text();
+                String splitFirstLine = splitCoords.pages().get(0).blocks().get(0).lines().get(0).text();
+                Assertions.assertEquals(srcFirstLine, splitFirstLine, "拆分前后单页文本内容应完全一致");
+
+                // 核验单页渲染尺寸一致
+                MuPdfService.RawPageImage srcRaw = service.renderPageToRawSamples(multiPagePdf.toString(), i, 72);
+                MuPdfService.RawPageImage splitRaw = service.renderPageToRawSamples(singlePage.toString(), 0, 72);
+                Assertions.assertEquals(srcRaw.width(), splitRaw.width());
+                Assertions.assertEquals(srcRaw.height(), splitRaw.height());
+            }
+        }
+    }
+
+    /**
+     * 验证页码超 5 位自动扩位规则及字体子集化（subsetFonts）对单页 PDF 文件体积的优化效果。
+     *
+     * @param tempDir JUnit 临时目录
+     * @throws Exception 拆分异常
+     */
+    @Test
+    public void testSplitPdfDigitExpansionAndSubsetFontsSize(@TempDir Path tempDir) throws Exception {
+        // 验证页码超过 5 位数时自动扩展位数（最少 5 位）
+        Assertions.assertEquals("report_page_00001.pdf", MuPdfService.formatSplitPageFileName("report.pdf", 1, 10));
+        Assertions.assertEquals("report_page_99999.pdf", MuPdfService.formatSplitPageFileName("report.pdf", 99999, 99999));
+        Assertions.assertEquals("report_page_000001.pdf", MuPdfService.formatSplitPageFileName("report.pdf", 1, 100000));
+        Assertions.assertEquals("report_page_100000.pdf", MuPdfService.formatSplitPageFileName("report.pdf", 100000, 100000));
+        Assertions.assertEquals("my.doc_page_0000012.pdf", MuPdfService.formatSplitPageFileName("my.doc.pdf", 12, 1200000));
+        URL ctexUrl = getClass().getResource("/ctex.pdf");
+        Assertions.assertNotNull(ctexUrl, "ctex.pdf 测试样本应存在");
+        File ctexFile = new File(ctexUrl.getFile());
+
+        try (MuPdfService service = new MuPdfService()) {
+            Path dirSubsetOn = tempDir.resolve("subset_on");
+            Path dirSubsetOff = tempDir.resolve("subset_off");
+
+            List<Path> pagesSubsetOn = service.splitPdf(
+                    ctexFile.getAbsolutePath(), dirSubsetOn, MuPdfService.SplitOptions.ofSubsetFonts(true));
+            List<Path> pagesSubsetOff = service.splitPdf(
+                    ctexFile.getAbsolutePath(), dirSubsetOff, MuPdfService.SplitOptions.ofSubsetFonts(false));
+
+            Assertions.assertFalse(pagesSubsetOn.isEmpty());
+            Assertions.assertEquals(pagesSubsetOn.size(), pagesSubsetOff.size());
+            Assertions.assertTrue(pagesSubsetOn.get(0).getFileName().toString().matches("ctex_page_\\d{5,}\\.pdf"));
+
+            long totalSizeSubsetOn = 0L;
+            long totalSizeSubsetOff = 0L;
+            for (int i = 0; i < pagesSubsetOn.size(); i++) {
+                long sizeOn = Files.size(pagesSubsetOn.get(i));
+                long sizeOff = Files.size(pagesSubsetOff.get(i));
+                totalSizeSubsetOn += sizeOn;
+                totalSizeSubsetOff += sizeOff;
+                Assertions.assertEquals(1, service.getPageCount(pagesSubsetOn.get(i).toString()));
+                Assertions.assertEquals(1, service.getPageCount(pagesSubsetOff.get(i).toString()));
+            }
+            Assertions.assertTrue(totalSizeSubsetOn <= totalSizeSubsetOff,
+                    "开启字体子集化后的单页总大小 (" + totalSizeSubsetOn + "B) 应小于等于未开启 (" + totalSizeSubsetOff + "B)");
+        }
+    }
+
+    /**
+     * 验证拆分中途失败时的原子回滚清理能力，以及各类非法入参、加密/空页/损坏文件的防御性异常。
+     *
+     * @param tempDir JUnit 临时目录
+     * @throws Exception 文件准备异常
+     */
+    @Test
+    public void testSplitPdfRollbackOnMidwayFailureAndInvalidInputs(@TempDir Path tempDir) throws Exception {
+        Path multiPagePdf = createSampleMultiPagePdf(tempDir.resolve("rollback_test.pdf"), 3);
+
+        try (MuPdfService service = new MuPdfService()) {
+            // 1. 构造中途失败：预先在第 3 页的目标文件路径上创建一个同名非空目录，使第 1、2 页成功落盘后第 3 页写出失败
+            Path rollbackDir = tempDir.resolve("rollback_out");
+            Files.createDirectories(rollbackDir);
+            Path conflictingDirForPage3 = rollbackDir.resolve("rollback_test_page_00003.pdf");
+            Files.createDirectories(conflictingDirForPage3);
+            Files.writeString(conflictingDirForPage3.resolve("blocker.txt"), "block");
+
+            Assertions.assertThrows(IllegalStateException.class,
+                    () -> service.splitPdf(multiPagePdf.toString(), rollbackDir),
+                    "第 3 页写出失败时应抛出异常");
+
+            Assertions.assertFalse(Files.exists(rollbackDir.resolve("rollback_test_page_00001.pdf")),
+                    "异常回滚后第 1 页文件必须被清理");
+            Assertions.assertFalse(Files.exists(rollbackDir.resolve("rollback_test_page_00002.pdf")),
+                    "异常回滚后第 2 页文件必须被清理");
+
+            // 2. 非法入参及损坏/加密文档校验
+            Assertions.assertThrows(IllegalArgumentException.class, () -> service.splitPdf(null, tempDir));
+            Assertions.assertThrows(IllegalArgumentException.class, () -> service.splitPdf("", tempDir));
+            Assertions.assertThrows(IllegalArgumentException.class, () -> service.splitPdf(multiPagePdf.toString(), null));
+            Assertions.assertThrows(IllegalArgumentException.class, () -> service.splitPdf(multiPagePdf.toString(), multiPagePdf));
+            Assertions.assertThrows(IllegalStateException.class, () -> service.splitPdf(checkPdf("encrypted.pdf"), tempDir.resolve("enc")));
+            Assertions.assertThrows(IllegalStateException.class, () -> service.splitPdf(checkPdf("no-pages.pdf"), tempDir.resolve("nopages")));
+            Assertions.assertThrows(IllegalStateException.class, () -> service.splitPdf(checkPdf("open-failed.pdf"), tempDir.resolve("broken")));
+        }
+
+        // 3. 服务关闭后拒绝拆分
+        MuPdfService closedService = new MuPdfService();
+        closedService.close();
+        Assertions.assertThrows(IllegalStateException.class,
+                () -> closedService.splitPdf(multiPagePdf.toString(), tempDir.resolve("after_close")));
+    }
+
+    /**
+     * 验证并发预览渲染与并发拆分互不阻塞、不污染常驻缓存，且在 Windows 下无任何原生文件句柄泄漏。
+     *
+     * @param tempDir JUnit 临时目录
+     * @throws Exception 并发或文件删除异常
+     */
+    @Test
+    public void testSplitPdfConcurrentWithPreviewAndNoHandleLeak(@TempDir Path tempDir) throws Exception {
+        Path multiPagePdf = createSampleMultiPagePdf(tempDir.resolve("concurrent_doc.pdf"), 5);
+        String pdfPathStr = multiPagePdf.toString();
+
+        try (MuPdfService service = new MuPdfService()) {
+            int workers = 4;
+            AtomicInteger errorCount = new AtomicInteger(0);
+            CountDownLatch latch = new CountDownLatch(workers);
+            AtomicInteger threadSeq = new AtomicInteger(1);
+            ThreadPoolExecutor executor = new ThreadPoolExecutor(
+                    workers,
+                    workers,
+                    30L,
+                    TimeUnit.SECONDS,
+                    new LinkedBlockingQueue<>(16),
+                    r -> new Thread(r, "mupdf-split-test-" + threadSeq.getAndIncrement()),
+                    new ThreadPoolExecutor.AbortPolicy()
+            );
+
+            try {
+                for (int w = 0; w < workers; w++) {
+                    final int workerId = w;
+                    executor.execute(() -> runConcurrentWorkerRounds(
+                            service, pdfPathStr, tempDir, workerId, 6, errorCount, latch));
+                }
+                Assertions.assertTrue(latch.await(30, TimeUnit.SECONDS), "并发拆分与预览测试超时");
+                Assertions.assertEquals(0, errorCount.get(), "并发拆分、预览与文件即时删除过程中不得出现异常或句柄占用");
+                Assertions.assertEquals(1, service.cachedDocumentCount(), "拆分操作使用独立句柄，不应污染常驻文档缓存");
+            } finally {
+                executor.shutdownNow();
+            }
+        }
+        Files.delete(multiPagePdf);
+        Assertions.assertFalse(Files.exists(multiPagePdf));
+    }
+
+    private void runConcurrentWorkerRounds(MuPdfService service, String pdfPathStr, Path tempDir,
+                                           int workerId, int iterations,
+                                           AtomicInteger errorCount,
+                                           CountDownLatch latch) {
+        try {
+            for (int r = 0; r < iterations; r++) {
+                if (workerId % 2 == 0) {
+                    byte[] png = service.renderPageToPng(pdfPathStr, r % 5, 72);
+                    String json = service.extractCoordinatesJson(pdfPathStr, r % 5);
+                    if (png == null || png.length == 0 || json == null || json.isEmpty()) {
+                        errorCount.incrementAndGet();
+                    }
+                } else {
+                    Path roundDir = tempDir.resolve("worker_" + workerId + "_round_" + r);
+                    List<Path> splitFiles = service.splitPdf(pdfPathStr, roundDir);
+                    if (splitFiles.size() != 5) {
+                        errorCount.incrementAndGet();
+                    }
+                    for (Path f : splitFiles) {
+                        Files.delete(f);
+                    }
+                    Files.delete(roundDir);
+                }
+            }
+        } catch (Throwable t) {
+            errorCount.incrementAndGet();
+        } finally {
+            latch.countDown();
+        }
+    }
+
+    private Path createSampleMultiPagePdf(Path targetPdf, int pageCount) {
+        String[] sampleResources = {
+                "/sample.pdf",
+                "/page_rotation_90_test.pdf",
+                "/page_rotation_180_test.pdf",
+                "/font_rotation_test.pdf"
+        };
+        try (PDFDocument merged = new PDFDocument()) {
+            for (int i = 0; i < pageCount; i++) {
+                String res = sampleResources[i % sampleResources.length];
+                URL url = getClass().getResource(res);
+                Assertions.assertNotNull(url, "测试资源不存在: " + res);
+                File srcFile = new File(url.getFile());
+                try (Document srcDoc = Document.openDocument(srcFile.getAbsolutePath())) {
+                    PDFDocument srcPdf = (PDFDocument) srcDoc;
+                    merged.graftPage(-1, srcPdf, 0);
+                }
+            }
+            merged.save(targetPdf.toAbsolutePath().toString(), MuPdfService.DEFAULT_SPLIT_SAVE_OPTIONS);
+            return targetPdf;
         }
     }
 

@@ -22,6 +22,8 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -93,6 +95,18 @@ public class MuPdfService implements AutoCloseable {
      * 裸点阵（拷贝进 JVM 堆）允许的最大字节数，超出即拒绝，避免堆 OOM。
      */
     public static final String CFG_RAW_MAX_BYTES = "pap.mupdf.raw.maxBytes";
+    /**
+     * 单页拆分默认保存选项：流级垃圾回收去重（garbage=deduplicate）+ 内容流/字体/图像 Flate 压缩。
+     */
+    public static final String DEFAULT_SPLIT_SAVE_OPTIONS = "garbage=deduplicate,compress,compress-fonts,compress-images";
+    /**
+     * 拆分单页文件名中页码最小零填充位数（至少 5 位，如 00001）。
+     */
+    private static final int MIN_SPLIT_PAGE_DIGITS = 5;
+    /**
+     * 批量拆分期间收缩底层全局 Store 的默认页数步长。
+     */
+    private static final int DEFAULT_SPLIT_SHRINK_INTERVAL = 32;
 
     private static final int DEFAULT_DPI = 96;
     /**
@@ -692,6 +706,211 @@ public class MuPdfService implements AutoCloseable {
             }
         }
         log.info("[MuPDF] 已清空全部文档缓存与 Store 堆外内存");
+    }
+
+    /**
+     * PDF 拆分配置实体。
+     *
+     * @param subsetFonts      是否对拆分出的单页 PDF 执行字体子集化（默认 true，按单页实际使用字形裁剪，显著减小文件体积）
+     * @param saveOptions      MuPDF 保存选项字符串（为空时默认使用 {@value #DEFAULT_SPLIT_SAVE_OPTIONS}）
+     * @param shrinkStoreEvery 每拆分多少页收缩一次底层全局 Store 缓存（小于等于 0 表示不在循环内按步长收缩）
+     */
+    public record SplitOptions(boolean subsetFonts, String saveOptions, int shrinkStoreEvery) {
+
+        /**
+         * 构建默认拆分配置（开启字体子集化、流级去重压缩、每 32 页收缩一次 Store）。
+         *
+         * @return 默认拆分配置
+         */
+        public static SplitOptions defaults() {
+            return new SplitOptions(true, DEFAULT_SPLIT_SAVE_OPTIONS, DEFAULT_SPLIT_SHRINK_INTERVAL);
+        }
+
+        /**
+         * 构建指定是否开启字体子集化的拆分配置。
+         *
+         * @param subsetFonts 是否开启字体子集化
+         * @return 拆分配置
+         */
+        public static SplitOptions ofSubsetFonts(boolean subsetFonts) {
+            return new SplitOptions(subsetFonts, DEFAULT_SPLIT_SAVE_OPTIONS, DEFAULT_SPLIT_SHRINK_INTERVAL);
+        }
+    }
+
+    /**
+     * 将多页 PDF 拆分为多个单页 PDF 文件（默认开启字体子集化与流级去重压缩，使用独立句柄不影响并发预览）。
+     * <p>输出文件名格式为 {@code <原文件名>_page_<页码>.pdf}，页码从 1 开始，至少 5 位零填充（如 {@code sample_page_00001.pdf}）；
+     * 当总页数超过 99999 页时自动扩展位数。若拆分途中发生任何异常，自动回滚删除本次已生成的单页文件并抛出异常。</p>
+     *
+     * @param pdfPath   源 PDF 文件物理路径
+     * @param outputDir 拆分后单页 PDF 的输出目录（不存在时自动创建）
+     * @return 按页序排列的单页 PDF 文件路径列表
+     * @throws IllegalArgumentException 路径为空、文件不存在/不可读、非 PDF 格式或输出目录非法
+     * @throws IllegalStateException    服务已关闭、文档无可用页/受密码保护、或拆分写出失败
+     */
+    public List<Path> splitPdf(String pdfPath, Path outputDir) {
+        return splitPdf(pdfPath, outputDir, SplitOptions.defaults());
+    }
+
+    /**
+     * 将多页 PDF 拆分为多个单页 PDF 文件（支持自定义字体子集化与压缩策略，使用独立句柄不影响并发预览）。
+     * <p>输出文件名格式为 {@code <原文件名>_page_<页码>.pdf}，页码从 1 开始，至少 5 位零填充（如 {@code sample_page_00001.pdf}）；
+     * 当总页数超过 99999 页时自动扩展位数。若拆分途中发生任何异常，自动回滚删除本次已生成的单页文件并抛出异常。</p>
+     *
+     * @param pdfPath   源 PDF 文件物理路径
+     * @param outputDir 拆分后单页 PDF 的输出目录（不存在时自动创建）
+     * @param options   拆分配置（为 null 时采用默认配置 {@link SplitOptions#defaults()}）
+     * @return 按页序排列的单页 PDF 文件路径列表
+     * @throws IllegalArgumentException 路径为空、文件不存在/不可读、非 PDF 格式或输出目录非法
+     * @throws IllegalStateException    服务已关闭、文档无可用页/受密码保护、或拆分写出失败
+     */
+    public List<Path> splitPdf(String pdfPath, Path outputDir, SplitOptions options) {
+        if (closed) {
+            throw new IllegalStateException("MuPdfService 已关闭，无法继续拆分文档");
+        }
+        File file = requireReadableFile(pdfPath);
+        prepareSplitOutputDir(outputDir);
+        SplitOptions effectiveOptions = options != null ? options : SplitOptions.defaults();
+
+        Document doc = openDocument(file);
+        try {
+            PDFDocument srcPdf = requireSplittablePdf(doc, file);
+            return executeSplitLoop(srcPdf, file, outputDir, effectiveOptions);
+        } finally {
+            closeQuietly(doc);
+            Reference.reachabilityFence(doc);
+        }
+    }
+
+    private static void prepareSplitOutputDir(Path outputDir) {
+        if (outputDir == null) {
+            throw new IllegalArgumentException("PDF 拆分输出目录不能为空");
+        }
+        if (Files.exists(outputDir) && !Files.isDirectory(outputDir)) {
+            throw new IllegalArgumentException("PDF 拆分输出路径不是有效目录: " + outputDir);
+        }
+        try {
+            Files.createDirectories(outputDir);
+        } catch (IOException ioEx) {
+            log.error("[MuPDF-Split] 创建拆分输出目录失败: {}", outputDir, ioEx);
+            throw new IllegalStateException("创建拆分输出目录失败: " + outputDir + " -> " + ioEx.getMessage(), ioEx);
+        }
+    }
+
+    private static PDFDocument requireSplittablePdf(Document doc, File file) {
+        if (!(doc instanceof PDFDocument srcPdf)) {
+            throw new IllegalArgumentException("仅支持拆分 PDF 格式文档: " + file.getAbsolutePath());
+        }
+        int totalPages;
+        try {
+            totalPages = srcPdf.countPages();
+        } catch (RuntimeException countEx) {
+            throw new IllegalStateException("读取待拆分 PDF 页数失败: " + file.getAbsolutePath()
+                                            + " -> " + countEx.getMessage(), countEx);
+        }
+        if (totalPages <= 0) {
+            throw new IllegalStateException("PDF 文档无可用页面或受密码保护无法读取: " + file.getAbsolutePath());
+        }
+        return srcPdf;
+    }
+
+    private List<Path> executeSplitLoop(PDFDocument srcPdf, File srcFile, Path outputDir, SplitOptions options) {
+        int totalPages = srcPdf.countPages();
+        String baseName = extractBaseName(srcFile.getName());
+        int digits = computeSplitPageDigits(totalPages);
+        List<Path> generatedFiles = new ArrayList<>(totalPages);
+        try {
+            for (int pageIndex = 0; pageIndex < totalPages; pageIndex++) {
+                Path pageFile = outputDir.resolve(formatSplitFileName(baseName, pageIndex + 1, digits));
+                generatedFiles.add(pageFile);
+                exportSinglePagePdf(srcPdf, pageIndex, pageFile, options);
+                if (options.shrinkStoreEvery() > 0 && (pageIndex + 1) % options.shrinkStoreEvery() == 0) {
+                    shrinkStore();
+                }
+            }
+            return Collections.unmodifiableList(generatedFiles);
+        } catch (Throwable t) {
+            rollbackSplitFiles(generatedFiles, srcFile.getAbsolutePath());
+            if (t instanceof IllegalStateException stateEx) {
+                throw stateEx;
+            }
+            if (t instanceof IllegalArgumentException argEx) {
+                throw argEx;
+            }
+            throw new IllegalStateException("拆分 PDF 失败: " + srcFile.getAbsolutePath() + " -> " + t.getMessage(), t);
+        }
+    }
+
+    private static void exportSinglePagePdf(PDFDocument srcPdf, int pageIndex, Path targetFile, SplitOptions options) {
+        PDFDocument dstPdf = null;
+        try {
+            dstPdf = new PDFDocument();
+            dstPdf.graftPage(-1, srcPdf, pageIndex);
+            if (options.subsetFonts()) {
+                subsetSinglePageFonts(dstPdf, pageIndex, targetFile);
+            }
+            String saveOpts = options.saveOptions() == null ? DEFAULT_SPLIT_SAVE_OPTIONS : options.saveOptions();
+            dstPdf.save(targetFile.toAbsolutePath().toString(), saveOpts);
+        } catch (Throwable t) {
+            log.error("[MuPDF-Split] 导出第 {} 页单页 PDF 失败: {}", pageIndex + 1, targetFile, t);
+            throw new IllegalStateException("拆分导出第 " + (pageIndex + 1) + " 页失败: "
+                                            + targetFile + " -> " + t.getMessage(), t);
+        } finally {
+            closeQuietly(dstPdf);
+            Reference.reachabilityFence(dstPdf);
+            Reference.reachabilityFence(srcPdf);
+        }
+    }
+
+    private static void subsetSinglePageFonts(PDFDocument dstPdf, int pageIndex, Path targetFile) {
+        try {
+            dstPdf.subsetFonts();
+        } catch (Throwable subsetEx) {
+            log.warn("[MuPDF-Split] 第 {} 页字体子集化降级跳过（保留原始字体流）: {}", pageIndex + 1, targetFile, subsetEx);
+        }
+    }
+
+    private static void rollbackSplitFiles(List<Path> generatedFiles, String srcPath) {
+        for (Path path : generatedFiles) {
+            if (path == null) {
+                continue;
+            }
+            try {
+                Files.deleteIfExists(path);
+            } catch (IOException deleteEx) {
+                log.warn("[MuPDF-Split] 回滚清理已生成单页文件失败: {} (源文档: {})", path, srcPath, deleteEx);
+            }
+        }
+    }
+
+    /**
+     * 根据源文件名、1-based 页码与总页数生成标准单页文件名（如 {@code sample_page_00001.pdf}，最少 5 位页码，超 99999 页自动扩位）。
+     *
+     * @param sourceFileName 源文件名（可带或不带 {@code .pdf} 后缀）
+     * @param pageNumber     页码（从 1 开始）
+     * @param totalPages     文档总页数
+     * @return 格式化后的单页文件名
+     */
+    public static String formatSplitPageFileName(String sourceFileName, int pageNumber, int totalPages) {
+        String baseName = extractBaseName(sourceFileName == null ? "" : sourceFileName);
+        int digits = computeSplitPageDigits(totalPages);
+        return formatSplitFileName(baseName, pageNumber, digits);
+    }
+
+    static int computeSplitPageDigits(int totalPages) {
+        return Math.max(MIN_SPLIT_PAGE_DIGITS, String.valueOf(Math.max(1, totalPages)).length());
+    }
+
+    static String extractBaseName(String fileName) {
+        int dotIndex = fileName.lastIndexOf('.');
+        String base = dotIndex > 0 ? fileName.substring(0, dotIndex) : fileName;
+        String trimmed = base.trim();
+        return trimmed.isEmpty() ? "document" : trimmed;
+    }
+
+    static String formatSplitFileName(String baseName, int pageNumber, int digits) {
+        String pattern = "%s_page_%0" + digits + "d.pdf";
+        return String.format(Locale.ROOT, pattern, baseName, pageNumber);
     }
 
     /**
