@@ -85,6 +85,7 @@
 *   [PDFUtil](../pap4j-common/pap4j-common-pdf/src/main/java/cn/net/pap/common/pdf/PDFUtil.java): iText7 渲染及多语言字体映射。（测试验证见 [PDFUtilTest](../pap4j-common/pap4j-common-pdf/src/test/java/cn/net/pap/common/pdf/PDFUtilTest.java)）
 *   [FontSubsetUtils](../pap4j-common/pap4j-common-pdf/src/main/java/cn/net/pap/common/pdf/FontSubsetUtils.java): 嵌入式字体子集压缩。（测试验证见 [FontSubsetUtilsTest](../pap4j-common/pap4j-common-pdf/src/test/java/cn/net/pap/common/pdf/FontSubsetUtilsTest.java)）
 *   [Html2DocxUtils](../pap4j-common/pap4j-common-docx/src/main/java/cn/net/pap/common/docx/Html2DocxUtils.java): HTML 富文本转换为 Word (docx) 文档。（测试验证见 [Html2DocxUtilsTest](../pap4j-common/pap4j-common-docx/src/test/java/cn/net/pap/common/docx/Html2DocxUtilsTest.java)）
+*   [MuPdfService](../pap4j-common/pap4j-common-mupdf/src/main/java/cn/net/pap/common/mupdf/service/MuPdfService.java): 基于 MuPDF JNI 的高性能 PDF 核心门面，支持文本物理坐标 JSON 提取、单页光栅化（PNG/WebP/裸RGB点阵）、PDF 体检以及多页 PDF 极速拆分为单页 PDF（原生 graftPage 嫁接、单页字体自动子集化压缩、最少5位动态扩位命名、中途失败自动回滚删除、独立句柄与并发预览隔离）。（测试验证见 [MuPdfServiceTest](../pap4j-common/pap4j-common-mupdf/src/test/java/cn/net/pap/common/mupdf/MuPdfServiceTest.java)）
 
 ## ⚡ 高性能位图与海量计算 (Bitmap & DataSketches)
 *   [Roaring64NavigableMapUtil](../pap4j-common/pap4j-common-bitmap/src/main/java/cn/net/pap/common/bitmap/Roaring64NavigableMapUtil.java): 64位高性能 RoaringBitmap 存储与海量数据交并集运算。（测试验证见 [Roaring64NavigableMapTest](../pap4j-common/pap4j-common-bitmap/src/test/java/cn/net/pap/common/bitmap/Roaring64NavigableMapTest.java)）
