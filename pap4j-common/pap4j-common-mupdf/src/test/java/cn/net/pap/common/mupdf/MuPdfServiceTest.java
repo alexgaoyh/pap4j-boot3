@@ -609,6 +609,18 @@ public class MuPdfServiceTest {
         }
     }
 
+    // ------------------------------------------------------------------
+    // 文档结构：目录（/Outlines 书签）解析
+    // ------------------------------------------------------------------
+    @Test
+    public void testExtractOutlineMatchesGolden() throws Exception {
+        try (MuPdfService service = new MuPdfService()) {
+            List<MuPdfService.OutlineNode> outline = service.extractOutline(getClass().getResource("/ctex.pdf").getFile().toString());
+            Assertions.assertNotNull(outline, "测试资源不存在: ctex.pdf");
+        }
+    }
+
+
     private Path createSampleMultiPagePdf(Path targetPdf, int pageCount) {
         String[] sampleResources = {
                 "/sample.pdf",

@@ -68,6 +68,27 @@ public MuPdfService muPdfService() {
 
 建议再加一个定时任务周期性调用 `shrinkStore()` 收缩 MuPDF 全局堆外缓存。
 
+### 文档大纲（Document Outline / 书签）读取
+
+```java
+try (MuPdfService service = new MuPdfService()) {
+    // /Outlines 大纲树：title + uri + 目标页号(0 基) + children
+    List<MuPdfService.OutlineNode> outline = service.extractOutline("/data/ctex.pdf");
+}
+```
+
+对应 PDF 规范 ISO 32000-1 §12.3.3 的 <b>Document Outline</b>（`/Outlines` 字典），阅读器界面叫「书签」。
+它是制作方写入的元数据，**与页面内容无关**：每个条目只有「标题 + 跳转目标」，不含标题在页面上的位置与字号。
+
+| 项目 | 说明 |
+| --- | --- |
+| 条目字段 | `title`（标题）、`uri`（跳转目标）、`page`（目标页号，0 基）、`children`（下级条目） |
+| 层级 | 用嵌套表达，顺序与文档原始大纲一致 |
+| 有数据的 PDF | Word / WPS 导出、LaTeX + hyperref 等带书签的文档 |
+| 空结果的 PDF | 扫描件、未加书签的 PDF（返回空列表，不返回 null） |
+
+`ctex.pdf`（LaTeX/CTeX 手册，195 页）实测：19 个顶层条目、204 个条目、最深 6 级。
+
 ### 可调参数（JVM `-D`）
 
 | 参数 | 默认值 | 说明 |

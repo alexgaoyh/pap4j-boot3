@@ -9,6 +9,8 @@ import com.artifex.mupdf.fitz.Document;
 import com.artifex.mupdf.fitz.Font;
 import com.artifex.mupdf.fitz.Image;
 import com.artifex.mupdf.fitz.Matrix;
+import com.artifex.mupdf.fitz.LinkDestination;
+import com.artifex.mupdf.fitz.Outline;
 import com.artifex.mupdf.fitz.PDFDocument;
 import com.artifex.mupdf.fitz.PDFPage;
 import com.artifex.mupdf.fitz.Page;
@@ -78,6 +80,11 @@ import java.util.concurrent.locks.ReentrantLock;
 public class MuPdfService implements AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(MuPdfService.class);
+
+    /**
+     * 目录树的最大递归深度（防御性护栏：防止畸形 PDF 的自引用导致无限递归）。
+     */
+    private static final int MAX_OUTLINE_DEPTH = 32;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
@@ -399,6 +406,81 @@ public class MuPdfService implements AutoCloseable {
             release(managed);
             Reference.reachabilityFence(managed);
         }
+    }
+
+    /**
+     * 读取文档大纲（Document Outline，PDF 键 {@code /Outlines}；阅读器界面通常显示为「书签」）。
+     *
+     * <p>大纲是制作方写入的<b>元数据</b>，与页面内容无关：每个条目只有「标题 + 跳转目标」，
+     * <b>不包含</b>标题在页面上的位置、字号或正文。Word / WPS 导出、LaTeX + hyperref 等生成的
+     * PDF 通常带有完整的多级大纲；扫描件、未加书签的 PDF 返回空列表。</p>
+     *
+     * <p>返回的条目按文档原始顺序排列，层级用嵌套表达；每个条目同时解析出跳转目标页号
+     * （0 基，与 {@link #extractCoordinates(String, int)} 的页码语义一致）。</p>
+     *
+     * @param pdfPath PDF 物理路径
+     * @return 大纲条目树；文档没有大纲时返回空列表（不返回 null）
+     * @throws IllegalArgumentException 文件不存在 / 不可读
+     * @throws IllegalStateException    服务已关闭或文档无法打开
+     */
+    public List<OutlineNode> extractOutline(String pdfPath) {
+        ManagedDoc managed = acquire(pdfPath);
+        try {
+            Outline[] outlines = managed.doc.loadOutline();
+            if (outlines == null || outlines.length == 0) {
+                return List.of();
+            }
+            return toOutlineNodes(managed.doc, outlines, 0);
+        } catch (RuntimeException e) {
+            log.error("[MuPDF-Outline] 读取文档大纲失败: {}", pdfPath, e);
+            throw new IllegalStateException("读取文档大纲失败: " + pdfPath + " -> " + e.getMessage(), e);
+        } finally {
+            release(managed);
+            Reference.reachabilityFence(managed);
+        }
+    }
+
+    /**
+     * 递归
+     * @param doc doc
+     * @param outlines outlines
+     * @param depth depth
+     * @return
+     */
+    private static List<OutlineNode> toOutlineNodes(Document doc, Outline[] outlines, int depth) {
+        if (outlines == null || outlines.length == 0 || depth > MAX_OUTLINE_DEPTH) {
+            return List.of();
+        }
+        List<OutlineNode> nodes = new ArrayList<>(outlines.length);
+        for (Outline outline : outlines) {
+            if (outline == null) {
+                continue;
+            }
+            Integer page = null;
+            try {
+                LinkDestination dest = doc.resolveLinkDestination(outline);
+                if (dest != null && dest.page >= 0) {
+                    page = dest.page;
+                }
+            } catch (RuntimeException resolveEx) {
+                // 目标不可解析（如外部 URI 书签）不影响大纲本身
+                log.debug("[MuPDF-Outline] 大纲条目页号解析失败: {} -> {}", outline.title, resolveEx.getMessage());
+            }
+            nodes.add(new OutlineNode(outline.title, outline.uri, page,
+                    toOutlineNodes(doc, outline.down, depth + 1)));
+        }
+        return nodes;
+    }
+
+    /**
+     * 文档大纲条目（PDF {@code /Outlines} 树中的一个 outline item）
+     *
+     * @param title    条目标题（如 {@code 第2节 简明教程}）
+     * @param uri      跳转目标，原样取自 PDF：命名目标 {@code #nameddest=...}、页码 {@code #page=12}、外部链接 {@code https://...}
+     * @param page     跳转目标页号（0 基，语义同 {@link #extractCoordinates(String, int)}）；目标无法解析时为 null
+     * @param children 下级条目（无下级时为空列表，不为 null）
+     */
+    public record OutlineNode(String title, String uri, Integer page, List<OutlineNode> children) {
     }
 
     /**
@@ -836,6 +918,7 @@ public class MuPdfService implements AutoCloseable {
             return Collections.unmodifiableList(generatedFiles);
         } catch (Throwable t) {
             rollbackSplitFiles(generatedFiles, srcFile.getAbsolutePath());
+            log.error("[MuPDF] 拆分 PDF 失败，已回滚本次生成文件: {}", srcFile.getAbsolutePath(), t);
             if (t instanceof IllegalStateException stateEx) {
                 throw stateEx;
             }
@@ -1325,7 +1408,7 @@ public class MuPdfService implements AutoCloseable {
                             }
                         });
                     } catch (Exception e) {
-                        log.warn("[MuPDF] 保存内嵌图片到临时目录失败: {}", e.getMessage());
+                        log.error("[MuPDF] 保存内嵌图片到临时目录失败", e);
                     }
                 }
                 blocks.add(new BlockResult("image", toBbox(bbox, null), null, imagePath));
