@@ -8,6 +8,7 @@ import com.artifex.mupdf.fitz.Context;
 import com.artifex.mupdf.fitz.Document;
 import com.artifex.mupdf.fitz.Font;
 import com.artifex.mupdf.fitz.Image;
+import com.artifex.mupdf.fitz.Link;
 import com.artifex.mupdf.fitz.Matrix;
 import com.artifex.mupdf.fitz.LinkDestination;
 import com.artifex.mupdf.fitz.Outline;
@@ -85,6 +86,13 @@ public class MuPdfService implements AutoCloseable {
      * 目录树的最大递归深度（防御性护栏：防止畸形 PDF 的自引用导致无限递归）。
      */
     private static final int MAX_OUTLINE_DEPTH = 32;
+
+    /**
+     * {@link #extractMetadata(String)} 读取的元数据键（MuPDF 键名，固定顺序）。
+     */
+    private static final List<String> METADATA_KEYS = List.of(
+            "format", "encryption", "info:Title", "info:Author", "info:Subject", "info:Keywords",
+            "info:Creator", "info:Producer", "info:CreationDate", "info:ModDate", "info:Trapped");
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     /**
@@ -481,6 +489,178 @@ public class MuPdfService implements AutoCloseable {
      * @param children 下级条目（无下级时为空列表，不为 null）
      */
     public record OutlineNode(String title, String uri, Integer page, List<OutlineNode> children) {
+    }
+
+    /**
+     * 读取文档元数据（Info 字典 + 格式 / 加密信息）。
+     *
+     * <p>返回的 key 使用 MuPDF 的元数据键名：{@code format}、{@code encryption}、
+     * {@code info:Title}、{@code info:Author}、{@code info:Subject}、{@code info:Keywords}、
+     * {@code info:Creator}、{@code info:Producer}、{@code info:CreationDate}、{@code info:ModDate}、
+     * {@code info:Trapped}。<b>缺失的项不会出现在结果中</b>（不会用 null 占位）。</p>
+     *
+     * @param pdfPath PDF 物理路径
+     * @return 元数据键值对（按固定键序，未取得值的项被跳过）
+     * @throws IllegalArgumentException 文件不存在 / 不可读
+     * @throws IllegalStateException    服务已关闭或文档无法打开
+     */
+    public Map<String, String> extractMetadata(String pdfPath) {
+        ManagedDoc managed = acquire(pdfPath);
+        try {
+            Map<String, String> metadata = new LinkedHashMap<>();
+            for (String key : METADATA_KEYS) {
+                String value = managed.doc.getMetaData(key);
+                if (value != null && !value.isEmpty()) {
+                    metadata.put(key, value);
+                }
+            }
+            return metadata;
+        } catch (RuntimeException e) {
+            log.error("[MuPDF-Meta] 读取文档元数据失败: {}", pdfPath, e);
+            throw new IllegalStateException("读取文档元数据失败: " + pdfPath + " -> " + e.getMessage(), e);
+        } finally {
+            release(managed);
+            Reference.reachabilityFence(managed);
+        }
+    }
+
+    /**
+     * 读取单页页码标签（PDF {@code /PageLabels}，如前言用 {@code i/ii/iii}、正文从 {@code 1} 重新编号）。
+     *
+     * <p>文档没有定义 {@code /PageLabels} 时，MuPDF 回退为页序号（从 1 开始，即「物理页 + 1」）。
+     * 输出到业务侧时应同时保留物理页号与标签，避免自定义编号文档的引用页码错位。</p>
+     *
+     * @param pdfPath PDF 物理路径
+     * @param pageNum 页码 (0-indexed)
+     * @return 页码标签；无法取得时为 null
+     * @throws IllegalArgumentException 文件不存在 / 不可读
+     * @throws IndexOutOfBoundsException 页码越界
+     * @throws IllegalStateException    服务已关闭或文档无法打开
+     */
+    public String extractPageLabel(String pdfPath, int pageNum) {
+        ManagedDoc managed = acquire(pdfPath);
+        Page page = null;
+        try {
+            page = loadPageChecked(managed, pageNum);
+            return page.getLabel();
+        } catch (RuntimeException e) {
+            log.error("[MuPDF-Label] 读取页码标签失败: {} 第 {} 页", pdfPath, pageNum + 1, e);
+            throw new IllegalStateException("读取页码标签失败: " + pdfPath + " 第 " + (pageNum + 1) + " 页 -> "
+                                            + e.getMessage(), e);
+        } finally {
+            closeQuietly(page);
+            release(managed);
+            Reference.reachabilityFence(managed);
+        }
+    }
+
+    /**
+     * 读取单页超链接 / 内部跳转（PDF 页面注释中的 Link）。
+     *
+     * <p>内部跳转为 {@code #nameddest=...}、{@code #page=12} 形式（可用
+     * {@link #extractOutline(String)} 的 uri 与之对接形成目录锚点）；外部链接为 {@code http(s)://...}。</p>
+     *
+     * @param pdfPath PDF 物理路径
+     * @param pageNum 页码 (0-indexed)
+     * @return 链接列表（按 PDF 原始顺序）；无链接时返回空列表
+     * @throws IllegalArgumentException 文件不存在 / 不可读
+     * @throws IndexOutOfBoundsException 页码越界
+     * @throws IllegalStateException    服务已关闭或文档无法打开
+     */
+    public List<LinkInfo> extractLinks(String pdfPath, int pageNum) {
+        ManagedDoc managed = acquire(pdfPath);
+        Page page = null;
+        Link[] links = null;
+        try {
+            page = loadPageChecked(managed, pageNum);
+            links = page.getLinks();
+            if (links == null || links.length == 0) {
+                return List.of();
+            }
+            List<LinkInfo> result = new ArrayList<>(links.length);
+            for (Link link : links) {
+                if (link == null) {
+                    continue;
+                }
+                Rect bounds = link.getBounds();
+                boolean valid = bounds != null && bounds.isValid();
+                result.add(new LinkInfo(link.getURI(),
+                        valid ? round(bounds.x0) : 0.0,
+                        valid ? round(bounds.y0) : 0.0,
+                        valid ? round(bounds.x1) : 0.0,
+                        valid ? round(bounds.y1) : 0.0));
+            }
+            return result;
+        } catch (RuntimeException e) {
+            log.error("[MuPDF-Link] 读取页面链接失败: {} 第 {} 页", pdfPath, pageNum + 1, e);
+            throw new IllegalStateException("读取页面链接失败: " + pdfPath + " 第 " + (pageNum + 1) + " 页 -> "
+                                            + e.getMessage(), e);
+        } finally {
+            if (links != null) {
+                for (Link link : links) {
+                    closeQuietly(link);
+                }
+            }
+            closeQuietly(page);
+            release(managed);
+            Reference.reachabilityFence(managed);
+        }
+    }
+
+    /**
+     * 读取文档的可选内容组（OCG / 图层）及其默认可见性。
+     *
+     * <p>图层常用于双语文档、工程图、审批标记：<b>不可见图层的内容不应进入正文抽取结果</b>。
+     * 没有图层的文档返回空列表。</p>
+     *
+     * @param pdfPath PDF 物理路径
+     * @return 图层列表（按文档顺序）；无图层或非 PDF 时返回空列表
+     * @throws IllegalArgumentException 文件不存在 / 不可读
+     * @throws IllegalStateException    服务已关闭或文档无法打开
+     */
+    public List<LayerInfo> extractLayers(String pdfPath) {
+        ManagedDoc managed = acquire(pdfPath);
+        try {
+            if (!(managed.doc instanceof PDFDocument pdfDocument)) {
+                return List.of();
+            }
+            int count = pdfDocument.countLayers();
+            if (count <= 0) {
+                return List.of();
+            }
+            List<LayerInfo> layers = new ArrayList<>(count);
+            for (int i = 0; i < count; i++) {
+                layers.add(new LayerInfo(pdfDocument.getLayerName(i), pdfDocument.isLayerVisible(i)));
+            }
+            return layers;
+        } catch (RuntimeException e) {
+            log.error("[MuPDF-OCG] 读取图层信息失败: {}", pdfPath, e);
+            throw new IllegalStateException("读取图层信息失败: " + pdfPath + " -> " + e.getMessage(), e);
+        } finally {
+            release(managed);
+            Reference.reachabilityFence(managed);
+        }
+    }
+
+    /**
+     * 页面链接实体
+     *
+     * @param uri 跳转目标（{@code #nameddest=...} / {@code #page=12} / 外部 URL）
+     * @param x0  链接区域左上角 X
+     * @param y0  链接区域左上角 Y
+     * @param x1  链接区域右下角 X
+     * @param y1  链接区域右下角 Y
+     */
+    public record LinkInfo(String uri, double x0, double y0, double x1, double y1) {
+    }
+
+    /**
+     * 可选内容组（图层）实体
+     *
+     * @param name    图层名称
+     * @param visible 默认是否可见
+     */
+    public record LayerInfo(String name, boolean visible) {
     }
 
     /**

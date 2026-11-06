@@ -620,6 +620,54 @@ public class MuPdfServiceTest {
         }
     }
 
+    @Test
+    public void testExtractCtexDocumentData() {
+        String pdfPath = getClass().getResource("/ctex.pdf").getFile().toString();
+
+        try (MuPdfService service = new MuPdfService()) {
+            Map<String, String> metadata = service.extractMetadata(pdfPath);
+            List<MuPdfService.LayerInfo> layers = service.extractLayers(pdfPath);
+            List<MuPdfService.OutlineNode> outline = service.extractOutline(pdfPath);
+            int pageCount = service.getPageCount(pdfPath);
+
+            int chars = 0;
+            int links = 0;
+            int labelledPages = 0;
+            for (int pageNum = 0; pageNum < pageCount; pageNum++) {
+                MuPdfService.PageResult page = service.extractCoordinates(pdfPath, pageNum).pages().get(0);
+                if (service.extractPageLabel(pdfPath, pageNum) != null) {
+                    labelledPages++;
+                }
+                links += service.extractLinks(pdfPath, pageNum).size();
+                for (MuPdfService.BlockResult block : page.blocks()) {
+                    if ("text".equals(block.type()) && block.lines() != null) {
+                        for (MuPdfService.LineResult line : block.lines()) {
+                            chars += line.text().length();
+                        }
+                    }
+                }
+            }
+
+            System.out.println("[MuPdf] metadata=" + metadata.size() + " title=" + metadata.get("info:Title")
+                    + " author=" + metadata.get("info:Author") + " producer=" + metadata.get("info:Producer"));
+            System.out.println("[MuPdf] layers=" + layers);
+            System.out.println("[MuPdf] outline roots=" + outline.size()
+                    + " first=" + outline.get(0).title() + "@" + outline.get(0).page()
+                    + " children=" + outline.get(0).children().size());
+            System.out.println("[MuPdf] pages=" + pageCount + " labels=" + labelledPages
+                    + " links=" + links + " chars=" + chars);
+
+            Assertions.assertEquals(195, pageCount);
+            Assertions.assertEquals("CTeX 宏集手册", metadata.get("info:Title"));
+            Assertions.assertEquals("CTEX.ORG", metadata.get("info:Author"));
+            Assertions.assertTrue(layers.isEmpty(), "ctex.pdf 无图层");
+            Assertions.assertEquals(19, outline.size(), "大纲应有 19 个顶层条目");
+            Assertions.assertEquals("目录", outline.get(0).title());
+            Assertions.assertEquals(195, labelledPages, "195 页都应能取到页码标签");
+            Assertions.assertTrue(links > 8000, "全本应有 8 千以上链接");
+            Assertions.assertTrue(chars > 400000, "全本应提取 40 万以上字符");
+        }
+    }
 
     private Path createSampleMultiPagePdf(Path targetPdf, int pageCount) {
         String[] sampleResources = {
