@@ -126,33 +126,36 @@ public class EsSearchService {
                         .record(source)
                         .rawResponse(respMap)
                         .build();
-            } else {
-                return EsSearchResult.builder()
-                        .total(0L)
-                        .pageNum(1)
-                        .pageSize(1)
-                        .record(null)
-                        .rawResponse(respMap)
-                        .build();
             }
+            return emptyRecordResult(respMap);
         } catch (ResponseException e) {
             int status = e.getResponse().getStatusLine().getStatusCode();
             if (status == 404) {
                 log.info("[ES-Record] Document not found for rid: {} in index: {}", rid, targetIndex);
-                return EsSearchResult.builder()
-                        .total(0L)
-                        .pageNum(1)
-                        .pageSize(1)
-                        .record(null)
-                        .build();
+                return emptyRecordResult(null);
             }
             log.error("[ES-Record] Failed to query document rid: {} in index: {}", rid, targetIndex, e);
-            throw new RuntimeException("ES query record failed on index: " + targetIndex
-                    + ", status=" + status + ", reason=" + extractFailureReason(e));
+            throw responseFailure("query record", targetIndex, e);
         } catch (IOException e) {
             log.error("[ES-Record] IO error while querying document rid: {} in index: {}", rid, targetIndex, e);
             throw new RuntimeException("ES IO error on index: " + targetIndex);
         }
+    }
+
+    /**
+     * 构建「文档不存在」时的统一结果结构
+     *
+     * @param rawResponse ES 原始响应；不可得时传 null
+     * @return 空记录结果
+     */
+    private EsSearchResult emptyRecordResult(Map<String, Object> rawResponse) {
+        return EsSearchResult.builder()
+                .total(0L)
+                .pageNum(1)
+                .pageSize(1)
+                .record(null)
+                .rawResponse(rawResponse)
+                .build();
     }
 
     /**
@@ -177,11 +180,7 @@ public class EsSearchService {
             return deepSearch(request, from, pageSize, maxResultWindow);
         }
 
-        String targetIndex = resolveIndexName(request.getIndexName());
-        Map<String, Object> dsl = EsQueryBuilder.buildSearchDsl(request);
-
-        Map<String, Object> respMap = executeSearchRequest(targetIndex, dsl);
-        return parseSearchResponse(request, respMap);
+        return parseSearchResponse(request, executeSearchDsl(request));
     }
 
     /**
@@ -272,7 +271,7 @@ public class EsSearchService {
         Map<String, Object> assembled = new LinkedHashMap<>(base);
 
         Map<String, Object> hitsWrapper = new LinkedHashMap<>();
-        Map<String, Object> firstHitsWrapper = firstRespMap != null ? asMap(firstRespMap.get("hits")) : null;
+        Map<String, Object> firstHitsWrapper = hitsWrapperOf(firstRespMap);
         if (firstHitsWrapper != null && firstHitsWrapper.get("total") != null) {
             hitsWrapper.put("total", firstHitsWrapper.get("total"));
         }
@@ -282,11 +281,19 @@ public class EsSearchService {
     }
 
     /**
+     * 取出 _search 响应中的 hits 包装 Map（total / hits / max_score 等），普通检索与深分页共用
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> hitsWrapperOf(Map<String, Object> respMap) {
+        return respMap != null ? asMap(respMap.get("hits")) : null;
+    }
+
+    /**
      * 从 _search 响应中提取命中列表
      */
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> extractHits(Map<String, Object> respMap) {
-        Map<String, Object> hitsWrapper = respMap != null ? asMap(respMap.get("hits")) : null;
+        Map<String, Object> hitsWrapper = hitsWrapperOf(respMap);
         Object hitsList = hitsWrapper != null ? hitsWrapper.get("hits") : null;
         return hitsList instanceof List ? (List<Map<String, Object>>) hitsList : Collections.emptyList();
     }
@@ -308,7 +315,7 @@ public class EsSearchService {
      */
     @SuppressWarnings("unchecked")
     private long extractTotalHits(Map<String, Object> respMap) {
-        Map<String, Object> hitsWrapper = respMap != null ? asMap(respMap.get("hits")) : null;
+        Map<String, Object> hitsWrapper = hitsWrapperOf(respMap);
         if (hitsWrapper == null) {
             return -1L;
         }
@@ -334,11 +341,18 @@ public class EsSearchService {
         request.setAction(EsSearchAction.AGGREGATE);
         request.setPageSize(0);
 
-        String targetIndex = resolveIndexName(request.getIndexName());
-        Map<String, Object> dsl = EsQueryBuilder.buildSearchDsl(request);
+        return parseAggregateResponse(request, executeSearchDsl(request));
+    }
 
-        Map<String, Object> respMap = executeSearchRequest(targetIndex, dsl);
-        return parseAggregateResponse(request, respMap);
+    /**
+     * 统一「解析索引名 → 构建检索 DSL → 执行 _search」流程，普通检索与聚合共用
+     *
+     * @param request 检索/聚合入参
+     * @return ES 原始响应 Map
+     */
+    private Map<String, Object> executeSearchDsl(EsSearchRequest request) {
+        String targetIndex = resolveIndexName(request.getIndexName());
+        return executeSearchRequest(targetIndex, EsQueryBuilder.buildSearchDsl(request));
     }
 
     /**
@@ -357,9 +371,7 @@ public class EsSearchService {
             return readResponse(res);
         } catch (ResponseException e) {
             log.error("[ES-Search] Elasticsearch rejected the search on index: {}", indexName, e);
-            throw new RuntimeException("ES search execution failed on index: " + indexName
-                    + ", status=" + e.getResponse().getStatusLine().getStatusCode()
-                    + ", reason=" + extractFailureReason(e));
+            throw responseFailure("search execution", indexName, e);
         } catch (IOException e) {
             log.error("[ES-Search] Failed to execute search query on index: {}", indexName, e);
             throw new RuntimeException("ES search execution failed on index: " + indexName);
@@ -375,48 +387,42 @@ public class EsSearchService {
      */
     @SuppressWarnings("unchecked")
     private EsSearchResult parseSearchResponse(EsSearchRequest request, Map<String, Object> respMap) {
-        Map<String, Object> hitsWrapper = (Map<String, Object>) respMap.get("hits");
+        Map<String, Object> hitsWrapper = hitsWrapperOf(respMap);
         long total = 0L;
         List<Map<String, Object>> sourceRows = new ArrayList<>();
         List<EsSearchResult.HitRow> rowList = new ArrayList<>();
 
         if (hitsWrapper != null) {
-            long totalHits = extractTotalHits(respMap);
-            if (totalHits >= 0) {
-                total = totalHits;
-            }
+            total = Math.max(extractTotalHits(respMap), 0L);
 
-            List<Map<String, Object>> hitsList = (List<Map<String, Object>>) hitsWrapper.get("hits");
-            if (hitsList != null) {
-                for (Map<String, Object> hit : hitsList) {
-                    String id = (String) hit.get("_id");
-                    Double score = hit.get("_score") instanceof Number ? ((Number) hit.get("_score")).doubleValue() : null;
-                    Map<String, Object> source = (Map<String, Object>) hit.get("_source");
-                    Map<String, List<String>> highlight = (Map<String, List<String>>) hit.get("highlight");
-                    Map<String, Object> innerHits = mergeInnerHitsSuffixes((Map<String, Object>) hit.get("inner_hits"));
+            for (Map<String, Object> hit : extractHits(respMap)) {
+                String id = (String) hit.get("_id");
+                Double score = hit.get("_score") instanceof Number ? ((Number) hit.get("_score")).doubleValue() : null;
+                Map<String, Object> source = (Map<String, Object>) hit.get("_source");
+                Map<String, List<String>> highlight = (Map<String, List<String>>) hit.get("highlight");
+                Map<String, Object> innerHits = mergeInnerHitsSuffixes((Map<String, Object>) hit.get("inner_hits"));
 
-                    rowList.add(EsSearchResult.HitRow.builder()
-                            .id(id)
-                            .score(score)
-                            .source(source)
-                            .highlight(highlight)
-                            .innerHits(innerHits)
-                            .build());
+                rowList.add(EsSearchResult.HitRow.builder()
+                        .id(id)
+                        .score(score)
+                        .source(source)
+                        .highlight(highlight)
+                        .innerHits(innerHits)
+                        .build());
 
-                    Map<String, Object> row = source != null ? new LinkedHashMap<>(source) : new LinkedHashMap<>();
-                    if (!CollectionUtils.isEmpty(highlight)) {
-                        row.put("highlight", highlight);
-                    }
-                    sourceRows.add(row);
+                Map<String, Object> row = source != null ? new LinkedHashMap<>(source) : new LinkedHashMap<>();
+                if (!CollectionUtils.isEmpty(highlight)) {
+                    row.put("highlight", highlight);
                 }
+                sourceRows.add(row);
             }
         }
 
         Map<String, Object> aggs = (Map<String, Object>) respMap.get("aggregations");
 
-        int pageNum = request.getPageNum() != null && request.getPageNum() > 0 ? request.getPageNum() : 1;
-        int pageSize = request.getPageSize() != null && request.getPageSize() >= 0 ? request.getPageSize() : 10;
-        long pages = pageSize <= 0 ? 0 : (total + pageSize - 1) / pageSize;
+        int pageNum = normalizePageNum(request.getPageNum());
+        int pageSize = normalizePageSize(request.getPageSize());
+        long pages = (total + pageSize - 1) / pageSize;
 
         return EsSearchResult.builder()
                 .total(total)
@@ -439,17 +445,7 @@ public class EsSearchService {
      */
     @SuppressWarnings("unchecked")
     private EsSearchResult parseAggregateResponse(EsSearchRequest request, Map<String, Object> respMap) {
-        Map<String, Object> hitsWrapper = (Map<String, Object>) respMap.get("hits");
-        long total = 0L;
-        if (hitsWrapper != null) {
-            Object totalObj = hitsWrapper.get("total");
-            if (totalObj instanceof Map) {
-                Object val = ((Map<String, Object>) totalObj).get("value");
-                if (val instanceof Number) {
-                    total = ((Number) val).longValue();
-                }
-            }
-        }
+        long total = hitsWrapperOf(respMap) != null ? Math.max(extractTotalHits(respMap), 0L) : 0L;
 
         Map<String, Object> rawAggs = (Map<String, Object>) respMap.get("aggregations");
         Map<String, Object> aggs;
@@ -584,6 +580,20 @@ public class EsSearchService {
             log.error("[ES] Failed to read Elasticsearch error response body", ex);
         }
         return e.getMessage();
+    }
+
+    /**
+     * 统一包装 ES 拒绝响应异常：保留 HTTP 状态码与原始错误正文，便于业务侧诊断
+     *
+     * @param action    操作描述（如 search execution / query record）
+     * @param indexName 目标索引
+     * @param e         ES 响应异常
+     * @return 带状态码与原因的运行时异常
+     */
+    private RuntimeException responseFailure(String action, String indexName, ResponseException e) {
+        return new RuntimeException("ES " + action + " failed on index: " + indexName
+                + ", status=" + e.getResponse().getStatusLine().getStatusCode()
+                + ", reason=" + extractFailureReason(e));
     }
 
     private int normalizePageNum(Integer pageNum) {
