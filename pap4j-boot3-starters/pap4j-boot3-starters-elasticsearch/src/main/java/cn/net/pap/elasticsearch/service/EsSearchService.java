@@ -44,6 +44,16 @@ public class EsSearchService {
     private static final int FALLBACK_DEFAULT_PAGE_SIZE = 10;
 
     /**
+     * 缺省兜底深分页单批拉取条数
+     */
+    private static final int FALLBACK_DEEP_BATCH_SIZE = 1000;
+
+    /**
+     * 缺省兜底分页策略切换阈值（与 ES 默认 index.max_result_window 一致）
+     */
+    private static final long FALLBACK_MAX_RESULT_WINDOW = 10000L;
+
+    /**
      * ES 响应反序列化类型，静态复用，避免每次请求创建匿名 TypeReference 实例
      */
     private static final TypeReference<Map<String, Object>> RESPONSE_TYPE = new TypeReference<>() {
@@ -147,6 +157,10 @@ public class EsSearchService {
 
     /**
      * 分页多条件全文检索
+     * <p>
+     * from + size 在 max_result_window 以内时保持原生 from/size 语义；
+     * 超出时内部自动切换为 search_after 游标翻页，因此**不再因为超过 10000 而拒绝请求**，
+     * 对外返回结果结构与语义保持一致。
      *
      * @param request 检索入参
      * @return 检索结果
@@ -154,15 +168,160 @@ public class EsSearchService {
     public EsSearchResult search(EsSearchRequest request) {
         int pageNum = normalizePageNum(request.getPageNum());
         int pageSize = normalizePageSize(request.getPageSize());
-        validateResultWindow(pageNum, pageSize);
         request.setPageNum(pageNum);
         request.setPageSize(pageSize);
+
+        long from = ((long) pageNum - 1) * pageSize;
+        long maxResultWindow = resolveMaxResultWindow();
+        if (from + pageSize > maxResultWindow) {
+            return deepSearch(request, from, pageSize, maxResultWindow);
+        }
 
         String targetIndex = resolveIndexName(request.getIndexName());
         Map<String, Object> dsl = EsQueryBuilder.buildSearchDsl(request);
 
         Map<String, Object> respMap = executeSearchRequest(targetIndex, dsl);
         return parseSearchResponse(request, respMap);
+    }
+
+    /**
+     * 深分页检索：内部使用 search_after 游标逐批回溯定位目标页，避免 from + size 触达 max_result_window。
+     * <p>
+     * 对外契约与普通检索保持一致：total / pageNum / pageSize / pages / rows / hitRows / aggregations / rawResponse
+     * 均与同一请求用 from(size) 取数时的结构相同，仅内部请求方式发生变化。
+     *
+     * @param request         检索入参
+     * @param from            目标页起始偏移
+     * @param pageSize        每页条数
+     * @param maxResultWindow 分页策略切换阈值
+     * @return 检索结果
+     */
+    private EsSearchResult deepSearch(EsSearchRequest request, long from, int pageSize, long maxResultWindow) {
+        String targetIndex = resolveIndexName(request.getIndexName());
+        int batchSize = resolveDeepBatchSize(pageSize, maxResultWindow);
+        long targetEnd = from + pageSize;
+
+        List<Map<String, Object>> pageHits = new ArrayList<>(pageSize);
+        List<Object> searchAfter = null;
+        Map<String, Object> firstRespMap = null;
+        Map<String, Object> lastRespMap = null;
+        long offset = 0L;
+
+        while (offset < targetEnd) {
+            Map<String, Object> dsl = EsQueryBuilder.buildSearchAfterDsl(request, batchSize, searchAfter);
+            Map<String, Object> respMap = executeSearchRequest(targetIndex, dsl);
+            if (firstRespMap == null) {
+                firstRespMap = respMap;
+            }
+            lastRespMap = respMap;
+
+            List<Map<String, Object>> batchHits = extractHits(respMap);
+            if (batchHits.isEmpty()) {
+                break;
+            }
+
+            for (Map<String, Object> hit : batchHits) {
+                if (offset >= from && pageHits.size() < pageSize) {
+                    pageHits.add(hit);
+                }
+                offset++;
+            }
+
+            List<Object> cursor = extractSortValues(batchHits.get(batchHits.size() - 1));
+            if (cursor == null || cursor.isEmpty()) {
+                break;
+            }
+            searchAfter = cursor;
+
+            if (batchHits.size() < batchSize) {
+                break;
+            }
+        }
+
+        return parseSearchResponse(request, assemblePagedResponse(firstRespMap, lastRespMap, pageHits));
+    }
+
+    /**
+     * 分页策略切换阈值，配置非法时回退到 ES 默认的 10000
+     */
+    private long resolveMaxResultWindow() {
+        long configured = properties != null ? properties.getMaxResultWindow() : 0L;
+        return configured > 0 ? configured : FALLBACK_MAX_RESULT_WINDOW;
+    }
+
+    /**
+     * 计算深分页单批拉取条数：取配置值与 max_result_window 的较小值，且不小于单页条数
+     */
+    private int resolveDeepBatchSize(int pageSize, long maxResultWindow) {
+        int configured = (properties != null && properties.getDeepPaginationBatchSize() > 0)
+                ? properties.getDeepPaginationBatchSize() : FALLBACK_DEEP_BATCH_SIZE;
+        long upperBound = Math.min(configured, maxResultWindow);
+        int batchSize = (int) Math.min(upperBound, Integer.MAX_VALUE);
+        return Math.max(batchSize, pageSize);
+    }
+
+    /**
+     * 将深分页游标多批返回的命中重新拼装成一次 _search 响应的形态，保证后续解析逻辑与普通检索完全一致
+     */
+    private Map<String, Object> assemblePagedResponse(
+            Map<String, Object> firstRespMap,
+            Map<String, Object> lastRespMap,
+            List<Map<String, Object>> pageHits) {
+        Map<String, Object> base = lastRespMap != null ? lastRespMap
+                : (firstRespMap != null ? firstRespMap : new LinkedHashMap<>());
+        Map<String, Object> assembled = new LinkedHashMap<>(base);
+
+        Map<String, Object> hitsWrapper = new LinkedHashMap<>();
+        Map<String, Object> firstHitsWrapper = firstRespMap != null ? asMap(firstRespMap.get("hits")) : null;
+        if (firstHitsWrapper != null && firstHitsWrapper.get("total") != null) {
+            hitsWrapper.put("total", firstHitsWrapper.get("total"));
+        }
+        hitsWrapper.put("hits", new ArrayList<>(pageHits));
+        assembled.put("hits", hitsWrapper);
+        return assembled;
+    }
+
+    /**
+     * 从 _search 响应中提取命中列表
+     */
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> extractHits(Map<String, Object> respMap) {
+        Map<String, Object> hitsWrapper = respMap != null ? asMap(respMap.get("hits")) : null;
+        Object hitsList = hitsWrapper != null ? hitsWrapper.get("hits") : null;
+        return hitsList instanceof List ? (List<Map<String, Object>>) hitsList : Collections.emptyList();
+    }
+
+    /**
+     * 从命中的 sort 字段提取 search_after 游标值
+     */
+    @SuppressWarnings("unchecked")
+    private List<Object> extractSortValues(Map<String, Object> hit) {
+        if (hit == null) {
+            return null;
+        }
+        Object sortValues = hit.get("sort");
+        return sortValues instanceof List ? (List<Object>) sortValues : null;
+    }
+
+    /**
+     * 从 _search 响应中提取命中总数，无法识别时返回 -1
+     */
+    @SuppressWarnings("unchecked")
+    private long extractTotalHits(Map<String, Object> respMap) {
+        Map<String, Object> hitsWrapper = respMap != null ? asMap(respMap.get("hits")) : null;
+        if (hitsWrapper == null) {
+            return -1L;
+        }
+        Object totalObj = hitsWrapper.get("total");
+        if (totalObj instanceof Map) {
+            Object val = ((Map<String, Object>) totalObj).get("value");
+            if (val instanceof Number) {
+                return ((Number) val).longValue();
+            }
+        } else if (totalObj instanceof Number) {
+            return ((Number) totalObj).longValue();
+        }
+        return -1L;
     }
 
     /**
@@ -222,14 +381,9 @@ public class EsSearchService {
         List<EsSearchResult.HitRow> rowList = new ArrayList<>();
 
         if (hitsWrapper != null) {
-            Object totalObj = hitsWrapper.get("total");
-            if (totalObj instanceof Map) {
-                Object val = ((Map<String, Object>) totalObj).get("value");
-                if (val instanceof Number) {
-                    total = ((Number) val).longValue();
-                }
-            } else if (totalObj instanceof Number) {
-                total = ((Number) totalObj).longValue();
+            long totalHits = extractTotalHits(respMap);
+            if (totalHits >= 0) {
+                total = totalHits;
             }
 
             List<Map<String, Object>> hitsList = (List<Map<String, Object>>) hitsWrapper.get("hits");
@@ -430,23 +584,6 @@ public class EsSearchService {
             log.error("[ES] Failed to read Elasticsearch error response body", ex);
         }
         return e.getMessage();
-    }
-
-    /**
-     * 深分页保护：from + size 不得超过 max_result_window，否则 ES 需跳过分片排序并按偏移量回溯，代价极高
-     *
-     * @param pageNum  页码
-     * @param pageSize 每页条数
-     */
-    private void validateResultWindow(int pageNum, int pageSize) {
-        long maxResultWindow = properties.getMaxResultWindow();
-        long from = (long) (pageNum - 1) * pageSize;
-        if (from + pageSize > maxResultWindow) {
-            throw new IllegalArgumentException(
-                    "Deep pagination rejected: from + size (" + (from + pageSize)
-                            + ") exceeds elasticsearch.max-result-window (" + maxResultWindow
-                            + "); pageNum=" + pageNum + ", pageSize=" + pageSize);
-        }
     }
 
     private int normalizePageNum(Integer pageNum) {

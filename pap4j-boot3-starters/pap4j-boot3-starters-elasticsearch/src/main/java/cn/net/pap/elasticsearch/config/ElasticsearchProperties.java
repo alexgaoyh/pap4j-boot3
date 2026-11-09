@@ -71,8 +71,20 @@ public class ElasticsearchProperties {
     private int maxPageSize = 100;
 
     /**
-     * 深分页保护阈值（对应 ES max_result_window）：from + size 超过该值时直接拒绝，
-     * 避免在千万级索引上触发跨分片全量排序的高代价查询。默认 10000，与 ES 默认值一致。
+     * 检索分页策略切换阈值（对应 ES 默认 index.max_result_window = 10000）：
+     * from + size 小于等于该值时直接用 from/size 取数；超出时内部自动切为 search_after 游标翻页，
+     * 因此请求不会再因为超过 10000 而被拒绝。默认 10000，与 ES 默认值一致。
+     * <p>
+     * 如对索引改过 index.max_result_window，可同步调整该值以减少内部回溯次数。
+     * </p>
      */
     private int maxResultWindow = 10000;
+
+    /**
+     * 深分页 search_after 游标翻页时单批拉取的文档数（默认 1000）。
+     * <p>
+     * 仅影响内部逐批回溯的次数，不影响对外返回的分页大小；实际取值受 maxResultWindow 约束。
+     * </p>
+     */
+    private int deepPaginationBatchSize = 1000;
 }

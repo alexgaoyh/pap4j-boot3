@@ -653,13 +653,23 @@ public class EsSearchServiceTest {
         assertThat(result.getPages()).isEqualTo(3L);
     }
 
+    /**
+     * 深分页不再拒绝：pageNum=200、pageSize=100 时 from + size = 19900 已超过默认 10000，
+     * 内部改走 search_after 游标翻页（无排序时用 _score desc + _seq_no asc 兜底），
+     * 仍然返回正常结果结构：total 正确、越界页为空、分页元信息回显一致。
+     */
     @Test
-    void test37_deepPaginationRejected() {
+    void test37_deepPaginationBeyondWindowSupported() {
         EsSearchRequest request = EsSearchRequest.search().indexName(TEST_INDEX).pageNum(200).pageSize(100);
 
-        assertThatThrownBy(() -> esSearchService.search(request))
-                .isInstanceOf(IllegalArgumentException.class)
-                .hasMessageContaining("Deep pagination");
+        EsSearchResult result = esSearchService.search(request);
+
+        assertThat(result.getTotal()).isEqualTo(6L);
+        assertThat(result.getPageNum()).isEqualTo(200);
+        assertThat(result.getPageSize()).isEqualTo(100);
+        assertThat(result.getPages()).isEqualTo(1L);
+        assertThat(result.getHitRows()).isEmpty();
+        assertThat(result.getRows()).isEmpty();
     }
 
     @Test

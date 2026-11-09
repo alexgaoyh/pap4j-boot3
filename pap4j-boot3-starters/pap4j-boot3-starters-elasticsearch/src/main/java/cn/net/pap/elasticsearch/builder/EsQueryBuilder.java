@@ -29,6 +29,12 @@ import java.util.Set;
 public class EsQueryBuilder {
 
     /**
+     * 深分页 search_after 游标翻页的兜底排序字段：_seq_no 可排序、开销低，且在同一分片内单调递增，
+     * 与业务排序字段拼接后可构成稳定游标（ES 默认不允许按 _id 排序）。
+     */
+    private static final String TIEBREAKER_SORT_FIELD = "_seq_no";
+
+    /**
      * 构建完整的 ES 查询请求体 Map
      *
      * @param request 统一检索入参
@@ -45,6 +51,8 @@ public class EsQueryBuilder {
             int pageSize = request.getPageSize() != null && request.getPageSize() >= 0 ? request.getPageSize() : 10;
             dsl.put("from", (pageNum - 1) * pageSize);
             dsl.put("size", pageSize);
+            // 检索场景强制精确命中总数：命中数超过 10000 时 total / pages 依然正确
+            dsl.put("track_total_hits", Boolean.TRUE);
         }
 
         // 2. 返回字段过滤 _source
@@ -85,6 +93,66 @@ public class EsQueryBuilder {
         }
 
         return dsl;
+    }
+
+    /**
+     * 构建深分页 search_after 游标翻页请求体。
+     * <p>
+     * 与 {@link #buildSearchDsl(EsSearchRequest)} 的区别仅在于分页方式：
+     * 1. 移除 from，改由 search_after 游标推进（不再受 from + size 窗口限制）；
+     * 2. size 固定为内部单批拉取条数；
+     * 3. 在业务排序末尾追加 _seq_no 兜底排序（ES 不允许按 _id 排序），保证游标翻页稳定；
+     * 4. 未指定任何排序时，使用 _score desc + _seq_no asc，保持相关性优先且顺序稳定。
+     * <p>
+     * 查询条件、_source 过滤、高亮、脚本排序、聚合等其余 DSL 结构完全沿用原有构建逻辑。
+     *
+     * @param request     统一检索入参
+     * @param batchSize   内部单批拉取条数
+     * @param searchAfter 上一批最后一条命中的 sort 值，首批传 null / 空
+     * @return 深分页请求体
+     */
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> buildSearchAfterDsl(EsSearchRequest request, int batchSize, List<?> searchAfter) {
+        Map<String, Object> dsl = buildSearchDsl(request);
+        dsl.remove("from");
+        dsl.put("size", batchSize);
+
+        List<Object> sortList = new ArrayList<>();
+        Object rawSort = dsl.get("sort");
+        if (rawSort instanceof List) {
+            sortList.addAll((List<Object>) rawSort);
+        }
+        if (sortList.isEmpty()) {
+            // 无业务排序时，保持相关性优先，再用 _seq_no 兜底保证游标翻页稳定
+            sortList.add(Collections.singletonMap("_score", Collections.singletonMap("order", "desc")));
+        }
+        if (!containsSortField(sortList, TIEBREAKER_SORT_FIELD)) {
+            sortList.add(Collections.singletonMap(TIEBREAKER_SORT_FIELD,
+                    Collections.singletonMap("order", "asc")));
+        }
+        dsl.put("sort", sortList);
+
+        if (!CollectionUtils.isEmpty(searchAfter)) {
+            dsl.put("search_after", new ArrayList<>(searchAfter));
+        }
+        return dsl;
+    }
+
+    /**
+     * 判断排序列表中是否已经包含指定排序字段
+     */
+    private static boolean containsSortField(List<Object> sortList, String field) {
+        for (Object item : sortList) {
+            if (item instanceof Map) {
+                Map<String, Object> sortEntry = castToMap(item);
+                if (sortEntry.containsKey(field)) {
+                    return true;
+                }
+            } else if (field.equals(item)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
