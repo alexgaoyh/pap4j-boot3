@@ -10,11 +10,13 @@
 TREE_LEAF_FLATTEN 是 QLExpress 引擎中递归提取树形数据结构中所有叶子节点路径的函数。它与 TREE_FLATTEN 类似，但有一个关键区别：它只返回叶子节点（即没有子节点的末端节点）的层级路径，不包含中间层级的父节点路径。
 
 ### 📝 语法签名
-`TREE_LEAF_FLATTEN(root, childrenKey, nameKey, sep)`
-- 第一个参数 root 是树结构的根对象，通常是 json 中的某个字段。
-- 第二个参数 childrenKey 是标识子节点列表的字段名，例如 `'children'`。
-- 第三个参数 nameKey 是标识节点名称的字段名，例如 `'name'`。
-- 第四个参数 sep 是层级之间的分隔符，例如 `'/'`。
+`TREE_LEAF_FLATTEN(root, childrenKey, nameKey [, sep])`
+- 第一个参数 root（必填）是树结构的根对象，通常是 json 中的某个字段；也可以直接传入节点集合。
+- 第二个参数 childrenKey（必填）是标识子节点列表的字段名，例如 `'children'`。
+- 第三个参数 nameKey（必填）是标识节点名称的字段名，例如 `'name'`。
+- 第四个参数 sep（可选）是层级之间的分隔符，省略时默认使用 `' > '`，例如也可传 `'/'`。
+
+> 注意：本函数最少只需 3 个参数，`sep` 省略时不为 null，而是回落到 `' > '`。
 
 ### 💻 推荐代码示例
 
