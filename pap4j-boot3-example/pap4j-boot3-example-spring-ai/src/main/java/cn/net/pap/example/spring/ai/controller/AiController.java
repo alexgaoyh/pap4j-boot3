@@ -9,6 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.chat.prompt.SystemPromptTemplate;
 import org.springframework.ai.document.Document;
@@ -204,9 +205,8 @@ public class AiController {
                         }
                         var output = chatResponse.getResult().getOutput();
 
-                        // 1. 提取思考内容 (DeepSeek / OpenAI reasoningContent)
-                        Object reasoningObj = output.getMetadata().get("reasoningContent");
-                        String reasoning = reasoningObj != null ? reasoningObj.toString() : "";
+                        // 1. 提取思考内容 (OpenAI 系 reasoningContent / Ollama thinking)
+                        String reasoning = extractReasoning(chatResponse);
 
                         // 2. 提取正文内容
                         String content = output.getText() != null ? output.getText() : "";
@@ -252,6 +252,30 @@ public class AiController {
                     })
                     .contextWrite(ctx -> ctx.put(AgentTool.ACTIVITY_SINK_KEY, activitySink));
         }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    /**
+     * 跨 provider 提取思考内容：OpenAI 系在消息级属性 {@code reasoningContent}，
+     * Ollama 在 Generation 级元数据 {@code thinking}。取不到返回空串，对非思考模型无副作用。
+     *
+     * @param chatResponse 流式/非流式响应
+     * @return 思考内容；无思考内容时返回空串，永不为 null
+     */
+    private String extractReasoning(ChatResponse chatResponse) {
+        var result = chatResponse.getResult();
+        if (result == null || result.getOutput() == null) {
+            return "";
+        }
+
+        // 1. OpenAI 系：消息级属性，键名由 Spring AI 映射，恒为 reasoningContent
+        Object reasoning = result.getOutput().getMetadata().get("reasoningContent");
+
+        // 2. Ollama 系：Generation 级元数据
+        if (reasoning == null && result.getMetadata() != null) {
+            reasoning = result.getMetadata().get("thinking");
+        }
+
+        return reasoning != null ? reasoning.toString() : "";
     }
 
     private record RewriteResult(String searchQuery, String bm25Keywords) {}
