@@ -1,5 +1,6 @@
 package cn.net.pap.example.spring.ai.controller;
 
+import cn.net.pap.example.spring.ai.tool.AgentTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.ArrayList;
@@ -181,7 +183,16 @@ public class AiController {
             // 用于记录当前是否处于 <thinking> 标签内部
             AtomicBoolean isThinking = new AtomicBoolean(false);
 
-            return agentChatClient.prompt()
+            // 用于实时收集工具执行轨迹并注入思考区的响应式 Sink
+            Sinks.Many<String> activitySink = Sinks.many().multicast().onBackpressureBuffer();
+            Flux<String> activityFlux = activitySink.asFlux().map(act -> {
+                if (isThinking.compareAndSet(false, true)) {
+                    return "<thinking>\n" + act;
+                }
+                return act;
+            });
+
+            Flux<String> llmFlux = agentChatClient.prompt()
                     .system(renderedSystemPrompt)
                     .user(request.prompt())
                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
@@ -193,7 +204,7 @@ public class AiController {
                         }
                         var output = chatResponse.getResult().getOutput();
 
-                        // 1. 提取思考内容 (Spring AI OpenAI 存储在 metadata 的 reasoningContent 中)
+                        // 1. 提取思考内容 (DeepSeek / OpenAI reasoningContent)
                         Object reasoningObj = output.getMetadata().get("reasoningContent");
                         String reasoning = reasoningObj != null ? reasoningObj.toString() : "";
 
@@ -220,11 +231,14 @@ public class AiController {
 
                         return chunkBuilder.toString();
                     })
-                    .filter(chunk -> !chunk.isEmpty()) // 过滤掉空帧
+                    .filter(chunk -> !chunk.isEmpty())
+                    .doFinally(sig -> activitySink.tryEmitComplete());
+
+            return Flux.merge(activityFlux, llmFlux)
                     .concatWith(Mono.defer(() -> {
                         // 兜底处理：防止流意外结束时标签未闭合
                         if (isThinking.compareAndSet(true, false)) {
-                            return Mono.just("\n</thinking>");
+                            return Mono.just("\n</thinking>\n\n");
                         }
                         return Mono.empty();
                     }))
@@ -235,7 +249,8 @@ public class AiController {
                             log.error("JSON serialization failed for stream chunk", e);
                             return "{\"v\":\"\"}";
                         }
-                    });
+                    })
+                    .contextWrite(ctx -> ctx.put(AgentTool.ACTIVITY_SINK_KEY, activitySink));
         }).subscribeOn(Schedulers.boundedElastic());
     }
 

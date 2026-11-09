@@ -6,4 +6,9 @@ package cn.net.pap.example.spring.ai.tool;
  * 凡是实现了该接口的 Spring Bean，均会被自动发现并注册到 Agent 智能体的工具上下文中。
  */
 public interface AgentTool {
+
+    /**
+     * 响应式上下文中用于实时收集智能体活动轨迹（思考/调用/观察）的 Sink Key。
+     */
+    String ACTIVITY_SINK_KEY = "AGENT_ACTIVITY_SINK";
 }

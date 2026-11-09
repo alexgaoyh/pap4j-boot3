@@ -3,10 +3,13 @@ package cn.net.pap.example.spring.ai.tool;
 import cn.net.pap.common.core.search.FileSearch;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.ai.model.tool.internal.ToolCallReactiveContextHolder;
 import org.springframework.ai.tool.annotation.Tool;
 import org.springframework.ai.tool.annotation.ToolParam;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import reactor.core.publisher.Sinks;
+import reactor.util.context.ContextView;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -72,6 +75,26 @@ public class FileSearchTool implements AgentTool {
     }
 
     /**
+     * 将当前工具的执行动作与结果摘要推送到响应式上下文关联的流式通知通道中，
+     * 用于实时同步至前端作为 Agent 思考（Thinking）的一部分展现。
+     *
+     * @param text 待推送的活动摘要文本
+     */
+    private void emitActivity(String text) {
+        try {
+            ContextView ctx = ToolCallReactiveContextHolder.getContext();
+            if (ctx != null && ctx.hasKey(AgentTool.ACTIVITY_SINK_KEY)) {
+                Sinks.Many<String> sink = ctx.get(AgentTool.ACTIVITY_SINK_KEY);
+                if (sink != null) {
+                    sink.tryEmitNext(text);
+                }
+            }
+        } catch (Exception e) {
+            log.error("[FileSearchTool] 反应式通知发送异常", e);
+        }
+    }
+
+    /**
      * 工具 1：按通配符或扩展名搜索文件路径。
      *
      * @param pattern 文件通配符模式，如 {@code *.md}、{@code *syntax*}
@@ -80,7 +103,9 @@ public class FileSearchTool implements AgentTool {
     @Tool(name = "FileSearchTool-findFiles", description = "根据通配符模式在本地知识库中查找匹配的文件相对路径列表（例如查找 *.md 或包含特定名称的文档）")
     public String findFiles(
             @ToolParam(description = "文件名匹配通配符，如 *.md、*operator* 等") String pattern) {
+        emitActivity("\n> 🔍 **[智能体文件检索]** 检索模式: `" + pattern + "`\n");
         if (pattern == null || pattern.isBlank()) {
+            emitActivity("> ❌ **[检索失败]** 通配符参数为空\n\n");
             return "错误：通配符参数不能为空";
         }
         try {
@@ -90,9 +115,11 @@ public class FileSearchTool implements AgentTool {
 
             List<Path> matchedPaths = FileSearch.findFiles(sandboxRoot, options);
             if (matchedPaths.isEmpty()) {
+                emitActivity("> ⚠️ **[检索反馈]** 未找到匹配的文件: `" + pattern + "`\n\n");
                 return "未找到匹配的文件: " + pattern;
             }
 
+            emitActivity("> 📄 **[检索反馈]** 匹配到 " + matchedPaths.size() + " 个相关文档\n\n");
             return matchedPaths.stream()
                     .map(p -> sandboxRoot.relativize(p).toString().replace('\\', '/'))
                     .collect(Collectors.joining("\n"));
@@ -111,7 +138,9 @@ public class FileSearchTool implements AgentTool {
     @Tool(name = "FileSearchTool-grepContent", description = "在知识库文件中按关键词或专有名词精确搜索内容，返回命中的文件、行号以及对应代码片段")
     public String grepContent(
             @ToolParam(description = "要搜索的专有名词、函数名或关键词，例如：TREE_FLATTEN、ISBLANK") String keyword) {
+        emitActivity("\n> 🔎 **[智能体内容精确检索]** 检索关键词: `" + keyword + "`\n");
         if (keyword == null || keyword.isBlank()) {
+            emitActivity("> ❌ **[检索失败]** 关键词为空\n\n");
             return "错误：检索关键词不能为空";
         }
         try {
@@ -122,9 +151,11 @@ public class FileSearchTool implements AgentTool {
 
             List<FileSearch.FileMatch> matches = FileSearch.grep(sandboxRoot, options);
             if (matches.isEmpty()) {
+                emitActivity("> ⚠️ **[检索反馈]** 未在文档中检索到关键词: `" + keyword + "`\n\n");
                 return "未在文档中检索到关键词: " + keyword;
             }
 
+            emitActivity("> 📄 **[检索反馈]** 命中 " + matches.size() + " 篇文档，准备提取匹配行\n\n");
             StringBuilder sb = new StringBuilder();
             for (FileSearch.FileMatch fileMatch : matches) {
                 String relative = sandboxRoot.relativize(fileMatch.file()).toString().replace('\\', '/');
@@ -152,26 +183,32 @@ public class FileSearchTool implements AgentTool {
     @Tool(name = "FileSearchTool-readDoc", description = "读取知识库中指定文档的完整正文，path 使用 findFiles 返回的相对路径（例如 _index.md）")
     public String readDoc(
             @ToolParam(description = "文档相对路径，如 _index.md、function_isblank.md") String path) {
+        emitActivity("\n> 📖 **[智能体文档阅读]** 阅读文档: `" + path + "`\n");
         if (path == null || path.isBlank()) {
+            emitActivity("> ❌ **[读取失败]** 路径为空\n\n");
             return "错误：文档路径不能为空";
         }
         try {
             Path target = sandboxRoot.resolve(path).normalize();
             // 防止 ../../ 目录穿越读取沙箱外的文件
             if (!target.startsWith(sandboxRoot)) {
+                emitActivity("> ❌ **[安全拦截]** 路径越界沙箱\n\n");
                 return "错误：路径越界，仅允许访问知识库目录内的文档";
             }
             if (!Files.isRegularFile(target)) {
+                emitActivity("> ⚠️ **[读取反馈]** 文档不存在: `" + path + "`\n\n");
                 return "未找到文档: " + path + "，请先调用 FileSearchTool-findFiles 确认路径";
             }
 
             String text = Files.readString(target, StandardCharsets.UTF_8);
+            emitActivity("> 📄 **[读取反馈]** 成功载入正文 (" + text.length() + " 字符)\n\n");
             if (text.length() > MAX_READ_CHARS) {
                 text = text.substring(0, MAX_READ_CHARS) + "\n...(文档过长已截断，剩余内容请用 FileSearchTool-readLines 或 FileSearchTool-grepContent 按需检索)";
             }
             return "### 文件: " + sandboxRoot.relativize(target).toString().replace('\\', '/') + "\n" + text;
         } catch (IOException e) {
             log.error("[FileSearchTool] 文档读取失败, path: {}", path, e);
+            emitActivity("> ❌ **[读取异常]** " + e.getMessage() + "\n\n");
             return "读取异常: " + e.getMessage();
         }
     }
@@ -190,7 +227,9 @@ public class FileSearchTool implements AgentTool {
             @ToolParam(description = "文档相对路径，如 docs/functions/tree.md 或 _index.md") String path,
             @ToolParam(description = "起始行号（从 1 开始，包含）") int startLine,
             @ToolParam(description = "结束行号（包含）") int endLine) {
+        emitActivity("\n> 📑 **[智能体视窗切片读取]** `" + path + "` (L" + startLine + "-L" + endLine + ")\n");
         if (path == null || path.isBlank()) {
+            emitActivity("> ❌ **[读取失败]** 路径为空\n\n");
             return "错误：文档路径不能为空";
         }
         try {
@@ -210,11 +249,15 @@ public class FileSearchTool implements AgentTool {
 
             FileSearch.LineSlice slice = FileSearch.readLines(target, start, end, MAX_READ_CHARS);
             if (slice.totalLines() == 0) {
+                emitActivity("> ⚠️ **[切片反馈]** 内容为空: `" + path + "`\n\n");
                 return "文档内容为空: " + path;
             }
             if (start > slice.totalLines()) {
+                emitActivity("> ❌ **[切片反馈]** 起始行超限\n\n");
                 return "错误：起始行号 " + start + " 超过文档总行数 (" + slice.totalLines() + " 行)";
             }
+
+            emitActivity("> 📄 **[切片反馈]** 成功切片读取 " + slice.lines().size() + " 行内容\n\n");
 
             StringBuilder sb = new StringBuilder();
             String relative = sandboxRoot.relativize(target).toString().replace('\\', '/');
@@ -245,17 +288,21 @@ public class FileSearchTool implements AgentTool {
     public String listDir(
             @ToolParam(description = "目录相对路径，根目录可传入空字符串、'.' 或特定子目录如 'functions'") String path,
             @ToolParam(description = "目录递归深度，默认为 2，最大不超过 3") Integer maxDepth) {
+        emitActivity("\n> 📁 **[智能体目录探测]** 探测路径: `" + (path == null || path.isBlank() ? "/" : path) + "` (深度: " + maxDepth + ")\n");
         try {
             Path target = (path == null || path.isBlank() || ".".equals(path.trim()))
                     ? sandboxRoot
                     : sandboxRoot.resolve(path.trim()).normalize();
             if (!target.startsWith(sandboxRoot)) {
+                emitActivity("> ❌ **[安全拦截]** 路径越界沙箱\n\n");
                 return "错误：路径越界，仅允许访问知识库沙箱目录";
             }
             if (!Files.exists(target)) {
+                emitActivity("> ⚠️ **[探测反馈]** 目录不存在\n\n");
                 return "目录不存在: " + path;
             }
             if (!Files.isDirectory(target)) {
+                emitActivity("> ⚠️ **[探测反馈]** 目标不是目录\n\n");
                 return "指定路径不是目录: " + path + "，如需读取文件请调用 FileSearchTool-readDoc 或 FileSearchTool-readLines";
             }
 
@@ -263,8 +310,11 @@ public class FileSearchTool implements AgentTool {
             List<FileSearch.DirEntry> entries = FileSearch.listDirTree(target, depth, MAX_LIST_DIR_ENTRIES);
 
             if (entries.isEmpty()) {
+                emitActivity("> 📄 **[探测反馈]** 目录为空\n\n");
                 return "目录为空: " + (target.equals(sandboxRoot) ? "/" : sandboxRoot.relativize(target).toString().replace('\\', '/'));
             }
+
+            emitActivity("> 📄 **[探测反馈]** 发现 " + entries.size() + " 个文件/子目录项\n\n");
 
             StringBuilder sb = new StringBuilder();
             String rootLabel = target.equals(sandboxRoot) ? "/" : sandboxRoot.relativize(target).toString().replace('\\', '/');
@@ -295,19 +345,24 @@ public class FileSearchTool implements AgentTool {
     @Tool(name = "FileSearchTool-getOutline", description = "提取指定 Markdown 文档的标题大纲（H1~H4）及其对应起始行号。用于快速了解长文档结构、定位目标章节行号范围，避免全篇盲读。")
     public String getOutline(
             @ToolParam(description = "文档相对路径，如 docs/functions/tree_flatten.md") String path) {
+        emitActivity("\n> 📑 **[智能体提取文档大纲]** 大纲提取: `" + path + "`\n");
         if (path == null || path.isBlank()) {
+            emitActivity("> ❌ **[提取失败]** 路径为空\n\n");
             return "错误：文档路径不能为空";
         }
         try {
             Path target = sandboxRoot.resolve(path).normalize();
             if (!target.startsWith(sandboxRoot)) {
+                emitActivity("> ❌ **[安全拦截]** 路径越界沙箱\n\n");
                 return "错误：路径越界，仅允许访问知识库沙箱目录内的文档";
             }
             if (!Files.isRegularFile(target)) {
+                emitActivity("> ⚠️ **[提取反馈]** 文档不存在: `" + path + "`\n\n");
                 return "未找到文档: " + path + "，请先调用 FileSearchTool-findFiles 或 FileSearchTool-listDir 确认路径";
             }
 
             List<FileSearch.MarkdownHeading> headings = FileSearch.extractMarkdownOutline(target, MAX_OUTLINE_ITEMS);
+            emitActivity("> 📄 **[提取反馈]** 成功提取 " + headings.size() + " 个层级标题\n\n");
             String relative = sandboxRoot.relativize(target).toString().replace('\\', '/');
             if (headings.isEmpty()) {
                 return "文档未包含标准 Markdown 标题大纲: " + relative + " (建议直接使用 FileSearchTool-readLines 或 FileSearchTool-readDoc 查看内容)";
