@@ -17,4 +17,12 @@ public interface AgentTool {
      */
     String EVIDENCE_LEDGER_KEY = "AGENT_EVIDENCE_LEDGER";
 
+    /**
+     * 响应式上下文中用于携带本次会话累计工具调用次数的 Context Key。
+     * <p>
+     * 纯观测用途：不参与任何限流或熔断，仅用于在轨迹中标记「第几次工具调用」，
+     * 便于统计一轮会话究竟调用了多少次工具、哪类工具占大头。
+     */
+    String TOOL_CALL_COUNTER_KEY = "AGENT_TOOL_CALL_COUNTER";
+
 }

@@ -33,6 +33,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -170,6 +171,8 @@ public class AiController {
             String renderedSystemPrompt = buildAgentSystemPrompt();
             AtomicBoolean isThinking = new AtomicBoolean(false);
             FileSearchTool.EvidenceLedger evidenceLedger = new FileSearchTool.EvidenceLedger();
+            // 累计工具调用次数（纯观测，不参与任何限流）
+            AtomicInteger toolCallCounter = new AtomicInteger(0);
 
             // 用于实时收集工具执行轨迹并注入思考区的响应式 Sink
             Sinks.Many<String> activitySink = Sinks.many().multicast().onBackpressureBuffer();
@@ -202,7 +205,8 @@ public class AiController {
                             .filter(footer -> !footer.isEmpty()))
                     .map(this::serializeStreamChunk)
                     .contextWrite(ctx -> ctx.put(AgentTool.ACTIVITY_SINK_KEY, activitySink)
-                            .put(AgentTool.EVIDENCE_LEDGER_KEY, evidenceLedger));
+                            .put(AgentTool.EVIDENCE_LEDGER_KEY, evidenceLedger)
+                            .put(AgentTool.TOOL_CALL_COUNTER_KEY, toolCallCounter));
         }).subscribeOn(Schedulers.boundedElastic());
     }
 

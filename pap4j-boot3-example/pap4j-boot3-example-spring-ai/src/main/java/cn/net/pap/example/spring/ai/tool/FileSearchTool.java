@@ -96,12 +96,20 @@ public class FileSearchTool implements AgentTool {
     private void emitActivity(String text) {
         try {
             ContextView ctx = ToolCallReactiveContextHolder.getContext();
-            if (ctx != null && ctx.hasKey(AgentTool.ACTIVITY_SINK_KEY)) {
-                Sinks.Many<String> sink = ctx.get(AgentTool.ACTIVITY_SINK_KEY);
-                if (sink != null) {
-                    sink.tryEmitNext(text);
-                }
+            if (ctx == null || !ctx.hasKey(AgentTool.ACTIVITY_SINK_KEY)) {
+                return;
             }
+            Sinks.Many<String> sink = ctx.get(AgentTool.ACTIVITY_SINK_KEY);
+            if (sink == null) {
+                return;
+            }
+            // 累计序号：本节会话第几次工具动作，包裹后插入轨迹行首
+            int callNo = ctx.hasKey(AgentTool.TOOL_CALL_COUNTER_KEY)
+                    && ctx.get(AgentTool.TOOL_CALL_COUNTER_KEY) instanceof AtomicInteger counter
+                    ? counter.incrementAndGet() : 0;
+            sink.tryEmitNext(callNo > 0
+                    ? text.replaceFirst("^(\\s*>\\s*)", "$1`#" + callNo + "` ")
+                    : text);
         } catch (Exception e) {
             log.error("[FileSearchTool] 反应式通知发送异常", e);
         }
