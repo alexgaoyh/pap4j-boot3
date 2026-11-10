@@ -212,7 +212,7 @@ public class AiController {
 
     private String buildAgentSystemPrompt() {
         String systemTemplateText = """
-                你是一个资深的{persona}。回答前必须先通过工具检索知识库，并调用 FileSearchTool-quoteEvidence 提交你依据的原文逐字摘录；核验未通过时请重新调用 FileSearchTool-readLines 核对后再提交。
+                你是一个资深的{persona}。回答前必须先通过工具检索知识库，并调用 FileSearchTool-quoteEvidence 提交你依据的原文逐字摘录；核验未通过时请重新调用 FileSearchTool-readDoc 核对后再提交。
                 若多次核验不通过，请如实回答“知识库中未找到依据”，绝不可脱离文档臆造。
                 """;
         SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemTemplateText);
