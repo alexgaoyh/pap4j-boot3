@@ -16,16 +16,20 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
 /**
  * 基于 {@link FileSearch} 的进程内文件检索智能体工具。
  * <p>
  * 提供毫秒级零初始化的文件名查找（findFiles）与内容精确搜索（grepContent），
- * 配合目录树探索（listDir）、大纲提取（getOutline）与区间切片读取（readLines/readDoc），
- * 构成完整的轻量级 Coding Agent 检索工具链。
+ * 配合目录树探索（listDir）、大纲提取（getOutline）、区间切片读取（readLines/readDoc）
+ * 以及原文引用硬校验（quoteEvidence），构成带 Guardrail 原文依赖核验的 Agent 检索工具链。
  */
 @Component
 public class FileSearchTool implements AgentTool {
@@ -52,6 +56,15 @@ public class FileSearchTool implements AgentTool {
 
     /** 单次大纲最大标题条数 */
     private static final int MAX_OUTLINE_ITEMS = 60;
+
+    /** 原文引用核验最小归一化有效字符数，防止单字/单词糊弄过关 */
+    private static final int MIN_QUOTE_NORMALIZED_LENGTH = 8;
+
+    /** 单次会话原文引用核验最大连续打回重试次数（超限触发熔断降级，防死循环） */
+    private static final int MAX_QUOTE_FAIL_ATTEMPTS = 2;
+
+    /** 尾帧展示单条原文摘录的最大预览字符数 */
+    private static final int MAX_QUOTE_PREVIEW_CHARS = 80;
 
     private final Path sandboxRoot;
 
@@ -383,6 +396,241 @@ public class FileSearchTool implements AgentTool {
         } catch (IOException e) {
             log.error("[FileSearchTool] 文档大纲提取失败, path: {}", path, e);
             return "大纲提取异常: " + e.getMessage();
+        }
+    }
+
+    /**
+     * 工具 7：原文引用硬校验工具（Citation Verification）。
+     * <p>
+     * 模型在读取文档后、输出最终回答前调用此工具，提交所依据的文档相对路径及逐字摘录的原文关键句。
+     * 工具内部直接读取目标文件执行归一化子串硬匹配，若篡改或不存在则当场打回重核。
+     *
+     * @param path 文档相对路径，例如 {@code function_div2.md}
+     * @param verbatimQuote 从文档中逐字原样复制的原文关键片段
+     * @return 核验通过凭证或打回重核指令文本
+     */
+    @Tool(name = "FileSearchTool-quoteEvidence", description = "【原文引用硬校验工具】在调用 readDoc/readLines/grepContent 获取文档内容后、输出最终回答前，必须调用此工具提交你所依据的文档相对路径及逐字摘录的原文关键片段。系统将对原文执行硬校验。")
+    public String quoteEvidence(
+            @ToolParam(description = "文档相对路径，如 function_div2.md") String path,
+            @ToolParam(description = "从文档中逐字原样复制的原文关键句或代码片段（不少于 8 个有效字符，严禁改写或用省略号跨段拼接）") String verbatimQuote) {
+        emitActivity("\n> 🛡️ **[智能体原文引用核验]** 核验文档: `" + path + "`\n");
+        if (path == null || path.isBlank() || verbatimQuote == null || verbatimQuote.isBlank()) {
+            emitActivity("> ❌ **[核验失败]** 文档路径或原文摘录为空\n\n");
+            return "【校验失败】文档路径与原文摘录均不能为空，请传入真实路径与原文关键句。";
+        }
+
+        Path target = sandboxRoot.resolve(path.trim()).normalize();
+        if (!target.startsWith(sandboxRoot)) {
+            emitActivity("> ❌ **[安全拦截]** 引用路径越界沙箱\n\n");
+            return "【校验失败】路径越界，仅允许引用知识库目录内的文档。";
+        }
+
+        EvidenceLedger ledger = getCurrentLedger();
+        String relativePath = sandboxRoot.relativize(target).toString().replace('\\', '/');
+        if (!Files.isRegularFile(target)) {
+            return handleQuoteFailure(ledger,
+                    "未找到文档: " + relativePath + "，请先调用 FileSearchTool-findFiles 确认真实文档路径！");
+        }
+
+        String normalizedQuote = normalizeForMatch(verbatimQuote);
+        if (normalizedQuote.length() < MIN_QUOTE_NORMALIZED_LENGTH) {
+            return handleQuoteFailure(ledger,
+                    "提交的原文片段有效字符过少（不足 " + MIN_QUOTE_NORMALIZED_LENGTH + " 个字符），请摘录包含完整业务结论或语法定义的原文整句！");
+        }
+
+        return verifyQuoteInFile(target, relativePath, verbatimQuote.trim(), normalizedQuote, ledger);
+    }
+
+    private String verifyQuoteInFile(Path target, String relativePath, String rawQuote,
+                                     String normalizedQuote, EvidenceLedger ledger) {
+        try {
+            List<String> lines = Files.readAllLines(target, StandardCharsets.UTF_8);
+            VerifiedCitation citation = matchCitationInLines(ledger, relativePath, lines, rawQuote, normalizedQuote);
+            if (citation == null) {
+                return handleQuoteFailure(ledger,
+                        "你提交的原文片段在 " + relativePath + " 中不存在（可能被改写或跨段拼接），请重新调用 FileSearchTool-readLines 核对原文并逐字复制，严禁编造！");
+            }
+            if (ledger != null) {
+                ledger.resetFailCount();
+                ledger.add(citation);
+            }
+            emitActivity("> ✅ **[原文硬校验通过]** `[" + citation.refId() + "]` `" + relativePath
+                    + "` (L" + citation.startLine() + "-L" + citation.endLine() + ")\n\n");
+            return "【引用核验通过】编号 [" + citation.refId() + "]，来源文档: " + relativePath
+                    + " (L" + citation.startLine() + "-L" + citation.endLine() + ")。现在可以基于核验通过的原文回答用户问题。";
+        } catch (IOException e) {
+            log.error("[FileSearchTool] 原文引用核验读盘异常, path: {}", relativePath, e);
+            return "【校验异常】读取文档失败: " + e.getMessage();
+        }
+    }
+
+    private VerifiedCitation matchCitationInLines(EvidenceLedger ledger, String relativePath, List<String> lines,
+                                                  String rawQuote, String normalizedQuote) {
+        if (lines == null || lines.isEmpty() || normalizedQuote.isEmpty()) {
+            return null;
+        }
+        StringBuilder fullNormalized = new StringBuilder();
+        int[] lineEndOffsets = new int[lines.size()];
+        for (int i = 0; i < lines.size(); i++) {
+            fullNormalized.append(normalizeForMatch(lines.get(i)));
+            lineEndOffsets[i] = fullNormalized.length();
+        }
+
+        int matchStart = fullNormalized.indexOf(normalizedQuote);
+        if (matchStart < 0) {
+            return null;
+        }
+        int matchEnd = matchStart + normalizedQuote.length() - 1;
+
+        int startLine = 1;
+        int endLine = lines.size();
+        for (int i = 0; i < lines.size(); i++) {
+            if (lineEndOffsets[i] > matchStart) {
+                startLine = i + 1;
+                break;
+            }
+        }
+        for (int i = startLine - 1; i < lines.size(); i++) {
+            if (lineEndOffsets[i] > matchEnd) {
+                endLine = i + 1;
+                break;
+            }
+        }
+        String refId = ledger != null ? ledger.nextRefId() : "Ref-1";
+        return new VerifiedCitation(refId, relativePath, startLine, endLine, rawQuote);
+    }
+
+    private EvidenceLedger getCurrentLedger() {
+        try {
+            ContextView ctx = ToolCallReactiveContextHolder.getContext();
+            if (ctx != null && ctx.hasKey(AgentTool.EVIDENCE_LEDGER_KEY)) {
+                return ctx.get(AgentTool.EVIDENCE_LEDGER_KEY);
+            }
+        } catch (Exception e) {
+            log.error("[FileSearchTool] 获取证据账本异常", e);
+        }
+        return null;
+    }
+
+    private String handleQuoteFailure(EvidenceLedger ledger, String reason) {
+        int fails = ledger != null ? ledger.incrementAndGetFailCount() : 1;
+        if (fails > MAX_QUOTE_FAIL_ATTEMPTS) {
+            emitActivity("> ⚠️ **[原文校验熔断]** 连续核验未通过达上限 (" + fails + " 次)，终止重试并要求如实拒答\n\n");
+            return "【核验终止】原文连续核验未通过，请停止调用工具并直接回复用户：【知识库中未找到可核验的原文依据】，绝不可凭空作答。";
+        }
+        emitActivity("> ❌ **[原文校验打回]** " + reason + "\n\n");
+        return "【校验失败】" + reason;
+    }
+
+    /**
+     * 对文本进行去噪归一化：剥离空白符、换行符与 Markdown 排版修饰符，统一中英文标点与大小写，
+     * 使得子串比对既能 100% 拦截字词篡改，又不会因换行或空格排版差异误杀真实引用。
+     *
+     * @param input 原始文本
+     * @return 归一化后的紧凑文本
+     */
+    public static String normalizeForMatch(String input) {
+        if (input == null || input.isEmpty()) {
+            return "";
+        }
+        return input.replaceAll("[\\s*#`>\\-|~]+", "")
+                .replace('（', '(')
+                .replace('）', ')')
+                .replace('：', ':')
+                .replace('，', ',')
+                .replace('；', ';')
+                .replace('“', '"')
+                .replace('”', '"')
+                .replace('‘', '\'')
+                .replace('’', '\'')
+                .toLowerCase(Locale.ROOT);
+    }
+
+    /**
+     * 核验通过的单条原文引用凭证。
+     *
+     * @param refId 引用编号（如 {@code Ref-1}）
+     * @param relativePath 文档相对路径（如 {@code function_div2.md}）
+     * @param startLine 命中的起始行号（从 1 开始）
+     * @param endLine 命中的结束行号（包含）
+     * @param verbatimQuote 模型提交并核验通过的原文摘录
+     */
+    public record VerifiedCitation(String refId, String relativePath, int startLine, int endLine, String verbatimQuote) {
+    }
+
+    /**
+     * 请求级已核验引用收集器（维护单次对话中通过逐字子串硬校验的引用明细与连续失败计数）。
+     */
+    public static final class EvidenceLedger {
+
+        private final List<VerifiedCitation> verifiedCitations = new CopyOnWriteArrayList<>();
+        private final AtomicInteger refSeq = new AtomicInteger(0);
+        private final AtomicInteger quoteFailCount = new AtomicInteger(0);
+
+        void add(VerifiedCitation citation) {
+            if (citation != null) {
+                verifiedCitations.add(citation);
+            }
+        }
+
+        String nextRefId() {
+            return "Ref-" + refSeq.incrementAndGet();
+        }
+
+        /**
+         * 获取所有通过原文子串硬校验的引用列表。
+         *
+         * @return 核验通过的引用列表
+         */
+        public List<VerifiedCitation> getVerifiedCitations() {
+            return Collections.unmodifiableList(verifiedCitations);
+        }
+
+        /**
+         * 递增并获取当前连续引用核验失败次数。
+         *
+         * @return 递增后的连续失败次数
+         */
+        public int incrementAndGetFailCount() {
+            return quoteFailCount.incrementAndGet();
+        }
+
+        /**
+         * 核验通过时清零连续失败计数器。
+         */
+        public void resetFailCount() {
+            quoteFailCount.set(0);
+        }
+
+        /**
+         * 生成直接拼接在流式输出末尾的 Guardrail 出口核验与文档相对路径溯源 Markdown 字符串。
+         * <p>若无核验通过的引用（例如日常问候或拒答场景），返回空串 {@code ""}。
+         *
+         * @return 格式化后的 Markdown 尾部区块字符串；无引用时返回 {@code ""}
+         */
+        public String formatGuardrailFooter() {
+            if (verifiedCitations.isEmpty()) {
+                return "";
+            }
+            String pathList = verifiedCitations.stream()
+                    .map(VerifiedCitation::relativePath)
+                    .distinct()
+                    .map(p -> "`" + p + "`")
+                    .collect(Collectors.joining(", "));
+            StringBuilder sb = new StringBuilder();
+            sb.append("\n\n---\n> 🛡️ **[Guardrail 原文依赖硬校验通过]**\n");
+            sb.append("> - 📂 **使用文档相对路径**: ").append(pathList).append("\n");
+            sb.append("> - 📌 **原文引用核验明细**:\n");
+            for (VerifiedCitation c : verifiedCitations) {
+                String preview = c.verbatimQuote().replaceAll("\\s+", " ").trim();
+                if (preview.length() > MAX_QUOTE_PREVIEW_CHARS) {
+                    preview = preview.substring(0, MAX_QUOTE_PREVIEW_CHARS) + "...";
+                }
+                sb.append(">   - `[").append(c.refId()).append("]` `").append(c.relativePath())
+                        .append("` (L").append(c.startLine()).append("-L").append(c.endLine())
+                        .append("): *\"").append(preview).append("\"*\n");
+            }
+            return sb.toString();
         }
     }
 

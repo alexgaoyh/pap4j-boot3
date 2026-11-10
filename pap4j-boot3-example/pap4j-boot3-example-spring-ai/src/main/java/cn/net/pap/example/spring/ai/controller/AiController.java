@@ -1,6 +1,7 @@
 package cn.net.pap.example.spring.ai.controller;
 
 import cn.net.pap.example.spring.ai.tool.AgentTool;
+import cn.net.pap.example.spring.ai.tool.FileSearchTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -156,33 +157,19 @@ public class AiController {
     }
 
     /**
-     * Agent 模式响应式流式对话接口 (自主规划与 Tool 检索)
+     * Agent 模式响应式流式对话接口 (自主规划、Tool 检索与 Guardrail 原文引用硬校验)
      *
      * @param request 对话请求对象
      * @return 处理结果流
      */
-    @Operation(summary = "Agent 模式响应式流式对话接口 (自主规划与 Tool 检索)")
+    @Operation(summary = "Agent 模式响应式流式对话接口 (自主规划、Tool 检索与 Guardrail 原文引用硬校验)")
     @PostMapping(value = "/agent/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<String> agentChatStream(@RequestBody ChatRequest request) {
         return Flux.defer(() -> {
             String chatId = request.chatId() != null ? request.chatId() : "default-agent-chat-id";
-
-            String systemTemplateText = """
-                    你是一个资深的{persona}。你具备本地私有知识库的检索与阅读工具。
-                    在回答用户问题时，请严格根据知识库检索出的真实内容回答，绝不可脱离文档凭空臆造。
-
-                    【工具调度策略与 SOP】：
-                    1. 宏观/分类探索：面对概括性、分类或模块疑问（如“有哪些函数/规则”），优先调用 FileSearchTool-listDir 查看目录树或 FileSearchTool-findFiles 匹配文件列表；
-                    2. 结构导航：面对长文档或定位章节，优先调用 FileSearchTool-getOutline 提取标题大纲与行号，锁定关键小节；
-                    3. 精确定位：面对具体函数名、专有名词、配置项或报错，优先调用 FileSearchTool-grepContent 快速查找匹配行及行号；
-                    4. 按需视窗读取：定位到行号后，优先调用 FileSearchTool-readLines 精准读取上下文关键行区间（如前后 30~50 行），避免盲目全篇读取；极短文档可调用 FileSearchTool-readDoc；
-                    5. 综合提炼：基于检索到的完备上下文，给出准确、详尽且有结构的技术回答。
-                    """;
-            SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemTemplateText);
-            String renderedSystemPrompt = systemPromptTemplate.render(Map.of("persona", defaultPersona));
-
-            // 用于记录当前是否处于 <thinking> 标签内部
+            String renderedSystemPrompt = buildAgentSystemPrompt();
             AtomicBoolean isThinking = new AtomicBoolean(false);
+            FileSearchTool.EvidenceLedger evidenceLedger = new FileSearchTool.EvidenceLedger();
 
             // 用于实时收集工具执行轨迹并注入思考区的响应式 Sink
             Sinks.Many<String> activitySink = Sinks.many().multicast().onBackpressureBuffer();
@@ -198,60 +185,67 @@ public class AiController {
                     .user(request.prompt())
                     .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, chatId))
                     .stream()
-                    .chatResponse() // 关键修改：使用 chatResponse() 而不是 content()
-                    .map(chatResponse -> {
-                        if (chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
-                            return "";
-                        }
-                        var output = chatResponse.getResult().getOutput();
-
-                        // 1. 提取思考内容 (OpenAI 系 reasoningContent / Ollama thinking)
-                        String reasoning = extractReasoning(chatResponse);
-
-                        // 2. 提取正文内容
-                        String content = output.getText() != null ? output.getText() : "";
-
-                        StringBuilder chunkBuilder = new StringBuilder();
-
-                        // 如果有思考内容输出
-                        if (!reasoning.isEmpty()) {
-                            if (isThinking.compareAndSet(false, true)) {
-                                chunkBuilder.append("<thinking>\n"); // 首次进入思考，拼接开始标签
-                            }
-                            chunkBuilder.append(reasoning);
-                        }
-
-                        // 如果开始输出正文内容
-                        if (!content.isEmpty()) {
-                            if (isThinking.compareAndSet(true, false)) {
-                                chunkBuilder.append("\n</thinking>\n\n"); // 思考结束，拼接闭合标签
-                            }
-                            chunkBuilder.append(content);
-                        }
-
-                        return chunkBuilder.toString();
-                    })
+                    .chatResponse()
+                    .map(chatResponse -> formatAgentResponseChunk(chatResponse, isThinking))
                     .filter(chunk -> !chunk.isEmpty())
                     .doFinally(sig -> activitySink.tryEmitComplete());
 
             return Flux.merge(activityFlux, llmFlux)
                     .concatWith(Mono.defer(() -> {
-                        // 兜底处理：防止流意外结束时标签未闭合
                         if (isThinking.compareAndSet(true, false)) {
                             return Mono.just("\n</thinking>\n\n");
                         }
                         return Mono.empty();
                     }))
-                    .map(chunk -> {
-                        try {
-                            return this.objectMapper.writeValueAsString(Map.of("v", chunk));
-                        } catch (Exception e) {
-                            log.error("JSON serialization failed for stream chunk", e);
-                            return "{\"v\":\"\"}";
-                        }
-                    })
-                    .contextWrite(ctx -> ctx.put(AgentTool.ACTIVITY_SINK_KEY, activitySink));
+                    // Guardrail 出口关卡：在流结束时直接拼接已核验的文档相对路径与原文引用摘要字符串返回
+                    .concatWith(Mono.fromSupplier(evidenceLedger::formatGuardrailFooter)
+                            .filter(footer -> !footer.isEmpty()))
+                    .map(this::serializeStreamChunk)
+                    .contextWrite(ctx -> ctx.put(AgentTool.ACTIVITY_SINK_KEY, activitySink)
+                            .put(AgentTool.EVIDENCE_LEDGER_KEY, evidenceLedger));
         }).subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private String buildAgentSystemPrompt() {
+        String systemTemplateText = """
+                你是一个资深的{persona}。回答前必须先通过工具检索知识库，并调用 FileSearchTool-quoteEvidence 提交你依据的原文逐字摘录；核验未通过时请重新调用 FileSearchTool-readLines 核对后再提交。
+                若多次核验不通过，请如实回答“知识库中未找到依据”，绝不可脱离文档臆造。
+                """;
+        SystemPromptTemplate systemPromptTemplate = new SystemPromptTemplate(systemTemplateText);
+        return systemPromptTemplate.render(Map.of("persona", defaultPersona));
+    }
+
+    private String formatAgentResponseChunk(ChatResponse chatResponse, AtomicBoolean isThinking) {
+        if (chatResponse.getResult() == null || chatResponse.getResult().getOutput() == null) {
+            return "";
+        }
+        var output = chatResponse.getResult().getOutput();
+        String reasoning = extractReasoning(chatResponse);
+        String content = output.getText() != null ? output.getText() : "";
+
+        StringBuilder chunkBuilder = new StringBuilder();
+        if (!reasoning.isEmpty()) {
+            if (isThinking.compareAndSet(false, true)) {
+                chunkBuilder.append("<thinking>\n");
+            }
+            chunkBuilder.append(reasoning);
+        }
+        if (!content.isEmpty()) {
+            if (isThinking.compareAndSet(true, false)) {
+                chunkBuilder.append("\n</thinking>\n\n");
+            }
+            chunkBuilder.append(content);
+        }
+        return chunkBuilder.toString();
+    }
+
+    private String serializeStreamChunk(String chunk) {
+        try {
+            return this.objectMapper.writeValueAsString(Map.of("v", chunk));
+        } catch (Exception e) {
+            log.error("[AiController] 流式文本块 JSON 序列化失败", e);
+            return "{\"v\":\"\"}";
+        }
     }
 
     /**

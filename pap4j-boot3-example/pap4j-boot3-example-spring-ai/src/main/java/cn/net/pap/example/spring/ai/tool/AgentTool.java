@@ -11,4 +11,10 @@ public interface AgentTool {
      * 响应式上下文中用于实时收集智能体活动轨迹（思考/调用/观察）的 Sink Key。
      */
     String ACTIVITY_SINK_KEY = "AGENT_ACTIVITY_SINK";
+
+    /**
+     * 响应式上下文中用于挂载请求级原文证据账本的 Context Key
+     */
+    String EVIDENCE_LEDGER_KEY = "AGENT_EVIDENCE_LEDGER";
+
 }
