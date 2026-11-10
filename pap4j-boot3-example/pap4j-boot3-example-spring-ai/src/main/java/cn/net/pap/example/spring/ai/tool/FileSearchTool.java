@@ -171,14 +171,14 @@ public class FileSearchTool implements AgentTool {
      * 合并了原有「全文读取」与「行区间读取」两种能力，模型无需在两者间做选择：
      * 只传 path 读全文；传 startLine/endLine 则切片读取。
      *
-     * @param path 相对于知识库根目录的文档路径，例如 {@code _index.md}
+     * @param path 相对于知识库根目录的文档路径，例如 {@code function_tree_flatten.md}
      * @param startLine 起始行号（从 1 开始，包含）；为空则从首行开始
      * @param endLine 结束行号（包含）；为空则读取到末尾
      * @return 文档正文或指定行区间的片段；越界、不存在或过大时返回可预期的错误文本
      */
     @Tool(name = "FileSearchTool-readDoc", description = "读取知识库文档正文。只传 path 读全文；传 startLine/endLine 读指定行号区间（推荐先用 grepContent 拿到行号再切片，避免长文塞爆上下文）。")
     public String readDoc(
-            @ToolParam(description = "文档相对路径，如 _index.md、function_tree_flatten.md") String path,
+            @ToolParam(description = "文档相对路径，如 function_tree_flatten.md、function_isblank.md") String path,
             @ToolParam(description = "起始行号（从 1 开始，包含）；省略则读全文") Integer startLine,
             @ToolParam(description = "结束行号（包含）；省略则读到末尾") Integer endLine) {
         boolean sliced = startLine != null || endLine != null;
