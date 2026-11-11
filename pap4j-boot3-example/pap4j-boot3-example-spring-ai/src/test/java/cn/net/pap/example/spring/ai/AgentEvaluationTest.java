@@ -79,6 +79,14 @@ public class AgentEvaluationTest {
     private static final String KEY_DOCS = "docs";
 
     /**
+     * Agent 模式系统提示词，对齐生产环境 AiController，强制模型在回答前通过工具检索与核验原文依据。
+     */
+    private static final String AGENT_SYSTEM_PROMPT = """
+            你是一个资深的 Java 开发架构师。回答前必须先通过工具检索知识库，并调用 FileSearchTool-quoteEvidence 提交你依据的原文逐字摘录；核验未通过时请重新调用 FileSearchTool-readDoc 核对后再提交。
+            若多次核验不通过，请如实回答“知识库中未找到依据”，绝不可脱离文档臆造。
+            """;
+
+    /**
      * 20 道题：每项含 {@code question}（题面）与 {@code docs}（期望依赖的 md 文档）。
      * <p>题面与 AGENT_EVAL.md 主表一致；docs 取主表「依据文档」列，#10 / #11 为知识库外的题，期望为空。</p>
      */
@@ -146,7 +154,15 @@ public class AgentEvaluationTest {
             StringBuilder answer = new StringBuilder();
             long start = System.currentTimeMillis();
             try {
-                agentChatClient.prompt().user(question).advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatId)).stream().content().doOnNext(answer::append).contextWrite(context -> context.put(AgentTool.EVIDENCE_LEDGER_KEY, ledger)).blockLast(Duration.ofSeconds(TIMEOUT_SECONDS));
+                agentChatClient.prompt()
+                        .system(AGENT_SYSTEM_PROMPT)
+                        .user(question)
+                        .advisors(advisorSpec -> advisorSpec.param(ChatMemory.CONVERSATION_ID, chatId))
+                        .stream()
+                        .content()
+                        .doOnNext(answer::append)
+                        .contextWrite(context -> context.put(AgentTool.EVIDENCE_LEDGER_KEY, ledger))
+                        .blockLast(Duration.ofSeconds(TIMEOUT_SECONDS));
             } catch (Exception e) {
                 log.error("[AgentEval] #{} 调用失败", no, e);
             }
