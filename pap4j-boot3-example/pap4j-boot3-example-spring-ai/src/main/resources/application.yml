@@ -30,15 +30,20 @@ ai:
   # 1. 答案生成主大模型 (Main LLM) 专属配置 (支持 ollama / openai)
   main-llm:
     provider: ollama
-    base-url: http://10.0.0.0
+    base-url: http://example.com
     api-key: ""
     model: llama3.1
-    temperature: 0.7
+    # 采样温度 (0.0 ~ 1.0)：
+    # - 默认 0.7：适合日常对话交互，兼顾回答的多样性与语言自然度。
+    # - 评测/测试建议 0（或 0.1）：进入贪心解码（Greedy Decoding）模式，消除采样随机抖动（Sampling Jitter）。
+    #   在兼具常识先验与专有知识库的场景下，设为 0 可确保“直接作答”与“调用检索工具”的决策完全幂等且可复现，
+    #   避免批跑评测（如 AgentEvaluationTest）时因概率抽样出现偶发跳过工具调用的漂移现象。
+    temperature: 0
 
   # 2. 极速小模型 Query 改写专属配置 (支持 ollama / openai)
   rewrite-slm:
     provider: ollama
-    base-url: https://px2-jcy.matpool.com:28087/
+    base-url: https://example.com
     api-key: ""
     model: llama3.1
     temperature: 0.1
@@ -47,7 +52,7 @@ ai:
   # Ollama 的后台服务会自动进行按需加载。当它接收到包含 "model": "bge-m3" 的 API 请求时，会自动把 bge-m3 装载进显存/内存并计算，只需要提前 pull 即可。
   embedding-model:
     provider: onnx
-    base-url: https://px2-jcy.matpool.com:28087/
+    base-url: https://example.com
     api-key: ""
     model: bge-m3
     onnx:
