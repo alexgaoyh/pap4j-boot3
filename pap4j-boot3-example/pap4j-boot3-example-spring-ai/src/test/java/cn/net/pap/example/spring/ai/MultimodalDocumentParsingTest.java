@@ -1,5 +1,6 @@
 package cn.net.pap.example.spring.ai;
 
+import cn.net.pap.common.core.util.NetworkUtil;
 import cn.net.pap.example.spring.ai.config.AiProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -407,31 +408,18 @@ public class MultimodalDocumentParsingTest {
         try {
             java.net.URI uri = java.net.URI.create(baseUrl);
             String host = uri.getHost();
-            int port = uri.getPort();
-            if (port == -1) {
-                if ("https".equalsIgnoreCase(uri.getScheme())) {
-                    port = 443;
-                } else {
-                    port = 80;
-                }
-            }
             if (host == null || host.isBlank()) {
                 return false;
             }
 
-            if ("10.0.0.0".equals(host) || "0.0.0.0".equals(host) || host.contains("dummy") || host.contains("example.com")) {
-                log.warn("大模型配置为占位符地址 ({})，跳过连通性测试。", baseUrl);
+            if (!NetworkUtil.isUrlReachable(baseUrl, 1000)) {
+                log.warn("大模型端点不可达 ({})，将跳过本组多模态解析单元测试。", baseUrl);
                 return false;
             }
-
-            log.info("正在对大模型端点执行轻量级 TCP 探活: {}:{}", host, port);
-            try (java.net.Socket socket = new java.net.Socket()) {
-                socket.connect(new java.net.InetSocketAddress(host, port), 1000);
-                log.info("TCP 探活成功: {}:{}", host, port);
-                return true;
-            }
+            log.info("大模型端点探活成功: {}", baseUrl);
+            return true;
         } catch (Exception e) {
-            log.error("TCP 探活失败 ({})，将跳过本组多模态解析单元测试。", baseUrl, e);
+            log.error("大模型端点探活失败 ({})，将跳过本组多模态解析单元测试。", baseUrl, e);
             return false;
         }
     }

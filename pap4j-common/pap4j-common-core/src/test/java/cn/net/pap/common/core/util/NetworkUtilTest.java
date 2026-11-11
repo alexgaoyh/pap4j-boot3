@@ -78,4 +78,15 @@ class NetworkUtilTest {
         assertFalse(NetworkUtil.isUrlReachable("http://127.0.0.1:65534/dummy", 200));
     }
 
+    @Test
+    @DisplayName("测试 URL 探测 - 占位符与哑值主机地址保护")
+    void testIsUrlReachablePlaceholderHosts() {
+        assertFalse(NetworkUtil.isUrlReachable("http://10.0.0.0"));
+        assertFalse(NetworkUtil.isUrlReachable("http://10.0.0.0:8080/api"));
+        assertFalse(NetworkUtil.isUrlReachable("http://0.0.0.0"));
+        assertFalse(NetworkUtil.isUrlReachable("http://0.0.0.0:11434"));
+        assertFalse(NetworkUtil.isUrlReachable("http://dummy-host:8080"));
+        assertFalse(NetworkUtil.isUrlReachable("https://ai-dummy.internal:8000/v1"));
+    }
+
 }

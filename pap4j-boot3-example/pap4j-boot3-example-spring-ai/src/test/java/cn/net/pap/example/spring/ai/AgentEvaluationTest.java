@@ -1,5 +1,6 @@
 package cn.net.pap.example.spring.ai;
 
+import cn.net.pap.common.core.util.NetworkUtil;
 import cn.net.pap.example.spring.ai.config.AiProperties;
 import cn.net.pap.example.spring.ai.tool.AgentTool;
 import cn.net.pap.example.spring.ai.tool.FileSearchTool;
@@ -14,8 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 
-import java.net.InetSocketAddress;
-import java.net.Socket;
 import java.net.URI;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -249,7 +248,7 @@ public class AgentEvaluationTest {
     }
 
     /**
-     * 轻量 TCP 探活，端点不可达时优雅跳过而不是挂起或报错。
+     * 轻量 TCP/HTTP 探活，端点不可达时优雅跳过而不是挂起或报错。
      *
      * @param config 主模型配置
      * @return true 表示端点可达
@@ -264,15 +263,12 @@ public class AgentEvaluationTest {
             if (host == null || host.isBlank()) {
                 return false;
             }
-            if ("10.0.0.0".equals(host) || "0.0.0.0".equals(host) || host.contains("dummy") || host.contains("example.com")) {
-                log.warn("大模型配置为占位符地址 ({})，跳过连通性测试。", config.baseUrl());
+
+            if (!NetworkUtil.isUrlReachable(config.baseUrl(), PROBE_TIMEOUT_MS)) {
+                log.warn("[AgentEval] 大模型端点探活失败或不可达 ({})，跳过记录。", config.baseUrl());
                 return false;
             }
-            int port = uri.getPort() == -1 ? ("https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80) : uri.getPort();
-            try (Socket socket = new Socket()) {
-                socket.connect(new InetSocketAddress(host, port), PROBE_TIMEOUT_MS);
-            }
-            log.info("[AgentEval] 大模型端点探活成功: {}:{}", host, port);
+            log.info("[AgentEval] 大模型端点探活成功: {}", config.baseUrl());
             return true;
         } catch (Exception e) {
             log.warn("[AgentEval] 大模型端点探活失败 ({})，跳过记录。", config.baseUrl(), e);

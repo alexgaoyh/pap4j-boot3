@@ -138,6 +138,15 @@ public final class NetworkUtil {
 
         try {
             URL url = new URL(urlStr);
+            String host = url.getHost();
+            if (host == null || host.isBlank()) {
+                return false;
+            }
+            if ("10.0.0.0".equals(host) || "0.0.0.0".equals(host) || host.contains("dummy") || host.contains("example.com")) {
+                log.debug("URL 目标主机为占位符或哑值地址，直接判定不可达: {}", host);
+                return false;
+            }
+
             HttpURLConnection conn = (HttpURLConnection) url.openConnection();
             conn.setConnectTimeout(Math.max(timeoutMs, 1));
             conn.setReadTimeout(Math.max(timeoutMs, 1));
