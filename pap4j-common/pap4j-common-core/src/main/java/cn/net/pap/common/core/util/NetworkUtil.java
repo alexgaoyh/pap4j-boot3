@@ -153,7 +153,7 @@ public final class NetworkUtil {
             conn.setRequestMethod("HEAD");
             conn.setInstanceFollowRedirects(true);
             int responseCode = conn.getResponseCode();
-            return (responseCode >= 200 && responseCode < 400);
+            return (responseCode >= 200 && responseCode < 500);
         } catch (Exception ignored) {
             log.debug("HTTP URL 探测失败: {} ({})", urlStr, ignored.getMessage());
             return false;
