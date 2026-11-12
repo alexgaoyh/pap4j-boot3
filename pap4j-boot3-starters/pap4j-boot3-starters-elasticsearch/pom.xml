@@ -10,6 +10,8 @@
     </parent>
 
     <artifactId>pap4j-boot3-starters-elasticsearch</artifactId>
+    <name>pap4j-boot3-starters-elasticsearch</name>
+    <description>pap4j-boot3-starters-elasticsearch</description>
 
     <url>https://gitee.com/alexgaoyh/pap4j-boot3</url>
 
