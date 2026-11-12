@@ -19,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import jakarta.annotation.PreDestroy;
 
 import java.io.File;
 import java.io.IOException;
@@ -47,8 +48,13 @@ public class AiAssistantConfig {
 
     private final AiProperties aiProperties;
 
+    private final org.elasticsearch.client.RestClient elasticsearchRestClient;
+
     public AiAssistantConfig(AiProperties aiProperties) {
         this.aiProperties = aiProperties;
+        this.elasticsearchRestClient = "elasticsearch".equalsIgnoreCase(aiProperties.knowledge().storeType())
+                ? createElasticsearchRestClient(aiProperties.elasticsearch())
+                : null;
     }
 
     /**
@@ -89,7 +95,6 @@ public class AiAssistantConfig {
     private VectorStore createElasticsearchStore(EmbeddingModel embeddingModel, String storeKey) {
         log.info("【VectorStore】初始化 Elasticsearch {} 存储...", storeKey);
         
-        org.elasticsearch.client.RestClient restClient = createElasticsearchRestClient(aiProperties.elasticsearch());
         String indexName = "spring-ai-" + storeKey + "-index";
 
         org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStoreOptions options = 
@@ -97,13 +102,29 @@ public class AiAssistantConfig {
         options.setIndexName(indexName);
         
         org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStore esStore = 
-                org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStore.builder(restClient, embeddingModel)
+                org.springframework.ai.vectorstore.elasticsearch.ElasticsearchVectorStore.builder(elasticsearchRestClient, embeddingModel)
                         .options(options)
                         .initializeSchema(true)
                         .build();
         
         checkAndInitElasticsearch(esStore, storeKey, indexName, "开发");
         return esStore;
+    }
+
+    /**
+     * 容器关闭时释放 Elasticsearch 客户端，回收连接池与 I/O 线程。
+     */
+    @PreDestroy
+    private void closeElasticsearchRestClient() {
+        if (elasticsearchRestClient == null) {
+            return;
+        }
+        try {
+            elasticsearchRestClient.close();
+            log.info("【Elasticsearch】共享 RestClient 已关闭，连接池与 I/O 线程已释放");
+        } catch (IOException e) {
+            log.error("【Elasticsearch】关闭共享 RestClient 失败", e);
+        }
     }
 
     private void checkAndInitElasticsearch(
@@ -282,7 +303,6 @@ public class AiAssistantConfig {
                     new org.springframework.ai.transformers.TransformersEmbeddingModel();
             embeddingModel.setModelResource(onnxModelUri);
             embeddingModel.setTokenizerResource(onnxTokenizerUri);
-            embeddingModel.afterPropertiesSet();
             return embeddingModel;
         }
     }
