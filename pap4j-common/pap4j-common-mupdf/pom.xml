@@ -20,6 +20,8 @@
         商业授权双许可发布。因此本模块的发布元数据必须是 AGPL-3.0，不能沿用父 POM 的
         Apache-2.0 声明（否则属错误许可声明）。详见仓库根目录 NOTICE / REUSE.toml。
     -->
+    <url>https://gitee.com/alexgaoyh/pap4j-boot3</url>
+
     <licenses>
         <license>
             <name>GNU Affero General Public License v3.0</name>
@@ -32,6 +34,29 @@
             </comments>
         </license>
     </licenses>
+
+    <developers>
+        <developer>
+            <id>alexgaoyh</id>
+            <name>alexgaoyh</name>
+            <email>alexgaoyh@sina.com</email>
+            <organization>pap.net.cn</organization>
+            <organizationUrl>http://pap.net.cn/</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+            <timezone>+8</timezone>
+            <properties>
+                <picUrl>https://foruda.gitee.com/avatar/1676898910937495644/73661_alexgaoyh_1578916342.png!avatar200</picUrl>
+            </properties>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://gitee.com/alexgaoyh/pap4j-boot3</url>
+        <connection>https://gitee.com/alexgaoyh/pap4j-boot3.git</connection>
+        <developerConnection>scm:git:https://gitee.com/alexgaoyh/pap4j-boot3.git</developerConnection>
+    </scm>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

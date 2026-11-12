@@ -13,7 +13,38 @@
 
     <name>pap4j-boot3-starter-statemachine</name>
     <description>pap4j-boot3-starter-statemachine</description>
-    <url>http://maven.apache.org</url>
+    <url>https://gitee.com/alexgaoyh/pap4j-boot3</url>
+
+    <licenses>
+        <license>
+            <name>The Apache License</name>
+            <url>https://gitee.com/alexgaoyh/pap4j-boot3/raw/master/LICENSE</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <id>alexgaoyh</id>
+            <name>alexgaoyh</name>
+            <email>alexgaoyh@sina.com</email>
+            <organization>pap.net.cn</organization>
+            <organizationUrl>http://pap.net.cn/</organizationUrl>
+            <roles>
+                <role>developer</role>
+            </roles>
+            <timezone>+8</timezone>
+            <properties>
+                <picUrl>https://foruda.gitee.com/avatar/1676898910937495644/73661_alexgaoyh_1578916342.png!avatar200</picUrl>
+            </properties>
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://gitee.com/alexgaoyh/pap4j-boot3</url>
+        <connection>https://gitee.com/alexgaoyh/pap4j-boot3.git</connection>
+        <developerConnection>scm:git:https://gitee.com/alexgaoyh/pap4j-boot3.git</developerConnection>
+    </scm>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

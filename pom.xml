@@ -17,6 +17,8 @@
     <name>pap4j-boot3</name>
     <description>pap4j-boot3</description>
 
+    <url>https://gitee.com/alexgaoyh/pap4j-boot3</url>
+
     <modules>
         <module>pap4j-boot3-starters</module>
         <module>pap4j-common</module>
