@@ -39,6 +39,7 @@ ai:
     #   在兼具常识先验与专有知识库的场景下，设为 0 可确保“直接作答”与“调用检索工具”的决策完全幂等且可复现，
     #   避免批跑评测（如 AgentEvaluationTest）时因概率抽样出现偶发跳过工具调用的漂移现象。
     temperature: 0
+    token-monitor: true # 是否开启 Token 消耗与缓存命中监控
 
   # 2. 极速小模型 Query 改写专属配置 (支持 ollama / openai)
   rewrite-slm:
@@ -47,6 +48,7 @@ ai:
     api-key: ""
     model: llama3.1
     temperature: 0.1
+    token-monitor: false # 是否开启 Token 消耗与缓存命中监控
 
   # 3. 向量化模型动态配置 (支持 onnx / ollama / openai)
   # Ollama 的后台服务会自动进行按需加载。当它接收到包含 "model": "bge-m3" 的 API 请求时，会自动把 bge-m3 装载进显存/内存并计算，只需要提前 pull 即可。

@@ -376,14 +376,19 @@ public class AiAssistantConfig {
         String provider = config.provider();
         String modelName = config.model();
         Double temperature = config.temperature() != null ? config.temperature() : defaultTemp;
+        boolean monitor = Boolean.TRUE.equals(config.tokenMonitor());
 
         if ("openai".equalsIgnoreCase(provider)) {
             log.info("【ChatClient - {}】切换为 OpenAI 标准 API 服务，地址: {}, 模型: {}", logLabel, config.baseUrl(), modelName);
             return org.springframework.ai.openai.OpenAiChatModel.builder()
-                    .openAiApi(createOpenAiApi(config))
+                    .openAiApi(monitor
+                            ? new cn.net.pap.example.spring.ai.monitor.TokenMonitorOpenAiApi(config.baseUrl(), config.apiKey(),
+                                    createTimeoutRestClientBuilder(), createTimeoutWebClientBuilder(), logLabel)
+                            : createOpenAiApi(config))
                     .defaultOptions(org.springframework.ai.openai.OpenAiChatOptions.builder()
                             .model(modelName)
                             .temperature(temperature)
+                            .streamUsage(monitor) // 流式响应末尾下发 usage
                             // 仅 deepseek 系模型注入 thinking 私有字段，其它 OpenAI 兼容服务（通义 / vLLM / one-api）保持请求体干净
                             .extraBody(modelName != null && modelName.toLowerCase(java.util.Locale.ROOT).contains("deepseek")
                                     ? Map.of("thinking", Map.of("type", "enabled")) : Map.of())

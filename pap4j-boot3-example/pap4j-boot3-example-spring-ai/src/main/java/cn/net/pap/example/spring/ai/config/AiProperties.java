@@ -55,7 +55,8 @@ public record AiProperties(
             String apiKey,
             String model,
             Double temperature,
-            OnnxConfig onnx
+            OnnxConfig onnx,
+            Boolean tokenMonitor
     ) {}
 
     /**

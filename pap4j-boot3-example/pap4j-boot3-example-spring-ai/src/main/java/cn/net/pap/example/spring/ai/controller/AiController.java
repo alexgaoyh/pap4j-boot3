@@ -1,5 +1,6 @@
 package cn.net.pap.example.spring.ai.controller;
 
+import cn.net.pap.example.spring.ai.monitor.TokenMonitorOpenAiApi;
 import cn.net.pap.example.spring.ai.tool.AgentTool;
 import cn.net.pap.example.spring.ai.tool.FileSearchTool;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -153,7 +154,8 @@ public class AiController {
                             log.error("JSON serialization failed for stream chunk", e);
                             return "{\"v\":\"\"}";
                         }
-                    });
+                    })
+                    .contextWrite(ctx -> ctx.put(TokenMonitorOpenAiApi.CHAT_ID_KEY, chatId));
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
@@ -206,7 +208,8 @@ public class AiController {
                     .map(this::serializeStreamChunk)
                     .contextWrite(ctx -> ctx.put(AgentTool.ACTIVITY_SINK_KEY, activitySink)
                             .put(AgentTool.EVIDENCE_LEDGER_KEY, evidenceLedger)
-                            .put(AgentTool.TOOL_CALL_COUNTER_KEY, toolCallCounter));
+                            .put(AgentTool.TOOL_CALL_COUNTER_KEY, toolCallCounter)
+                            .put(TokenMonitorOpenAiApi.CHAT_ID_KEY, chatId));
         }).subscribeOn(Schedulers.boundedElastic());
     }
 
