@@ -73,14 +73,18 @@ public class FileSearchTool implements AgentTool {
     private static final int MAX_QUOTE_PREVIEW_CHARS = 80;
 
     private final Path sandboxRoot;
+    private final DomainGlossaryService glossaryService;
 
     /**
-     * 构造文件检索工具，自适应探测沙箱根目录并进行规范化保护。
+     * 构造文件检索工具，自适应探测沙箱根目录并注入领域术语词典服务。
      *
      * @param configuredRoot 用户自定义配置的根路径，若为空则自适应定位默认知识库路径
+     * @param glossaryService 领域术语词典服务，用于同义词膨胀与专有函数映射
      */
-    public FileSearchTool(@Value("${ai.search.sandbox-root:}") String configuredRoot) {
+    public FileSearchTool(@Value("${ai.search.sandbox-root:}") String configuredRoot,
+                          DomainGlossaryService glossaryService) {
         this.sandboxRoot = resolveSandboxRoot(configuredRoot);
+        this.glossaryService = glossaryService != null ? glossaryService : new DomainGlossaryService();
         log.info("[FileSearchTool] 知识库检索沙箱已就绪，根目录: {}", this.sandboxRoot);
     }
 
@@ -136,8 +140,14 @@ public class FileSearchTool implements AgentTool {
             emitActivity("> ❌ **[检索失败]** 关键词为空\n\n");
             return "错误：检索关键词不能为空";
         }
+
+        String mapped = glossaryService.expand(keyword);
+        boolean isMapped = !mapped.equalsIgnoreCase(keyword.trim());
+        String[] searchWords = isMapped ? new String[]{keyword, mapped} : new String[]{keyword};
+        emitActivity(isMapped ? "\n> 💡 **[术语关联]** `" + keyword + "` -> `" + mapped + "`\n" : "\n> 🔎 **[智能体内容精确检索]** 检索关键词: `" + keyword + "`\n");
+
         try {
-            FileSearch.SearchOptions options = FileSearch.SearchOptions.ofKeywords(keyword)
+            FileSearch.SearchOptions options = FileSearch.SearchOptions.ofKeywords(searchWords)
                     .withCaseSensitive(false)
                     .withContextLines(CONTEXT_LINES)
                     .withMaxLines(MAX_GREP_LINES);
@@ -145,11 +155,14 @@ public class FileSearchTool implements AgentTool {
             List<FileSearch.FileMatch> matches = FileSearch.grep(sandboxRoot, options);
             if (matches.isEmpty()) {
                 emitActivity("> ⚠️ **[检索反馈]** 未在文档中检索到关键词: `" + keyword + "`\n\n");
-                return "未在文档中检索到关键词: " + keyword;
+                return "未在文档中检索到关键词: " + keyword + (isMapped ? " (已自动关联: " + mapped + ")" : "");
             }
 
             emitActivity("> 📄 **[检索反馈]** 命中 " + matches.size() + " 篇文档，准备提取匹配行\n\n");
             StringBuilder sb = new StringBuilder();
+            if (isMapped) {
+                sb.append("【术语关联注入】：'").append(keyword).append("' 对应标准专有名词为: ").append(mapped).append("\n\n");
+            }
             for (FileSearch.FileMatch fileMatch : matches) {
                 String relative = sandboxRoot.relativize(fileMatch.file()).toString().replace('\\', '/');
                 sb.append("### 文件: ").append(relative).append("\n");
