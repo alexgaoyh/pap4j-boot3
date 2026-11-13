@@ -135,7 +135,6 @@ public class FileSearchTool implements AgentTool {
     @Tool(name = "FileSearchTool-grepContent", description = "在知识库文件中按关键词或专有名词精确搜索内容，返回命中的文件、行号以及对应代码片段")
     public String grepContent(
             @ToolParam(description = "要搜索的专有名词、函数名或关键词，例如：TREE_FLATTEN、ISBLANK") String keyword) {
-        emitActivity("\n> 🔎 **[智能体内容精确检索]** 检索关键词: `" + keyword + "`\n");
         if (keyword == null || keyword.isBlank()) {
             emitActivity("> ❌ **[检索失败]** 关键词为空\n\n");
             return "错误：检索关键词不能为空";
