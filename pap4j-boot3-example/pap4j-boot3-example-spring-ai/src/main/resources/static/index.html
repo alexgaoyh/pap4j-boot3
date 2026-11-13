@@ -47,7 +47,7 @@
         .think-container summary::-webkit-details-marker { display: none; }
         .think-header { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: #f1f5f9; color: #475569; font-weight: 500; cursor: pointer; user-select: none; }
         .think-header:hover { background: #e2e8f0; }
-        .think-body { padding: 8px 12px; color: #64748b; line-height: 1.6; border-top: 1px dashed #e2e8f0; max-height: 300px; overflow-y: auto; font-family: ui-monospace, SFMono-Regular, monospace; background: #fafafa; }
+        .think-body { padding: 8px 12px; color: #64748b; line-height: 1.6; border-top: 1px dashed #e2e8f0; max-height: 300px; overflow-y: auto; overscroll-behavior: contain; font-family: ui-monospace, SFMono-Regular, monospace; background: #fafafa; }
         .think-body p { margin: 2px 0 !important; }
         .think-spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid #cbd5e1; border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -179,7 +179,7 @@
         else contentDiv.textContent = text;
         msgDiv.appendChild(contentDiv);
         chatMessages.appendChild(msgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        stickChatToBottom();
         return contentDiv;
     }
 
@@ -225,82 +225,192 @@
         return segments;
     }
 
-    // 记录每个思考块被用户手动折叠的状态，避免流式重绘时被强行展开
-    function collectThinkStates(container) {
-        return Array.from(container.querySelectorAll('details.think-container'))
-            .map(details => details.open);
+    // ===== 滚动跟随（粘性贴底）+ 原地更新 =====
+    // 关键点：
+    // 1) 只有用户本来就贴底时才自动跟随新内容；用户手动上翻后不再被强行拽回底部；
+    // 2) 流式更新时复用思考块的 DOM 节点（只替换内部 HTML），否则滚动容器每帧被销毁重建，
+    //    会导致 scrollTop 归零、滚动条无法拖动。
+    const STICKY_TOLERANCE = 24;
+    const CURSOR_HTML = '<span class="cursor"></span>';
+
+    function isNearBottom(el) {
+        if (!el) return true;
+        return el.scrollHeight - el.scrollTop - el.clientHeight <= STICKY_TOLERANCE;
+    }
+
+    function scrollToBottom(el) {
+        if (!el) return;
+        // 标记为“程序自动滚动”，避免自己的滚动被当成用户上翻（scroll 事件是本帧内异步派发的）
+        el.__piAutoScroll = true;
+        el.scrollTop = el.scrollHeight;
+        requestAnimationFrame(() => { el.__piAutoScroll = false; });
+    }
+
+    // 主动跟随时显式复位跟随标记（避免上一轮用户上翻留下的 false 影响新一轮）
+    function stickChatToBottom() {
+        chatFollowSticky = true;
+        scrollToBottom(chatMessages);
+    }
+
+    // 仅在“用户仍处于贴底状态”时才跟随，并在下一帧校正一次（字体/公式排版延迟会改变高度）
+    function followChatIfSticky() {
+        if (!chatFollowSticky) return;
+        scrollToBottom(chatMessages);
+        requestAnimationFrame(() => {
+            if (chatFollowSticky) scrollToBottom(chatMessages);
+        });
+    }
+
+    // 会话区是否跟随到底部：由用户实际滚动行为决定，而不是每帧根据布局推断
+    let chatFollowSticky = true;
+    chatMessages.addEventListener('scroll', () => {
+        if (chatMessages.__piAutoScroll) return;
+        chatFollowSticky = isNearBottom(chatMessages);
+    }, { passive: true });
+
+    function elapsedSeconds(startTime) {
+        return startTime ? Math.max(1, Math.round((Date.now() - startTime) / 1000)) : 0;
+    }
+
+    // 每个消息容器 -> { sig: 结构签名, follow: 思考块是否贴底, open: 已完成块是否展开 }
+    const renderStates = new WeakMap();
+
+    function getRenderState(container) {
+        let state = renderStates.get(container);
+        if (!state) {
+            state = { sig: '', follow: [], open: [] };
+            renderStates.set(container, state);
+            // scroll 不冒泡，用捕获阶段监听思考块自身的滚动，实时记录用户是否贴底
+            container.addEventListener('scroll', (event) => {
+                const body = event.target;
+                if (!body || !body.classList || !body.classList.contains('think-body')) return;
+                if (body.__piAutoScroll) return;
+                const index = Number(body.dataset.thinkIndex);
+                if (Number.isNaN(index)) return;
+                const current = renderStates.get(container);
+                if (current) current.follow[index] = isNearBottom(body);
+            }, true);
+            container.addEventListener('toggle', (event) => {
+                const details = event.target;
+                if (!details || details.tagName !== 'DETAILS') return;
+                const index = Number(details.dataset.thinkIndex);
+                if (Number.isNaN(index)) return;
+                const current = renderStates.get(container);
+                if (current) current.open[index] = details.open;
+            }, true);
+        }
+        return state;
+    }
+
+    function createThinkBlock(segment, index) {
+        const node = document.createElement(segment.closed ? 'details' : 'div');
+        node.className = 'think-container ' + (segment.closed ? 'completed' : 'in-progress');
+        node.dataset.thinkIndex = String(index);
+        if (segment.closed) {
+            node.open = true;
+            node.innerHTML = `
+                <summary class="think-header">
+                    <span>💭</span>
+                    <span class="think-label"></span>
+                    <span style="margin-left: auto; font-size: 0.75rem; color: #94a3b8;">点击展开/折叠</span>
+                </summary>
+                <div class="think-body markdown-body" data-think-index="${index}"></div>`;
+        } else {
+            node.innerHTML = `
+                <div class="think-header">
+                    <span class="think-spinner"></span>
+                    <span class="think-label"></span>
+                </div>
+                <div class="think-body markdown-body" data-think-index="${index}"></div>`;
+        }
+        return node;
+    }
+
+    function updateThinkBlock(node, segment, index, isStreaming, seconds, state) {
+        const body = node.querySelector('.think-body');
+        const label = node.querySelector('.think-label');
+        if (!body) return;
+        if (label) {
+            label.textContent = segment.closed
+                ? `已完成思考 (用时 ${seconds} 秒)`
+                : `正在思考... (${seconds}s)`;
+        }
+        const sticky = state.follow[index] !== false;
+        const prevTop = body.scrollTop;
+        body.innerHTML = marked.parse(preprocessMarkdown(segment.text))
+            + (!segment.closed && isStreaming ? CURSOR_HTML : '');
+        // 内容变高后：贴底的继续贴底跟随，否则保持用户自己拖动到的位置
+        if (sticky) {
+            scrollToBottom(body);
+            // 字体 / KaTeX 排版可能在本次渲染之后才改变高度，下一帧再校正一次
+            requestAnimationFrame(() => {
+                if (state.follow[index] !== false) scrollToBottom(body);
+            });
+        } else {
+            body.scrollTop = prevTop;
+        }
     }
 
     /**
-     * 解析并渲染包含 DeepSeek <thinking>...</thinking> 思考过程的内容
-     */
-    function renderContentWithThink(text, isStreaming, startTime, thinkStates) {
-        const cursor = isStreaming ? '<span class="cursor"></span>' : '';
-        if (!text) {
-            return isStreaming ? '<span class="cursor"></span>' : '';
-        }
-
-        const visibleText = stripPartialThinkTag(text);
-        const segments = splitThinkSegments(visibleText);
-        if (!segments.some(segment => segment.type === 'thinking')) {
-            return marked.parse(preprocessMarkdown(visibleText)) + cursor;
-        }
-
-        const elapsedSec = startTime ? Math.max(1, Math.round((Date.now() - startTime) / 1000)) : 0;
-        let html = '';
-        let thinkIndex = 0;
-
-        for (const segment of segments) {
-            if (segment.type === 'answer') {
-                const answerText = segment.text.trim();
-                if (answerText) {
-                    html += marked.parse(preprocessMarkdown(answerText));
-                }
-                continue;
-            }
-
-            const thinkBody = marked.parse(preprocessMarkdown(segment.text));
-
-            if (!segment.closed) {
-                // 正在深度思考中（标签未闭合）
-                html += `
-                <div class="think-container in-progress">
-                    <div class="think-header">
-                        <span class="think-spinner"></span>
-                        <span>正在思考... (${elapsedSec}s)</span>
-                    </div>
-                    <div class="think-body markdown-body">
-                        ${thinkBody}
-                        ${isStreaming ? '<span class="cursor"></span>' : ''}
-                    </div>
-                </div>`;
-                continue;
-            }
-
-            // 思考过程已闭合：渲染为可折叠面板，同时保留用户上次的展开/折叠选择
-            const isOpen = !thinkStates || thinkStates[thinkIndex] !== false;
-            html += `
-                <details class="think-container completed"${isOpen ? ' open' : ''}>
-                    <summary class="think-header">
-                        <span>💭</span>
-                        <span>已完成思考 (用时 ${elapsedSec} 秒)</span>
-                        <span style="margin-left: auto; font-size: 0.75rem; color: #94a3b8;">点击展开/折叠</span>
-                    </summary>
-                    <div class="think-body markdown-body">
-                        ${thinkBody}
-                    </div>
-                </details>`;
-            thinkIndex++;
-        }
-        return html + cursor;
-    }
-
-    /**
-     * 渲染到消息容器，并保留用户对已完成思考面板的展开/折叠状态
+     * 渲染到消息容器：
+     * - 思考块 / 回答段按片段复用 DOM，结构不变时只更新内容（滚动条可正常拖动）
+     * - 结构变化（思考开始/结束、出现回答段）时才重建，并沿用展开状态与贴底状态
      */
     function renderIntoMessage(container, text, isStreaming, startTime) {
-        const thinkStates = collectThinkStates(container);
-        container.innerHTML = renderContentWithThink(text, isStreaming, startTime, thinkStates);
+        const visibleText = text ? stripPartialThinkTag(text) : '';
+        const segments = visibleText ? splitThinkSegments(visibleText) : [];
+        const state = getRenderState(container);
+        const seconds = elapsedSeconds(startTime);
+
+        if (!segments.some(segment => segment.type === 'thinking')) {
+            // 没有思考块：整段 Markdown 直出
+            state.sig = '';
+            state.follow = [];
+            container.innerHTML = visibleText ? marked.parse(preprocessMarkdown(visibleText)) : '';
+            if (isStreaming) container.insertAdjacentHTML('beforeend', CURSOR_HTML);
+            followChatIfSticky();
+            return;
+        }
+
+        const sig = segments.map(segment => segment.type === 'thinking'
+            ? (segment.closed ? 'T1' : 'T0')
+            : 'A').join(',');
+
+        if (state.sig !== sig) {
+            const prevOpen = state.open.slice();
+            // DOM 将被重建，旧节点上的滚动位置/跟随状态已无意义：新节点统一从“跟随底部”开始
+            state.follow = segments.map(() => true);
+            container.innerHTML = '';
+            segments.forEach((segment, index) => {
+                if (segment.type === 'answer') {
+                    const answer = document.createElement('div');
+                    answer.className = 'seg-answer';
+                    container.appendChild(answer);
+                } else {
+                    const node = createThinkBlock(segment, index);
+                    if (segment.closed && prevOpen[index] === false) {
+                        node.open = false;
+                    }
+                    container.appendChild(node);
+                }
+            });
+            state.sig = sig;
+        }
+
+        segments.forEach((segment, index) => {
+            const node = container.children[index];
+            if (!node) return;
+            if (segment.type === 'answer') {
+                const answerText = segment.text.trim();
+                let html = answerText ? marked.parse(preprocessMarkdown(answerText)) : '';
+                if (isStreaming && index === segments.length - 1) html += CURSOR_HTML;
+                node.innerHTML = html;
+            } else {
+                updateThinkBlock(node, segment, index, isStreaming, seconds, state);
+            }
+        });
+
+        followChatIfSticky();
     }
 
     const chatId = 'chat-' + Math.random().toString(36).substr(2, 9);
@@ -321,7 +431,7 @@
         botContentDiv.innerHTML = '<div class="think-placeholder"><span class="think-spinner"></span> 正在思考...</div>';
         botMsgDiv.appendChild(botContentDiv);
         chatMessages.appendChild(botMsgDiv);
-        chatMessages.scrollTop = chatMessages.scrollHeight;
+        stickChatToBottom();
 
         const startTime = Date.now();
         let fullResponse = '';
@@ -378,9 +488,9 @@
                 }
 
                 // 实时打字机渲染（包含当前正在拼接缓冲的数据，提供流畅的打字效果）
+                // 滚动跟随交给 renderIntoMessage 内部处理，避免无条件拉回底部导致用户无法上翻
                 const tempResponse = fullResponse + (hasData ? eventLines.join('\n') : '');
                 renderIntoMessage(botContentDiv, tempResponse, true, startTime);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
 
             // 处理流结束后的可能残余缓冲区数据
@@ -410,8 +520,12 @@
             errorMessage = error && error.message ? error.message : String(error);
         } finally {
             if (errorMessage) {
-                botContentDiv.innerHTML = '<div class="think-placeholder">⚠️ 请求失败：' + escapeHtml(errorMessage) + '</div>'
-                    + (fullResponse ? renderContentWithThink(fullResponse, false, startTime, []) : '');
+                botContentDiv.innerHTML = '<div class="think-placeholder">⚠️ 请求失败：' + escapeHtml(errorMessage) + '</div>';
+                if (fullResponse) {
+                    const restDiv = document.createElement('div');
+                    botContentDiv.appendChild(restDiv);
+                    renderIntoMessage(restDiv, fullResponse, false, startTime);
+                }
             } else {
                 renderIntoMessage(botContentDiv, fullResponse, false, startTime);
             }
